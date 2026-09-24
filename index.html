@@ -2174,7 +2174,8 @@ function plan(a,dt,lead,isEgo){
 function routeY(s,off=0){const R=game.route,[,,i]=routeLLnh(s),h0=NODEH.get(R.nodes[i]),h1=NODEH.get(R.nodes[i+1]);
  if(h0!==undefined&&h1!==undefined){const t=clamp((s-R.cum[i])/((R.cum[i+1]-R.cum[i])||1),0,1);return lerp(h0,h1,t)}
  const p=routeXZ(s,off);return groundY(p[0],p[1])}
-function place(a,off){
+function place(a,off){if(a.loose)return; // sliding after a collision: the physics owns the pose
+
  const [x,z,dx,dz,idx]=routeXZ(a.s,off!==undefined?off:laneOffsetAt(routeLLnh(a.s)[2]));
  const hb=routeXZ(a.s-2,0),hf=routeXZ(a.s+3,0);let hh=Math.atan2(-(hf[1]-hb[1]),hf[0]-hb[0]);
  if(a.dir<0)hh+=Math.PI;
@@ -2205,7 +2206,7 @@ function spawnWayCar(ways){const cand=ways.filter(w=>w.hw!=='service');if(!cand.
  const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],Math.random()*w.total,w.spd*0.8,dir);a.kind='way';a.way=w;a.mesh.position.y=0;
  const p=wayPos(a.way,a.s,0);if(Math.hypot(p[0]-game.ego.x,p[1]-game.ego.z)<40){scene.remove(a.mesh);return}
  game.agents.push(a)}
-function updateWayCar(a,dt){
+function updateWayCar(a,dt){if(a.loose)return true;
  const w=a.way,off=w.oneway?(w.lanes>1?w.w/2-1.9:0):Math.min(1.8,w.w/4)*a.dir;
  let target=w.spd;
  // stop for ego if ego is right in front
@@ -2389,7 +2390,7 @@ function updateChase(dt,rt){const G=game;if(!CHASE.on||!G||!G.ego)return;const e
  for(let i=CHASE.blocks.length-1;i>=0;i--){const B=CHASE.blocks[i];for(const m of B.cars)flashBar(m,t,i*0.3);if(Math.hypot(B.x-e.x,B.z-e.z)>1500&&G.simTime-B.t>60){scene.remove(B.grp);CHASE.blocks.splice(i,1)}else if(B.route===G.route&&!B.tried)chaseDetour(B)}
  // cruisers: chase along the trail, keep spacing, pull alongside and PIT when close
  const order=[...CHASE.cops].sort((a,b)=>b.d-a.d);let closest=1e9,side=0;
- order.forEach((c,k)=>{const ahead=k?order[k-1].d-9:L-5.5,gap=L-c.d;const want=clamp(e.v+gap*0.12+(gap>40?8:0),0,60);c.v+=clamp(want-c.v,-7*dt,5.5*dt);c.d=Math.min(ahead,c.d+c.v*dt);
+ order.forEach((c,k)=>{if(c.loose){flashBar(c.mesh,t,c.ph);c.dist=Math.hypot(c.mesh.position.x-e.x,c.mesh.position.z-e.z);return}const ahead=k?order[k-1].d-9:L-5.5,gap=L-c.d;const want=clamp(e.v+gap*0.12+(gap>40?8:0),0,60);c.v+=clamp(want-c.v,-7*dt,5.5*dt);c.d=Math.min(ahead,c.d+c.v*dt);
   const p=trailAt(c.d),q=trailAt(c.d+3);if(!p)return;const h=Math.atan2(-(q.z-p.z),(q.x-p.x)||1e-6);const rx=Math.sin(h),rz=Math.cos(h); // right of travel
   const wantOff=gap<18?(CHASE.evade>0?-1.4:1.4):c.off;c.lat=lerp(c.lat??c.off,wantOff,Math.min(1,dt*1.5));
   c.mesh.position.set(p.x+rx*c.lat,p.y+0.02,p.z+rz*c.lat);c.mesh.rotation.y=h;flashBar(c.mesh,t,c.ph);for(const w of c.mesh.userData.wheels)w.spin.rotation.z-=c.v*dt/COP_SPEC.wr;
@@ -2405,6 +2406,62 @@ function updateChase(dt,rt){const G=game;if(!CHASE.on||!G||!G.ego)return;const e
  G.chaseInfo=`🚨 ${CHASE.cops.length} unit${CHASE.cops.length>1?'s':''} · closest ${Math.round(closest)} m · PITs ${CHASE.pits}`;chaseUI()}
 function chaseCrunch(){if(!audio.ctx||audio.muted)return;const C=audio.ctx,n=C.createBufferSource();n.buffer=audio.noiseBuf;const f=C.createBiquadFilter();f.type='lowpass';f.frequency.value=900;const g=C.createGain();g.gain.setValueAtTime(0.9,C.currentTime);g.gain.exponentialRampToValueAtTime(0.001,C.currentTime+0.7);n.connect(f);f.connect(g);g.connect(audio.master);n.start();n.stop(C.currentTime+0.8)}
 function chaseSpinYaw(){return CHASE.spin>0?CHASE.spinDir*Math.sin((1.6-CHASE.spin)/1.6*Math.PI)*1.9:0}
+// ============================================================ COLLISIONS
+// Every vehicle is an oriented box (real length × width) with a mass and yaw inertia. Overlaps are found with the separating-axis
+// test; the response is a rigid-body impulse at the contact point (restitution 0.25, tyre/body friction 0.35), so closing speed,
+// masses and impact angle set each vehicle's new velocity and spin. Both then slide out of control, decelerating at μ·g
+// (road grip from the weather), until they stop — the slide distance is v²/(2μg) along the impulse direction.
+const CRASH={shake:0,log:[]};
+function massOf(spec,kind){if(kind==='ego'){const E=ENERGY[spec.id];if(E&&E.kg)return E.kg}if(spec.style==='harley')return 420;if(spec.style==='dualie')return 4100;if(kind==='cop')return 2000;return Math.round(1500*(spec.L*spec.W)/(4.8*1.85))}
+function vehBodies(){const G=game,B=[];if(!G||!G.ego)return B;const e=G.ego;
+ B.push({ref:e,kind:'ego',m:massOf(G.spec,'ego'),L:G.spec.L,W:G.spec.W,get x(){return e.loose?e.loose.x:e.mesh.position.x},get z(){return e.loose?e.loose.z:e.mesh.position.z},get h(){return e.loose?e.loose.h:e.mesh.rotation.y}});
+ for(const a of G.agents)if(a.mesh&&a.mesh.visible!==false)B.push({ref:a,kind:a.kind==='way'?'way':'traffic',m:massOf(a.spec,'traffic'),L:a.spec.L,W:a.spec.W,get x(){return a.loose?a.loose.x:a.mesh.position.x},get z(){return a.loose?a.loose.z:a.mesh.position.z},get h(){return a.loose?a.loose.h:a.mesh.rotation.y}});
+ if(CHASE.on){for(const c of CHASE.cops)B.push({ref:c,kind:'cop',m:2000,L:COP_SPEC.L,W:COP_SPEC.W,get x(){return c.loose?c.loose.x:c.mesh.position.x},get z(){return c.loose?c.loose.z:c.mesh.position.z},get h(){return c.loose?c.loose.h:c.mesh.rotation.y}});
+  for(const b of CHASE.blocks)for(const m of b.cars){m.userData.rb=m.userData.rb||{mesh:m};const r=m.userData.rb;B.push({ref:r,kind:'block',m:2000,L:COP_SPEC.L,W:COP_SPEC.W,get x(){return r.loose?r.loose.x:m.position.x},get z(){return r.loose?r.loose.z:m.position.z},get h(){return r.loose?r.loose.h:m.rotation.y}})}}
+ if(CHAOS.on)for(const a of CHAOS.cars)B.push({ref:a,kind:'chaos',m:1500,L:CHAOS.spec.L,W:CHAOS.spec.W,get x(){return a.loose?a.loose.x:a.x},get z(){return a.loose?a.loose.z:a.z},get h(){return a.loose?a.loose.h:a.head}});
+ return B}
+// forward of heading h is (cos h, −sin h); right is (sin h, cos h)
+function obbCorners(b){const fx=Math.cos(b.h),fz=-Math.sin(b.h),rx=Math.sin(b.h),rz=Math.cos(b.h),l=b.L/2,w=b.W/2;return[[b.x+fx*l+rx*w,b.z+fz*l+rz*w],[b.x+fx*l-rx*w,b.z+fz*l-rz*w],[b.x-fx*l-rx*w,b.z-fz*l-rz*w],[b.x-fx*l+rx*w,b.z-fz*l+rz*w]]}
+function inObb(p,b){const dx=p[0]-b.x,dz=p[1]-b.z,f=dx*Math.cos(b.h)-dz*Math.sin(b.h),r=dx*Math.sin(b.h)+dz*Math.cos(b.h);return Math.abs(f)<=b.L/2&&Math.abs(r)<=b.W/2}
+function satOverlap(A,B){const ca=obbCorners(A),cb=obbCorners(B);let best=null;
+ for(const h of [A.h,A.h+Math.PI/2,B.h,B.h+Math.PI/2]){const ax=[Math.cos(h),-Math.sin(h)];let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9;for(const p of ca){const d=p[0]*ax[0]+p[1]*ax[1];a0=Math.min(a0,d);a1=Math.max(a1,d)}for(const p of cb){const d=p[0]*ax[0]+p[1]*ax[1];b0=Math.min(b0,d);b1=Math.max(b1,d)}
+  const o=Math.min(a1,b1)-Math.max(a0,b0);if(o<=0)return null;if(!best||o<best.o){let n=ax;if((B.x-A.x)*ax[0]+(B.z-A.z)*ax[1]<0)n=[-ax[0],-ax[1]];best={o,n}}}
+ const pts=[...ca.filter(p=>inObb(p,B)),...cb.filter(p=>inObb(p,A))];best.p=pts.length?[pts.reduce((s,p)=>s+p[0],0)/pts.length,pts.reduce((s,p)=>s+p[1],0)/pts.length]:[(A.x+B.x)/2,(A.z+B.z)/2];return best}
+function velOf(b,dt){const r=b.ref;if(r.loose)return{vx:r.loose.vx,vz:r.loose.vz,w:r.loose.w};const px=r._cpx,pz=r._cpz,ph=r._cph;if(px===undefined||dt<=0)return{vx:0,vz:0,w:0};let dh=b.h-ph;dh=Math.atan2(Math.sin(dh),Math.cos(dh));return{vx:(b.x-px)/dt,vz:(b.z-pz)/dt,w:dh/dt}}
+function makeLoose(b,v){const r=b.ref;r.loose={x:b.x,z:b.z,h:b.h,vx:v.vx,vz:v.vz,w:v.w,stopT:0,t:0}}
+function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;const bodies=vehBodies(),mu=0.75*(WX.mu||1),g=9.81;
+ // 1. find & resolve contacts
+ for(let i=0;i<bodies.length;i++){const A=bodies[i];for(let j=i+1;j<bodies.length;j++){const B=bodies[j];const R=(A.L+B.L)/2+0.5;if(Math.abs(A.x-B.x)>R||Math.abs(A.z-B.z)>R)continue;
+   if(A.kind!=='ego'&&B.kind!=='ego'&&A.kind===B.kind&&A.kind!=='chaos'&&A.kind!=='cop')continue; // same scripted lane stream: they queue, they don't overlap by design
+   if((A.ref._age??9)<1.5||(B.ref._age??9)<1.5)continue;const c=satOverlap(A,B);if(!c)continue;
+   const va=velOf(A,dt),vb=velOf(B,dt),n=c.n,ra=[c.p[0]-A.x,c.p[1]-A.z],rb=[c.p[0]-B.x,c.p[1]-B.z],IA=A.m*(A.L*A.L+A.W*A.W)/12,IB=B.m*(B.L*B.L+B.W*B.W)/12;
+   const pa=[va.vx+va.w*ra[1],va.vz-va.w*ra[0]],pb=[vb.vx+vb.w*rb[1],vb.vz-vb.w*rb[0]],rel=[pb[0]-pa[0],pb[1]-pa[1]],vn=rel[0]*n[0]+rel[1]*n[1];
+   // push apart by the penetration (heavier body moves less)
+   const tot=A.m+B.m,sa=c.o*B.m/tot,sb=c.o*A.m/tot;
+   if(vn<-0.4){const cr=(r,v)=>r[1]*v[0]-r[0]*v[1],can=cr(ra,n),cbn=cr(rb,n),e_=0.25,jn=-(1+e_)*vn/(1/A.m+1/B.m+can*can/IA+cbn*cbn/IB);
+    const t=[-n[1],n[0]],vt=rel[0]*t[0]+rel[1]*t[1],cat=cr(ra,t),cbt=cr(rb,t),jt=clamp(-vt/(1/A.m+1/B.m+cat*cat/IA+cbt*cbt/IB),-0.35*jn,0.35*jn);
+    const J=[n[0]*jn+t[0]*jt,n[1]*jn+t[1]*jt],nva={vx:va.vx-J[0]/A.m,vz:va.vz-J[1]/A.m,w:va.w-cr(ra,J)/IA},nvb={vx:vb.vx+J[0]/B.m,vz:vb.vz+J[1]/B.m,w:vb.w+cr(rb,J)/IB};
+    makeLoose(A,nva);makeLoose(B,nvb);A.ref.loose.x-=n[0]*sa;A.ref.loose.z-=n[1]*sa;B.ref.loose.x+=n[0]*sb;B.ref.loose.z+=n[1]*sb;
+    const dv=Math.abs(vn),mph=Math.round(dv*MPH);crashSound(dv,Math.min(Math.hypot(A.x-G.ego.x,A.z-G.ego.z),Math.hypot(B.x-G.ego.x,B.z-G.ego.z)));
+    if(A.kind==='ego'||B.kind==='ego'){const me=A.kind==='ego'?nva:nvb,sp=Math.hypot(me.vx,me.vz),slide=sp*sp/(2*mu*g);CRASH.shake=Math.min(1.2,dv/15);G.crashMsg=`💥 ${mph} mph impact with ${(A.kind==='ego'?B:A).kind==='cop'?'a police car':'another vehicle'} · sliding ${Math.round(slide)} m`;if(CHASE.on)CHASE.pits+=0}
+    CRASH.log.push({t:G.simTime,mph,a:A.kind,b:B.kind});if(CRASH.log.length>50)CRASH.log.shift()}
+   else if(A.ref.loose||B.ref.loose){if(A.ref.loose){A.ref.loose.x-=n[0]*sa;A.ref.loose.z-=n[1]*sa}if(B.ref.loose){B.ref.loose.x+=n[0]*sb;B.ref.loose.z+=n[1]*sb}}}}
+ // 2. integrate everything that is sliding; recover when stopped
+ for(const b of bodies){const r=b.ref,L=r.loose;r._age=(r._age??0)+dt;if(!L){r._cpx=b.x;r._cpz=b.z;r._cph=b.h;continue}
+  L.t+=dt;const sp=Math.hypot(L.vx,L.vz);if(sp>0){const ns=Math.max(0,sp-mu*g*dt);L.vx*=ns/sp;L.vz*=ns/sp}const dw=Math.sign(L.w)*Math.min(Math.abs(L.w),(3+Math.abs(L.w)*0.8)*dt);L.w-=dw;
+  L.x+=L.vx*dt;L.z+=L.vz*dt;L.h+=L.w*dt;if(Math.hypot(L.vx,L.vz)<0.25&&Math.abs(L.w)<0.12){L.vx=L.vz=L.w=0;L.stopT+=dt}
+  const y=groundY(L.x,L.z),rs=roadSurfaceY(L.x,L.z,y);const yy=Math.max(y,rs??-1e9)+0.03,roll=Math.sin(L.t*9)*Math.min(0.06,Math.abs(L.w)*0.02);
+  if(b.kind==='ego'){r.x=L.x;r.z=L.z;r.head=L.h}if(b.kind==='chaos'){r.x=L.x;r.z=L.z;r.head=L.h;r.v=0}else{const m=b.kind==='ego'?r.mesh:b.kind==='block'?r.mesh:r.mesh;m.position.set(L.x,yy+(b.kind==='ego'?0.05:0.05),L.z);m.rotation.y=L.h;m.rotation.x=roll}
+  r._cpx=L.x;r._cpz=L.z;r._cph=L.h;
+  if(b.kind==='ego'&&L.stopT>2.5)recoverEgo();else if(b.kind==='cop'&&L.stopT>3)recoverCop(r);else if((b.kind==='traffic'||b.kind==='way')&&L.stopT>15){scene.remove(r.mesh);const k=G.agents.indexOf(r);if(k>=0)G.agents.splice(k,1)}else if(b.kind==='chaos'&&L.stopT>6){r.x=L.x;r.z=L.z;r.head=L.h;delete r.loose}else if(b.kind==='block'&&L.stopT>0.5){delete r.loose}}
+ if(G.ego.loose)G.status=G.crashMsg||'💥 Out of control';CRASH.shake=Math.max(0,CRASH.shake-dt*1.5)}
+function recoverEgo(){const G=game,e=G.ego,L=e.loose;let best=e.s,bd=1e9;for(let s=Math.max(0,e.s-120);s<=Math.min(G.route.total,e.s+120);s+=2){const p=routeXZ(s,e.off||1.85),d=Math.hypot(p[0]-L.x,p[1]-L.z);if(d<bd){bd=d;best=s}}
+ e.s=best;e.v=0;e.x=L.x;e.z=L.z;e.head=L.h;e.mesh.rotation.x=0;delete e.loose;G.crashMsg='';G.status='Recovered · back on route'}
+function recoverCop(c){const L=c.loose,T=CHASE.trail;let best=c.d,bd=1e9;for(const p of T){if(p.d<c.d-300)continue;const d=Math.hypot(p.x-L.x,p.z-L.z);if(d<bd){bd=d;best=p.d}}c.d=best;c.v=0;c.mesh.rotation.x=0;delete c.loose}
+function crashSound(dv,dist){if(!audio.ctx||audio.muted||!audio.master)return;const C=audio.ctx,k=clamp(dv/20,0.15,1)*clamp(1-dist/250,0,1);if(k<0.02)return;const t=C.currentTime;
+ const n=C.createBufferSource();n.buffer=audio.noiseBuf;const f=C.createBiquadFilter();f.type='lowpass';f.frequency.value=600+dv*60;const g=C.createGain();g.gain.setValueAtTime(k,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.5+k*0.6);n.connect(f);f.connect(g);g.connect(audio.master);n.start(t);n.stop(t+1.3);
+ for(let i=0;i<5;i++){const o=C.createOscillator(),og=C.createGain(),tt=t+0.05+Math.random()*0.25;o.type='square';o.frequency.value=1800+Math.random()*2600;og.gain.setValueAtTime(0.04*k,tt);og.gain.exponentialRampToValueAtTime(0.0001,tt+0.12);o.connect(og);og.connect(audio.master);o.start(tt);o.stop(tt+0.15)} // glass & metal tinkle
+ const th=C.createOscillator(),tg=C.createGain();th.frequency.setValueAtTime(90,t);th.frequency.exponentialRampToValueAtTime(40,t+0.25);tg.gain.setValueAtTime(0.6*k,t);tg.gain.exponentialRampToValueAtTime(0.001,t+0.35);th.connect(tg);tg.connect(audio.master);th.start(t);th.stop(t+0.4)}
 function remPed(p){scene.remove(p.mesh);if(p.dog){scene.remove(p.dog.mesh);scene.remove(p.dog.leash)}}
 function spawnPed(){const ps=[];for(const T of TILES.values())ps.push(...T.peds);if(!ps.length)return;const w=ps[Math.floor(Math.random()*ps.length)];const g=new THREE.Group();const shirt=new THREE.MeshLambertMaterial({color:new THREE.Color().setHSL(Math.random(),0.5,0.4)});
  const b=new THREE.Mesh(PEDGEO.body,shirt);const h=new THREE.Mesh(PEDGEO.head,new THREE.MeshLambertMaterial({color:['#f1c9a5','#c68d62','#8d5a3b','#e0ac80','#5a3a26'][Math.floor(Math.random()*5)]}));const lm=new THREE.MeshLambertMaterial({color:0x2a2f3a});const l1=new THREE.Mesh(PEDGEO.leg,lm),l2=new THREE.Mesh(PEDGEO.leg,lm);l1.position.set(0,0.55,0.09);l2.position.set(0,0.55,-0.09);g.add(b,h,l1,l2);b.castShadow=true;scene.add(g);
@@ -2450,11 +2507,11 @@ function step(){
     else{G.status=E.ice?'Paying & pulling away':'Unplugging';c.kw=0;if(G.simTime-c.tDone>=UNPLUG_S){G.lastSession={name:c.st.name,from:c.from,to:G.soc,mins:(G.simTime-c.t0)/60,kwh:(G.soc-c.from)*(E.kwh||0),pred:c.st.mins};G.charging=null;G.stopIdx++;G.status='Leaving charger'}}
     continue}
    if(!G.tow&&G.energy<=0){const E0=ES();e.acc=-1.2;e.v=Math.max(0,e.v-1.2*dt);e.s+=e.v*dt;G.soc=0;G.status=(E0.ice?'Out of fuel':'Battery depleted')+' · coasting to the shoulder';if(e.v<0.05){e.v=0;startTow()}continue}
-   const sPrev=e.s,routeRef=G.route;G.status=plan(e,dt,obst,true);
+   const sPrev=e.s,routeRef=G.route;if(!e.loose)G.status=plan(e,dt,obst,true);else{e.v=0;e.acc=0}
    if(!G.tow){const E=ES(),P=powerW(E,e.v,e.acc||0,e.grade||0);G.energy=Math.max(0,G.energy-P*dt);G.usedJ+=P*dt;if(routeRef===G.route&&e.s>sPrev)G.expJ=(G.expJ||0)+energyBetween0(G.route,sPrev,e.s);G.odo+=e.v*dt;G.soc=G.energy/capJ(E);
     if(G.energy<=0){e.v=Math.max(0,e.v-3*dt);G.status=E.ice?'Out of fuel · coasting to a stop':'Battery depleted · coasting to a stop';if(e.v<0.1){e.v=0;startTow()}}}
-   routeAg.forEach((a,i)=>{plan(a,dt,routeAg[i+1]||null,false)});
-   for(const a of G.agents)if(a.kind==='oncoming'){a.s-=a.v*dt}
+   routeAg.forEach((a,i)=>{if(!a.loose)plan(a,dt,routeAg[i+1]||null,false)});
+   for(const a of G.agents)if(a.kind==='oncoming'&&!a.loose){a.s-=a.v*dt}
    for(let i=G.agents.length-1;i>=0;i--){const a=G.agents[i];if(a.kind==='way'&&!updateWayCar(a,dt)){scene.remove(a.mesh);G.agents.splice(i,1)}}
    for(const p of G.peds){p.s+=p.v*dt*p.dir;if(p.s<0||p.s>p.w.total){p.dir*=-1;p.s=clamp(p.s,0,p.w.total)}}
    if(!G.tow&&e.s>=G.route.total-1.5&&e.v<0.1&&G.stopIdx>=G.stops.length){arrive();break}
@@ -2468,7 +2525,7 @@ function step(){
  if(!towAnim)spinWheels(e,rdt*G.scale,e.steer);
  if(wheelMesh)wheelMesh.rotation.x=-e.steer*14/ (spec.wheel==='yoke'?1.4:1);
  if(e.mesh.userData.lidar)e.mesh.userData.lidar.rotation.y+=rdt*20;
- if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);syncMusicPause();
+ if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);updateCollisions(Math.min(0.05,rdt*G.scale));syncMusicPause();
  if(e.mesh.userData.wipers){const sp=WX.rain>0.6||WX.snow?2.6:WX.rain>0?1.4:0;G.wipeT=(G.wipeT||0)+rdt*sp;const ang=sp?(1-Math.cos(G.wipeT*Math.PI))/2*1.9:0;G.wipeAng=ang;e.mesh.userData.wipers.forEach(w=>w.rotation.y=ang)}
  // body pitch on accel
  {const yf=routeY(e.s+2,e.off),yb=routeY(e.s-2,e.off),pitch=Math.atan2(yf-yb,4);e.grade=Math.sin(pitch);
@@ -2760,7 +2817,7 @@ function toggleChaos(){if(!game||!game.route)return;CHAOS.on=!CHAOS.on;$('chaosB
  else{ms.forEach(m=>scene.remove(m));CHAOS.cars=[];CHAOS.peds=[];CHAOS.animals=[]}}
 const _m4=new THREE.Matrix4(),_m5=new THREE.Matrix4(),_q=new THREE.Quaternion(),_p=new THREE.Vector3(),_s=new THREE.Vector3(1,1,1);
 function updateChaos(dt){if(!CHAOS.on||!game)return;const e=game.ego;
- for(let i=0;i<CHAOS.cars.length;i++){const a=CHAOS.cars[i];a.t-=dt;
+ for(let i=0;i<CHAOS.cars.length;i++){const a=CHAOS.cars[i];if(a.loose){_q.setFromAxisAngle(UPV,a.head);_p.set(a.x,groundY(a.x,a.z),a.z);_m4.compose(_p,_q,_s);CHAOS.body.setMatrixAt(i,_m4);CHAOS.cab.setMatrixAt(i,_m4);continue}a.t-=dt;
   if(a.t<=0){a.t=0.5+Math.random()*2.5;const r=Math.random();a.turn=(Math.random()-0.5)*(r<0.15?2.4:0.9);a.vt=r<0.1?0:r<0.25?22+Math.random()*8:4+Math.random()*16} // swerve, slam brakes, floor it
   const dx=e.x-a.x,dz=e.z-a.z,d=Math.hypot(dx,dz);
   if(d<9){const away=Math.atan2(dz,-dx);let dh=away-a.head;dh=Math.atan2(Math.sin(dh),Math.cos(dh));a.turn=-Math.sign(dh)*1.5;a.vt=Math.max(a.vt,8)} // dodge the robotaxi
