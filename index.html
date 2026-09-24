@@ -115,7 +115,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     <label title="Time scale 1–1000×">⏱ <b id="tsv">1×</b></label><input id="ts" type="range" min="0" max="300" value="0" title="1× – 1000× (logarithmic)">
     <button id="pauseBtn" title="Pause / resume (Space)">⏸ Pause</button>
     <button id="wxBtn" title="Cycle weather (W)">🌤 Clear</button>
-    <button id="protestBtn" title="Deploy an oil protest blocking the road 100 m ahead (P)">🪧 Protest</button>
+    <button id="rerouteBtn" onclick="rerouteNow()" title="Take a different route right now (N)">🔀 Reroute</button><button id="protestBtn" title="Deploy an oil protest blocking the road 100 m ahead (P)">🪧 Protest</button>
     <button id="chaosBtn" title="Chaos mode: 100 wild cars + 500 wild pedestrians + animals (X)">🌀 Chaos</button>
     <button id="muteBtn" title="Sound on / off">🔊</button><button id="dogBtn" onclick="wdogToggle()" title="Window dog on / off (D)">🐕 Off</button><div id="dogSay"></div><button id="aifmBtn" onclick="aifmToggle()" title="AI Radio: live-written songs (R)">🎵 Off</button><div id="aifmBox"></div>
     <button id="menuBtn" title="Back to the start menu">↺ New</button>
@@ -1970,10 +1970,10 @@ async function geocode(q){
  const u=`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=7&lang=en&bbox=-125,24.3,-66.8,49.5`;
  const r=await fetch(u);const j=await r.json();
  return j.features.filter(f=>f.properties.countrycode==='US'&&!/Alaska|Hawaii/.test(f.properties.state||'')).map(f=>{const p=f.properties;const l1=[p.housenumber,p.street].filter(Boolean).join(' ')||p.name||'';const l2=[p.name&&p.street?p.name:'',p.city||p.county,p.state,p.postcode].filter(Boolean).join(', ');return{label:(l1?l1+', ':'')+l2,short:l1||p.name||p.city,lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0]}})}
-async function getRoute(a,b,via=[]){
- const wp=[a,...via,b];const u=`https://router.project-osrm.org/route/v1/driving/${wp.map(p=>p.lon+','+p.lat).join(';')}?overview=full&geometries=geojson&steps=true&annotations=nodes,speed,distance`;
- const r=await fetch(u);const j=await r.json();if(j.code!=='Ok')throw new Error(j.message||j.code);
- const rt=j.routes[0],pts=rt.geometry.coordinates,cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+hav(pts[i-1],pts[i]));
+async function getRoute(a,b,via=[],pick=0){
+ const wp=[a,...via,b];const u=`https://router.project-osrm.org/route/v1/driving/${wp.map(p=>p.lon+','+p.lat).join(';')}?overview=full&geometries=geojson&steps=true&annotations=nodes,speed,distance${pick>0&&!via.length?'&alternatives=3':''}`;
+ const r=await fetch(u);const j=await r.json();if(j.code!=='Ok')throw new Error(j.message||j.code);if(pick>0&&j.routes.length<=pick)throw new Error('no alternative');
+ const rt=j.routes[pick],pts=rt.geometry.coordinates,cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+hav(pts[i-1],pts[i]));
  const nodes=[],speed=[],steps=[],legEnds=[];
  rt.legs.forEach((lg,li)=>{const n=lg.annotation.nodes;nodes.push(...(li?n.slice(1):n));speed.push(...lg.annotation.speed)});
  while(nodes.length<pts.length)nodes.push(0);
@@ -2562,7 +2562,7 @@ canvas.addEventListener('wheel',ev=>{if(!game)return;ev.preventDefault();game.zo
 canvas.addEventListener('dblclick',()=>{if(game){game.yaw=0;game.pitch=0;game.zoom=1}});
 function toggleCam(){if(!game)return;game.cam=game.cam==='in'?'out':game.cam==='out'?'top':game.cam==='top'?'drone':game.cam==='drone'?'follow':'in';game.yaw=0;game.pitch=0;game.zoom=1;$('camBtn').textContent='🎥 '+({in:'Interior',out:'Exterior',top:'Overhead',drone:'Drone ○',follow:'Drone →'})[game.cam]}
 $('camBtn').onclick=toggleCam;
-addEventListener('keydown',ev=>{if(ev.target.tagName==='INPUT')return;if(ev.key==='c'||ev.key==='C')toggleCam();if(ev.key==='x'||ev.key==='X')toggleChaos();if(ev.key==='w'||ev.key==='W')cycleWeather();if(ev.key==='p'||ev.key==='P')deployProtest();if(ev.key==='r'||ev.key==='R')aifmToggle();if(ev.key==='d'||ev.key==='D')wdogToggle();if(ev.key===' '&&game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause';ev.preventDefault()}});
+addEventListener('keydown',ev=>{if(ev.target.tagName==='INPUT')return;if(ev.key==='c'||ev.key==='C')toggleCam();if(ev.key==='x'||ev.key==='X')toggleChaos();if(ev.key==='w'||ev.key==='W')cycleWeather();if(ev.key==='p'||ev.key==='P')deployProtest();if(ev.key==='r'||ev.key==='R')aifmToggle();if(ev.key==='d'||ev.key==='D')wdogToggle();if(ev.key==='n'||ev.key==='N')rerouteNow();if(ev.key===' '&&game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause';ev.preventDefault()}});
 const tsMap=v=>{const x=Math.pow(10,v/100);return x<10?Math.round(x*2)/2:x<100?Math.round(x):Math.round(x/10)*10};
 $('ts').oninput=ev=>{const sc=tsMap(+ev.target.value);if(game)game.scale=sc;$('tsv').textContent=sc+'×'};
 $('pauseBtn').onclick=()=>{if(game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause'}};
@@ -2875,6 +2875,16 @@ function protestWhistle(t,out){const C=audio.ctx,o=C.createOscillator(),g=C.crea
 function protestChantSynth(t,out){const C=audio.ctx;[[180,700,1200],[160,500,1700],[140,570,850]].forEach(([f0,f1,f2],b)=>{for(let k=0;k<6;k++){const tb=t+b*0.6+Math.random()*0.05,o=C.createOscillator();o.type='sawtooth';o.frequency.value=f0*(0.8+Math.random()*0.7);const g=C.createGain();g.gain.setValueAtTime(0.0001,tb);g.gain.linearRampToValueAtTime(0.05,tb+0.03);g.gain.exponentialRampToValueAtTime(0.001,tb+0.35);const a=C.createBiquadFilter();a.type='bandpass';a.frequency.value=f1;a.Q.value=4;const c=C.createBiquadFilter();c.type='bandpass';c.frequency.value=f2;c.Q.value=5;o.connect(a);o.connect(c);a.connect(g);c.connect(g);g.connect(out);o.start(tb);o.stop(tb+0.4)}})}
 function protestSoundStop(P){const S=P&&P.snd;if(!S)return;try{S.out.gain.setTargetAtTime(0,audio.ctx.currentTime,0.3);for(const n of S.nodes)n.stop(audio.ctx.currentTime+1.2)}catch(e){}}
 function clearProtest(){const G=game;if(G.protest){scene.remove(G.protest.grp);protestSoundStop(G.protest);G.protest=null}}
+// ---- manual reroute (N): take a genuinely different way from here — OSRM alternatives first, else a forced detour via parallel streets
+async function rerouteNow(){const G=game;if(!G||!G.route||G.rerouting)return;if(G.tow||G.charging){G.status='Can\'t reroute right now';return}G.rerouting=true;const e=G.ego,prev=G.status;G.status='Finding a different route…';
+ const here={lat:toLat(e.z),lon:toLon(e.x)},rem=[];for(let s0=e.s;s0<Math.min(G.route.total,e.s+20000);s0+=150){const p=routeLLnh(s0);rem.push([p[0],p[1]])}
+ const overlap=r=>{let near=0,n=0;for(let k=0;k<r.pts.length;k+=Math.max(1,Math.floor(r.pts.length/120))){if(r.cum[k]<60)continue;n++;if(rem.some(q=>hav(q,r.pts[k])<35))near++}return n?near/n:1};
+ try{const cands=[];for(const pick of [1,2,3]){try{cands.push(await getRoute(here,G.B,[],pick))}catch(err){break}}
+  if(!cands.length){const fx=Math.cos(e.head),fz=-Math.sin(e.head);for(const side of [1,-1])for(const lat of [250,500]){const x=e.x+fx*600-fz*side*lat,z=e.z+fz*600+fx*side*lat;try{cands.push(await getRoute(here,G.B,[{lat:toLat(z),lon:toLon(x)}]))}catch(err){}}}
+  let best=null,bo=1;for(const r of cands){const o=overlap(r);if(o<0.85&&(best===null||o+r.total/5e6<bo+best.total/5e6)){best=r;bo=o}}
+  if(!best){G.status='No different route found — staying on this one';return}
+  best.stops=[];buildEnergyProfile(best,ES());G.route=best;G.stops=[];G.stopIdx=0;G.lastPlanCheck=0;e.s=0;e.x=0;e.z=0;e.handled.clear();G.agents.forEach(a=>scene.remove(a.mesh));G.agents=[];if(G.rr){scene.remove(G.rr.mesh);G.rr=null}
+  G.status=`Rerouted · ${fmtDist(best.total)} · ${Math.round((1-bo)*100)}% different roads`}catch(err){G.status='Reroute failed — staying on this route'}finally{G.rerouting=false}}
 async function protestReroute(){const G=game,P=G.protest,e=G.ego;P.state='rerouting';P.lastTry=G.simTime;G.status='Protest blocking road · finding a way around';
  try{const here={lat:toLat(e.z),lon:toLon(e.x)},plat=toLat(P.z),plon=toLon(P.x);const fx=Math.cos(e.head),fz=-Math.sin(e.head),rx=-fz,rz=fx;
   // detour waypoints on parallel streets either side (like a road-closure diversion)
