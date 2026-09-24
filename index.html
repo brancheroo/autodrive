@@ -2577,7 +2577,7 @@ function step(){
  tileT-=rdt;if(tileT<=0){tileT=0.5;manageTerrain();manageTiles();manageSat();manageFF()}
  spawnT-=rdt;if(spawnT<=0){spawnT=0.4;manageTraffic()}
  // camera
- updateCamera(rdt);
+ updateCamera(rdt);if(CRASH.shake>0){const k=CRASH.shake;camera.position.x+=(Math.random()-0.5)*k*0.35;camera.position.y+=(Math.random()-0.5)*k*0.25;camera.rotation.z+=(Math.random()-0.5)*k*0.03} // impact shake
  // screens
  scrT-=rdt;if(scrT<=0){scrT=0.12;G.clockStr=localTime(dt2);for(const S of SCREENS)drawScreen(S)}
  uiT-=rdt;if(uiT<=0){uiT=0.15;updateHUD()}
