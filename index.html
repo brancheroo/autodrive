@@ -2397,7 +2397,7 @@ function updateChase(dt,rt){const G=game;if(!CHASE.on||!G||!G.ego)return;const e
   const dd=Math.hypot(c.mesh.position.x-e.x,c.mesh.position.z-e.z);c.dist=dd;if(dd<closest){closest=dd;side=Math.sign(c.lat)||1}
   // PIT manoeuvre: a real nudge — the cruiser drives its front corner into the car's rear quarter; the collision physics decides the spin
   c.pitCd-=dt;if(gap<9&&c.pitCd<=0&&!pitting&&!e.loose){c.pitCd=8+Math.random()*4;c.pitT=1.4;c.pitSide=Math.sign(c.lat||1);G.status='🚓 PIT attempt!'}
-  if(c.pitHit!==true&&e.loose&&c.pitT>0){c.pitHit=true;CHASE.pits++;G.status='💥 PIT manoeuvre!'}if(!pitting)c.pitHit=false});
+  });
  // audible sirens: the three nearest
  [...CHASE.cops].sort((a,b)=>a.dist-b.dist).forEach((c,i)=>{c.audible=i<3;sirenUpdate(c,c.dist,t)});
  // evasion: move away from the closest cruiser's side, flat out
@@ -2443,7 +2443,7 @@ function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;c
     const J=[n[0]*jn+t[0]*jt,n[1]*jn+t[1]*jt],nva={vx:va.vx-J[0]/A.m,vz:va.vz-J[1]/A.m,w:va.w-cr(ra,J)/IA},nvb={vx:vb.vx+J[0]/B.m,vz:vb.vz+J[1]/B.m,w:vb.w+cr(rb,J)/IB};
     makeLoose(A,nva);makeLoose(B,nvb);A.ref.loose.x-=n[0]*sa;A.ref.loose.z-=n[1]*sa;B.ref.loose.x+=n[0]*sb;B.ref.loose.z+=n[1]*sb;
     const dv=Math.abs(vn),mph=Math.round(dv*MPH);crashSound(dv,Math.min(Math.hypot(A.x-G.ego.x,A.z-G.ego.z),Math.hypot(B.x-G.ego.x,B.z-G.ego.z)));
-    if(A.kind==='ego'||B.kind==='ego'){const me=A.kind==='ego'?nva:nvb,sp=Math.hypot(me.vx,me.vz),slide=sp*sp/(2*mu*g);CRASH.shake=Math.min(1.2,dv/15);G.crashMsg=`💥 ${mph} mph impact with ${(A.kind==='ego'?B:A).kind==='cop'?'a police car':'another vehicle'} · sliding ${Math.round(slide)} m`;if(CHASE.on)CHASE.pits+=0}
+    if(A.kind==='ego'||B.kind==='ego'){const me=A.kind==='ego'?nva:nvb,sp=Math.hypot(me.vx,me.vz),slide=sp*sp/(2*mu*g);CRASH.shake=Math.min(1.2,dv/15);G.crashMsg=`💥 ${mph} mph impact with ${(A.kind==='ego'?B:A).kind==='cop'?'a police car':'another vehicle'} · sliding ${Math.round(slide)} m`;if(CHASE.on&&(A.kind==='cop'||B.kind==='cop')){CHASE.pits++}}
     CRASH.log.push({t:G.simTime,mph,a:A.kind,b:B.kind});if(CRASH.log.length>50)CRASH.log.shift()}
    else if(A.ref.loose||B.ref.loose){if(A.ref.loose){A.ref.loose.x-=n[0]*sa;A.ref.loose.z-=n[1]*sa}if(B.ref.loose){B.ref.loose.x+=n[0]*sb;B.ref.loose.z+=n[1]*sb}}}}
  // 2. integrate everything that is sliding; recover when stopped
