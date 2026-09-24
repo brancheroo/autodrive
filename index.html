@@ -2390,14 +2390,14 @@ function updateChase(dt,rt){const G=game;if(!CHASE.on||!G||!G.ego)return;const e
  for(let i=CHASE.blocks.length-1;i>=0;i--){const B=CHASE.blocks[i];for(const m of B.cars)flashBar(m,t,i*0.3);if(Math.hypot(B.x-e.x,B.z-e.z)>1500&&G.simTime-B.t>60){scene.remove(B.grp);CHASE.blocks.splice(i,1)}else if(B.route===G.route&&!B.tried)chaseDetour(B)}
  // cruisers: chase along the trail, keep spacing, pull alongside and PIT when close
  const order=[...CHASE.cops].sort((a,b)=>b.d-a.d);let closest=1e9,side=0;
- order.forEach((c,k)=>{if(c.loose){flashBar(c.mesh,t,c.ph);c.dist=Math.hypot(c.mesh.position.x-e.x,c.mesh.position.z-e.z);return}const ahead=k?order[k-1].d-9:L-5.5,gap=L-c.d;const want=clamp(e.v+gap*0.12+(gap>40?8:0),0,60);c.v+=clamp(want-c.v,-7*dt,5.5*dt);c.d=Math.min(ahead,c.d+c.v*dt);
+ order.forEach((c,k)=>{if(c.loose){flashBar(c.mesh,t,c.ph);c.dist=Math.hypot(c.mesh.position.x-e.x,c.mesh.position.z-e.z);return}c.pitT=Math.max(0,(c.pitT||0)-dt);const pitting=c.pitT>0,ahead=k&&!pitting?order[k-1].d-9:L-(pitting?2.2:5.5),gap=L-c.d;const want=clamp(e.v+gap*0.12+(gap>40?8:0)+(pitting?5:0),0,60);c.v+=clamp(want-c.v,-7*dt,5.5*dt);c.d=Math.min(ahead,c.d+c.v*dt);
   const p=trailAt(c.d),q=trailAt(c.d+3);if(!p)return;const h=Math.atan2(-(q.z-p.z),(q.x-p.x)||1e-6);const rx=Math.sin(h),rz=Math.cos(h); // right of travel
-  const wantOff=gap<18?(CHASE.evade>0?-1.4:1.4):c.off;c.lat=lerp(c.lat??c.off,wantOff,Math.min(1,dt*1.5));
+  const wantOff=pitting?c.pitSide*1.25:gap<18?(CHASE.evade>0?-1.4:1.4):c.off; /* PIT: line the front bumper up with the car's rear quarter */c.lat=lerp(c.lat??c.off,wantOff,Math.min(1,dt*1.5));
   c.mesh.position.set(p.x+rx*c.lat,p.y+0.02,p.z+rz*c.lat);c.mesh.rotation.y=h;flashBar(c.mesh,t,c.ph);for(const w of c.mesh.userData.wheels)w.spin.rotation.z-=c.v*dt/COP_SPEC.wr;
   const dd=Math.hypot(c.mesh.position.x-e.x,c.mesh.position.z-e.z);c.dist=dd;if(dd<closest){closest=dd;side=Math.sign(c.lat)||1}
-  // PIT manoeuvre: from the rear quarter, alongside, with cooldown; the car's evasion lowers the odds
-  c.pitCd-=dt;if(gap<7&&c.pitCd<=0&&CHASE.spin<=0){c.pitCd=7+Math.random()*4;const evading=Math.abs(CHASE.evade)>1&&e.v>12,p0=evading?0.18:0.4;
-   if(Math.random()<p0){CHASE.spin=1.6;CHASE.spinDir=side>0?-1:1;e.v*=0.35;c.v*=0.5;CHASE.pits++;G.status='💥 PIT manoeuvre! Recovering…';chaseCrunch()}else{c.v*=0.7;G.status='Evaded a PIT attempt'}}});
+  // PIT manoeuvre: a real nudge — the cruiser drives its front corner into the car's rear quarter; the collision physics decides the spin
+  c.pitCd-=dt;if(gap<9&&c.pitCd<=0&&!pitting&&!e.loose){c.pitCd=8+Math.random()*4;c.pitT=1.4;c.pitSide=Math.sign(c.lat||1);G.status='🚓 PIT attempt!'}
+  if(c.pitHit!==true&&e.loose&&c.pitT>0){c.pitHit=true;CHASE.pits++;G.status='💥 PIT manoeuvre!'}if(!pitting)c.pitHit=false});
  // audible sirens: the three nearest
  [...CHASE.cops].sort((a,b)=>a.dist-b.dist).forEach((c,i)=>{c.audible=i<3;sirenUpdate(c,c.dist,t)});
  // evasion: move away from the closest cruiser's side, flat out
