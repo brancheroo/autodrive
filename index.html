@@ -1267,8 +1267,13 @@ function buildCar(spec,colorHex,opts={}){
  else if(tl==='cadillac'){for(const s of [1,-1])onEnd(false,s*W*0.44,ty-0.15,0.06,0.5,tail);onEnd(false,0,ty,W*0.6,0.03,tail)}
  else if(tl==='yugo'){for(const s of [1,-1]){onEnd(false,s*W*0.39,ty-0.06,0.22,0.16,tail);onEnd(false,s*W*0.39,ty-0.16,0.22,0.04,s<0?sigL:sigR)}}
  else if(tl!=='zoox'){for(const s of [1,-1])onEnd(false,s*W*0.34,ty,0.42,0.1,tail)}
- for(const s of [1,-1]){const m=s<0?sigL:sigR;onEnd(true,s*W*0.42,ny-0.07,0.1,0.035,m);onEnd(false,s*W*0.42,ty-0.08,0.12,0.04,m)}
- g.userData.lights={head,tail,sigL,sigR};
+ // turn signals: real-size front & rear lamps, fender side repeaters, and an additive glow halo on each that flashes with the blinker
+ const glowM=[0,1].map(()=>new THREE.SpriteMaterial({map:glowTex(),color:0xffa326,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));
+ for(const s of [1,-1]){const m=s<0?sigL:sigR,gm=s<0?glowM[0]:glowM[1],spots=[];spots.push([onEnd(true,s*W*0.40,ny-0.06,0.2,0.07,m,0.04),1],[onEnd(false,s*W*0.38,ty-0.1,0.24,0.09,m,0.04),-1]);
+  const uF=0.8,rx=P.xOf(uF),ry=Math.min(P.belt(uF)-0.16,sh.hood*H-0.1),rz=s*(P.half(uF)+0.004),rep_=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.035,0.012),m);rep_.position.set(rx,ry,rz);g.add(rep_);
+  for(const [mesh,sg] of spots){if(!mesh)continue;mesh.geometry.computeBoundingBox();const c=new THREE.Vector3();mesh.geometry.boundingBox.getCenter(c);const sp=new THREE.Sprite(gm);sp.position.set(c.x+sg*0.06,c.y,c.z);sp.scale.setScalar(0.55);g.add(sp)}
+  const sr=new THREE.Sprite(gm);sr.position.set(rx,ry,rz+s*0.05);sr.scale.setScalar(0.3);g.add(sr)}
+ g.userData.lights={head,tail,sigL,sigR,gL:glowM[0],gR:glowM[1]};
  // cladding / arch trims on crossovers & SUVs
  if(md.cladding||spec.style==='suv'){for(const ax of P.axles)for(const s of [1,-1]){const a=new THREE.Mesh(new THREE.TorusGeometry(P.R+0.01,0.035,6,24,Math.PI),matte);a.position.set(ax,wr,s*(W/2-0.06));g.add(a)}}
  // door handles & mirrors
@@ -2182,7 +2187,8 @@ const RS_RAY=new THREE.Raycaster(),RS_DOWN=new THREE.Vector3(0,-1,0),RS_O=new TH
 function roadSurfaceY(x,z,yGuess){const G=game,T=TILES.get(Math.floor(toLat(z)/TS)+'_'+Math.floor(toLon(x)/TS)),list=[];if(T){if(!T.roadMeshes)T.roadMeshes=T.group.children.filter(o=>o.isMesh&&!o.isInstancedMesh&&(o.material===MAT.road||o.material===MAT.road2||Object.values(SURF).includes(o.material)));list.push(...T.roadMeshes)}
  if(G.rr&&G.rr.mesh)list.push(G.rr.mesh);if(!list.length)return null;RS_O.set(x,yGuess+4,z);RS_RAY.set(RS_O,RS_DOWN);RS_RAY.far=9;let best=null;for(const h of RS_RAY.intersectObjects(list,false))if(best===null||h.point.y>best)best=h.point.y;return best}
 function spinWheels(a,dt,steer){for(const w of a.mesh.userData.wheels){w.spin.rotation.z-=a.v*dt/a.spec.wr*(a.dir||1)*(w.sign||1);if(w.front)w.piv.rotation.y=steer;else if(a.spec.style==='pod')w.piv.rotation.y=-steer*0.6}}
-function setLights(m,{head,brake,sigL,sigR,dark}){const L=m.userData.lights;L.head.color.set(dark||head?0xfff6e0:0x777777);L.tail.color.set(brake?0xff1a10:dark?0x9a0d08:0x4a0808);L.sigL.color.set(sigL?0xffa000:0x4a2a00);L.sigR.color.set(sigR?0xffa000:0x4a2a00)}
+function glowTex(){if(glowTex.t)return glowTex.t;const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.25,'rgba(255,220,150,.8)');g.addColorStop(1,'rgba(255,160,40,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return glowTex.t=new THREE.CanvasTexture(c)}
+function setLights(m,{head,brake,sigL,sigR,dark}){const L=m.userData.lights;L.head.color.set(dark||head?0xfff6e0:0x777777);L.tail.color.set(brake?0xff1a10:dark?0x9a0d08:0x4a0808);L.sigL.color.set(sigL?0xffa000:0x4a2a00);L.sigR.color.set(sigR?0xffa000:0x4a2a00);if(L.gL){L.gL.opacity=sigL?0.95:0;L.gR.opacity=sigR?0.95:0}}
 
 // ambient traffic along OSM ways
 function allWays(){const arr=[];for(const T of TILES.values())for(const w of T.ways)arr.push(w);return arr}
