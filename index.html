@@ -66,6 +66,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #aifmBox .aiL{font-size:16px;margin-top:8px;color:#ffd86b;min-height:20px}#aifmBox .aiN{font-size:12px;color:#778;min-height:15px}#aifmBox .aiC{margin-top:6px;display:flex;gap:6px;justify-content:center}#aifmBox button{background:#2a2440;color:#eee;border:0;border-radius:6px;padding:3px 10px;cursor:pointer}
 #dogSay{position:fixed;top:96px;left:50%;transform:translateX(-50%);background:rgba(20,16,10,.85);color:#ffd98a;padding:6px 14px;border-radius:18px;font:600 14px system-ui;opacity:0;transition:opacity .4s;pointer-events:none;z-index:31}
 #cvAct{font:600 11px system-ui;color:#7dffb0;padding:3px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:rgba(0,0,0,.35);border-bottom:1px solid rgba(125,255,176,.15)}
+#liveBug{position:fixed;left:50%;top:92px;transform:translateX(-50%);z-index:30;background:rgba(10,12,18,.8);color:#fff;font:700 13px system-ui;padding:6px 12px;border-radius:4px;letter-spacing:.06em;pointer-events:none}#liveBug .lv{color:#ff3b3b}
 </style>
 </head>
 <body>
@@ -115,11 +116,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
     <label title="Time scale 1–1000×">⏱ <b id="tsv">1×</b></label><input id="ts" type="range" min="0" max="300" value="0" title="1× – 1000× (logarithmic)">
     <button id="pauseBtn" title="Pause / resume (Space)">⏸ Pause</button>
     <button id="wxBtn" title="Cycle weather (W)">🌤 Clear</button>
-    <button id="rerouteBtn" onclick="rerouteNow()" title="Take a different route right now (N)">🔀 Reroute</button><button id="protestBtn" title="Deploy an oil protest blocking the road 100 m ahead (P)">🪧 Protest</button>
+    <button id="chaseBtn" onclick="chaseToggle()" title="Chase mode: flat out for the destination, evade police, detour roadblocks (K)">🚨 Chase</button><select id="copN" title="Pursuing police cars" style="padding:4px;border-radius:6px;background:#0e141d;color:var(--text);border:1px solid var(--line);font-size:12px"><option value="1">1 🚓</option><option value="2">2 🚓</option><option value="3" selected>3 🚓</option><option value="4">4 🚓</option><option value="5">5 🚓</option><option value="6">6 🚓</option><option value="7">7 🚓</option><option value="8">8 🚓</option><option value="9">9 🚓</option><option value="10">10 🚓</option></select><button id="rerouteBtn" onclick="rerouteNow()" title="Take a different route right now (N)">🔀 Reroute</button><button id="protestBtn" title="Deploy an oil protest blocking the road 100 m ahead (P)">🪧 Protest</button>
     <button id="chaosBtn" title="Chaos mode: 100 wild cars + 500 wild pedestrians + animals (X)">🌀 Chaos</button>
     <button id="muteBtn" title="Sound on / off">🔊</button><button id="dogBtn" onclick="wdogToggle()" title="Window dog on / off (D)">🐕 Off</button><div id="dogSay"></div><button id="aifmBtn" onclick="aifmToggle()" title="AI Radio: live-written songs (R)">🎵 Off</button><div id="aifmBox"></div>
     <button id="menuBtn" title="Back to the start menu">↺ New</button>
   </div>
+  <div id="liveBug" hidden><span class="lv">● LIVE</span> <span id="liveTxt">CHOPPER 7 · POLICE PURSUIT</span></div>
   <div id="photoCard" style="position:absolute;right:10px;top:150px;width:240px;display:none;pointer-events:auto" class="panel"><img id="pcImg" style="width:100%;border-radius:8px;display:block"><div id="pcTitle" style="font-size:12px;margin-top:6px"></div><div id="pcCred" style="font-size:10px;color:var(--dim)"></div></div>
   <div id="cvWrap"><div id="cvHead"><span id="cvTitle">PERCEPTION</span><span id="cvStats"></span></div><div id="cvAct">▶ Initialising</div><div id="cvCam"><canvas id="cvOv"></canvas></div><canvas id="cvBev"></canvas></div>
   <div id="miniWrap"><canvas id="mini" width="480" height="480"></canvas><div id="miniBtns"><button id="mzIn" title="Zoom in">+</button><button id="mzOut" title="Zoom out">−</button><button id="mzUp" title="Heading-up / North-up">N</button><button id="mzFood" title="Show fast food">🍔</button></div><div id="miniAttr">Esri, HERE, Garmin · POIs © OpenStreetMap</div></div>
@@ -2134,13 +2136,14 @@ function plan(a,dt,lead,isEgo){
  const [,,idx]=routeLLnh(a.s);
  const lim=speedLimitAt(idx)/MPH;
  target=Math.min(lim*WX.speedF,WX.cap/MPH);reason=WX.key==='clear'?'Cruising':'Cruising · '+WX.label.toLowerCase()+' mode';if(isEgo)game.limitMph=speedLimitAt(idx);
+ const chase=isEgo&&CHASE.on;if(chase){target=Math.min(lim*1.7+4,WX.cap/MPH*1.3);reason='CHASE · flat out'} // chase: well over the limit, ignores lights & signs (never other cars)
  const brake=WX.brake;
  const allow=(vc,d)=>Math.sqrt(Math.max(0,vc*vc+2*brake*Math.max(0,d)));
  // curvature
  for(let d=5;d<look;d+=5){const p0=routeXZ(a.s+d-5,0),p1=routeXZ(a.s+d+5,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh<0.02)continue;const Rr=10/dh,vc=Math.max(3.0,Math.sqrt(WX.latA*Rr));const v=allow(vc,d-4);if(v<target){target=v;reason=vc<8?'Slowing for turn':'Slowing for curve'}}
  // controls along route nodes
  const up=[];
- for(let i=idx+1;i<R.nodes.length&&R.cum[i]-a.s<look;i++){const c=CONTROLS.get(R.nodes[i]);if(!c)continue;const d=R.cum[i]-a.s;
+ for(let i=idx+1;i<R.nodes.length&&R.cum[i]-a.s<look&&!chase;i++){const c=CONTROLS.get(R.nodes[i]);if(!c)continue;const d=R.cum[i]-a.s;
   const p0=R.pts[Math.max(0,i-1)],p1=R.pts[i];const ax=axisOf(p1[0]-p0[0],-(p1[1]-p0[1]));
   if(c.type==='signal'){const st=signalState(c.id,ax,game.simTime);if(isEgo)up.push({x:c.x,z:c.z,type:'signal',state:st});
    if(st==='R'||(st==='Y'&&d>a.v*a.v/(2*3.5)+3)){const v=allow(0,d-7);if(v<target){target=v;reason=st==='R'?'Stopping: red light':'Stopping: yellow light'}}}
@@ -2148,18 +2151,20 @@ function plan(a,dt,lead,isEgo){
    if(d<9&&a.v<0.3){a.stopT+=dt;reason='Full stop at stop sign';if(a.stopT>2.2){a.handled.add(c.id);a.stopT=0}}}
   else if(c.type==='give_way'){const v=allow(4.5,d-6);if(v<target){target=v;reason='Yield'}}}
  if(isEgo)game.upcoming=up;
- // lead
- if(lead){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
+ // lead (in a chase the car overtakes while swerving away from a cruiser)
+ if(lead&&!(chase&&Math.abs(CHASE.evade)>1.2)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
  // planned charging / fuel stop
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
+ // chase roadblocks: stop short unless the detour has been taken
+ if(CHASE.on)for(const B of CHASE.blocks)if(B.route===game.route){const d=(a.dir<0?-1:1)*(B.s-a.s)-10;if(d>-2&&d<220){const v=allow(0,d);if(v<target){target=v;reason=isEgo?'🚧 Roadblock ahead':reason}}}
  // end of route
  const rem=R.total-a.s;{const v=allow(0,rem-1);if(v<target){target=v;reason='Arriving'}}
  // traffic stops for the protest crowd too (both directions)
  if(!isEgo&&game.protest&&game.protest.state!=='dispersing'&&a.kind!=='way'){const P=game.protest,d=a.dir>0?P.s-6-a.s:a.s-(P.s+6);if(d>-3&&d<70){const v=allow(0,Math.max(0,d));if(v<target)target=v}}
 // acceleration
  const top=(typeof a.spec.top==='number'?a.spec.top:85)/MPH;target=Math.min(target,top);
- const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
- const amax=Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc)):1.8,WX.mu*9.81*0.35); // traction-limited on wet/snow/ice
+ const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){if(!chase)target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
+ const amax=Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc))*(chase?1.4:1):1.8,WX.mu*9.81*(chase?0.45:0.35)); // traction-limited on wet/snow/ice
  let acc=target>a.v?amax*(1-Math.pow(a.v/Math.max(target,0.1),4)):clamp((target-a.v)*1.6,-6.5,0);
  if(isEgo&&a.spec.plim&&acc>0){const E=ES(),vv=Math.max(a.v,2.5),Pw=a.spec.hp*745.7*0.85,drag=0.5*1.2*E.cda*vv*vv+E.crr*E.kg*9.81,gr=(a.grade||0)*E.kg*9.81;acc=Math.min(acc,Math.max(0,(Pw/vv-drag-gr)/E.kg),2.6)} // power-limited: slow 0–60, runs out of breath near 86 mph
  if(target>a.v&&target-a.v<0.2)acc=0;
@@ -2330,6 +2335,76 @@ function wdogSay(txt){const el=document.getElementById('dogSay');if(!el)return;i
  sel.onchange=()=>{const B=BREEDS.find(x=>x.n===sel.value);document.getElementById('dogCol').value=B.c[0];const typ={'Golden Retriever':65,'French Bulldog':24,'English Bulldog':50,Rottweiler:110,'Yorkshire Terrier':7,Boxer:65,Chihuahua:5,'Australian Shepherd':50,Dachshund:20,Pug:16,Corgi:28,Beagle:24,Poodle:55,Husky:50,'German Shepherd':75,Greyhound:65,Dalmatian:55,Labrador:70,Labradoodle:60,Goldendoodle:65}[B.n]||60;const typ2=Math.max(10,typ);document.getElementById('dogLb').value=typ2;document.getElementById('dogLbV').textContent=typ2+' lb'};
  document.getElementById('dogLb').oninput=e=>document.getElementById('dogLbV').textContent=e.target.value+' lb'};if(document.readyState!=='loading')setTimeout(init,0);else document.addEventListener('DOMContentLoaded',init)})();
 function wdogToggle(){WDOG.on=!WDOG.on;const c=document.getElementById('dogOn');if(c)c.checked=WDOG.on;wdogAttach()}
+// ============================================================ CHASE MODE
+// The car drives flat-out for the destination, ignores lights/stop signs/limits (never other cars), detours roadblocks at once,
+// and evades 1–10 independent police cruisers that follow its real path (breadcrumb trail) and try PIT manoeuvres.
+const CHASE={on:false,n:3,cops:[],trail:[],blocks:[],evade:0,evadeT:0,spin:0,spinDir:1,nextBlock:0,pits:0,prevCam:null,blockTimer:60};
+const COP_SPEC={style:'sedan',L:5.1,W:2.0,H:1.55,wb:3.05,wr:0.36,top:130};
+function copTex(){if(copTex.t)return copTex.t;const c=document.createElement('canvas');c.width=512;c.height=160;const x=c.getContext('2d');x.fillStyle='#f4f4f2';x.fillRect(0,0,512,160);x.fillStyle='#0b1e4a';x.font='900 86px Arial Black,Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('POLICE',256,70);x.font='700 26px Arial';x.fillText('AUTODRIVE COUNTY · 911',256,132);return copTex.t=new THREE.CanvasTexture(c)}
+function buildCop(){const g=buildCar(COP_SPEC,'#111317');const P=(profCache[COP_SPEC.style+COP_SPEC.L+COP_SPEC.W+COP_SPEC.H]||{}).P;
+ const door=new THREE.MeshStandardMaterial({map:copTex(),roughness:0.4,metalness:0.2}),half=P?P.half(0.5):COP_SPEC.W/2,belt=P?P.belt(0.5):0.95;
+ for(const s of [1,-1]){const d=new THREE.Mesh(new THREE.PlaneGeometry(1.7,0.52),door);d.position.set(0.05,belt-0.33,s*(half+0.012));d.rotation.y=s>0?0:Math.PI;g.add(d)}
+ const roofY=(P?P.top(0.5):COP_SPEC.H)+0.02,bar=new THREE.Group();bar.position.set(-0.1,roofY,0);g.add(bar);bar.add(new THREE.Mesh(new THREE.BoxGeometry(0.32,0.1,1.25),new THREE.MeshStandardMaterial({color:0x222226,roughness:0.4})));
+ const red=new THREE.MeshBasicMaterial({color:0x550000}),blue=new THREE.MeshBasicMaterial({color:0x000a55});const lr=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.09,0.55),red),lb=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.09,0.55),blue);lr.position.set(0,0.07,0.32);lb.position.set(0,0.07,-0.32);bar.add(lr,lb);
+ const gr=new THREE.SpriteMaterial({map:glowTex(),color:0xff2020,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}),gb=new THREE.SpriteMaterial({map:glowTex(),color:0x2050ff,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0});
+ const sr=new THREE.Sprite(gr),sb=new THREE.Sprite(gb);sr.position.set(0,0.1,0.35);sb.position.set(0,0.1,-0.35);sr.scale.setScalar(2.2);sb.scale.setScalar(2.2);bar.add(sr,sb);
+ g.userData.bar={red,blue,gr,gb};g.userData.cop=true;return g}
+function flashBar(m,t,ph){const B=m.userData.bar;if(!B)return;const k=Math.floor((t+ph)*7)%4,rOn=k===0||k===1,bOn=k===2||k===3;B.red.color.setHex(rOn?0xff1a1a:0x550000);B.blue.color.setHex(bOn?0x2a5cff:0x000a55);B.gr.opacity=rOn?0.95:0;B.gb.opacity=bOn?0.95:0}
+// siren: classic wail (slow sweep), switching to yelp when close; one oscillator chain per cruiser, volume by distance
+function sirenStart(c){const C=audio.ctx;if(!C||!audio.master)return;const o=C.createOscillator(),o2=C.createOscillator(),g=C.createGain(),f=C.createBiquadFilter();o.type='sawtooth';o2.type='square';f.type='bandpass';f.frequency.value=1100;f.Q.value=0.8;g.gain.value=0;o.connect(f);o2.connect(f);f.connect(g);g.connect(audio.master);o.start();o2.start();c.siren={o,o2,g,ph:Math.random()*4}}
+function sirenUpdate(c,d,t){const S=c.siren;if(!S)return;const C=audio.ctx,close=d<60,per=close?0.35:4.2,u=((t+S.ph)%per)/per,tri=u<0.5?u*2:2-u*2,f=close?900+tri*700:650+tri*850;S.o.frequency.setTargetAtTime(f,C.currentTime,0.02);S.o2.frequency.setTargetAtTime(f*1.005,C.currentTime,0.02);
+ S.g.gain.setTargetAtTime(c.audible?Math.pow(clamp(1-d/700,0,1),2)*(game.cam==='in'?0.1:0.16):0,C.currentTime,0.1)}
+function sirenStop(c){if(!c.siren)return;try{c.siren.g.gain.setTargetAtTime(0,audio.ctx.currentTime,0.1);c.siren.o.stop(audio.ctx.currentTime+0.4);c.siren.o2.stop(audio.ctx.currentTime+0.4)}catch(e){}c.siren=null}
+function trailLen(){const T=CHASE.trail;return T.length?T[T.length-1].d:0}
+function trailAt(d){const T=CHASE.trail;if(!T.length)return null;let lo=0,hi=T.length-1;if(d<=T[0].d)return T[0];if(d>=T[hi].d)return T[hi];while(hi-lo>1){const m=(lo+hi)>>1;if(T[m].d<d)lo=m;else hi=m}const a=T[lo],b=T[hi],k=(d-a.d)/((b.d-a.d)||1);return{x:lerp(a.x,b.x,k),z:lerp(a.z,b.z,k),y:lerp(a.y,b.y,k),h:Math.atan2(-(b.z-a.z),b.x-a.x)}}
+function chaseToggle(){if(!game||!game.route)return;CHASE.on?chaseStop():chaseStart()}
+function chaseStart(){const G=game,e=G.ego;CHASE.on=true;CHASE.n=+(document.getElementById('copN')||{value:3}).value||3;CHASE.trail=[];CHASE.pits=0;CHASE.blockTimer=35;
+ // seed the trail behind the car from the route so cruisers can start 150–450 m back on real roads
+ for(let d=Math.max(0,e.s-700);d<=e.s;d+=4){const p=routeXZ(d,1.85);CHASE.trail.push({x:p[0],z:p[1],y:routeY(d,1.85),d:d-Math.max(0,e.s-700)})}
+ if(CHASE.trail.length<2){const fx=Math.cos(e.head),fz=-Math.sin(e.head);CHASE.trail=[];for(let d=-600;d<=0;d+=4)CHASE.trail.push({x:e.x+fx*d,z:e.z+fz*d,y:groundY(e.x+fx*d,e.z+fz*d),d:d+600})}
+ const L=trailLen();for(let i=0;i<CHASE.n;i++){const m=buildCop();scene.add(m);const c={mesh:m,d:Math.max(0,L-160-i*55-Math.random()*40),v:e.v+6,off:(i%2?-1:1)*0.9,pitCd:4+i,ph:Math.random()};CHASE.cops.push(c);sirenStart(c)}
+ CHASE.prevCam=G.cam;G.cam='heli';G.zoom=1;const b=document.getElementById('camBtn');if(b)b.textContent='🎥 Helicopter';chaseUI()}
+function chaseStop(){for(const c of CHASE.cops){scene.remove(c.mesh);sirenStop(c)}CHASE.cops=[];for(const b of CHASE.blocks)scene.remove(b.grp);CHASE.blocks=[];CHASE.on=false;CHASE.evade=0;CHASE.spin=0;
+ if(game.cam==='heli'){game.cam=CHASE.prevCam&&CHASE.prevCam!=='heli'?CHASE.prevCam:'out';const b=document.getElementById('camBtn');if(b)b.textContent='🎥 '+({in:'Interior',out:'Exterior',top:'Overhead',drone:'Drone ○',follow:'Drone →'})[game.cam]}game.status='Chase over';chaseUI()}
+function chaseUI(){const lt=document.getElementById('liveTxt');if(lt&&game&&CHASE.on)lt.textContent=`CHOPPER 7 · POLICE PURSUIT · ${(game.city||'').split(',')[0]||'LIVE'} · ${game.chaseInfo||''}`;const b=document.getElementById('chaseBtn');if(b){b.textContent=CHASE.on?'🚨 CHASE':'🚨 Chase';b.style.background=CHASE.on?'#8a1c1c':''}const lv=document.getElementById('liveBug');if(lv)lv.hidden=!(CHASE.on&&game&&game.cam==='heli')}
+// roadblock: two cruisers angled across the carriageway + striped barriers; the car detours immediately
+function spawnRoadblock(){const G=game,e=G.ego,s0=e.s+420+Math.random()*200;if(s0>G.route.total-300)return;const p=routeXZ(s0,0),rx=-p[3],rz=p[2],hw=Math.max(5,((NODEINFO.get(G.route.nodes[p[4]])||{}).lanes||2)*1.8)+1;
+ const grp=new THREE.Group();scene.add(grp);const cars=[];for(const side of [1,-1]){const m=buildCop();m.position.set(p[0]+rx*side*hw*0.45,routeY(s0,0)+0.08,p[1]+rz*side*hw*0.45);m.rotation.y=Math.atan2(-p[3],p[2])+side*1.1;grp.add(m);cars.push(m)}
+ const stripe=(()=>{const c=document.createElement('canvas');c.width=128;c.height=32;const x=c.getContext('2d');for(let i=0;i<8;i++){x.fillStyle=i%2?'#f4f4f2':'#e8541a';x.beginPath();x.moveTo(i*20-10,32);x.lineTo(i*20+6,0);x.lineTo(i*20+26,0);x.lineTo(i*20+10,32);x.fill()}return new THREE.CanvasTexture(c)})();
+ for(let k=-1;k<=1;k++){const bx=p[0]+p[2]*6+rx*k*hw*0.6,bz=p[1]+p[3]*6+rz*k*hw*0.6,bar=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.28,0.06),new THREE.MeshStandardMaterial({map:stripe}));bar.position.set(bx,groundY(bx,bz)+0.95,bz);bar.rotation.y=Math.atan2(-rz,rx);grp.add(bar);
+  for(const q of [-1,1]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.0,5),MAT.pole);leg.position.set(bx+rx*q*0.9,groundY(bx,bz)+0.5,bz+rz*q*0.9);grp.add(leg)}}
+ const B={grp,cars,x:p[0],z:p[1],s:s0,route:G.route,t:G.simTime,tried:false};CHASE.blocks.push(B);G.status='🚧 Roadblock reported ahead';chaseDetour(B)}
+async function chaseDetour(B){const G=game,e=G.ego;if(B.tried)return;B.tried=true;const here={lat:toLat(e.z),lon:toLon(e.x)},bl=[toLon(B.x),toLat(B.z)],fx=Math.cos(e.head),fz=-Math.sin(e.head);
+ const vias=[];for(const side of [1,-1])for(const lat of [200,380])for(const ahead of [300,500]){const x=e.x+fx*ahead-fz*side*lat,z=e.z+fz*ahead+fx*side*lat;vias.push({lat:toLat(z),lon:toLon(x)})}
+ const cands=[];for(const pick of [1,2]){try{cands.push(await getRoute(here,G.B,[],pick))}catch(err){break}}for(const v of vias.slice(0,4)){try{cands.push(await getRoute(here,G.B,[v]))}catch(err){}}
+ let best=null;for(const r of cands){let minD=1e9;for(let k=0;k<r.pts.length;k++){if(r.cum[k]<30)continue;if(r.cum[k]>4000)break;minD=Math.min(minD,hav(r.pts[k],bl))}if(minD<45)continue;if(!best||r.total<best.total)best=r}
+ if(!CHASE.on)return;if(best){best.stops=[];buildEnergyProfile(best,ES());G.route=best;G.stops=[];G.stopIdx=0;G.lastPlanCheck=0;e.s=0;e.x=0;e.z=0;e.handled.clear();G.agents.forEach(a=>scene.remove(a.mesh));G.agents=[];if(G.rr){scene.remove(G.rr.mesh);G.rr=null}G.status='🚧 Detouring around roadblock'}
+ else{B.tried=false;G.status='🚧 Roadblock — searching for a way around'}}
+function updateChase(dt,rt){const G=game;if(!CHASE.on||!G||!G.ego)return;const e=G.ego,t=performance.now()/1000;
+ // breadcrumb trail of where the car actually drove
+ const T=CHASE.trail,last=T[T.length-1];if(!last||Math.hypot(e.x-last.x,e.z-last.z)>2.5){const d=last?last.d+Math.hypot(e.x-last.x,e.z-last.z):0;T.push({x:e.x,z:e.z,y:e.mesh.position.y,d});if(T.length>6000)T.splice(0,1000)}
+ const L=trailLen();
+ // roadblocks every ~60 s of game time
+ CHASE.blockTimer-=dt;if(CHASE.blockTimer<=0){CHASE.blockTimer=60;spawnRoadblock()}
+ for(let i=CHASE.blocks.length-1;i>=0;i--){const B=CHASE.blocks[i];for(const m of B.cars)flashBar(m,t,i*0.3);if(Math.hypot(B.x-e.x,B.z-e.z)>1500&&G.simTime-B.t>60){scene.remove(B.grp);CHASE.blocks.splice(i,1)}else if(B.route===G.route&&!B.tried)chaseDetour(B)}
+ // cruisers: chase along the trail, keep spacing, pull alongside and PIT when close
+ const order=[...CHASE.cops].sort((a,b)=>b.d-a.d);let closest=1e9,side=0;
+ order.forEach((c,k)=>{const ahead=k?order[k-1].d-9:L-5.5,gap=L-c.d;const want=clamp(e.v+gap*0.12+(gap>40?8:0),0,60);c.v+=clamp(want-c.v,-7*dt,5.5*dt);c.d=Math.min(ahead,c.d+c.v*dt);
+  const p=trailAt(c.d),q=trailAt(c.d+3);if(!p)return;const h=Math.atan2(-(q.z-p.z),(q.x-p.x)||1e-6);const rx=Math.sin(h),rz=Math.cos(h); // right of travel
+  const wantOff=gap<18?(CHASE.evade>0?-1.4:1.4):c.off;c.lat=lerp(c.lat??c.off,wantOff,Math.min(1,dt*1.5));
+  c.mesh.position.set(p.x+rx*c.lat,p.y+0.02,p.z+rz*c.lat);c.mesh.rotation.y=h;flashBar(c.mesh,t,c.ph);for(const w of c.mesh.userData.wheels)w.spin.rotation.z-=c.v*dt/COP_SPEC.wr;
+  const dd=Math.hypot(c.mesh.position.x-e.x,c.mesh.position.z-e.z);c.dist=dd;if(dd<closest){closest=dd;side=Math.sign(c.lat)||1}
+  // PIT manoeuvre: from the rear quarter, alongside, with cooldown; the car's evasion lowers the odds
+  c.pitCd-=dt;if(gap<7&&c.pitCd<=0&&CHASE.spin<=0){c.pitCd=7+Math.random()*4;const evading=Math.abs(CHASE.evade)>1&&e.v>12,p0=evading?0.18:0.4;
+   if(Math.random()<p0){CHASE.spin=1.6;CHASE.spinDir=side>0?-1:1;e.v*=0.35;c.v*=0.5;CHASE.pits++;G.status='💥 PIT manoeuvre! Recovering…';chaseCrunch()}else{c.v*=0.7;G.status='Evaded a PIT attempt'}}});
+ // audible sirens: the three nearest
+ [...CHASE.cops].sort((a,b)=>a.dist-b.dist).forEach((c,i)=>{c.audible=i<3;sirenUpdate(c,c.dist,t)});
+ // evasion: move away from the closest cruiser's side, flat out
+ if(closest<30){CHASE.evade=lerp(CHASE.evade,-side*1.6,Math.min(1,dt*1.2));CHASE.evadeT=2}else{CHASE.evadeT-=dt;if(CHASE.evadeT<=0)CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.6))}
+ if(CHASE.spin>0){CHASE.spin-=dt;e.v=Math.min(e.v,6)}
+ G.chaseInfo=`🚨 ${CHASE.cops.length} unit${CHASE.cops.length>1?'s':''} · closest ${Math.round(closest)} m · PITs ${CHASE.pits}`;chaseUI()}
+function chaseCrunch(){if(!audio.ctx||audio.muted)return;const C=audio.ctx,n=C.createBufferSource();n.buffer=audio.noiseBuf;const f=C.createBiquadFilter();f.type='lowpass';f.frequency.value=900;const g=C.createGain();g.gain.setValueAtTime(0.9,C.currentTime);g.gain.exponentialRampToValueAtTime(0.001,C.currentTime+0.7);n.connect(f);f.connect(g);g.connect(audio.master);n.start();n.stop(C.currentTime+0.8)}
+function chaseSpinYaw(){return CHASE.spin>0?CHASE.spinDir*Math.sin((1.6-CHASE.spin)/1.6*Math.PI)*1.9:0}
 function remPed(p){scene.remove(p.mesh);if(p.dog){scene.remove(p.dog.mesh);scene.remove(p.dog.leash)}}
 function spawnPed(){const ps=[];for(const T of TILES.values())ps.push(...T.peds);if(!ps.length)return;const w=ps[Math.floor(Math.random()*ps.length)];const g=new THREE.Group();const shirt=new THREE.MeshLambertMaterial({color:new THREE.Color().setHSL(Math.random(),0.5,0.4)});
  const b=new THREE.Mesh(PEDGEO.body,shirt);const h=new THREE.Mesh(PEDGEO.head,new THREE.MeshLambertMaterial({color:['#f1c9a5','#c68d62','#8d5a3b','#e0ac80','#5a3a26'][Math.floor(Math.random()*5)]}));const lm=new THREE.MeshLambertMaterial({color:0x2a2f3a});const l1=new THREE.Mesh(PEDGEO.leg,lm),l2=new THREE.Mesh(PEDGEO.leg,lm);l1.position.set(0,0.55,0.09);l2.position.set(0,0.55,-0.09);g.add(b,h,l1,l2);b.castShadow=true;scene.add(g);
@@ -2386,14 +2461,14 @@ function step(){
   }
  }
  // place ego
- const off=laneOffsetAt(routeLLnh(e.s)[2]);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*0.5));
+ const off=laneOffsetAt(routeLLnh(e.s)[2])+(CHASE.on?CHASE.evade:0);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*0.5));
  const towAnim=G.tow&&G.tow.phase!=='towing'&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling';
- const prevHead=e.head;if(!towAnim)place(e,e.off);
+ const prevHead=e.head;if(!towAnim){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw()}
  const yawRate=(e.head-prevHead)/(Math.max(1e-3,rdt*G.scale));const steerT=clamp(Math.atan(spec.wb*yawRate/Math.max(e.v,1)),-0.6,0.6);e.steer=lerp(e.steer,steerT,0.2);
  if(!towAnim)spinWheels(e,rdt*G.scale,e.steer);
  if(wheelMesh)wheelMesh.rotation.x=-e.steer*14/ (spec.wheel==='yoke'?1.4:1);
  if(e.mesh.userData.lidar)e.mesh.userData.lidar.rotation.y+=rdt*20;
- if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));syncMusicPause();
+ if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);syncMusicPause();
  if(e.mesh.userData.wipers){const sp=WX.rain>0.6||WX.snow?2.6:WX.rain>0?1.4:0;G.wipeT=(G.wipeT||0)+rdt*sp;const ang=sp?(1-Math.cos(G.wipeT*Math.PI))/2*1.9:0;G.wipeAng=ang;e.mesh.userData.wipers.forEach(w=>w.rotation.y=ang)}
  // body pitch on accel
  {const yf=routeY(e.s+2,e.off),yb=routeY(e.s-2,e.off),pitch=Math.atan2(yf-yb,4);e.grade=Math.sin(pitch);
@@ -2523,6 +2598,13 @@ function camColliders(){const now=performance.now();if(now-_collT<500)return _co
 function updateCamera(dt){
  const G=game,e=G.ego,spec=G.spec,m=e.mesh;if(m.userData.interior)for(const o of m.userData.interior.children)if(o.userData.inOnly)o.visible=G.cam==='in';if(G.tow&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling'&&G.cam==='in')G.cam='out';
  m.updateMatrixWorld();
+ if(G.cam==='heli'){ // TV news helicopter: long lens framing the car and every pursuing cruiser, slow orbit, handheld sway
+  if(m.userData.cab)m.userData.cab.visible=true;if(m.userData.body)m.userData.body.visible=true;if(m.userData.hood)m.userData.hood.visible=false;if(m.userData.interior)m.userData.interior.visible=true;
+  const pts=[[e.x,e.z,2]];for(const c of CHASE.cops)if(c.dist<900)pts.push([c.mesh.position.x,c.mesh.position.z,1]);let cx=0,cz=0,wt=0;for(const p of pts){cx+=p[0]*p[2];cz+=p[1]*p[2];wt+=p[2]}cx/=wt;cz/=wt;let r=12;for(const p of pts)r=Math.max(r,Math.hypot(p[0]-cx,p[1]-cz)+10);
+  const fov=34,dist=clamp(r/Math.tan(fov/2*Math.PI/180)*1.15*G.zoom,45,1100),tt=performance.now()/1000;G.heliA=(G.heliA??e.head+Math.PI+0.9);let da=(e.head+Math.PI+0.9+Math.sin(tt*0.05)*0.5)-G.heliA;da=Math.atan2(Math.sin(da),Math.cos(da));G.heliA+=da*Math.min(1,dt*0.25);
+  const el=clamp(0.62+G.pitch*0.5,0.25,1.3),a=G.heliA+G.yaw,cy=e.mesh.position.y,tx=cx+Math.cos(a)*Math.cos(el)*dist,tz=cz-Math.sin(a)*Math.cos(el)*dist,ty=Math.max(cy+Math.sin(el)*dist,groundY(tx,tz)+30);
+  if(!G.heliP)G.heliP=new THREE.Vector3(tx,ty,tz);G.heliP.lerp(new THREE.Vector3(tx,ty,tz),Math.min(1,dt*1.2));if(!G.heliL)G.heliL=new THREE.Vector3(cx,cy,cz);G.heliL.lerp(new THREE.Vector3(cx,cy,cz),Math.min(1,dt*2.5));
+  camera.position.copy(G.heliP);camera.position.x+=Math.sin(tt*1.7)*0.6;camera.position.y+=Math.sin(tt*1.3)*0.4;camera.lookAt(G.heliL.x+Math.sin(tt*0.9)*0.4,G.heliL.y,G.heliL.z+Math.cos(tt*1.1)*0.4);camera.fov=fov;camera.updateProjectionMatrix();return}
  if(G.cam==='follow'){ // chase drone: trails behind and above, smoothly swinging round with the car's heading
   if(m.userData.cab)m.userData.cab.visible=true;if(m.userData.body)m.userData.body.visible=true;if(m.userData.hood)m.userData.hood.visible=false;if(m.userData.interior)m.userData.interior.visible=true;
   let dh=e.head-(G.fHead??e.head);dh=Math.atan2(Math.sin(dh),Math.cos(dh));G.fHead=(G.fHead??e.head)+dh*Math.min(1,dt*1.2);const R=clamp(20*G.zoom,5,250),a=G.fHead+Math.PI+G.yaw,alt=R*clamp(0.45+G.pitch*0.8,0.1,1.6)+Math.sin(performance.now()/1000*1.3)*0.25,ey=e.mesh.position.y;
@@ -2560,9 +2642,9 @@ canvas.addEventListener('pointermove',ev=>{if(!drag||!game)return;game.yaw-=(ev.
 canvas.addEventListener('pointerup',ev=>{drag=null;if(_down&&Math.hypot(ev.clientX-_down.x,ev.clientY-_down.y)<5)screenClick(ev);_down=null});
 canvas.addEventListener('wheel',ev=>{if(!game)return;ev.preventDefault();game.zoom=clamp(game.zoom*(ev.deltaY>0?1.1:0.9),game.cam==='in'?0.6:game.cam==='top'?0.25:0.5,game.cam==='in'?4:game.cam==='top'?10:12)},{passive:false});
 canvas.addEventListener('dblclick',()=>{if(game){game.yaw=0;game.pitch=0;game.zoom=1}});
-function toggleCam(){if(!game)return;game.cam=game.cam==='in'?'out':game.cam==='out'?'top':game.cam==='top'?'drone':game.cam==='drone'?'follow':'in';game.yaw=0;game.pitch=0;game.zoom=1;$('camBtn').textContent='🎥 '+({in:'Interior',out:'Exterior',top:'Overhead',drone:'Drone ○',follow:'Drone →'})[game.cam]}
+function toggleCam(){if(!game)return;game.cam=game.cam==='in'?'out':game.cam==='out'?'top':game.cam==='top'?'drone':game.cam==='drone'?'follow':game.cam==='follow'?'heli':'in';game.yaw=0;game.pitch=0;game.zoom=1;$('camBtn').textContent='🎥 '+({in:'Interior',out:'Exterior',top:'Overhead',drone:'Drone ○',follow:'Drone →',heli:'Helicopter'})[game.cam];chaseUI()}
 $('camBtn').onclick=toggleCam;
-addEventListener('keydown',ev=>{if(ev.target.tagName==='INPUT')return;if(ev.key==='c'||ev.key==='C')toggleCam();if(ev.key==='x'||ev.key==='X')toggleChaos();if(ev.key==='w'||ev.key==='W')cycleWeather();if(ev.key==='p'||ev.key==='P')deployProtest();if(ev.key==='r'||ev.key==='R')aifmToggle();if(ev.key==='d'||ev.key==='D')wdogToggle();if(ev.key==='n'||ev.key==='N')rerouteNow();if(ev.key===' '&&game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause';ev.preventDefault()}});
+addEventListener('keydown',ev=>{if(ev.target.tagName==='INPUT')return;if(ev.key==='c'||ev.key==='C')toggleCam();if(ev.key==='x'||ev.key==='X')toggleChaos();if(ev.key==='w'||ev.key==='W')cycleWeather();if(ev.key==='p'||ev.key==='P')deployProtest();if(ev.key==='r'||ev.key==='R')aifmToggle();if(ev.key==='d'||ev.key==='D')wdogToggle();if(ev.key==='n'||ev.key==='N')rerouteNow();if(ev.key==='k'||ev.key==='K')chaseToggle();if(ev.key===' '&&game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause';ev.preventDefault()}});
 const tsMap=v=>{const x=Math.pow(10,v/100);return x<10?Math.round(x*2)/2:x<100?Math.round(x):Math.round(x/10)*10};
 $('ts').oninput=ev=>{const sc=tsMap(+ev.target.value);if(game)game.scale=sc;$('tsv').textContent=sc+'×'};
 $('pauseBtn').onclick=()=>{if(game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause'}};
