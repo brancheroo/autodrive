@@ -3220,14 +3220,14 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
   if(hp.risk)G.status=hp.acc<-5?`🧠 ${hp.why} · hard brake`:hp.acc<0?`🧠 ${hp.why} · easing off`:hp.off?`🧠 ${hp.why} · line ${hp.off>0?'right':'left'} ${Math.abs(hp.off).toFixed(1)} m`:`🧠 ${hp.why} · holding line`}}
 /* sampling planner: 7 lateral lines × 4 accelerations, each rolled out 3 s against every forecast; 3-circle vehicle footprints;
    cost = collision (earlier = worse) + proximity + off-road + speed loss + lane deviation + jerk; lowest cost wins */
-function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=e.off||1.85,cur=CHASE.evade||0,v0=e.v,fast=fastOn();
+function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeLLnh(e.s)[2]),cur=(e.off===undefined?base:e.off)-base,v0=e.v,fast=fastOn(); /* base = lane centre; cur = where the car really is now relative to it */
  const vWant=fast?Math.max(e.v,30):(G.limitMph||30)/MPH;const rq=roadQAt(e.x,e.z);
  const near=objs.filter(b=>b.d<200&&b.path);const circ=(x,z,h,kind)=>{if(kind==='ped')return[[x,z,0.45]];const c=Math.cos(h),sn=-Math.sin(h),k=kind==='moto'?0.8:1.5,r=kind==='moto'?0.6:1.05;return[[x+c*k,z+sn*k,r],[x,z,r],[x-c*k,z-sn*k,r]]};
  let best=null;
  for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';let s=e.s,v=v0,o=cur;
   for(let i=1;i<=20;i++){const t=i*0.2;v=Math.max(0,v+acc*0.2);s+=v*0.2;o+=(off-o)*Math.min(1,0.2/0.7);if(s>R.total)break;
    const p=routeXZ(s,base+o),h=Math.atan2(-p[3],p[2]);if(i%5===0&&rq&&!rq.inside(p[0],p[1],-0.9))cost+=40; /* line leaves the carriageway */
-   const E=circ(p[0],p[1],h,'car'),grow=0.2+t*0.15+v*0.004,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
+   const E=circ(p[0],p[1],h,'car'),grow=0.35+t*0.15+v*0.02,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
    for(const b of near){const q=b.path[i-1];if(!q)continue;if(Math.abs(q[0]-p[0])>9||Math.abs(q[1]-p[1])>9)continue;const bh=Math.atan2(-(b.vz||0),(b.vx||0.001)),O=circ(q[0],q[1],Math.hypot(b.vx,b.vz)>0.5?bh:b.h,b.kind);
     let md=1e9;for(const a of E)for(const c of O)md=Math.min(md,Math.hypot(a[0]-c[0],a[1]-c[1])-a[2]-c[2]);if(b.kind==='ped')md-=Math.min(2.2,0.4+t*0.7); /* a pedestrian can turn any way: plan around its whole reachable disc */
     if(md<grow){/* unavoidable-harm ordering: pedestrians first, then heavier vehicles; scaled by predicted impact speed and how soon */
