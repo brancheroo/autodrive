@@ -2284,7 +2284,7 @@ function plan(a,dt,lead,isEgo){
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
  if(CHASE.on&&!(isEgo&&game.spec.apc))for(const B of CHASE.blocks)if(B.route===game.route){const d=(a.dir<0?-1:1)*(B.s-a.s)-10;if(d>-2&&d<220){const v=allow(0,d);if(v<target){target=v;reason=isEgo?'🚧 Roadblock ahead':reason}}}
- if(isEgo&&a.spec.hyper&&game.hp&&game.hp.acc<0){const v=Math.max(0,a.v+game.hp.acc*0.6);if(v<target){target=v;reason=game.status}}
+ if(isEgo&&a.spec.hyper&&game.hp&&game.hp.risk){const v=Math.max(0,a.v+game.hp.acc*0.6);if(game.hp.acc<=0&&v<target){target=v;reason=game.status}else if(game.hp.acc>3){target=Math.max(target,a.v+6);reason=game.status}} /* planner owns speed when a conflict is forecast */
  // end of route
  const rem=R.total-a.s;{const v=allow(0,rem-1);if(v<target){target=v;reason='Arriving'}}
  // traffic stops for the protest crowd too (both directions)
@@ -3223,7 +3223,7 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=e.off||1.85,cur=CHA
  const vWant=fast?Math.max(e.v,30):(G.limitMph||30)/MPH;const rq=roadQAt(e.x,e.z);
  const near=objs.filter(b=>b.d<120&&b.path);const circ=(x,z,h,kind)=>{if(kind==='ped')return[[x,z,0.45]];const c=Math.cos(h),sn=-Math.sin(h),k=kind==='moto'?0.8:1.5,r=kind==='moto'?0.6:1.05;return[[x+c*k,z+sn*k,r],[x,z,r],[x-c*k,z-sn*k,r]]};
  let best=null;
- for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';let s=e.s,v=v0,o=cur;
+ for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';let s=e.s,v=v0,o=cur;
   for(let i=1;i<=12;i++){const t=i*0.25;v=Math.max(0,v+acc*0.25);s+=v*0.25;o+=(off-o)*Math.min(1,0.25/0.7);if(s>R.total)break;
    const p=routeXZ(s,base+o),h=Math.atan2(-p[3],p[2]);if(i%4===0&&rq&&!rq.inside(p[0],p[1],-0.9))cost+=40; /* line leaves the carriageway */
    const E=circ(p[0],p[1],h,'car'),grow=0.25+t*0.18;
