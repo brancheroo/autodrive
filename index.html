@@ -898,7 +898,7 @@ function roadSweep(grp,RQ){if(!RQ)return 0;const skip=SWEEP_SKIP(),v=new THREE.V
   const mats=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];if(mats.some(m=>skip.has(m)))continue;
   if(o.isMesh&&o.userData.merged&&!o.isGroup){const g=o.geometry,P=g.attributes.position;if(!P)continue;const idx=g.index,tri=idx?idx.count/3:P.count/3,A=idx?idx.array:null;let ch=false;
    for(let t=0;t<tri;t++){const i0=A?A[t*3]:t*3,i1=A?A[t*3+1]:t*3+1,i2=A?A[t*3+2]:t*3+2;const x=(P.getX(i0)+P.getX(i1)+P.getX(i2))/3,z=(P.getZ(i0)+P.getZ(i1)+P.getZ(i2))/3,y=Math.min(P.getY(i0),P.getY(i1),P.getY(i2));
-    v.set(x,y,z).applyMatrix4(o.matrixWorld);if(!onRoad(v.x,v.z,v.y,0))continue;if(A){A[t*3+1]=A[t*3+2]=A[t*3]}else{for(const k of [i1,i2])P.setXYZ(k,P.getX(i0),P.getY(i0),P.getZ(i0))}ch=true;n++}
+    v.set(x,y,z).applyMatrix4(o.matrixWorld);if(!onRoad(v.x,v.z,v.y,0))continue;if(window.SWEEPLOG)SWEEPLOG.push([o.material.name||o.material.type,+(v.y-groundY(v.x,v.z)).toFixed(1),+RQ.clear(v.x,v.z).toFixed(1)]);if(A){A[t*3+1]=A[t*3+2]=A[t*3]}else{for(const k of [i1,i2])P.setXYZ(k,P.getX(i0),P.getY(i0),P.getZ(i0))}ch=true;n++}
    if(ch){if(A)g.index.needsUpdate=true;else P.needsUpdate=true;g.computeBoundingSphere()}continue}
   // single objects (signs, carts, billboards, props): judged by their footprint centre and lowest point
   box.setFromObject(o);if(box.isEmpty())continue;const sx=box.max.x-box.min.x,sz=box.max.z-box.min.z;if(sx>60||sz>60)continue; // terrain / sky-scale meshes
