@@ -3310,10 +3310,30 @@ function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cv
   if(pts.length<4)continue;let x0=Math.min(...pts.map(p=>p[0])),x1=Math.max(...pts.map(p=>p[0])),y0=Math.min(...pts.map(p=>p[1])),y1=Math.max(...pts.map(p=>p[1]));if(x1<0||x0>W||y1<0||y0>H)continue;
   const col=d.cls==='light'?({RED:'#ff4d4d',YELLOW:'#ffb020',GREEN:'#35d07f'})[d.extra]:CVCOL[d.cls];x.strokeStyle=col;x.lineWidth=1.5*dpr;x.strokeRect(x0,y0,x1-x0,y1-y0);
   const lab=`${d.cls==='animal'?d.extra:d.cls==='light'?'light '+d.extra:d.cls==='stop'?'stop sign':d.cls==='ped'?'pedestrian':'vehicle'} ${d.conf.toFixed(2)} · ${Math.round(d.d)}m`;x.font=`${9*dpr}px system-ui`;const tw=x.measureText(lab).width+4*dpr;x.fillStyle=col;x.fillRect(x0,y0-11*dpr,tw,11*dpr);x.fillStyle='#000';x.fillText(lab,x0+2*dpr,y0-2.5*dpr)}
+ if(G.spec.hyper)hyperOverlay(x,W,H,dpr,proj,dets);
  {const G=game,e=G.ego,mph=Math.round(e.v*MPH),acc=e.acc||0,verb=G.charging?'':acc>0.3?'accelerating':acc<-0.8?'braking':acc<-0.2?'easing off':'holding speed';const sig=G.sig<0?' · signalling left':G.sig>0?' · signalling right':'';
   $('cvExp').style.display=EXPRESS.on?'block':'none';$('cvAct').textContent=`▶ ${G.status||'Cruising'}${verb&&mph>0?' · '+verb:''} · ${mph} mph${sig}`}
  game.seen={...counts};$('cvStats').textContent=`${counts.car} veh · ${counts.ped} ped${counts.animal?` · ${counts.animal} animal`:''} · ${counts.light} lights · ${counts.stop} stop`;$('cvTitle').textContent='PERCEPTION';
  drawBEV(dets,S)}
+/* HYPER perception: overwhelming data — per-object IDs, velocity vectors, 4 s predicted trajectories with TTC, threat lock,
+   lidar point spray, fusion/compute telemetry columns, occupancy mini-grid and a scrolling data stream */
+function hyperOverlay(x,W,H,dpr,proj,dets){const G=game,e=G.ego,t=performance.now()/1000,f=`${7*dpr}px ui-monospace,Menlo,monospace`;x.font=f;x.textBaseline='top';
+ /* lidar point spray on the road ahead */
+ x.fillStyle='rgba(0,229,255,.55)';const fx=Math.cos(e.head),fz=-Math.sin(e.head);for(let i=0;i<260;i++){const r=4+((i*37+t*40)%70),a=((i*53)%120-60)*Math.PI/180,px=e.x+fx*r*Math.cos(a)-fz*r*Math.sin(a)*0.6,pz=e.z+fz*r*Math.cos(a)+fx*r*Math.sin(a)*0.6,q=proj(px,groundY(px,pz)+0.02,pz);if(q)x.fillRect(q[0],q[1],1.2*dpr,1.2*dpr)}
+ /* predicted trajectories + velocity vectors + IDs */
+ for(const b of G.pred||[]){if(!b.path)continue;const thr=G.threat&&G.threat.b===b;x.strokeStyle=thr?'#ff2a2a':b.kind==='ped'?'rgba(255,174,42,.8)':'rgba(255,31,180,.75)';x.lineWidth=(thr?2.2:1.1)*dpr;x.beginPath();let st=false;
+  for(const [px,pz] of b.path){const q=proj(px,groundY(px,pz)+0.3,pz);if(!q){st=false;continue}st?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]);st=true}x.stroke();
+  const q0=proj(b.x,groundY(b.x,b.z)+1.6,b.z);if(q0){const sp=Math.hypot(b.vx,b.vz)*MPH;x.fillStyle=thr?'#ff2a2a':'rgba(0,0,0,.55)';x.fillRect(q0[0],q0[1],62*dpr,20*dpr);x.fillStyle=thr?'#000':'#9dff00';
+   x.fillText(`#${b.id} ${b.kind.toUpperCase()} ${sp.toFixed(0)}mph`,q0[0]+2*dpr,q0[1]+1*dpr);x.fillText(`ψ${(b.h*57.3%360).toFixed(0)}° ω${(b.w*57.3).toFixed(0)}°/s${b.ttc?' TTC '+b.ttc.toFixed(1)+'s':''}`,q0[0]+2*dpr,q0[1]+10*dpr)}}
+ if(G.threat){const b=G.threat.b,q=proj(b.x,groundY(b.x,b.z)+0.8,b.z);if(q){const r=(14+Math.sin(t*12)*3)*dpr;x.strokeStyle='#ff2a2a';x.lineWidth=2*dpr;x.beginPath();x.arc(q[0],q[1],r,0,7);x.moveTo(q[0]-r*1.5,q[1]);x.lineTo(q[0]+r*1.5,q[1]);x.moveTo(q[0],q[1]-r*1.5);x.lineTo(q[0],q[1]+r*1.5);x.stroke()}}
+ /* telemetry columns */
+ const n=(G.pred||[]).length,col=(xx,lines,c)=>{x.fillStyle='rgba(0,0,0,.5)';x.fillRect(xx,0,86*dpr,lines.length*8.5*dpr+4*dpr);x.fillStyle=c;lines.forEach((l,i)=>x.fillText(l,xx+3*dpr,2*dpr+i*8.5*dpr))};
+ const pts=Math.round(4.6e6+Math.sin(t*3)*2e5);col(0,[`LIDAR ${(pts/1e6).toFixed(2)}M pt/s`,`RADAR ${180+Math.round(Math.sin(t*5)*20)} ret`,`CAM 12×8MP ${(59.9+Math.sin(t)*0.1).toFixed(1)}fps`,`THERM ${dets.filter(d=>d.cls==='ped'||d.cls==='animal').length} warm`,`SONAR ${(0.6+Math.abs(Math.sin(t*2))*4).toFixed(1)}m`,`GNSS RTK ±0.02m`,`IMU ${((e.acc||0)/9.81).toFixed(2)}g`],'#00e5ff');
+ col(W-86*dpr,[`TRACKS ${n}`,`FUSION ${(0.9+Math.sin(t)*0.05).toFixed(3)}`,`PRED 4.0s ×${n*16}`,`PLAN ${G.threat?'EVADE':'NOMINAL'}`,`LAT ${(7.8+Math.sin(t*7)*0.9).toFixed(1)}ms`,`NPU ${(1840+Math.sin(t*2)*120).toFixed(0)} TOPS`,`v ${(e.v*MPH).toFixed(1)} mph`],G.threat?'#ff2a2a':'#9dff00');
+ /* occupancy mini grid */
+ const gx=W-60*dpr,gy=H-60*dpr,cs=3*dpr;for(let i=0;i<18;i++)for(let j=0;j<18;j++){const wx=e.x+fx*(18-j)*4-fz*(i-9)*2,wz=e.z+fz*(18-j)*4+fx*(i-9)*2;let occ=0;for(const b of G.pred||[])if(Math.abs(b.x-wx)<2.5&&Math.abs(b.z-wz)<2.5)occ=1;x.fillStyle=occ?'#ff1fb4':'rgba(0,229,255,.12)';x.fillRect(gx+i*cs,gy+j*cs,cs-dpr*0.5,cs-dpr*0.5)}
+ /* data stream */
+ x.fillStyle='rgba(157,255,0,.55)';for(let i=0;i<6;i++){let hx='';for(let k=0;k<10;k++)hx+=(((t*97+i*31+k*7)|0)*2654435761>>>0).toString(16).slice(0,4)+' ';x.fillText(hx,2*dpr,H-(8.5*(6-i))*dpr)}}
 function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,W=c.width=Math.round(c.clientWidth*dpr),H=c.height=Math.round(c.clientHeight*dpr),x=c.getContext('2d');
  x.fillStyle='#070a0f';x.fillRect(0,0,W,H);{const wxs=WX.perc;S={...S,wedges:S.wedges.map(w=>[w[0],w[1],w[2]*wxs,w[3]]),lidar:S.lidar&&Math.round(S.lidar*wxs),radar:S.radar&&Math.round(S.radar*Math.max(wxs,0.7)),cam:S.cam&&Math.round(S.cam*wxs)}}const view=Math.min(maxRange(S),320),sc=(H*0.8)/view,cx=W/2,cy=H*0.86;
  const col={lidar:'rgba(62,166,255,',cam:'rgba(53,208,127,',radar:'rgba(255,174,42,',thermal:'rgba(255,90,40,',sonic:'rgba(200,120,255,'};
@@ -3324,6 +3344,7 @@ function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,
  // objects
  for(const d of dets){const px=cx+d.lat*sc,py=cy-d.f*sc;x.fillStyle=d.cls==='light'?({RED:'#ff4d4d',YELLOW:'#ffb020',GREEN:'#35d07f'})[d.extra]:CVCOL[d.cls];const s=d.cls==='car'?Math.max(2.5*dpr,d.l*sc):2.5*dpr;x.save();x.translate(px,py);x.rotate(e.head-d.head);x.fillRect(-Math.max(1.5*dpr,d.w*sc)/2,-s/2,Math.max(1.5*dpr,d.w*sc),s);x.restore()}
  // ego
+ if(G.spec.hyper)for(const b of G.pred||[]){if(!b.path)continue;x.strokeStyle=G.threat&&G.threat.b===b?'#ff2a2a':'rgba(255,31,180,.7)';x.lineWidth=dpr;x.beginPath();b.path.forEach(([px,pz],i)=>{const dx=px-e.x,dz=pz-e.z,f=dx*Math.cos(e.head)+dz*-Math.sin(e.head),l=-dx*-Math.sin(e.head)+dz*Math.cos(e.head);const X=cx+l*sc,Y=cy-f*sc;i?x.lineTo(X,Y):x.moveTo(X,Y)});x.stroke()}
  x.fillStyle='#fff';x.fillRect(cx-G.spec.W*sc/2-1,cy-G.spec.L*sc/2-1,Math.max(3,G.spec.W*sc),Math.max(5,G.spec.L*sc));
  // legend
  const leg=[S.lidar&&`Lidar ${S.lidar} m`,S.radar&&`Radar ${S.radar} m`,S.cam&&`Camera ${S.cam} m`].filter(Boolean);x.font=`${9*dpr}px system-ui`;
