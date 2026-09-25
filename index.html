@@ -866,7 +866,7 @@ function clipRuns(pts,off,m,Q){if(!Q||pts.length<2)return [pts];const d=densify(
 function wallC(Q,buf,pts,off,h,th,...a){for(const r of clipRuns(pts,off,th/2+0.1,Q))wall(buf,r,off,h,th,...a)}
 function ribbonC(Q,buf,pts,w,y,off=0){for(const r of clipRuns(pts,off,w/2,Q))ribbon(buf,r,w,y,off)}
 let ROUTEROAD={r:null,ch:[]};
-function routeRoads(){const G=typeof game!=='undefined'&&game;if(!G||!G.route)return[];if(ROUTEROAD.r!==G.route){const R=G.route,ch=[];let cur=[];for(let s=0;s<=R.total;s+=8){const p=routeXZ(s,0);cur.push([p[0],p[1]]);if(cur.length>=40){ch.push({pts:cur,w:7.4,total:320,route:1});cur=[cur[cur.length-1]]}}if(cur.length>1)ch.push({pts:cur,w:7.4,total:0,route:1});for(const c of ch){c.bb=[Math.min(...c.pts.map(p=>p[0])),Math.max(...c.pts.map(p=>p[0])),Math.min(...c.pts.map(p=>p[1])),Math.max(...c.pts.map(p=>p[1]))]}ROUTEROAD={r:R,ch}}return ROUTEROAD.ch}
+function routeRoads(){const G=typeof game!=='undefined'&&game;if(!G||!G.route)return[];if(ROUTEROAD.r!==G.route){const R=G.route,ch=[];let cur=[],mo=0;const W=()=>Math.max(7.4,2*(mo+1.4));for(let s=0;s<=R.total;s+=8){const p=routeXZ(s,0);cur.push([p[0],p[1]]);mo=Math.max(mo,Math.abs(laneOffsetAt(routeLLnh(s)[2])));if(cur.length>=40){ch.push({pts:cur,w:W(),total:320,route:1});cur=[cur[cur.length-1]];mo=0}}if(cur.length>1)ch.push({pts:cur,w:W(),total:0,route:1}); /* wide enough for the lane the car actually drives in */for(const c of ch){c.bb=[Math.min(...c.pts.map(p=>p[0])),Math.max(...c.pts.map(p=>p[0])),Math.min(...c.pts.map(p=>p[1])),Math.max(...c.pts.map(p=>p[1]))]}ROUTEROAD={r:R,ch}}return ROUTEROAD.ch}
 function tileRoads(key){const o=[];for(const k of neighbourKeys(key)){const r=rawRoads(k);if(r)o.push(...r)}let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const w of o)for(const p of w.pts){if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<z0)z0=p[1];if(p[1]>z1)z1=p[1]}
  for(const c of routeRoads())if(c.bb[1]>x0-50&&c.bb[0]<x1+50&&c.bb[3]>z0-50&&c.bb[2]<z1+50)o.push(c);return o}
 function clearPoles(T,roads,lifted){const kids=T.group.children.filter(o=>!o.userData.merged&&o.position),poles=kids.filter(o=>o.geometry&&o.geometry.type==='CylinderGeometry'&&o.geometry.parameters.height>=2),rest=kids.filter(o=>!poles.includes(o));
@@ -908,7 +908,7 @@ function roadSweep(grp,RQ){if(!RQ)return 0;const skip=SWEEP_SKIP(),v=new THREE.V
   const cx=(box.min.x+box.max.x)/2,cz=(box.min.z+box.max.z)/2;if(onRoad(cx,cz,box.min.y,Math.min(sx,sz)*0.35)){grp.remove(o);n++}}
  return n}
 function roadClearCheck(){const G=game;if(!G||!G.route||!G.ego)return 0;const bad=new Set();const s0=Math.max(0,G.ego.s-300),s1=Math.min(G.route.total,G.ego.s+1500);
- for(let s=s0;s<=s1;s+=3)for(const o of [0,-2,2,-4,4]){const p=routeXZ(s,o),b=bAt(p[0],p[1]);if(b)for(const [k,list] of BOWN)if(list.includes(b))bad.add(k)}
+ for(let s=s0;s<=s1;s+=3){const lo=laneOffsetAt(routeLLnh(s)[2]);for(const o of [0,-2,2,-4,4,lo-1.2,lo,lo+1.2]){const p=routeXZ(s,o),b=bAt(p[0],p[1]);if(b)for(const [k,list] of BOWN)if(list.includes(b))bad.add(k)}}
  for(const k of bad){RAWROADS.delete(k);unloadTile(k);buildTile(k)}if(bad.size)console.warn('road-clear check rebuilt tiles',[...bad]);return bad.size}
 function bDrop(key){for(const b of BOWN.get(key)||[])for(const k of b.cells){const a=BGRID.get(k);if(a){const i=a.indexOf(b);if(i>=0)a.splice(i,1)}}BOWN.delete(key)}
 function bAt(x,z){const a=BGRID.get(Math.floor(x/BCELL)+','+Math.floor(z/BCELL));if(!a)return null;for(const b of a)if(x>b.x0&&x<b.x1&&z>b.z0&&z<b.z1&&pip([x,z],b.r))return b;return null}
