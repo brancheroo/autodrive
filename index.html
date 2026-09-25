@@ -2443,7 +2443,7 @@ function satOverlap(A,B){const ca=obbCorners(A),cb=obbCorners(B);let best=null;
  for(const h of [A.h,A.h+Math.PI/2,B.h,B.h+Math.PI/2]){const ax=[Math.cos(h),-Math.sin(h)];let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9;for(const p of ca){const d=p[0]*ax[0]+p[1]*ax[1];a0=Math.min(a0,d);a1=Math.max(a1,d)}for(const p of cb){const d=p[0]*ax[0]+p[1]*ax[1];b0=Math.min(b0,d);b1=Math.max(b1,d)}
   const o=Math.min(a1,b1)-Math.max(a0,b0);if(o<=0)return null;if(!best||o<best.o){let n=ax;if((B.x-A.x)*ax[0]+(B.z-A.z)*ax[1]<0)n=[-ax[0],-ax[1]];best={o,n}}}
  const pts=[...ca.filter(p=>inObb(p,B)),...cb.filter(p=>inObb(p,A))];best.p=pts.length?[pts.reduce((s,p)=>s+p[0],0)/pts.length,pts.reduce((s,p)=>s+p[1],0)/pts.length]:[(A.x+B.x)/2,(A.z+B.z)/2];return best}
-function velOf(b,dt){const r=b.ref;if(r.loose)return{vx:r.loose.vx,vz:r.loose.vz,w:r.loose.w};const px=r._cpx,pz=r._cpz,ph=r._cph;if(px===undefined||dt<=0)return{vx:0,vz:0,w:0};let dh=b.h-ph;dh=Math.atan2(Math.sin(dh),Math.cos(dh));return{vx:(b.x-px)/dt,vz:(b.z-pz)/dt,w:dh/dt}}
+function velOf(b,dt){const r=b.ref;if(r.loose)return{vx:r.loose.vx,vz:r.loose.vz,w:r.loose.w};const px=r._cpx,pz=r._cpz,ph=r._cph;if(px===undefined||dt<=0)return{vx:0,vz:0,w:0};let dh=b.h-ph;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const vx=(b.x-px)/dt,vz=(b.z-pz)/dt;if(Math.hypot(vx,vz)>75||Math.abs(dh/dt)>6)return{vx:0,vz:0,w:0};/* teleport (recovery/respawn), not motion */return{vx,vz,w:dh/dt}}
 function makeLoose(b,v){const r=b.ref;r.loose={x:b.x,z:b.z,h:b.h,vx:v.vx,vz:v.vz,w:v.w,stopT:0,t:0}}
 function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;const bodies=vehBodies(),mu=0.75*(WX.mu||1),g=9.81;
  // 1. find & resolve contacts
