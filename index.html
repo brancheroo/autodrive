@@ -1273,6 +1273,10 @@ function wheelSet(spec,rim,cal){
  const calG=new THREE.BoxGeometry(0.1,rr*0.55,0.07).translate(-rr*0.62,rr*0.25,0);
  const out={tireG,tireM,parts,calG,calM:new THREE.MeshStandardMaterial({color:cal||0x3a3a3a,roughness:0.5})};wheelCache[key]=out;return out}
 const profCache={};
+/* contact shadow: a soft dark footprint under vehicles/people so they sit on the ground (ambient occlusion the shadow map can't give) */
+let CSHTEX=null,CSHGEO=null;
+function contactShadow(obj,L,W,op=0.62){if(!CSHTEX){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),g=x.createRadialGradient(64,64,6,64,64,63);g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(0.55,'rgba(0,0,0,.75)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,128,128);CSHTEX=new THREE.CanvasTexture(c);CSHGEO=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2)}
+ const m=new THREE.Mesh(CSHGEO,new THREE.MeshBasicMaterial({map:CSHTEX,transparent:true,opacity:op,depthWrite:false,color:0x000000,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4,fog:true}));m.scale.set(L,1,W);m.position.y=0.035;m.renderOrder=1;m.userData.cshadow=1;obj.add(m);return m}
 function buildCar(spec,colorHex,opts={}){
  const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=spec.id||spec.style+L+W+H;
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P),gh:loftGreen(P),hood:loftLower(P,P.sh.cowl-0.02,1,40)}}
@@ -1405,6 +1409,7 @@ function buildCar(spec,colorHex,opts={}){
   for(const s of [1,-1]){const an=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.015,1.6,5),dk);an.position.set(-L/2+0.4,H+0.8,s*(W/2-0.2));g.add(an)}
   g.userData.armor=0.18}
  if(opts.interior)buildInterior(g,spec);
+ contactShadow(g,spec.L*1.18,spec.W*1.45);
  return g;
 }
 // ============================================================ INTERIOR / DASHBOARD SCREENS
@@ -2084,7 +2089,7 @@ function buildDriver(spec,mode,seat,at){const pk=a=>a[Math.floor(Math.random()*a
   if(mode==='drive'){up.rotation.z=-1.0;fo.rotation.z=-0.55;up.rotation.x=s*0.25}else{up.rotation.z=-0.35;fo.rotation.z=-1.35;up.rotation.x=s*0.1}g.add(up);arms.push(up)}
  if(mode==='phone'){head.rotation.z=-0.45;hr.rotation.z=-0.45;const ph=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.012,0.15),new THREE.MeshBasicMaterial({color:0x9fd8ff}));ph.position.set(0.3,-0.5,0);g.add(ph)}
  g.userData.head=head;g.userData.mode=mode;g.userData.t=Math.random()*10;return g}
-function newAgent(spec,color,s,v,dir=1){if(spec.av&&spec.colors)color=spec.colors[Math.floor(Math.random()*spec.colors.length)][1];const mesh=spec.style==='harley'?buildHarley():spec.style==='dualie'?buildDualie():buildCar(spec,color);
+function newAgent(spec,color,s,v,dir=1){if(spec.av&&spec.colors)color=spec.colors[Math.floor(Math.random()*spec.colors.length)][1];const mesh=spec.style==='harley'?buildHarley():spec.style==='dualie'?buildDualie():buildCar(spec,color);if(spec.style==='harley')contactShadow(mesh,2.6,1.1,0.55);else if(spec.style==='dualie')contactShadow(mesh,spec.L*1.12,spec.W*1.4);
  if(spec.style!=='harley'&&spec.style!=='dualie'){const robo=spec.av&&(spec.driver===false||/rider-only|Level 4/.test(spec.level||''));const mode=!spec.av?'drive':robo?(Math.random()<0.55?'rider':null):(Math.random()<0.6?'phone':'hands');
   if(mode&&mode!=='rider'){const d=buildDriver(spec,mode==='hands'?'phone':mode,'driver');if(mode==='hands'){d.children.forEach(c=>{if(c.isMesh&&c.geometry.type==='BoxGeometry')c.visible=false});d.userData.head.rotation.z=0}mesh.add(d);mesh.userData.driver=d}
   // random passengers: 0–3 (robotaxis: 1–2 in the back when not empty), with occasional kids
@@ -2652,12 +2657,12 @@ function buildSegRider(guide){const R=Math.random,g=new THREE.Group(),inner=new 
  if(guide){const vest=new THREE.Mesh(new THREE.CylinderGeometry(0.215,0.185,0.6,8,1,true),new THREE.MeshBasicMaterial({color:0xd8ff20,side:THREE.DoubleSide}));vest.position.y=1.25;person.add(vest);
   const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,1.6,6),plate);pole.position.set(-0.28,1.9,-0.18);inner.add(pole);const fl=new THREE.Mesh(new THREE.PlaneGeometry(0.45,0.3),new THREE.MeshBasicMaterial({color:0xff3a2a,side:THREE.DoubleSide}));fl.position.set(-0.5,2.55,-0.18);inner.add(fl);g.userData.flag=fl}
  else if(R()<0.4){const cam=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.07,0.12),dk);cam.position.set(0.18,1.3,0);person.add(cam)} // tourist camera
- g.userData.inner=inner;g.userData.wheels=wheels;g.userData.person=person;return g}
+ contactShadow(g,1.0,1.0,0.5);g.userData.inner=inner;g.userData.wheels=wheels;g.userData.person=person;return g}
 function spawnSegwayTour(){const ps=[];for(const T of TILES.values())ps.push(...T.peds.filter(w=>{if(w.total<120)return false;const q=wayPos(w,w.total/2,0),e=game.ego;return Math.hypot(q[0]-e.x,q[1]-e.z)<260}));if(!ps.length)return;const w=ps[Math.floor(Math.random()*ps.length)];
  const dir=Math.random()<0.5?1:-1,n=5+Math.floor(Math.random()*6),v=2.8+Math.random()*0.8,s0=w.total*(0.2+Math.random()*0.6),dummy=()=>new THREE.Object3D();
  for(let i=0;i<n;i++){const m=buildSegRider(i===0);scene.add(m);const P={mesh:m,w,s:clamp(s0-i*2.4*dir,0,w.total),dir,v,x:0,z:0,l1:dummy(),l2:dummy(),ph:Math.random()*6,seg:m.userData,tourLead:i===0};game.peds.push(P)}}
 function spawnPed(){const ps=[];for(const T of TILES.values())ps.push(...T.peds);if(!ps.length)return;const w=ps[Math.floor(Math.random()*ps.length)];const g=new THREE.Group();const shirt=new THREE.MeshLambertMaterial({color:new THREE.Color().setHSL(Math.random(),0.5,0.4)});
- const b=new THREE.Mesh(PEDGEO.body,shirt);const h=new THREE.Mesh(PEDGEO.head,new THREE.MeshLambertMaterial({color:['#f1c9a5','#c68d62','#8d5a3b','#e0ac80','#5a3a26'][Math.floor(Math.random()*5)]}));const lm=new THREE.MeshLambertMaterial({color:0x2a2f3a});const l1=new THREE.Mesh(PEDGEO.leg,lm),l2=new THREE.Mesh(PEDGEO.leg,lm);l1.position.set(0,0.55,0.09);l2.position.set(0,0.55,-0.09);g.add(b,h,l1,l2);b.castShadow=true;scene.add(g);
+ const b=new THREE.Mesh(PEDGEO.body,shirt);const h=new THREE.Mesh(PEDGEO.head,new THREE.MeshLambertMaterial({color:['#f1c9a5','#c68d62','#8d5a3b','#e0ac80','#5a3a26'][Math.floor(Math.random()*5)]}));const lm=new THREE.MeshLambertMaterial({color:0x2a2f3a});const l1=new THREE.Mesh(PEDGEO.leg,lm),l2=new THREE.Mesh(PEDGEO.leg,lm);l1.position.set(0,0.55,0.09);l2.position.set(0,0.55,-0.09);g.add(b,h,l1,l2);b.castShadow=true;contactShadow(g,0.9,0.9,0.45);scene.add(g);
  const R=Math.random;lm.color.set(['#2a2f3a','#1f3b63','#6b5b45','#111','#7a7f87','#3c5a3a','#8b2d2d'][Math.floor(R()*7)]);g.scale.set(1,0.88+R()*0.24,1);if(R()<0.35){const hat=new THREE.Mesh(new THREE.SphereGeometry(0.13,10,6,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:new THREE.Color().setHSL(R(),0.6,0.35)}));hat.position.y=1.74;g.add(hat)}
  else{const hair=new THREE.Mesh(new THREE.SphereGeometry(0.125,10,6,0,Math.PI*2,0,Math.PI/2.2),new THREE.MeshLambertMaterial({color:['#1a1410','#3b2616','#6b4423','#c9a25a','#9a9a9a','#b5461f'][Math.floor(R()*6)]}));hair.position.set(-0.01,1.73,0);g.add(hair)}
  const P={mesh:g,w,s:Math.random()*w.total,dir:Math.random()<0.5?1:-1,v:1.1+Math.random()*0.5,x:0,z:0,l1,l2,ph:Math.random()*6};
@@ -2754,7 +2759,7 @@ function step(){
  skyMat.uniforms.top.value.copy(top);skyMat.uniforms.hor.value.copy(hz);skyMat.uniforms.sunDir.value.copy(sd);
  scene.fog.color.copy(hz);sky.position.copy(camera.position);
  {const lo=clamp(el/25,0,1);sun.intensity=clamp(el/10,0,1)*(1.5+0.9*lo);sun.color.set(0xff9a4c).lerp(new THREE.Color(0xfff3e2),Math.pow(lo,0.6));hemi.color.copy(top).lerp(new THREE.Color(0xdfeaff),0.55);hemi.groundColor.set(0x4a4436).lerp(new THREE.Color(0x2a2a30),1-day)} /* golden low sun, cool bright sky fill, warm ground bounce */
- {const cd=new THREE.Vector3();camera.getWorldDirection(cd);cd.y=0;cd.normalize();const far=G.cam==='in'?35:G.cam==='heli'||G.cam==='drone'?70:45,cx=e.x+cd.x*far,cz=e.z+cd.z*far,ext=G.cam==='heli'||G.cam==='drone'?160:110;
+ {const cd=new THREE.Vector3();camera.getWorldDirection(cd);cd.y=0;cd.normalize();const far=G.cam==='in'?35:G.cam==='heli'||G.cam==='drone'?70:45,ext=G.cam==='heli'||G.cam==='drone'?160:110,tx=2*ext/sun.shadow.mapSize.x,cx=Math.round((e.x+cd.x*far)/tx)*tx,cz=Math.round((e.z+cd.z*far)/tx)*tx; /* texel-snapped: no shadow shimmer */
   sun.position.set(cx+sd.x*400,Math.max(20,sd.y*400)+e.mesh.position.y,cz+sd.z*400);sun.target.position.set(cx,e.mesh.position.y,cz);const sc=sun.shadow.camera;if(sc.right!==ext){sc.left=-ext;sc.right=ext;sc.top=ext;sc.bottom=-ext;sc.far=1000;sc.updateProjectionMatrix()}}
  hemi.intensity=0.08+0.62*day;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;weatherLighting(hz,top);G.lightsOn=G.lightsOn||WX.key!=='clear';
  MAT.bld.emissiveIntensity=G.dark?0.9:0;for(const k in FACMAT)FACMAT[k].emissiveIntensity=G.dark?(k==='store'?1.1:0.85):0;for(const m of ENVMATS)m.envMapIntensity=0.05+0.95*day;
