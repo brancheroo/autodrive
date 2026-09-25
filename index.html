@@ -190,6 +190,9 @@ const CARS=[
 {id:'yugo',name:'Yugone GV',sub:'1987 · "Good Value"',style:'sedan',L:3.49,W:1.55,H:1.39,wb:2.15,wr:0.28,hp:54,z60:14.0,top:86,range:'~235 mi (28 mpg × 8.4 gal)',weight:'1,832 lb',drive:'1.1L carbureted I4 · 4-speed manual · FWD',level:'SAE Level 0 · no driver assistance (Autodrive drives it anyway)',
  tech:'No sensors, no computer and no power steering: the only electronics are a points ignition and the cassette radio. Built by Zasnava in Kragujevac from the Fiatto 127. Somehow Autodrive still drives it. Don’t ask how. Expect it to work hard on hills.',
  colors:[['Yugone Yellow','#f2c318'],['Rosso Red','#b3161b'],['Alpine White','#efeee8'],['Adriatic Blue','#1f4c8f'],['Silver Metallic','#a9adb2']],dash:'yugo',wheel:'round',sensors:'none',sound:'i4',driver:true,plim:true},
+{id:'ezpt',name:'MKAY e-ZPT',sub:'Electric armored carrier',style:'suv',L:6.10,W:2.55,H:2.45,wb:3.60,wr:0.58,hp:470,z60:11.5,top:68,range:'~185 mi (est.)',weight:'~33,000 lb (combat)',drive:'Twin motor 4×4 EV · central tire inflation',level:'SAE Level 4 · convoy autonomy (fictional)',
+ tech:'Parody of a Turkish electric 4×4 APC. Monocoque V-hull with STANAG-level armor, run-flat tires and a roof weapon station (unarmed in Autodrive). At 15 tonnes it shrugs off PITs, and in chase mode it rams roadblocks instead of detouring.',
+ colors:[['Olive Drab','#4b5320'],['Desert Tan','#b59a6a'],['Urban Grey','#5d6266'],['Gendarmerie Blue','#27364f']],dash:'rivian',wheel:'round',sensors:'none',sound:'ev',driver:true,apc:true},
 ];
 
 // ============================================================ UTIL
@@ -1144,6 +1147,7 @@ const MODEL={
  'escalade-iq':{epa:460,shape:{nose:.55,hood:.64,roofR:.12,deck:.74,roofBlack:true},chromeBelt:true,band:true,grille:'cadillac',drl:'cadillac',tailL:'cadillac',rim:{n:6,style:'split',col:0xc0c3c6},rails:true,int:{seat:0x141414,mat:'leather',trim:'walnut',dash:0x18181a}},
  'mache':{epa:260,shape:{roofR:.22,roofBlack:true},grille:'ford',drl:'ford',tailL:'tri',rim:{n:5,style:'split',col:0x3a3c40},cal:0x777777,cladding:true,int:{seat:0x1a1a1a,mat:'leather',trim:'none',dash:0x1c1d20}},
  'lucid':{epa:512,shape:{roof:'glass',nose:.42,hood:.56},grille:'none',drl:'lucid',tailL:'bar',rim:{n:0,style:'aero',col:0x3a3c40},int:{seat:0xd8cfc0,mat:'leather',trim:'walnut',dash:0x2d2a26}},
+ 'ezpt':{epa:185,shape:{box:.62,clr:.36,nose:.42,hood:.55,cowl:.64,roofF:.72,roofR:.04,tail:.0,deck:.9,belt:.68,tum:.95,endR:.05,ft:.02,rt:.01,roof:'paint'},grille:'none',drl:'none',tailL:'none',rim:{n:8,style:'disc',col:0x2b2d2a},cladding:true,int:{seat:0x3a3d33,mat:'cloth',trim:'none',dash:0x22241f}},
  'r1s':{epa:410,grille:'none',drl:'rivian',tailL:'bar',rim:{n:6,style:'spoke',col:0x3a3c40},rails:true,cladding:true,int:{seat:0x5a3a26,mat:'leather',trim:'walnut',dash:0x2a2622}},
 };
 function shapeOf(spec){return Object.assign({},SHAPE_T[spec.style],(MODEL[spec.id]||{}).shape||{})}
@@ -1330,6 +1334,20 @@ function buildCar(spec,colorHex,opts={}){
  else if(spec.sensors==='mb'||spec.sensors==='lucid'){onEnd(true,0,sh.clr+0.3,0.3,0.05,sens,0.05);
   if(spec.sensors==='mb'){const tq=new THREE.MeshBasicMaterial({color:0x10d8c8});g.userData.turq=[];for(const s of [1,-1]){const m=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.03,0.04),tq);const mu=sh.cowl-0.035;m.position.set(P.xOf(mu)+0.02,P.belt(mu)+0.08,s*(P.half(mu)*0.95+0.2));g.add(m);g.userData.turq.push(m)}}}
  else if(spec.sensors==='tesla'){const c=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.05,0.18),gloss);c.position.set(P.xOf(sh.roofF-0.01),H-0.05,0);g.add(c)}
+ if(spec.apc){const arm=new THREE.MeshStandardMaterial({color:new THREE.Color(colorHex).multiplyScalar(0.92),roughness:0.85,metalness:0.2}),dk=new THREE.MeshStandardMaterial({color:0x1d1f1b,roughness:0.9}),gl=new THREE.MeshStandardMaterial({color:0x2a3a3a,roughness:0.15,metalness:0.4});
+  const B=(w,h,d,m,x,y,z,rz=0,ry=0)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);b.rotation.z=rz;b.rotation.y=ry;g.add(b);return b};
+  B(0.9,0.12,W*0.96,arm,L/2-0.25,H*0.5,0,-0.9);B(0.5,0.1,W*0.9,arm,L/2-0.05,H*0.28,0,0.6); // sloped glacis + lower V plate
+  B(L*0.94,0.28,0.12,arm,0,wr*1.55,W/2-0.02);B(L*0.94,0.28,0.12,arm,0,wr*1.55,-W/2+0.02); // side skirts
+  for(const s of [1,-1]){B(1.1,0.45,0.28,arm,-0.4,H*0.55,s*(W/2+0.1));B(0.6,0.35,0.26,arm,1.0,H*0.55,s*(W/2+0.09)); // stowage bins
+   for(const x of [1.2,0.2,-0.9])B(0.26,0.2,0.04,gl,x,H*0.8,s*(W/2-0.07)); // vision blocks
+   B(0.22,0.18,0.08,dk,L/2+0.02,wr*1.1,s*0.8);B(0.16,0.3,0.3,dk,L/2-0.1,H*0.62,s*(W/2-0.2))} // tow hooks, headlight cages
+  const tr=new THREE.Group();tr.position.set(-0.3,H,0);g.add(tr);const base=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.62,0.3,24),arm);base.position.y=0.15;tr.add(base);
+  const hd=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.4,0.6),arm);hd.position.set(0.05,0.5,0);tr.add(hd);const bar=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.04,1.2,10),dk);bar.rotation.z=Math.PI/2;bar.position.set(0.95,0.5,0.1);tr.add(bar);
+  const opt=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.25,0.25),dk);opt.position.set(0.25,0.55,-0.35);tr.add(opt);g.userData.turret=tr;
+  B(0.9,0.06,1.0,dk,1.0,H+0.03,0);B(0.1,0.9,0.9,dk,-L/2+0.02,H*0.55,0); // hatch + rear ramp door
+  const sp=new THREE.Mesh(new THREE.CylinderGeometry(wr,wr,0.3,20),dk);sp.rotation.x=Math.PI/2;sp.rotation.y=Math.PI/2;sp.position.set(-L/2-0.18,H*0.55,W*0.25);g.add(sp);
+  for(const s of [1,-1]){const an=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.015,1.6,5),dk);an.position.set(-L/2+0.4,H+0.8,s*(W/2-0.2));g.add(an)}
+  g.userData.armor=0.18}
  if(opts.interior)buildInterior(g,spec);
  return g;
 }
@@ -2025,6 +2043,7 @@ const ENERGY={
  'escalade-iq':{epa:460,kwh:200,kg:4140,cda:1.12,crr:0.010,dc:350,port:'NACS'},
  'mache':{epa:260,kwh:91,kg:2230,cda:0.70,crr:0.009,dc:150,port:'NACS'},
  'lucid':{epa:512,kwh:112,kg:2375,cda:0.45,crr:0.008,dc:300,port:'NACS'},
+ 'ezpt':{epa:185,kwh:220,kg:15000,cda:3.4,crr:0.016,dc:150,port:'CCS'},
  'r1s':{epa:410,kwh:140,kg:3150,cda:0.98,crr:0.011,dc:220,port:'NACS'},
 };
 const FUEL_KWH_L=8.9,RESERVE=0.10;
@@ -2179,7 +2198,7 @@ function plan(a,dt,lead,isEgo){
  // planned charging / fuel stop
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
- if(CHASE.on)for(const B of CHASE.blocks)if(B.route===game.route){const d=(a.dir<0?-1:1)*(B.s-a.s)-10;if(d>-2&&d<220){const v=allow(0,d);if(v<target){target=v;reason=isEgo?'🚧 Roadblock ahead':reason}}}
+ if(CHASE.on&&!(isEgo&&game.spec.apc))for(const B of CHASE.blocks)if(B.route===game.route){const d=(a.dir<0?-1:1)*(B.s-a.s)-10;if(d>-2&&d<220){const v=allow(0,d);if(v<target){target=v;reason=isEgo?'🚧 Roadblock ahead':reason}}}
  // end of route
  const rem=R.total-a.s;{const v=allow(0,rem-1);if(v<target){target=v;reason='Arriving'}}
  // traffic stops for the protest crowd too (both directions)
@@ -2398,7 +2417,7 @@ function spawnRoadblock(){const G=game,e=G.ego,s0=e.s+420+Math.random()*200;if(s
  for(let k=-1;k<=1;k++){const bx=p[0]+p[2]*6+rx*k*hw*0.6,bz=p[1]+p[3]*6+rz*k*hw*0.6,bar=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.28,0.06),new THREE.MeshStandardMaterial({map:stripe}));bar.position.set(bx,groundY(bx,bz)+0.95,bz);bar.rotation.y=Math.atan2(-rz,rx);grp.add(bar);
   for(const q of [-1,1]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.0,5),MAT.pole);leg.position.set(bx+rx*q*0.9,groundY(bx,bz)+0.5,bz+rz*q*0.9);grp.add(leg)}}
  const B={grp,cars,x:p[0],z:p[1],s:s0,route:G.route,t:G.simTime,tried:false};CHASE.blocks.push(B);G.status='🚧 Roadblock reported ahead';chaseDetour(B)}
-async function chaseDetour(B){const G=game,e=G.ego;if(B.tried)return;B.tried=true;const here={lat:toLat(e.z),lon:toLon(e.x)},bl=[toLon(B.x),toLat(B.z)],fx=Math.cos(e.head),fz=-Math.sin(e.head);
+async function chaseDetour(B){const G=game,e=G.ego;if(B.tried)return;B.tried=true;if(G.spec.apc){G.status='🛡️ Roadblock ahead · ramming through';return}const here={lat:toLat(e.z),lon:toLon(e.x)},bl=[toLon(B.x),toLat(B.z)],fx=Math.cos(e.head),fz=-Math.sin(e.head);
  const vias=[];for(const side of [1,-1])for(const lat of [200,380])for(const ahead of [300,500]){const x=e.x+fx*ahead-fz*side*lat,z=e.z+fz*ahead+fx*side*lat;vias.push({lat:toLat(z),lon:toLon(x)})}
  const cands=[];for(const pick of [1,2]){try{cands.push(await getRoute(here,G.B,[],pick))}catch(err){break}}for(const v of vias.slice(0,4)){try{cands.push(await getRoute(here,G.B,[v]))}catch(err){}}
  let best=null;for(const r of cands){let minD=1e9;for(let k=0;k<r.pts.length;k++){if(r.cum[k]<30)continue;if(r.cum[k]>4000)break;minD=Math.min(minD,hav(r.pts[k],bl))}if(minD<45)continue;if(!best||r.total<best.total)best=r}
@@ -2436,7 +2455,7 @@ function chaseSpinYaw(){return CHASE.spin>0?CHASE.spinDir*Math.sin((1.6-CHASE.sp
 // masses and impact angle set each vehicle's new velocity and spin. Both then slide out of control, decelerating at μ·g
 // (road grip from the weather), until they stop — the slide distance is v²/(2μg) along the impulse direction.
 const CRASH={shake:0,log:[]};
-function massOf(spec,kind){if(kind==='ego'){const E=ENERGY[spec.id];if(E&&E.kg)return E.kg}if(spec.style==='harley')return 420;if(spec.style==='dualie')return 4100;if(kind==='cop')return 2000;return Math.round(1500*(spec.L*spec.W)/(4.8*1.85))}
+function massOf(spec,kind){if(spec.apc)return 15000;if(kind==='ego'){const E=ENERGY[spec.id];if(E&&E.kg)return E.kg}if(spec.style==='harley')return 420;if(spec.style==='dualie')return 4100;if(kind==='cop')return 2000;return Math.round(1500*(spec.L*spec.W)/(4.8*1.85))}
 function vehBodies(){const G=game,B=[];if(!G||!G.ego)return B;const e=G.ego;
  B.push({ref:e,kind:'ego',m:massOf(G.spec,'ego'),L:G.spec.L,W:G.spec.W,get x(){return e.loose?e.loose.x:e.mesh.position.x},get z(){return e.loose?e.loose.z:e.mesh.position.z},get h(){return e.loose?e.loose.h:e.mesh.rotation.y}});
  for(const a of G.agents)if(a.mesh&&a.mesh.visible!==false)B.push({ref:a,kind:a.kind==='way'?'way':'traffic',m:massOf(a.spec,'traffic'),L:a.spec.L,W:a.spec.W,get x(){return a.loose?a.loose.x:a.mesh.position.x},get z(){return a.loose?a.loose.z:a.mesh.position.z},get h(){return a.loose?a.loose.h:a.mesh.rotation.y}});
@@ -2465,7 +2484,8 @@ function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;c
    if(vn<-0.4){const cr=(r,v)=>r[1]*v[0]-r[0]*v[1],can=cr(ra,n),cbn=cr(rb,n),e_=0.25,jn=-(1+e_)*vn/(1/A.m+1/B.m+can*can/IA+cbn*cbn/IB);
     const t=[-n[1],n[0]],vt=rel[0]*t[0]+rel[1]*t[1],cat=cr(ra,t),cbt=cr(rb,t),jt=clamp(-vt/(1/A.m+1/B.m+cat*cat/IA+cbt*cbt/IB),-0.35*jn,0.35*jn);
     const J=[n[0]*jn+t[0]*jt,n[1]*jn+t[1]*jt],nva={vx:va.vx-J[0]/A.m,vz:va.vz-J[1]/A.m,w:va.w-cr(ra,J)/IA},nvb={vx:vb.vx+J[0]/B.m,vz:vb.vz+J[1]/B.m,w:vb.w+cr(rb,J)/IB};
-    makeLoose(A,nva);makeLoose(B,nvb);A.ref.loose.x-=n[0]*sa;A.ref.loose.z-=n[1]*sa;B.ref.loose.x+=n[0]*sb;B.ref.loose.z+=n[1]*sb;
+    const tank=b=>b.kind==='ego'&&G.spec.apc&&!b.ref.loose&&vn>-28; // the armored carrier barrels through: it just loses a little speed
+    for(const [b,nv,sg,sh] of [[A,nva,-1,sa],[B,nvb,1,sb]]){if(tank(b)){G.ego.v=Math.max(0,G.ego.v*(1-0.5*(A.m+B.m-b.m)/(A.m+B.m)));continue}makeLoose(b,nv);b.ref.loose.x+=sg*n[0]*sh;b.ref.loose.z+=sg*n[1]*sh}
     const dv=Math.abs(vn),mph=Math.round(dv*MPH);const sev=clamp(dv/22,0,1.2);damageVehicle(A.kind==='block'?A.ref.mesh:A.ref.mesh,c.p[0],c.p[1],-n[0],-n[1],sev*B.m/(A.m+B.m)*2);damageVehicle(B.ref.mesh,c.p[0],c.p[1],n[0],n[1],sev*A.m/(A.m+B.m)*2);crashSound(dv,Math.min(Math.hypot(A.x-G.ego.x,A.z-G.ego.z),Math.hypot(B.x-G.ego.x,B.z-G.ego.z)));
     if(A.kind==='ego'||B.kind==='ego'){const me=A.kind==='ego'?nva:nvb,sp=Math.hypot(me.vx,me.vz),slide=sp*sp/(2*mu*g);CRASH.shake=Math.min(1.2,dv/15);G.crashMsg=`💥 ${mph} mph impact with ${(A.kind==='ego'?B:A).kind==='cop'?'a police car':'another vehicle'} · sliding ${Math.round(slide)} m`;if(CHASE.on&&(A.kind==='cop'||B.kind==='cop')){CHASE.pits++}}
     CRASH.log.push({t:G.simTime,mph,a:A.kind,b:B.kind});if(CRASH.log.length>50)CRASH.log.shift()}
@@ -2495,7 +2515,7 @@ function recoverCop(c){const L=c.loose,T=CHASE.trail;let best=c.d,bd=1e9;for(con
 // crash damage: dent the real mesh vertices around the contact point (push along the impact direction, crumple noise),
 // shatter/darken glass and scuff paint near the hit, lose a light, and smoke once the car is badly hurt
 const _dv=new THREE.Vector3(),_dp=new THREE.Vector3(),_dn=new THREE.Vector3(),_dm=new THREE.Matrix4();
-function damageVehicle(obj,px,pz,nx,nz,sev){if(!obj||sev<0.05)return;obj.updateMatrixWorld(true);const ud=obj.userData;ud.dmg=Math.min(1,(ud.dmg||0)+sev*0.35);
+function damageVehicle(obj,px,pz,nx,nz,sev){if(!obj||sev<0.05)return;obj.updateMatrixWorld(true);const ud=obj.userData;sev*=ud.armor||1;if(sev<0.03)return;ud.dmg=Math.min(1,(ud.dmg||0)+sev*0.35);
  const y0=obj.position.y+0.7,R=0.9+sev*1.3,depth=Math.min(0.55,0.06+sev*0.32);
  obj.traverse(m=>{if(!m.isMesh||!m.geometry||!m.geometry.attributes.position||m.isInstancedMesh||m.isSprite)return;let pos=m.geometry.attributes.position;if(pos.count>20000)return;
   _dm.copy(m.matrixWorld).invert();_dp.set(px,y0,pz).applyMatrix4(_dm);_dn.set(nx,0,nz).transformDirection(_dm);
