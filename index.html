@@ -2489,7 +2489,7 @@ function trailAt(d){const T=CHASE.trail;if(!T.length)return null;let lo=0,hi=T.l
 // Express: the chase driving brain (flat out, lights & signs ignored, threads traffic, hard corners/brakes, fast crash recovery) without police
 const EXPRESS={on:false};function fastOn(){return CHASE.on||EXPRESS.on}
 function expressToggle(){if(!game||!game.route)return;EXPRESS.on=!EXPRESS.on;if(!fastOn()){CHASE.evade=0;CHASE.pass=0}const b=document.getElementById('expBtn');if(b)b.classList.toggle('on',EXPRESS.on);game.status=EXPRESS.on?'⚡ Express mode · flat out':'Express off · normal driving'}
-function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego)return;CHASE.pass=Math.max(0,(CHASE.pass||0)-dt);CHASE.evade=lerp(CHASE.evade,CHASE.pass>0?-3.4:0,Math.min(1,dt*(CHASE.pass>0?3.5:1.2)))}
+function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego||game.spec.hyper)return;CHASE.pass=Math.max(0,(CHASE.pass||0)-dt);CHASE.evade=lerp(CHASE.evade,CHASE.pass>0?-3.4:0,Math.min(1,dt*(CHASE.pass>0?3.5:1.2)))}
 function chaseToggle(){if(!game||!game.route)return;CHASE.on?chaseStop():chaseStart()}
 function chaseStart(){const G=game,e=G.ego;CHASE.on=true;CHASE.n=+(document.getElementById('copN')||{value:3}).value||3;CHASE.trail=[];CHASE.pits=0;CHASE.blockTimer=35;
  // seed the trail behind the car from the route so cruisers can start 150–450 m back on real roads
@@ -2534,7 +2534,7 @@ function updateChase(dt,rt){const G=game;if(!CHASE.on||!G||!G.ego)return;const e
  [...CHASE.cops].sort((a,b)=>a.dist-b.dist).forEach((c,i)=>{c.audible=i<3;sirenUpdate(c,c.dist,t)});
  // evasion: move away from the closest cruiser's side, flat out
  CHASE.pass=Math.max(0,(CHASE.pass||0)-dt);CHASE.weave=(CHASE.weave||0)+dt;
- if(closest<45){CHASE.evade=lerp(CHASE.evade,-side*2.6+Math.sin(CHASE.weave*2.2)*0.8,Math.min(1,dt*3));CHASE.evadeT=2.5}else if(CHASE.pass>0){CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*3.5));CHASE.evadeT=1}else{CHASE.evadeT-=dt;if(CHASE.evadeT<=0)CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.6))}
+ if(G.spec.hyper){}else if(closest<45){CHASE.evade=lerp(CHASE.evade,-side*2.6+Math.sin(CHASE.weave*2.2)*0.8,Math.min(1,dt*3));CHASE.evadeT=2.5}else if(CHASE.pass>0){CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*3.5));CHASE.evadeT=1}else{CHASE.evadeT-=dt;if(CHASE.evadeT<=0)CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.6))}
  if(CHASE.spin>0){CHASE.spin-=dt;e.v=Math.min(e.v,6)}
  G.chaseInfo=`🚨 ${CHASE.cops.length} unit${CHASE.cops.length>1?'s':''} · closest ${Math.round(closest)} m · PITs ${CHASE.pits}`;chaseUI()}
 function chaseCrunch(){if(!audio.ctx||audio.muted)return;const C=audio.ctx,n=C.createBufferSource();n.buffer=audio.noiseBuf;const f=C.createBiquadFilter();f.type='lowpass';f.frequency.value=900;const g=C.createGain();g.gain.setValueAtTime(0.9,C.currentTime);g.gain.exponentialRampToValueAtTime(0.001,C.currentTime+0.7);n.connect(f);f.connect(g);g.connect(audio.master);n.start();n.stop(C.currentTime+0.8)}
