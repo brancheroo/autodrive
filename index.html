@@ -2710,7 +2710,7 @@ function step(){
   }
  }
  // place ego
- const off=laneOffsetAt(routeLLnh(e.s)[2])+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(fastOn()||G.overtakeT>0?2.2:0.5)));
+ const off=laneOffsetAt(routeLLnh(e.s)[2])+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);e.off=e.off===undefined?off:G.spec.hyper&&G.latFreeze?e.off:lerp(e.off,off,Math.min(1,rdt*G.scale*(fastOn()||G.overtakeT>0?2.2:0.5)));
  const towAnim=G.tow&&G.tow.phase!=='towing'&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling';
  const prevHead=e.head;if(!towAnim){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw()}
  const yawRate=(e.head-prevHead)/(Math.max(1e-3,rdt*G.scale));const steerT=clamp(Math.atan(spec.wb*yawRate/Math.max(e.v,1)),-0.6,0.6);e.steer=lerp(e.steer,steerT,0.2);
@@ -3227,7 +3227,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
   b.path=path;b.ttc=null}
  if(worst)worst.b.ttc=worst.t;G.pred=objs;G.threat=worst&&worst.t<3.5?worst:null;
  G.hpT=(G.hpT||0)-dt;if(e.loose){G.hp=null}else if(G.hpT<=0){G.hpT=0.1;G.hp=hyperPlan(objs)}
- const hp=G.hp;if(!hp&&!e.loose){CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*3))}if(hp){if(hp.off!==0||Math.abs(CHASE.evade)>0.1)G.dodgeT=0.6;const crawlHold=e.v<6&&objs.some(b=>b.kind!=='ped'&&b.d<6.5); /* crawling beside a vehicle: no sideways creeping (box corners) */if(G.latHold||crawlHold){CHASE.evade=(e.off||0)-laneOffsetAt(routeLLnh(e.s)[2])}else CHASE.evade=lerp(CHASE.evade,hp.off,Math.min(1,dt*3.2));
+ const hp=G.hp;if(!hp&&!e.loose){CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*3))}if(hp){if(hp.off!==0||Math.abs(CHASE.evade)>0.1)G.dodgeT=0.6;const crawlHold=e.v<6&&objs.some(b=>b.kind!=='ped'&&b.d<6.5); /* crawling beside a vehicle: no sideways creeping (box corners) */G.latFreeze=!!(G.latHold||crawlHold);if(G.latHold||crawlHold){CHASE.evade=(e.off||0)-laneOffsetAt(routeLLnh(e.s)[2])}else CHASE.evade=lerp(CHASE.evade,hp.off,Math.min(1,dt*3.2));
   if(hp.risk)G.status=hp.acc<-5?`🧠 ${hp.why} · hard brake`:hp.acc<0?`🧠 ${hp.why} · easing off`:hp.off?`🧠 ${hp.why} · line ${hp.off>0?'right':'left'} ${Math.abs(hp.off).toFixed(1)} m`:`🧠 ${hp.why} · holding line`}}
 /* sampling planner: 7 lateral lines × 4 accelerations, each rolled out 3 s against every forecast; 3-circle vehicle footprints;
    cost = collision (earlier = worse) + proximity + off-road + speed loss + lane deviation + jerk; lowest cost wins */
