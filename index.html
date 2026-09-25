@@ -2011,7 +2011,7 @@ function buildHarley(){const g=new THREE.Group(),R=Math.random,paint=HCOLS[Math.
 // robotaxis are empty or carry a back-seat rider; supervised L2/L3 cars have a driver with hands off the wheel, looking down at a phone
 const DRV_SKIN=[0xf1c9a5,0xe0ac69,0xc68642,0x8d5524,0x5c3a21,0xffdbac],DRV_HAIR=[0x1a1410,0x3b2a1a,0x6b4a2b,0xb8904f,0x9a9a9a,0xd8c28a,0x8a2a1a],DRV_SHIRT=[0x2a4a8a,0xb03030,0x2d6a3a,0xe6e6e6,0x222222,0xd0a030,0x6a3a8a,0x3a8a9a];
 function buildDriver(spec,mode){const pk=a=>a[Math.floor(Math.random()*a.length)],skin=new THREE.MeshStandardMaterial({color:pk(DRV_SKIN),roughness:0.7}),hair=new THREE.MeshStandardMaterial({color:pk(DRV_HAIR),roughness:0.9}),shirt=new THREE.MeshStandardMaterial({color:pk(DRV_SHIRT),roughness:0.85});
- const g=new THREE.Group(),e=eyePos(spec),z=mode==='rider'?spec.W*0.2:-spec.W*0.2,x=mode==='rider'?e.x-0.95:e.x;g.position.set(x,e.y,z);
+ const g=new THREE.Group(),e=eyePos(spec),z=mode==='rider'?spec.W*0.2:-spec.W*0.2,x=mode==='rider'?e.x-0.6:e.x+0.38;g.position.set(x,e.y,z);
  const head=new THREE.Mesh(new THREE.SphereGeometry(0.105,14,10),skin);head.scale.set(1,1.12,0.95);g.add(head);
  const hr=new THREE.Mesh(new THREE.SphereGeometry(0.112,14,8,0,Math.PI*2,0,Math.PI*(0.35+Math.random()*0.25)),hair);hr.position.set(-0.012,0.02,0);g.add(hr);
  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.05,0.1,8),skin);neck.position.y=-0.14;g.add(neck);
