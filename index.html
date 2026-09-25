@@ -129,6 +129,20 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <div id="arrive"><div class="panel" style="text-align:center;padding:28px"><h1>You've arrived</h1><p id="arrTxt"></p><button class="primary" onclick="location.reload()">New ride</button></div></div>
 <div id="load"><div class="panel" id="loadTxt">Loading…</div></div>
 
+<script>
+// Offline net cache: every successful API response (routing, geocoding, OSM/Overpass, elevation, stations, signs…) is kept in
+// IndexedDB, so repeating the same route — e.g. the default Embarcadero → Getty ride — needs no network pulls. Live weather is not cached.
+(()=>{const raw=window.fetch.bind(window);let dbp=null;
+ const db=()=>dbp||(dbp=new Promise((res,rej)=>{try{const r=indexedDB.open('autodrive-net',1);r.onupgradeneeded=()=>r.result.createObjectStore('r');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}}));
+ const get=k=>db().then(d=>new Promise(res=>{const q=d.transaction('r').objectStore('r').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>res(null)})).catch(()=>null);
+ const put=(k,v)=>db().then(d=>{d.transaction('r','readwrite').objectStore('r').put(v,k)}).catch(()=>{});
+ window.NETCACHE={hits:0,misses:0,clear:()=>db().then(d=>d.transaction('r','readwrite').objectStore('r').clear())};
+ window.fetch=async(input,opt={})=>{const url=typeof input==='string'?input:input.url;
+  if(!/^https?:/.test(url)||/api\.open-meteo\.com\/v1\/forecast/.test(url)||(opt.method&&!/^(GET|POST)$/i.test(opt.method)))return raw(input,opt);
+  const k=(opt.method||'GET')+' '+url+' '+(typeof opt.body==='string'?opt.body:'');const c=await get(k);
+  if(c){NETCACHE.hits++;return new Response(c.b,{status:200,headers:{'Content-Type':c.t}})}
+  const r=await raw(input,opt);if(r.ok){NETCACHE.misses++;r.clone().text().then(b=>put(k,{b,t:r.headers.get('Content-Type')||'text/plain'}))}return r}})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script>
 'use strict';
