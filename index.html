@@ -3205,11 +3205,12 @@ function clearProtest(){const G=game;if(G.protest){scene.remove(G.protest.grp);p
 /* HYPER PREDICTION: tracks every road user's velocity, forecasts 4 s of motion (constant-velocity + heading-rate), forecasts the car's own path
    along the route, and finds the earliest predicted conflict. <1.4 s → hard brake; otherwise dodge laterally away from the threat. */
 function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)return;const e=G.ego,objs=[];G.dodgeT=Math.max(0,(G.dodgeT||0)-dt);
- const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z);if(d>160)return;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
-  if(Math.hypot(vx,vz)>90)return;const f=x=>isFinite(x)?x:0;o._vx=lerp(o._vx||0,f(vx),0.3);o._vz=lerp(o._vz||0,f(vz),0.3);o._w=lerp(o._w||0,clamp(f(w),-1,1),0.2);objs.push({o,x,z,h,kind,vx:o._vx,vz:o._vz,w:o._w,d,id:o._id||(o._id=++G._pid||(G._pid=1))})};
+ const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z);if(d>200)return;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
+  if(Math.hypot(vx,vz)>90)return;const f=x=>isFinite(x)?x:0;o._vx=lerp(o._vx||0,f(vx),0.65);o._vz=lerp(o._vz||0,f(vz),0.65);o._w=lerp(o._w||0,clamp(f(w),-1.2,1.2),0.35);objs.push({o,x,z,h,kind,vx:o._vx,vz:o._vz,w:o._w,d,m:kind==='ped'?80:o.spec?massOf(o.spec,kind):kind==='cop'?2000:1500,id:o._id||(o._id=++G._pid||(G._pid=1))})};
  for(const a of G.agents)if(a.mesh)track(a,a.mesh.position.x,a.mesh.position.z,a.mesh.rotation.y,a.spec.style==='harley'?'moto':'car');
- if(CHASE.on)for(const c of CHASE.cops)track(c,c.mesh.position.x,c.mesh.position.z,c.mesh.rotation.y,'cop');if(CHAOS.on)for(const a of CHAOS.cars)track(a,a.x,a.z,a.head,'car');for(const p of G.peds)track(p,p.x,p.z,p.mesh.rotation.y,'ped');
- let worst=null;const T=4,st=0.25;
+ if(CHASE.on)for(const c of CHASE.cops)track(c,c.mesh.position.x,c.mesh.position.z,c.mesh.rotation.y,'cop');if(CHAOS.on)for(const a of CHAOS.cars)track(a,a.x,a.z,a.head,'car');for(const p of G.peds){track(p,p.x,p.z,p.mesh.rotation.y,'ped');if(p.dog)track(p.dog,p.dog.x,p.dog.z,0,'ped')}if(CHAOS.on){for(const p of CHAOS.peds)track(p,p.x,p.z,p.head||0,'ped');for(const a of CHAOS.animals||[])track(a,a.x,a.z,a.head||0,'ped')}
+ for(const B of CHASE.blocks)for(const m of B.cars){const r=m.userData.rb||(m.userData.rb={mesh:m});track(r,m.position.x,m.position.z,m.rotation.y,'car')}
+ let worst=null;const T=4,st=0.2;
  for(const b of objs){const path=[];let px=b.x,pz=b.z,vx=b.vx,vz=b.vz;for(let t=st;t<=T;t+=st){const c=Math.cos(b.w*st),sn=Math.sin(b.w*st),nvx=vx*c-vz*sn,nvz=vx*sn+vz*c;vx=nvx;vz=nvz;px+=vx*st;pz+=vz*st;path.push([px,pz,t]);
    const ep=routeXZ(Math.min(G.route.total,e.s+e.v*t),e.off||1.85),gap=Math.hypot(px-ep[0],pz-ep[1]),need=b.kind==='ped'?1.8:2.4;if(gap<need&&(!worst||t<worst.t)){const fx=ep[2],fz=ep[3],lat=-(px-ep[0])*fz+(pz-ep[1])*fx;worst={b,t,lat,gap}}}
   b.path=path;b.ttc=null}
@@ -3221,15 +3222,16 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
    cost = collision (earlier = worse) + proximity + off-road + speed loss + lane deviation + jerk; lowest cost wins */
 function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=e.off||1.85,cur=CHASE.evade||0,v0=e.v,fast=fastOn();
  const vWant=fast?Math.max(e.v,30):(G.limitMph||30)/MPH;const rq=roadQAt(e.x,e.z);
- const near=objs.filter(b=>b.d<120&&b.path);const circ=(x,z,h,kind)=>{if(kind==='ped')return[[x,z,0.45]];const c=Math.cos(h),sn=-Math.sin(h),k=kind==='moto'?0.8:1.5,r=kind==='moto'?0.6:1.05;return[[x+c*k,z+sn*k,r],[x,z,r],[x-c*k,z-sn*k,r]]};
+ const near=objs.filter(b=>b.d<200&&b.path);const circ=(x,z,h,kind)=>{if(kind==='ped')return[[x,z,0.45]];const c=Math.cos(h),sn=-Math.sin(h),k=kind==='moto'?0.8:1.5,r=kind==='moto'?0.6:1.05;return[[x+c*k,z+sn*k,r],[x,z,r],[x-c*k,z-sn*k,r]]};
  let best=null;
  for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';let s=e.s,v=v0,o=cur;
-  for(let i=1;i<=12;i++){const t=i*0.25;v=Math.max(0,v+acc*0.25);s+=v*0.25;o+=(off-o)*Math.min(1,0.25/0.7);if(s>R.total)break;
-   const p=routeXZ(s,base+o),h=Math.atan2(-p[3],p[2]);if(i%4===0&&rq&&!rq.inside(p[0],p[1],-0.9))cost+=40; /* line leaves the carriageway */
-   const E=circ(p[0],p[1],h,'car'),grow=0.25+t*0.18;
+  for(let i=1;i<=20;i++){const t=i*0.2;v=Math.max(0,v+acc*0.2);s+=v*0.2;o+=(off-o)*Math.min(1,0.2/0.7);if(s>R.total)break;
+   const p=routeXZ(s,base+o),h=Math.atan2(-p[3],p[2]);if(i%5===0&&rq&&!rq.inside(p[0],p[1],-0.9))cost+=40; /* line leaves the carriageway */
+   const E=circ(p[0],p[1],h,'car'),grow=0.2+t*0.15+v*0.004,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
    for(const b of near){const q=b.path[i-1];if(!q)continue;if(Math.abs(q[0]-p[0])>9||Math.abs(q[1]-p[1])>9)continue;const bh=Math.atan2(-(b.vz||0),(b.vx||0.001)),O=circ(q[0],q[1],Math.hypot(b.vx,b.vz)>0.5?bh:b.h,b.kind);
     let md=1e9;for(const a of E)for(const c of O)md=Math.min(md,Math.hypot(a[0]-c[0],a[1]-c[1])-a[2]-c[2]);
-    if(md<grow){cost+=900*(3.5-t);risk=1;why=why||`${b.kind==='ped'?'Pedestrian':b.kind==='cop'?'Police':'Vehicle'} #${b.id} in ${t.toFixed(1)} s`}else if(md<grow+1.5){cost+=(grow+1.5-md)*6;risk=risk||0.5;why=why||`Tight gap with #${b.id}`}}}
+    if(md<grow){/* unavoidable-harm ordering: pedestrians first, then heavier vehicles; scaled by predicted impact speed and how soon */
+     const dv=Math.hypot(evx-(b.vx||0),evz-(b.vz||0)),harm=b.kind==='ped'?60:1+b.m/1200;cost+=(300+dv*dv*4)*harm*(4.5-t);risk=1;why=why||`${b.kind==='ped'?'Pedestrian':b.kind==='cop'?'Police':b.m>3000?'Heavy vehicle':'Vehicle'} #${b.id} in ${t.toFixed(1)} s`}else if(md<grow+1.5){cost+=(grow+1.5-md)*6;risk=risk||0.5;why=why||`Tight gap with #${b.id}`}}}
   cost+=Math.max(0,vWant-v)*1.2+(acc>0&&v0>=vWant?2:0);
   if(!best||cost<best.cost)best={off,acc,cost,risk,why}}
  return best}
