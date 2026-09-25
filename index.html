@@ -890,7 +890,7 @@ function bAdd(ring,key){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const p of ring){x
 // ROAD SWEEP — the last line of defence for EVERY static object a tile contains (fixtures, poles, signs, carts, billboards,
 // trees, walls-of-anything, props added in future): nothing may occupy a carriageway below 4.6 m (legal overhead clearance, so
 // signal mast arms, overhead signs and bridges above are fine). Road-surface layers are the only things allowed on the road.
-const SWEEP_SKIP=()=>new Set([MAT.road,MAT.road2,MAT.yellow,MAT.white,MAT.path,MAT.pier,MAT.wall].filter(Boolean));const CLEAR_H=4.6;
+const SWEEP_SKIP=()=>new Set([MAT.road,MAT.road2,MAT.yellow,MAT.white,MAT.path,MAT.pier,MAT.wall,...Object.values(SURF)].filter(Boolean)); // road/pavement surfaces belong on the roadconst CLEAR_H=4.6;
 function roadSweep(grp,RQ){if(!RQ)return 0;const skip=SWEEP_SKIP(),v=new THREE.Vector3(),M=new THREE.Matrix4(),box=new THREE.Box3();let n=0;grp.updateMatrixWorld(true);
  const onRoad=(x,z,y,m)=>y<groundY(x,z)+CLEAR_H&&RQ.inside(x,z,m);
  for(const o of [...grp.children]){
