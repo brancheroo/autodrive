@@ -2560,6 +2560,24 @@ function crashSound(dv,dist){if(!audio.ctx||audio.muted||!audio.master)return;co
  for(let i=0;i<5;i++){const o=C.createOscillator(),og=C.createGain(),tt=t+0.05+Math.random()*0.25;o.type='square';o.frequency.value=1800+Math.random()*2600;og.gain.setValueAtTime(0.04*k,tt);og.gain.exponentialRampToValueAtTime(0.0001,tt+0.12);o.connect(og);og.connect(audio.master);o.start(tt);o.stop(tt+0.15)} // glass & metal tinkle
  const th=C.createOscillator(),tg=C.createGain();th.frequency.setValueAtTime(90,t);th.frequency.exponentialRampToValueAtTime(40,t+0.25);tg.gain.setValueAtTime(0.6*k,t);tg.gain.exponentialRampToValueAtTime(0.001,t+0.35);th.connect(tg);tg.connect(audio.master);th.start(t);th.stop(t+0.4)}
 function remPed(p){scene.remove(p.mesh);if(p.dog){scene.remove(p.dog.mesh);scene.remove(p.dog.leash)}}
+// ---- Segway tour groups: a guide in a hi-vis vest with a flag leads 4–9 helmeted tourists in single file along the sidewalk
+function buildSegRider(guide){const R=Math.random,g=new THREE.Group(),inner=new THREE.Group();g.add(inner);
+ const dk=new THREE.MeshStandardMaterial({color:0x1b1c1e,roughness:0.6}),tyre=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.9}),plate=new THREE.MeshStandardMaterial({color:0x8a8e94,metalness:0.6,roughness:0.35});
+ const deck=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.1,0.56),dk);deck.position.y=0.24;inner.add(deck);const wheels=[];
+ for(const z of [0.34,-0.34]){const w=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.24,0.1,18),tyre);w.rotation.x=Math.PI/2;w.position.set(0,0.24,z);inner.add(w);const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.11,10),plate);hub.rotation.x=Math.PI/2;hub.position.set(0,0.24,z);inner.add(hub);wheels.push(w)}
+ const post=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.03,0.95,8),plate);post.position.set(0.12,0.75,0);post.rotation.z=0.12;inner.add(post);const bar=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.5,8),dk);bar.rotation.x=Math.PI/2;bar.position.set(0.06,1.22,0);inner.add(bar);
+ const skinM=new THREE.MeshLambertMaterial({color:['#f1c9a5','#c68d62','#8d5a3b','#e0ac80','#5a3a26','#ffdbac'][Math.floor(R()*6)]}),shirt=new THREE.MeshLambertMaterial({color:guide?0xff7a10:new THREE.Color().setHSL(R(),0.55,0.45)}),pants=new THREE.MeshLambertMaterial({color:['#2a2f3a','#6b5b45','#1f3b63','#c9b58a','#333'][Math.floor(R()*5)]});
+ const person=new THREE.Group();person.position.y=0.29;inner.add(person);const b=new THREE.Mesh(PEDGEO.body,shirt);const h=new THREE.Mesh(PEDGEO.head,skinM);person.add(b,h);
+ for(const z of [0.1,-0.1]){const l=new THREE.Mesh(PEDGEO.leg,pants);l.position.set(0,0.55,z);l.scale.y=1.0;person.add(l)}
+ for(const z of [0.2,-0.2]){const a=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.04,0.55,6),shirt);a.position.set(-0.02,1.2,z);a.rotation.z=-0.55;person.add(a);const hd=new THREE.Mesh(new THREE.SphereGeometry(0.045,8,6),skinM);hd.position.set(0.13,0.94,z*1.1);person.add(hd)}
+ const helm=new THREE.Mesh(new THREE.SphereGeometry(0.14,12,8,0,Math.PI*2,0,Math.PI/2),new THREE.MeshStandardMaterial({color:guide?0xffffff:[0xd63a2a,0x2a6ad6,0xf2f2f2,0x222222,0xf2c318][Math.floor(R()*5)],roughness:0.35}));helm.position.y=1.76;person.add(helm);
+ if(guide){const vest=new THREE.Mesh(new THREE.CylinderGeometry(0.215,0.185,0.6,8,1,true),new THREE.MeshBasicMaterial({color:0xd8ff20,side:THREE.DoubleSide}));vest.position.y=1.25;person.add(vest);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,1.6,6),plate);pole.position.set(-0.28,1.9,-0.18);inner.add(pole);const fl=new THREE.Mesh(new THREE.PlaneGeometry(0.45,0.3),new THREE.MeshBasicMaterial({color:0xff3a2a,side:THREE.DoubleSide}));fl.position.set(-0.5,2.55,-0.18);inner.add(fl);g.userData.flag=fl}
+ else if(R()<0.4){const cam=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.07,0.12),dk);cam.position.set(0.18,1.3,0);person.add(cam)} // tourist camera
+ g.userData.inner=inner;g.userData.wheels=wheels;g.userData.person=person;return g}
+function spawnSegwayTour(){const ps=[];for(const T of TILES.values())ps.push(...T.peds.filter(w=>w.total>120));if(!ps.length)return;const w=ps[Math.floor(Math.random()*ps.length)];
+ const dir=Math.random()<0.5?1:-1,n=5+Math.floor(Math.random()*6),v=2.8+Math.random()*0.8,s0=w.total*(0.2+Math.random()*0.6),dummy=()=>new THREE.Object3D();
+ for(let i=0;i<n;i++){const m=buildSegRider(i===0);scene.add(m);const P={mesh:m,w,s:clamp(s0-i*2.4*dir,0,w.total),dir,v,x:0,z:0,l1:dummy(),l2:dummy(),ph:Math.random()*6,seg:m.userData,tourLead:i===0};game.peds.push(P)}}
 function spawnPed(){const ps=[];for(const T of TILES.values())ps.push(...T.peds);if(!ps.length)return;const w=ps[Math.floor(Math.random()*ps.length)];const g=new THREE.Group();const shirt=new THREE.MeshLambertMaterial({color:new THREE.Color().setHSL(Math.random(),0.5,0.4)});
  const b=new THREE.Mesh(PEDGEO.body,shirt);const h=new THREE.Mesh(PEDGEO.head,new THREE.MeshLambertMaterial({color:['#f1c9a5','#c68d62','#8d5a3b','#e0ac80','#5a3a26'][Math.floor(Math.random()*5)]}));const lm=new THREE.MeshLambertMaterial({color:0x2a2f3a});const l1=new THREE.Mesh(PEDGEO.leg,lm),l2=new THREE.Mesh(PEDGEO.leg,lm);l1.position.set(0,0.55,0.09);l2.position.set(0,0.55,-0.09);g.add(b,h,l1,l2);b.castShadow=true;scene.add(g);
  const R=Math.random;lm.color.set(['#2a2f3a','#1f3b63','#6b5b45','#111','#7a7f87','#3c5a3a','#8b2d2d'][Math.floor(R()*7)]);g.scale.set(1,0.88+R()*0.24,1);if(R()<0.35){const hat=new THREE.Mesh(new THREE.SphereGeometry(0.13,10,6,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:new THREE.Color().setHSL(R(),0.6,0.35)}));hat.position.y=1.74;g.add(hat)}
@@ -2631,7 +2649,7 @@ function step(){
  // other route agents
  for(const a of G.agents){if(a.kind==='route'){place(a,a.off||1.85);spinWheels(a,rdt*G.scale,0)}else if(a.kind==='oncoming'){place(a,-1.9);spinWheels(a,rdt*G.scale,0)}else spinWheels(a,rdt*G.scale,0)}
  // peds
- for(const p of G.peds){const q=wayPos(p.w,p.s,1.0*p.dir);p.x=q[0];p.z=q[1];p.mesh.position.set(q[0],groundY(q[0],q[1])+(p.w.sidewalk?0.16:0),q[1]);p.mesh.rotation.y=Math.atan2(-q[3]*p.dir,q[2]*p.dir);p.ph+=rdt*G.scale*p.v*4;p.l1.rotation.z=Math.sin(p.ph)*0.5;p.l2.rotation.z=-Math.sin(p.ph)*0.5;
+ for(const p of G.peds){const q=wayPos(p.w,p.s,1.0*p.dir);p.x=q[0];p.z=q[1];p.mesh.position.set(q[0],groundY(q[0],q[1])+(p.w.sidewalk?0.16:0),q[1]);p.mesh.rotation.y=Math.atan2(-q[3]*p.dir,q[2]*p.dir);p.ph+=rdt*G.scale*p.v*4;p.l1.rotation.z=Math.sin(p.ph)*0.5;p.l2.rotation.z=-Math.sin(p.ph)*0.5;if(p.seg){for(const w of p.seg.wheels)w.rotation.y=-p.ph*0.9;p.seg.inner.rotation.z=-0.06-Math.sin(p.ph*0.3)*0.02;if(p.seg.flag)p.seg.flag.rotation.y=Math.sin(p.ph*1.7)*0.4}
   if(p.dog){const D=p.dog,dt2=rdt*G.scale,t=performance.now()/1000;D.sniffT-=dt2;if(D.sniffT<=0){D.sniffing=!D.sniffing&&Math.random()<0.45;D.sniffT=D.sniffing?1+Math.random()*2.5:3+Math.random()*6}
    const want=p.s+p.dir*(D.sniffing?-0.2:D.lead),gap=want-D.s;const maxLag=2.1;let v=clamp(gap*2.2,-3.5,3.5);if(D.sniffing&&Math.abs(p.s-D.s)<maxLag)v=0;D.s+=v*dt2;if(Math.abs(p.s-D.s)>maxLag+0.2)D.s=p.s-Math.sign(p.s-D.s)*maxLag;
    D.lat+=(D.side+Math.sin(t*0.5+p.ph*0.01)*0.35-D.lat)*Math.min(1,dt2*0.8);
@@ -2744,6 +2762,7 @@ function manageTraffic(){if(game.fast){for(const a of game.agents)scene.remove(a
  const pedTarget=Math.round((G.dark?6:22)*Math.min(1,f+0.3));
  for(let i=G.peds.length-1;i>=0;i--){const p=G.peds[i];if(Math.hypot(p.x-e.x,p.z-e.z)>350){remPed(p);G.peds.splice(i,1)}}
  if(G.peds.length<pedTarget)spawnPed();
+ if(!G.dark&&f>0.5&&G.peds.filter(p=>p.tourLead).length<2&&Math.random()<0.04)spawnSegwayTour();
 }
 
 // ============================================================ CAMERA
