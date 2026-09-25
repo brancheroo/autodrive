@@ -2710,7 +2710,7 @@ function step(){
   }
  }
  // place ego
- const off=laneOffsetAt(routeLLnh(e.s)[2])+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);e.off=e.off===undefined?off:G.spec.hyper&&G.latFreeze?e.off:lerp(e.off,off,Math.min(1,rdt*G.scale*(fastOn()||G.overtakeT>0?2.2:0.5)));
+ const off=laneOffsetAt(routeLLnh(e.s)[2])+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(fastOn()||G.overtakeT>0?2.2:0.5)));
  const towAnim=G.tow&&G.tow.phase!=='towing'&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling';
  const prevHead=e.head;if(!towAnim){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw()}
  const yawRate=(e.head-prevHead)/(Math.max(1e-3,rdt*G.scale));const steerT=clamp(Math.atan(spec.wb*yawRate/Math.max(e.v,1)),-0.6,0.6);e.steer=lerp(e.steer,steerT,0.2);
@@ -3239,7 +3239,7 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
  const oncomingClear=!objs.some(b=>{const dx=b.x-e.x,dz=b.z-e.z,f=dx*fx0+dz*fz0;if(f<-6)return false;const vr=(b.vx||0)*fx0+(b.vz||0)*fz0;return (b.o.kind==='oncoming'||vr<-1)&&f<(v0+Math.max(0,-vr))*6+30});
  /* one route trajectory per speed profile (shared by all 7 lateral lines): position on the lane centre + its right-hand normal */
  const trajs={};for(const acc of [0,2.5,7,-3,-8]){const T=[null];let s=e.s,v=v0;for(let i=1;i<=20;i++){v=Math.max(0,v+acc*0.2);s+=v*0.2;if(s>R.total)break;const lo=laneOffsetAt(routeLLnh(s)[2]),p=routeXZ(s,lo),q=routeXZ(s,lo+1);T.push({x:p[0],z:p[1],rx:q[0]-p[0],rz:q[1]-p[1],dx:p[2],dz:p[3],h:Math.atan2(-p[3],p[2]),v})}trajs[acc]=T}
- for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';
+ for(const off of fast?[0,-1.2,1.2,-2.4,2.4,-3.4,3.4]:[0,-0.6,0.6,-1.2,1.2])for(const acc of [0,2.5,7,-3,-8]){ /* normal driving: stay in lane, brake instead of swerving */let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';
   if(base+off<1.05&&!oncomingClear)continue; /* never cross the centre line into oncoming traffic */let s=e.s,v=v0,o=cur;
   const TR=trajs[acc];for(let i=1;i<=20;i++){const t=i*0.2,Q=TR[i];if(!Q)break;v=Q.v;o+=(off-o)*Math.min(1,0.2/1.1);
    const p=[Q.x+Q.rx*o,Q.z+Q.rz*o,Q.dx,Q.dz],h=Q.h;if(i%3===0){const rq2=roadQAt(p[0],p[1]);if(rq2&&!rq2.inside(p[0],p[1],-1.15))cost+=400} /* line leaves the carriageway */
