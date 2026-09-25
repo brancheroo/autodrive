@@ -1245,6 +1245,7 @@ function buildCar(spec,colorHex,opts={}){
  const chrome=new THREE.MeshStandardMaterial({color:0xdddddd,metalness:1,roughness:0.08});
  const matte=new THREE.MeshStandardMaterial({color:0x151617,roughness:0.75});
  const body=new THREE.Mesh(lo,paint);body.castShadow=true;g.add(body);g.userData.body=body;g.userData.paint=paint;
+ if(!opts.interior){glass.opacity=0.26;glass.envMapIntensity=0.45;glass.clearcoat=0.25;glass.reflectivity=0.3;glass.color.set(0x1c252e)} // outside cars: see the people inside
  const cab=new THREE.Mesh(gh,[paint,glass,gloss]);cab.castShadow=true;g.add(cab);g.userData.cab=cab;
  if(opts.interior){const hood=new THREE.Mesh(profCache[pk].hood,paint);hood.visible=false;g.add(hood);g.userData.hood=hood}
  // wheels
