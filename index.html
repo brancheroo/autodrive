@@ -2348,7 +2348,7 @@ function updateWayCar(a,dt){if(a.loose)return true;
  let target=w.spd;
  // stop for ego if ego is right in front
  const p=wayPos(w,a.s,off),fx=p[2]*a.dir,fz=p[3]*a.dir;const ex=game.ego.x-p[0],ez=game.ego.z-p[1];const fd=ex*fx+ez*fz,ld=Math.abs(-ex*fz+ez*fx);
- if(fd>0&&fd<14&&ld<3)target=0;
+ if(fd>0&&fd<a.v*a.v/(2*4)+10&&ld<3.4)target=Math.min(target,Math.sqrt(Math.max(0,2*4*(fd-7)))); /* brake for the car in time, from its stopping distance */
  // signals on this way
  for(let i=0;i<w.nodes.length;i++){const c=CONTROLS.get(w.nodes[i]);if(!c)continue;const ds=(w.len[i]-a.s)*a.dir;if(ds<3||ds>45)continue;const ax=axisOf(fx,-fz);if(c.type==='signal'&&signalState(c.id,ax,game.simTime)!=='G'){target=Math.min(target,Math.max(0,(ds-6)*0.5))}else if(c.type==='stop'&&!a.handled.has(c.id)){target=Math.min(target,Math.max(0,(ds-5)*0.5));if(ds<8&&a.v<0.3){a.stopT+=dt;if(a.stopT>1.5){a.handled.add(c.id);a.stopT=0}}}}
  a.v+=clamp((target-a.v)*0.8,-5,1.8)*dt;a.v=Math.max(0,a.v);a.s+=a.v*dt*a.dir;
