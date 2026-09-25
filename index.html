@@ -3238,10 +3238,10 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
  /* one route trajectory per speed profile (shared by all 7 lateral lines): position on the lane centre + its right-hand normal */
  const trajs={};for(const acc of [0,2.5,7,-3,-8]){const T=[null];let s=e.s,v=v0;for(let i=1;i<=20;i++){v=Math.max(0,v+acc*0.2);s+=v*0.2;if(s>R.total)break;const lo=laneOffsetAt(routeLLnh(s)[2]),p=routeXZ(s,lo),q=routeXZ(s,lo+1);T.push({x:p[0],z:p[1],rx:q[0]-p[0],rz:q[1]-p[1],dx:p[2],dz:p[3],h:Math.atan2(-p[3],p[2]),v})}trajs[acc]=T}
  for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';
-  if(base+off<1.05&&!oncomingClear){cost+=4000;why='Oncoming lane not clear'}let s=e.s,v=v0,o=cur;
+  if(base+off<1.05&&!oncomingClear)continue; /* never cross the centre line into oncoming traffic */let s=e.s,v=v0,o=cur;
   const TR=trajs[acc];for(let i=1;i<=20;i++){const t=i*0.2,Q=TR[i];if(!Q)break;v=Q.v;o+=(off-o)*Math.min(1,0.2/1.1);
-   const p=[Q.x+Q.rx*o,Q.z+Q.rz*o,Q.dx,Q.dz],h=Q.h;if(i%5===0&&rq&&!rq.inside(p[0],p[1],-0.9))cost+=40; /* line leaves the carriageway */
-   const E=circ(p[0],p[1],h,'car'),grow=0.35+t*0.15+v*0.02,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
+   const p=[Q.x+Q.rx*o,Q.z+Q.rz*o,Q.dx,Q.dz],h=Q.h;if(i%3===0){const rq2=roadQAt(p[0],p[1]);if(rq2&&!rq2.inside(p[0],p[1],-1.15))cost+=400} /* line leaves the carriageway */
+   const E=circ(p[0],p[1],h,'car'),grow=0.15+t*0.08+v*0.008,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
    for(const b of near){const q=b.path[i-1];if(!q)continue;if(Math.abs(q[0]-p[0])>9||Math.abs(q[1]-p[1])>9)continue;const bh=Math.atan2(-(b.vz||0),(b.vx||0.001)),O=circ(q[0],q[1],Math.hypot(b.vx,b.vz)>0.5?bh:b.h,b.kind);
     let md=1e9;for(const a of E)for(const c of O)md=Math.min(md,Math.hypot(a[0]-c[0],a[1]-c[1])-a[2]-c[2]);if(b.kind==='ped')md-=Math.min(2.2,0.4+t*0.7); /* a pedestrian can turn any way: plan around its whole reachable disc */
     if(md<grow){/* unavoidable-harm ordering: pedestrians first, then heavier vehicles; scaled by predicted impact speed and how soon */
