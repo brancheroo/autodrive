@@ -867,6 +867,14 @@ function clearPoles(T,roads,lifted){const kids=T.group.children.filter(o=>!o.use
   const dx=px-p.position.x,dz=pz-p.position.z;if(Math.abs(dx)+Math.abs(dz)<1e-4)continue;
   for(const o of [p,...(T.owner.get(p)||[])]){const g0=lifted?groundY(o.position.x,o.position.z):0;o.position.x+=dx;o.position.z+=dz;if(lifted)o.position.y+=groundY(o.position.x,o.position.z)-g0}}
  T.poleXZ=poles.map(p=>[p.position.x,p.position.z])}
+// solid buildings: every footprint drawn goes into a 25 m spatial hash for vehicle–wall collisions
+const BGRID=new Map(),BOWN=new Map(),BCELL=25;
+function bAdd(ring,key){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const p of ring){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);z0=Math.min(z0,p[1]);z1=Math.max(z1,p[1])}const b={r:ring,x0,x1,z0,z1},cells=[];
+ for(let i=Math.floor(x0/BCELL);i<=Math.floor(x1/BCELL);i++)for(let j=Math.floor(z0/BCELL);j<=Math.floor(z1/BCELL);j++){const k=i+','+j;let a=BGRID.get(k);if(!a)BGRID.set(k,a=[]);a.push(b);cells.push(k)}
+ b.cells=cells;let o=BOWN.get(key);if(!o)BOWN.set(key,o=[]);o.push(b)}
+function bDrop(key){for(const b of BOWN.get(key)||[])for(const k of b.cells){const a=BGRID.get(k);if(a){const i=a.indexOf(b);if(i>=0)a.splice(i,1)}}BOWN.delete(key)}
+function bAt(x,z){const a=BGRID.get(Math.floor(x/BCELL)+','+Math.floor(z/BCELL));if(!a)return null;for(const b of a)if(x>b.x0&&x<b.x1&&z>b.z0&&z<b.z1&&pip([x,z],b.r))return b;return null}
+function bNormal(b,x,z){let bd=1e9,n=[1,0],d0=0;const r=b.r;for(let i=0;i<r.length;i++){const p=r[i],q=r[(i+1)%r.length],ex=q[0]-p[0],ez=q[1]-p[1],L2=ex*ex+ez*ez||1,t=clamp(((x-p[0])*ex+(z-p[1])*ez)/L2,0,1),cx=p[0]+ex*t,cz=p[1]+ez*t,d=Math.hypot(x-cx,z-cz);if(d<bd){bd=d;const l=Math.sqrt(L2);n=[ez/l,-ex/l];if((x-cx)*n[0]+(z-cz)*n[1]>0)n=[-n[0],-n[1]];d0=d}}return{n,d:d0}} // n points out of the wall
 function buildTile(key){
  if(TILES.has(key)||!RAW.has(key)||TERR.ref===null||!tileTerrReady(key))return;
  const data=RAW.get(key),T={key,group:new THREE.Group(),ways:[],peds:[],ids:[],lamps:[],signals:[]};
@@ -927,7 +935,7 @@ function buildTile(key){
    if(ring.length<3)continue;const isPart=!t.building||t['building:part'];
    // Simple 3D Buildings: an outline that has building:parts inside is not drawn itself
    if(!isPart&&partRings.some(pr=>{const c=[pr.reduce((a,p)=>a+p[0],0)/pr.length,pr.reduce((a,p)=>a+p[1],0)/pr.length];return pip(c,ring)}))continue;
-   ring=fitBuilding(ring,BROADS);if(!ring)continue;
+   ring=fitBuilding(ring,BROADS);if(!ring)continue;bAdd(ring,key);
    const rec=emitBuilding(t,ring,el.id,BC,isPart);if(!isPart)bRecs.push(rec);
   }else if(t.amenity==='fuel'&&pts.length>3){fuelCanopy(BC,pts.slice(0,-1),t)
   }else if(t.natural==='water'){if(!SAT.ok)flatPoly(bWa,pts,0.015)}
@@ -969,7 +977,7 @@ placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
  placeBillboards(T,key,RQ,bRecs);placeFoodCarts(T,key,RQ,bRecs);
  if(SFBT){ // LiDAR footprints + measured heights; OSM supplies style tags / names where a mapped building overlaps
   const osmB=data.elements.filter(el=>el.type==='way'&&el.geometry&&(el.tags||{}).building).map(el=>({t:el.tags,ring:el.geometry.map(p=>[toX(p.lon),toZ(p.lat)])}));
-  for(const b of SFBT){let ring=b.r.map(p=>[toX(p[0]),toZ(p[1])]);if(ring.length>3&&ring[0][0]===ring[ring.length-1][0])ring.pop();if(ring.length<3)continue;ring=fitBuilding(ring,BROADS);if(!ring)continue;const cx=ring.reduce((a,p)=>a+p[0],0)/ring.length,cz=ring.reduce((a,p)=>a+p[1],0)/ring.length;
+  for(const b of SFBT){let ring=b.r.map(p=>[toX(p[0]),toZ(p[1])]);if(ring.length>3&&ring[0][0]===ring[ring.length-1][0])ring.pop();if(ring.length<3)continue;ring=fitBuilding(ring,BROADS);if(!ring)continue;bAdd(ring,key);const cx=ring.reduce((a,p)=>a+p[0],0)/ring.length,cz=ring.reduce((a,p)=>a+p[1],0)/ring.length;
    const o=osmB.find(q=>pip([cx,cz],q.ring));const tags={...(o?o.t:{building:'yes'}),height:String(b.h)};delete tags['roof:shape'];if(b.n)tags.name=b.n;const id=parseInt(String(b.id).replace(/\D/g,'').slice(-9))||Math.floor(Math.random()*1e9);
    const base=Math.min(...ring.map(p=>groundY(p[0],p[1])));BC.baseOverride=base;const rec=emitBuilding(tags,ring,id,BC,false);bRecs.push(rec);
    if(b.pk-b.h>4&&Math.abs(polyArea(ring))>120){const k=0.55,pr=ring.map(p=>[cx+(p[0]-cx)*k,cz+(p[1]-cz)*k]);emitBuilding({'building:part':'yes',height:String(b.pk),min_height:String(b.h),'building:material':tags['building:material']},pr,id+1,BC,true)}
@@ -1104,7 +1112,7 @@ function addSignal(T,x,z,dir,w,id){
 }
 const LAMPGEO={pole:new THREE.CylinderGeometry(0.07,0.1,8,6),head:new THREE.BoxGeometry(0.7,0.18,0.35)};
 function addLamp(T,x,z){const p=new THREE.Mesh(LAMPGEO.pole,MAT.pole);p.position.set(x,4,z);const h=new THREE.Mesh(LAMPGEO.head,MAT.lampOff);h.position.set(x,8,z);T.group.add(p,h);T.lamps.push(h)}
-function unloadTile(key){const T=TILES.get(key);if(!T)return;scene.remove(T.group);T.group.traverse(o=>{if(o.geometry&&!o.geometry.userData.shared&&!Object.values(SIGGEO).includes(o.geometry)&&!Object.values(LAMPGEO).includes(o.geometry))o.geometry.dispose()});T.ids.forEach(i=>BUILTWAYS.delete(i));TILES.delete(key)}
+function unloadTile(key){const T=TILES.get(key);if(!T)return;bDrop(key);scene.remove(T.group);T.group.traverse(o=>{if(o.geometry&&!o.geometry.userData.shared&&!Object.values(SIGGEO).includes(o.geometry)&&!Object.values(LAMPGEO).includes(o.geometry))o.geometry.dispose()});T.ids.forEach(i=>BUILTWAYS.delete(i));TILES.delete(key)}
 
 // traffic signal timing: 64 s cycle, two axes
 function axisOf(dx,dz){return Math.abs(dx)>Math.abs(dz)?0:1}
@@ -2462,6 +2470,16 @@ function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;c
     if(A.kind==='ego'||B.kind==='ego'){const me=A.kind==='ego'?nva:nvb,sp=Math.hypot(me.vx,me.vz),slide=sp*sp/(2*mu*g);CRASH.shake=Math.min(1.2,dv/15);G.crashMsg=`💥 ${mph} mph impact with ${(A.kind==='ego'?B:A).kind==='cop'?'a police car':'another vehicle'} · sliding ${Math.round(slide)} m`;if(CHASE.on&&(A.kind==='cop'||B.kind==='cop')){CHASE.pits++}}
     CRASH.log.push({t:G.simTime,mph,a:A.kind,b:B.kind});if(CRASH.log.length>50)CRASH.log.shift()}
    else if(A.ref.loose||B.ref.loose){if(A.ref.loose){A.ref.loose.x-=n[0]*sa;A.ref.loose.z-=n[1]*sa}if(B.ref.loose){B.ref.loose.x+=n[0]*sb;B.ref.loose.z+=n[1]*sb}}}}
+ // 1b. buildings are solid: a sliding (or chaos) car that pokes a corner into a footprint bounces off the wall and is damaged
+ for(const b of bodies){const r=b.ref;if(!r.loose&&b.kind!=='chaos'&&b.kind!=='ego')continue;const cs=obbCorners(b);cs.push([b.x+Math.cos(b.h)*b.L/2,b.z-Math.sin(b.h)*b.L/2],[b.x-Math.cos(b.h)*b.L/2,b.z+Math.sin(b.h)*b.L/2]);
+  for(const c of cs){const w=bAt(c[0],c[1]);if(!w)continue;const {n,d}=bNormal(w,c[0],c[1]);let v=velOf(b,dt);const rx=c[0]-b.x,rz=c[1]-b.z,pv=[v.vx+v.w*rz,v.vz-v.w*rx],vn=pv[0]*n[0]+pv[1]*n[1];
+   if(!r.loose)makeLoose(b,v);const L=r.loose;L.x+=n[0]*(d+0.05);L.z+=n[1]*(d+0.05);
+   if(vn<-0.3){const I=b.m*(b.L*b.L+b.W*b.W)/12,cr=rx*n[1]-rz*n[0],jn=-(1.25)*vn/(1/b.m+cr*cr/I),t=[-n[1],n[0]],vt=pv[0]*t[0]+pv[1]*t[1],jt=clamp(-vt*b.m*0.5,-0.4*jn,0.4*jn),J=[n[0]*jn+t[0]*jt,n[1]*jn+t[1]*jt];
+    L.vx+=J[0]/b.m;L.vz+=J[1]/b.m;L.w+=(rx*J[1]-rz*J[0])/I;L.stopT=0;const dv=-vn,mph=Math.round(dv*MPH);
+    if(dv>1.5&&(r._wallT??0)<=0){r._wallT=0.4;damageVehicle(b.kind==='chaos'?null:r.mesh,c[0],c[1],n[0],n[1],clamp(dv/16,0,1.3));crashSound(dv,Math.hypot(b.x-G.ego.x,b.z-G.ego.z));CRASH.log.push({t:G.simTime,mph,a:b.kind,b:'building'});
+     if(b.kind==='ego'){CRASH.shake=Math.min(1.4,dv/12);G.crashMsg=`🧱 ${mph} mph into a building · ${(r.mesh.userData.dmg*100|0)}% damage`}}}
+   break}
+  r._wallT=Math.max(0,(r._wallT??0)-dt)}
  // 2. integrate everything that is sliding; recover when stopped
  for(const b of bodies){const r=b.ref,L=r.loose;r._age=(r._age??0)+dt;if(!L){r._cpx=b.x;r._cpz=b.z;r._cph=b.h;continue}
   L.t+=dt;const sp=Math.hypot(L.vx,L.vz);if(sp>0){const ns=Math.max(0,sp-mu*g*dt);L.vx*=ns/sp;L.vz*=ns/sp}const dw=Math.sign(L.w)*Math.min(Math.abs(L.w),(3+Math.abs(L.w)*0.8)*dt);L.w-=dw;
