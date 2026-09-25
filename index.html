@@ -2591,7 +2591,7 @@ function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;c
    else if(A.ref.loose||B.ref.loose){if(A.ref.loose){A.ref.loose.x-=n[0]*sa;A.ref.loose.z-=n[1]*sa}if(B.ref.loose){B.ref.loose.x+=n[0]*sb;B.ref.loose.z+=n[1]*sb}}}}
  // 1b. buildings are solid: a sliding (or chaos) car that pokes a corner into a footprint bounces off the wall and is damaged
  for(const b of bodies){const r=b.ref;if(!r.loose&&b.kind!=='chaos'&&(b.kind!=='ego'||G.spec.apc))continue;const cs=obbCorners(b);cs.push([b.x+Math.cos(b.h)*b.L/2,b.z-Math.sin(b.h)*b.L/2],[b.x-Math.cos(b.h)*b.L/2,b.z+Math.sin(b.h)*b.L/2]);
-  for(const c of cs){const w=bAt(c[0],c[1]);if(!w)continue;const {n,d}=bNormal(w,c[0],c[1]);let v=velOf(b,dt);const rx=c[0]-b.x,rz=c[1]-b.z,pv=[v.vx+v.w*rz,v.vz-v.w*rx],vn=pv[0]*n[0]+pv[1]*n[1];
+  const elev=r.mesh&&r.mesh.position.y-groundY(b.x,b.z)>2.5;for(const c of cs){if(elev)break; /* on a bridge / elevated deck: buildings below are not in the way */const w=bAt(c[0],c[1]);if(!w)continue;const {n,d}=bNormal(w,c[0],c[1]);let v=velOf(b,dt);const rx=c[0]-b.x,rz=c[1]-b.z,pv=[v.vx+v.w*rz,v.vz-v.w*rx],vn=pv[0]*n[0]+pv[1]*n[1];
    if(!r.loose)makeLoose(b,v);const L=r.loose;L.x+=n[0]*(d+0.05);L.z+=n[1]*(d+0.05);
    if(vn<-0.3){const I=b.m*(b.L*b.L+b.W*b.W)/12,cr=rx*n[1]-rz*n[0],jn=-(1.25)*vn/(1/b.m+cr*cr/I),t=[-n[1],n[0]],vt=pv[0]*t[0]+pv[1]*t[1],jt=clamp(-vt*b.m*0.5,-0.4*jn,0.4*jn),J=[n[0]*jn+t[0]*jt,n[1]*jn+t[1]*jt];
     L.vx+=J[0]/b.m;L.vz+=J[1]/b.m;L.w+=(rx*J[1]-rz*J[0])/I;L.stopT=0;const dv=-vn,mph=Math.round(dv*MPH);
@@ -3231,7 +3231,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
    cost = collision (earlier = worse) + proximity + off-road + speed loss + lane deviation + jerk; lowest cost wins */
 function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeLLnh(e.s)[2]),cur=(e.off===undefined?base:e.off)-base,v0=e.v,fast=fastOn(); /* base = lane centre; cur = where the car really is now relative to it */
  const vWant=fast?Math.max(e.v,30):(G.limitMph||30)/MPH;const rq=roadQAt(e.x,e.z);
- const near=objs.filter(b=>b.d<200&&b.path);const circ=(x,z,h,kind)=>{if(kind==='ped')return[[x,z,0.45]];const c=Math.cos(h),sn=-Math.sin(h),k=kind==='moto'?0.8:1.5,r=kind==='moto'?0.6:1.05;return[[x+c*k,z+sn*k,r],[x,z,r],[x-c*k,z-sn*k,r]]};
+ const near=objs.filter(b=>b.d<200&&b.path);const circ=(x,z,h,kind,sp)=>{if(kind==='ped')return[[x,z,0.45]];const L=sp&&sp.L||(kind==='moto'?2.3:4.8),W=sp&&sp.W||(kind==='moto'?0.9:1.9),r=W/2+0.05,k=Math.max(0,L/2-r),c=Math.cos(h),sn=-Math.sin(h);return[[x+c*k,z+sn*k,r],[x+c*k/2,z+sn*k/2,r],[x,z,r],[x-c*k/2,z-sn*k/2,r],[x-c*k,z-sn*k,r]]}; /* 5 circles spanning the real length */
  let best=null;const fx0=Math.cos(e.head),fz0=-Math.sin(e.head);
  /* oncoming lane is only usable when clear for 6 s of closing distance (+30 m); every oncoming road user counts */
  const oncomingClear=!objs.some(b=>{const dx=b.x-e.x,dz=b.z-e.z,f=dx*fx0+dz*fz0;if(f<-6)return false;const vr=(b.vx||0)*fx0+(b.vz||0)*fz0;return (b.o.kind==='oncoming'||vr<-1)&&f<(v0+Math.max(0,-vr))*6+30});
@@ -3241,8 +3241,8 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
   if(base+off<1.05&&!oncomingClear)continue; /* never cross the centre line into oncoming traffic */let s=e.s,v=v0,o=cur;
   const TR=trajs[acc];for(let i=1;i<=20;i++){const t=i*0.2,Q=TR[i];if(!Q)break;v=Q.v;o+=(off-o)*Math.min(1,0.2/1.1);
    const p=[Q.x+Q.rx*o,Q.z+Q.rz*o,Q.dx,Q.dz],h=Q.h;if(i%3===0){const rq2=roadQAt(p[0],p[1]);if(rq2&&!rq2.inside(p[0],p[1],-1.15))cost+=400} /* line leaves the carriageway */
-   const E=circ(p[0],p[1],h,'car'),grow=0.15+t*0.08+v*0.008,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
-   for(const b of near){const q=b.path[i-1];if(!q)continue;if(Math.abs(q[0]-p[0])>9||Math.abs(q[1]-p[1])>9)continue;const bh=Math.atan2(-(b.vz||0),(b.vx||0.001)),O=circ(q[0],q[1],Math.hypot(b.vx,b.vz)>0.5?bh:b.h,b.kind);
+   const E=circ(p[0],p[1],h,'car',G.spec),grow=0.15+t*0.08+v*0.008,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
+   for(const b of near){const q=b.path[i-1];if(!q)continue;if(Math.abs(q[0]-p[0])>9||Math.abs(q[1]-p[1])>9)continue;const bh=Math.atan2(-(b.vz||0),(b.vx||0.001)),O=circ(q[0],q[1],Math.hypot(b.vx,b.vz)>0.5?bh:b.h,b.kind,b.o.spec||(b.kind==='cop'?COP_SPEC:null));
     let md=1e9;for(const a of E)for(const c of O)md=Math.min(md,Math.hypot(a[0]-c[0],a[1]-c[1])-a[2]-c[2]);if(b.kind==='ped')md-=Math.min(2.2,0.4+t*0.7); /* a pedestrian can turn any way: plan around its whole reachable disc */
     if(md<grow){/* unavoidable-harm ordering: pedestrians first, then heavier vehicles; scaled by predicted impact speed and how soon */
      const dv=Math.hypot(evx-(b.vx||0),evz-(b.vz||0)),harm=b.kind==='ped'?60:1+b.m/1200;cost+=(300+dv*dv*4)*harm*(4.5-t);risk=1;why=why||`${b.kind==='ped'?'Pedestrian':b.kind==='cop'?'Police':b.m>3000?'Heavy vehicle':'Vehicle'} #${b.id} in ${t.toFixed(1)} s`}else if(md<grow+1.2){const dv=Math.hypot(evx-(b.vx||0),evz-(b.vz||0));cost+=(grow+1.2-md)*(b.kind==='ped'?2.5:1.5)*(v>2?1:0.3)*(1+dv/8);risk=risk||0.5;why=why||`Tight gap with #${b.id}`}}}
