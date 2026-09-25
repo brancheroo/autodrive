@@ -141,7 +141,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   if(!/^https?:/.test(url)||/api\.open-meteo\.com\/v1\/forecast/.test(url)||(opt.method&&!/^(GET|POST)$/i.test(opt.method)))return raw(input,opt);
   const k=(opt.method||'GET')+' '+url+' '+(typeof opt.body==='string'?opt.body:'');const c=await get(k);
   if(c){NETCACHE.hits++;return new Response(c.b,{status:200,headers:{'Content-Type':c.t}})}
-  const r=await raw(input,opt);if(r.ok){NETCACHE.misses++;r.clone().text().then(b=>put(k,{b,t:r.headers.get('Content-Type')||'text/plain'}))}return r}})();
+  const r=await raw(input,opt);if(r.ok){NETCACHE.misses++;r.clone().text().then(b=>put(k,{b,t:r.headers.get('Content-Type')||'text/plain'})).catch(()=>{})}return r}})();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
 <script>
