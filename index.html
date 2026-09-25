@@ -2707,7 +2707,7 @@ function step(){
  for(const T of TILES.values()){for(const l of T.lamps)l.material=G.dark?MAT.lampOn:MAT.lampOff;if(T.adFaces)for(const m of T.adFaces)m.emissiveIntensity=G.dark?0.55:0;
   if(T.sigInst){for(const s of T.signals)for(const h of s.heads){const st=signalState(s.id,h.axis,G.simTime);h.idx.forEach((ix,i)=>T.sigInst.setColorAt(ix,_sigC.set('RYG'[i]===st?[0xff2a1a,0xffb300,0x22ff66][i]:0x222222)))}T.sigInst.instanceColor.needsUpdate=true}}
  // streaming tiles, spawning
- tileT-=rdt;if(tileT<=0){tileT=0.5;manageTerrain();manageTiles();manageSat();manageFF()}
+ tileT-=rdt;if(tileT<=0){tileT=0.5;manageTerrain();manageTiles();manageSat();manageFF();if((G._rcc=(G._rcc||0)+1)%4===0)roadClearCheck()}
  spawnT-=rdt;if(spawnT<=0){spawnT=0.4;manageTraffic()}
  // camera
  updateCamera(rdt);if(CRASH.shake>0){const k=CRASH.shake;camera.position.x+=(Math.random()-0.5)*k*0.35;camera.position.y+=(Math.random()-0.5)*k*0.25;camera.rotation.z+=(Math.random()-0.5)*k*0.03} // impact shake
