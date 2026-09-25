@@ -193,6 +193,9 @@ const CARS=[
 {id:'ezpt',name:'MKAY e-ZPT',sub:'Electric armored carrier',style:'suv',L:6.10,W:2.55,H:2.45,wb:3.60,wr:0.58,hp:470,z60:11.5,top:68,range:'~185 mi (est.)',weight:'~33,000 lb (combat)',drive:'Twin motor 4×4 EV · central tire inflation',level:'SAE Level 4 · convoy autonomy (fictional)',
  tech:'Parody of a Turkish electric 4×4 APC. Monocoque V-hull with STANAG-level armor, run-flat tires and a roof weapon station (unarmed in Autodrive). At 15 tonnes it shrugs off PITs, and in chase mode it rams roadblocks instead of detouring.',
  colors:[['Olive Drab','#4b5320'],['Desert Tan','#b59a6a'],['Urban Grey','#5d6266'],['Gendarmerie Blue','#27364f']],dash:'rivian',wheel:'round',sensors:'none',sound:'ev',driver:true,apc:true},
+{id:'hyper',name:'Voltanza Fulmine XR',sub:'All-electric hypercar',style:'coupe',L:4.78,W:2.06,H:1.12,wb:2.75,wr:0.36,hp:2100,z60:1.7,top:300,range:'~310 mi (est.)',weight:'4,300 lb',drive:'Quad motor torque-vectoring AWD · 1,000 V',level:'SAE Level 4 · track-capable autonomy (fictional)',
+ tech:'An invented 2,100 hp quad-motor hypercar. There is no steering wheel. Instead, a wall of active screens shows telemetry, a g-meter, battery temps, mirror cams and the route. An active rear wing flattens for top speed, tilts up in corners and flips vertical as an airbrake. In Express or Chase mode it runs flat out to 300 mph where the road allows.',
+ colors:[['Toxic Lime','#9dff00'],['Hyper Magenta','#ff1fb4'],['Volt Orange','#ff6a00'],['Ultraviolet','#6b2cff'],['Cyber Teal','#00e5d4'],['Acid Yellow','#f4ff2e']],dash:'hyper',wheel:'none',sensors:'none',sound:'ev',driver:true,hyper:true},
 ];
 
 // ============================================================ UTIL
@@ -1179,6 +1182,7 @@ const MODEL={
  'escalade-iq':{epa:460,shape:{nose:.55,hood:.64,roofR:.12,deck:.74,roofBlack:true},chromeBelt:true,band:true,grille:'cadillac',drl:'cadillac',tailL:'cadillac',rim:{n:6,style:'split',col:0xc0c3c6},rails:true,int:{seat:0x141414,mat:'leather',trim:'walnut',dash:0x18181a}},
  'mache':{epa:260,shape:{roofR:.22,roofBlack:true},grille:'ford',drl:'ford',tailL:'tri',rim:{n:5,style:'split',col:0x3a3c40},cal:0x777777,cladding:true,int:{seat:0x1a1a1a,mat:'leather',trim:'none',dash:0x1c1d20}},
  'lucid':{epa:512,shape:{roof:'glass',nose:.42,hood:.56},grille:'none',drl:'lucid',tailL:'bar',rim:{n:0,style:'aero',col:0x3a3c40},int:{seat:0xd8cfc0,mat:'leather',trim:'walnut',dash:0x2d2a26}},
+ 'hyper':{epa:310,shape:{clr:.1,nose:.36,hood:.5,cowl:.62,roofF:.55,roofR:.38,tail:.0,deck:.6,belt:.66,tum:.62,roof:'glass',endR:.4,ft:.14,rt:.1},rocker:true,grille:'none',drl:'bar',tailL:'bar',rim:{n:10,style:'aero',col:0x111111},cal:0xff2a2a,int:{seat:0x111111,mat:'leather',trim:'carbon',dash:0x0b0b0e}},
  'ezpt':{epa:185,shape:{box:.62,clr:.36,nose:.42,hood:.55,cowl:.64,roofF:.72,roofR:.04,tail:.0,deck:.9,belt:.68,tum:.95,endR:.05,ft:.02,rt:.01,roof:'paint'},grille:'none',drl:'none',tailL:'none',rim:{n:8,style:'disc',col:0x2b2d2a},cladding:true,int:{seat:0x3a3d33,mat:'cloth',trim:'none',dash:0x22241f}},
  'r1s':{epa:410,grille:'none',drl:'rivian',tailL:'bar',rim:{n:6,style:'spoke',col:0x3a3c40},rails:true,cladding:true,int:{seat:0x5a3a26,mat:'leather',trim:'walnut',dash:0x2a2622}},
 };
@@ -1367,6 +1371,12 @@ function buildCar(spec,colorHex,opts={}){
  else if(spec.sensors==='mb'||spec.sensors==='lucid'){onEnd(true,0,sh.clr+0.3,0.3,0.05,sens,0.05);
   if(spec.sensors==='mb'){const tq=new THREE.MeshBasicMaterial({color:0x10d8c8});g.userData.turq=[];for(const s of [1,-1]){const m=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.03,0.04),tq);const mu=sh.cowl-0.035;m.position.set(P.xOf(mu)+0.02,P.belt(mu)+0.08,s*(P.half(mu)*0.95+0.2));g.add(m);g.userData.turq.push(m)}}}
  else if(spec.sensors==='tesla'){const c=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.05,0.18),gloss);c.position.set(P.xOf(sh.roofF-0.01),H-0.05,0);g.add(c)}
+ if(spec.hyper){const cf=new THREE.MeshStandardMaterial({color:0x111114,roughness:0.3,metalness:0.4}),w=new THREE.Group();w.position.set(-L/2+0.32,H*0.93,0);g.add(w);
+  for(const z of [0.55,-0.55]){const up=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.42,0.04),cf);up.position.set(0.05,-0.14,z);up.rotation.z=0.25;w.add(up)}
+  const piv=new THREE.Group();piv.position.y=0.1;w.add(piv);const blade=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.035,W*0.94),cf);blade.position.x=-0.12;piv.add(blade);
+  for(const z of [1,-1]){const ep=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.26,0.02),cf);ep.position.set(-0.12,0.02,z*W*0.47);piv.add(ep)}
+  const acc=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.012,W*0.9),new THREE.MeshBasicMaterial({color:0xff2a2a}));acc.position.set(-0.12,0.022,0);piv.add(acc);g.userData.wing=piv;
+  const dif=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.12,W*0.85),cf);dif.position.set(-L/2+0.2,0.2,0);dif.rotation.z=-0.35;g.add(dif);const spl=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.03,W*0.95),cf);spl.position.set(L/2-0.1,0.12,0);g.add(spl)}
  if(spec.apc){const arm=new THREE.MeshStandardMaterial({color:new THREE.Color(colorHex).multiplyScalar(0.92),roughness:0.85,metalness:0.2}),dk=new THREE.MeshStandardMaterial({color:0x1d1f1b,roughness:0.9}),gl=new THREE.MeshStandardMaterial({color:0x2a3a3a,roughness:0.15,metalness:0.4});
   const B=(w,h,d,m,x,y,z,rz=0,ry=0)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);b.rotation.z=rz;b.rotation.y=ry;g.add(b);return b};
   B(0.9,0.12,W*0.96,arm,L/2-0.25,H*0.5,0,-0.9);B(0.5,0.1,W*0.9,arm,L/2-0.05,H*0.28,0,0.6); // sloped glacis + lower V plate
@@ -1449,6 +1459,7 @@ function buildInterior(g,spec){
  else if(d==='ford'){S(0.25,0.07,200,'cluster-ford',0.66,0.23,0);S(0.21,0.31,440,'center-ford',0.54,0.28,mid*0.95)}
  else if(d==='lucid'){S(0.86,0.12,280,'lucid',0.66,0.19,0.25);S(0.3,0.11,260,'pilot',0.5,0.37,mid*0.95)}
  else if(d==='yugo'){S(0.3,0.1,300,'cluster-yugo',0.66,0.23,0);S(0.18,0.05,220,'radio-yugo',0.58,0.3,mid*0.95)}
+ else if(d==='hyper'){S(W*0.78,0.13,300,'hyper-main',0.66,0.2,0);S(0.2,0.14,260,'hyper-g',0.6,0.26,-0.42);S(0.2,0.14,260,'hyper-bat',0.6,0.26,0.42+mid*0.2);S(0.24,0.16,300,'tesla',0.42,0.42,mid*0.9);S(0.16,0.09,220,'hyper-mirL',0.62,0.02,-0.66);S(0.16,0.09,220,'hyper-mirR',0.62,0.02,0.66+mid*0.3);S(0.3,0.08,260,'hyper-rear',0.7,-0.18,mid*0.5);for(const sd of [-1,1])S(0.34,0.12,260,'hyper-door',0.15,0.3,sd*0.62)}
  else if(d==='rivian'){S(0.29,0.11,260,'cluster-rivian',0.66,0.23,0);S(0.38,0.21,420,'center-rivian',0.6,0.21,mid*0.95)}
 }
 
@@ -1845,6 +1856,12 @@ function drawScreenBase(S){
  else if(k==='cluster-waymo'){x.fillStyle='#07090c';x.fillRect(0,0,W,H);const t={...TH,fg:'#eee',dim:'#667',acc:'#29d3c3'};drawGauge(x,W*0.2,H*0.55,H*0.38,game.ego.v*MPH,140,t,'mph');x.fillStyle='#29d3c3';x.font=`bold ${H*0.13}px system-ui`;x.fillText('WAYFRO DRIVER',W*0.42,H*0.25);x.fillStyle='#aaa';x.font=`${H*0.1}px system-ui`;x.fillText('Autonomous · '+game.statusShort,W*0.42,H*0.45);sigIcons(x,W*0.42,H*0.7,H*0.12);drawGauge(x,W*0.85,H*0.55,H*0.3,game.soc*100,100,t,'%')}
  else if(k==='waymo'){x.fillStyle='#0a0d10';x.fillRect(0,0,W,H);const t={...TH,bg:'#0a0d10',road:'#23292f',ego:'#29d3c3',car:'#6f7a86',fg:'#eee',dim:'#778'};drawViz(x,0,0,W*0.55,H,t);x.fillStyle='#fff';x.font=`bold ${H*0.09}px system-ui`;x.fillText('Wayfro',W*0.58,H*0.14);x.font=`${H*0.07}px system-ui`;x.fillStyle='#aab';x.fillText('Heading to',W*0.58,H*0.3);x.fillStyle='#fff';x.fillText(game.destShort.slice(0,20),W*0.58,H*0.4);x.fillStyle='#29d3c3';x.font=`bold ${H*0.11}px system-ui`;x.fillText(game.etaStr,W*0.58,H*0.58);x.fillStyle='#aab';x.font=`${H*0.06}px system-ui`;x.fillText(fmtDist(game.route.total-game.ego.s)+' left',W*0.58,H*0.7);x.fillStyle='#29d3c3';x.fillRect(W*0.58,H*0.82,W*0.38*(game.ego.s/game.route.total),H*0.03);x.fillStyle='#333';x.fillRect(W*0.58+W*0.38*(game.ego.s/game.route.total),H*0.82,W*0.38*(1-game.ego.s/game.route.total),H*0.03)}
  else if(k==='zoox'){x.fillStyle='#101416';x.fillRect(0,0,W,H);x.fillStyle='#fff';x.font=`bold ${H*0.16}px system-ui`;x.fillText('zooks',W*0.03,H*0.25);x.font=`${H*0.1}px system-ui`;x.fillText('To '+game.destShort.slice(0,26),W*0.03,H*0.5);x.fillStyle='#8be0a2';x.fillText('Arriving '+game.etaStr+' · '+Math.round(game.ego.v*MPH)+' mph',W*0.03,H*0.72);drawViz(x,W*0.62,0,W*0.38,H,{...TH,bg:'#101416',road:'#27303a',ego:'#8be0a2',fg:'#fff'})}
+ else if(k.startsWith('hyper')){const G=game,e=G.ego,v=e.v*2.237,t=performance.now()/1000,neon=['#00e5ff','#ff1fb4','#9dff00','#ff6a00'][Math.floor(t/6)%4];x.fillStyle='#030307';x.fillRect(0,0,W,H);x.strokeStyle=neon;x.lineWidth=H*0.02;x.strokeRect(H*0.02,H*0.02,W-H*0.04,H-H*0.04);x.textAlign='center';x.textBaseline='middle';x.fillStyle='#fff';
+  if(k==='hyper-main'){const f=Math.min(1,v/300);const gr=x.createLinearGradient(0,0,W,0);gr.addColorStop(0,'#00e5ff');gr.addColorStop(0.6,'#ff1fb4');gr.addColorStop(1,'#ff2a2a');x.fillStyle='#15151c';x.fillRect(W*0.05,H*0.72,W*0.9,H*0.12);x.fillStyle=gr;x.fillRect(W*0.05,H*0.72,W*0.9*f,H*0.12);x.fillStyle='#fff';x.font=`800 ${H*0.5}px system-ui`;x.fillText(Math.round(v),W*0.5,H*0.36);x.font=`600 ${H*0.12}px system-ui`;x.fillStyle=neon;x.fillText('MPH · '+(fastOn()?'OVERDRIVE':'ROAD')+' · '+Math.round(Math.max(0,e.acc||0)/9.81*100)/100+' g',W*0.5,H*0.62);x.textAlign='left';x.fillStyle='#aaa';x.fillText('⚡ '+Math.round(Math.max(0,(e.acc||0))*1950*Math.max(e.v,1)/745.7)+' hp',W*0.07,H*0.12);x.textAlign='right';x.fillText(Math.round(G.soc*100)+'% · '+(G.limitMph||'')+' limit',W*0.93,H*0.12)}
+  else if(k==='hyper-g'){const ax=clamp((e.acc||0)/12,-1,1),ay=clamp(((G._lat||0))/12,-1,1),cx=W/2,cy=H/2,R=H*0.4;x.strokeStyle='#334';x.lineWidth=2;for(const r of [1,0.66,0.33]){x.beginPath();x.arc(cx,cy,R*r,0,7);x.stroke()}x.fillStyle=neon;x.beginPath();x.arc(cx+ay*R,cy-ax*R,H*0.06,0,7);x.fill();x.font=`700 ${H*0.12}px system-ui`;x.fillStyle='#fff';x.fillText('G',W*0.1,H*0.12)}
+  else if(k==='hyper-bat'){for(let i=0;i<16;i++){const tc=28+Math.max(0,e.acc||0)*3+Math.sin(t+i)*2+v/20;x.fillStyle=`hsl(${Math.max(0,200-tc*3)},90%,55%)`;x.fillRect(W*0.08+(i%8)*W*0.105,H*0.3+Math.floor(i/8)*H*0.3,W*0.09,H*0.24)}x.fillStyle='#fff';x.font=`700 ${H*0.13}px system-ui`;x.fillText('PACK '+Math.round(G.soc*100)+'% · 1000 V',W/2,H*0.14);x.fillText('regen '+Math.round(Math.max(0,-(e.acc||0))*50)+' kW',W/2,H*0.9)}
+  else if(k==='hyper-mirL'||k==='hyper-mirR'||k==='hyper-rear'){const sky=G.dark?'#0a1020':'#6f8fb3';x.fillStyle=sky;x.fillRect(H*0.04,H*0.04,W-H*0.08,H*0.45);x.fillStyle=G.dark?'#15171c':'#55585e';x.fillRect(H*0.04,H*0.49,W-H*0.08,H*0.47);x.strokeStyle='#ffd400';x.lineWidth=H*0.03;x.setLineDash([H*0.12,H*0.12]);x.lineDashOffset=-t*H*(v/20+0.5);x.beginPath();x.moveTo(W*0.5,H*0.5);x.lineTo(k==='hyper-mirL'?W*0.8:k==='hyper-mirR'?W*0.2:W*0.5,H*0.96);x.stroke();x.setLineDash([]);x.fillStyle=neon;x.font=`700 ${H*0.16}px system-ui`;x.fillText(k==='hyper-rear'?'REAR CAM':'MIRROR',W/2,H*0.2)}
+  else if(k==='hyper-door'){const bars=24;for(let i=0;i<bars;i++){const h=(0.2+0.8*Math.abs(Math.sin(t*3+i*0.7)))*H*0.6*Math.min(1,0.25+v/120);x.fillStyle=i%2?neon:'#ffffff';x.fillRect(W*0.05+i*W*0.9/bars,H*0.85-h,W*0.9/bars*0.6,h)}x.fillStyle='#fff';x.font=`700 ${H*0.14}px system-ui`;x.fillText('FULMINE XR',W/2,H*0.14)}}
  else if(k==='cluster-yugo'){x.fillStyle='#0b0b0b';x.fillRect(0,0,W,H);
   const an=(cx,cy,R,val,max,step,lbl,col)=>{x.fillStyle='#050505';x.beginPath();x.arc(cx,cy,R*1.05,0,7);x.fill();x.strokeStyle='#888';x.lineWidth=R*0.03;x.stroke();
    for(let v=0;v<=max+1e-6;v+=step/2){const a=Math.PI*0.8+Math.PI*1.4*v/max,maj=Math.abs(v/step-Math.round(v/step))<1e-6;x.strokeStyle='#e8e8e0';x.lineWidth=maj?R*0.035:R*0.018;x.beginPath();x.moveTo(cx+Math.cos(a)*R*(maj?0.8:0.87),cy+Math.sin(a)*R*(maj?0.8:0.87));x.lineTo(cx+Math.cos(a)*R*0.95,cy+Math.sin(a)*R*0.95);x.stroke();
@@ -2099,6 +2116,7 @@ const ENERGY={
  'escalade-iq':{epa:460,kwh:200,kg:4140,cda:1.12,crr:0.010,dc:350,port:'NACS'},
  'mache':{epa:260,kwh:91,kg:2230,cda:0.70,crr:0.009,dc:150,port:'NACS'},
  'lucid':{epa:512,kwh:112,kg:2375,cda:0.45,crr:0.008,dc:300,port:'NACS'},
+ 'hyper':{epa:310,kwh:120,kg:1950,cda:0.55,crr:0.008,dc:500,port:'CCS'},
  'ezpt':{epa:185,kwh:220,kg:15000,cda:3.4,crr:0.016,dc:150,port:'CCS'},
  'r1s':{epa:410,kwh:140,kg:3150,cda:0.98,crr:0.011,dc:220,port:'NACS'},
 };
@@ -2233,11 +2251,11 @@ function plan(a,dt,lead,isEgo){
  const [,,idx]=routeLLnh(a.s);
  const lim=speedLimitAt(idx)/MPH;
  target=Math.min(lim*WX.speedF,WX.cap/MPH);reason=WX.key==='clear'?'Cruising':'Cruising · '+WX.label.toLowerCase()+' mode';if(isEgo)game.limitMph=speedLimitAt(idx);
- const chase=isEgo&&fastOn();if(chase){target=Math.max(lim*2.4+12,38)*Math.min(1,WX.speedF+0.25);reason=CHASE.on?'CHASE · flat out':'EXPRESS · flat out'} // chase: well over the limit, ignores lights & signs (never other cars)
+ const chase=isEgo&&fastOn();if(chase){target=Math.max(lim*2.4+12,38)*Math.min(1,WX.speedF+0.25);if(a.spec.hyper)target=Math.max(target,lim>24?134:lim*3.4);reason=CHASE.on?'CHASE · flat out':'EXPRESS · flat out'} // chase: well over the limit, ignores lights & signs (never other cars)
  const brake=WX.brake*(isEgo&&fastOn()?1.8:1);
  const allow=(vc,d)=>Math.sqrt(Math.max(0,vc*vc+2*brake*Math.max(0,d)));
  // curvature
- for(let d=5;d<look;d+=5){const p0=routeXZ(a.s+d-5,0),p1=routeXZ(a.s+d+5,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh<0.02)continue;const Rr=10/dh,vc=Math.max(3.0,Math.sqrt(WX.latA*(chase?1.9:1)*Rr));const v=allow(vc,d-4);if(v<target){target=v;reason=vc<8?'Slowing for turn':'Slowing for curve'}}
+ for(let d=5;d<look;d+=5){const p0=routeXZ(a.s+d-5,0),p1=routeXZ(a.s+d+5,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh<0.02)continue;const Rr=10/dh,vc=Math.max(3.0,Math.sqrt(WX.latA*(chase?(a.spec.hyper&&isEgo?2.8:1.9):1)*Rr));const v=allow(vc,d-4);if(v<target){target=v;reason=vc<8?'Slowing for turn':'Slowing for curve'}}
  // controls along route nodes
  const up=[];
  for(let i=idx+1;i<R.nodes.length&&R.cum[i]-a.s<look&&!chase;i++){const c=CONTROLS.get(R.nodes[i]);if(!c)continue;const d=R.cum[i]-a.s;
@@ -2262,7 +2280,7 @@ function plan(a,dt,lead,isEgo){
 // acceleration
  const top=(typeof a.spec.top==='number'?a.spec.top:85)/MPH;target=Math.min(target,top);
  const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){if(!chase)target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
- const amax=Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc))*(chase?2.3:1):1.8,WX.mu*9.81*(chase?0.7:0.35)); // traction-limited on wet/snow/ice
+ const amax=isEgo&&a.spec.hyper?Math.min(26.8/1.7*(chase?1:0.35)*DP.acc,WX.mu*9.81*(chase?1.6:0.6)):Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc))*(chase?2.3:1):1.8,WX.mu*9.81*(chase?0.7:0.35)); // traction-limited on wet/snow/ice
  let acc=target>a.v?amax*(1-Math.pow(a.v/Math.max(target,0.1),4)):clamp((target-a.v)*1.6,-6.5,0);
  if(isEgo&&a.spec.plim&&acc>0){const E=ES(),vv=Math.max(a.v,2.5),Pw=a.spec.hp*745.7*0.85,drag=0.5*1.2*E.cda*vv*vv+E.crr*E.kg*9.81,gr=(a.grade||0)*E.kg*9.81;acc=Math.min(acc,Math.max(0,(Pw/vv-drag-gr)/E.kg),2.6)} // power-limited: slow 0–60, runs out of breath near 86 mph
  if(target>a.v&&target-a.v<0.2)acc=0;
@@ -2676,6 +2694,7 @@ function step(){
  if(!towAnim)spinWheels(e,rdt*G.scale,e.steer);
  if(wheelMesh)wheelMesh.rotation.x=-e.steer*14/ (spec.wheel==='yoke'?1.4:1);
  if(e.mesh.userData.lidar)e.mesh.userData.lidar.rotation.y+=rdt*20;
+ if(e.mesh.userData.wing){const wg=e.mesh.userData.wing,acc=e.acc||0,ang=acc<-4?-1.25:e.v>60?-0.03:/curve|turn/i.test(G.status||'')?-0.38:-0.16;wg.rotation.z=lerp(wg.rotation.z,ang,Math.min(1,rdt*4))} /* active wing: flat at speed, steep in corners, vertical airbrake */
  if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);updateExpress(Math.min(0.1,rdt*G.scale));stuckWatch(rdt*G.scale);updateCollisions(Math.min(0.05,rdt*G.scale));damageSmoke(rdt*G.scale);syncMusicPause();
  if(e.mesh.userData.wipers){const sp=WX.rain>0.6||WX.snow?2.6:WX.rain>0?1.4:0;G.wipeT=(G.wipeT||0)+rdt*sp;const ang=sp?(1-Math.cos(G.wipeT*Math.PI))/2*1.9:0;G.wipeAng=ang;e.mesh.userData.wipers.forEach(w=>w.rotation.y=ang)}
  // body pitch on accel
