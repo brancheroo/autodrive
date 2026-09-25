@@ -1952,7 +1952,8 @@ function roundBox(w,h,d,r=0.02,seg=3){r=Math.min(r,w/2-1e-4,h/2-1e-4,d/2-1e-4);i
 // ---- Harley-style cruiser + bearded, leather-clad rider (traffic agent; same interface as buildCar: +x forward, wheels, lights)
 const HARLEY_SPEC={style:'harley',L:2.45,W:0.95,H:1.75,wb:1.62,wr:0.34,top:85};
 const HCOLS=['#111111','#7a0f14','#0d2a52','#3b3b3b','#c77d12','#1f3d2b','#5a1a5e'];
-function pickSpec(){const r=Math.random();if(r<0.06)return DUALIE_SPEC;return r<0.18?HARLEY_SPEC:TRAFFIC_SPECS[Math.floor(Math.random()*TRAFFIC_SPECS.length)]}
+// 15% of traffic is other self-driving cars: the same models the rider can pick (not the rider's own, not the armored carrier)
+function pickSpec(){if(Math.random()<0.15){const pool=CARS.filter(c=>!c.apc&&(!game||!game.spec||c.id!==game.spec.id));const c=pool[Math.floor(Math.random()*pool.length)];return Object.assign({},c,{av:true})}const r=Math.random();if(r<0.06)return DUALIE_SPEC;return r<0.18?HARLEY_SPEC:TRAFFIC_SPECS[Math.floor(Math.random()*TRAFFIC_SPECS.length)]}
 const HMAT={};function hm(k,o){return HMAT[k]||(HMAT[k]=new THREE.MeshStandardMaterial(o))}
 function buildHarley(){const g=new THREE.Group(),R=Math.random,paint=HCOLS[Math.floor(R()*HCOLS.length)];
  const chrome=hm('chrome',{color:0xe8e8ec,metalness:1,roughness:0.12}),black=hm('black',{color:0x151515,roughness:0.5,metalness:0.3}),rub=hm('rub',{color:0x0c0c0c,roughness:0.9}),
@@ -2005,7 +2006,23 @@ function buildHarley(){const g=new THREE.Group(),R=Math.random,paint=HCOLS[Math.
  add(new THREE.TorusGeometry(0.05,0.018,6,12,Math.PI),beard,0.125,-0.04,0,Math.PI/2,0,Math.PI/2,head); // handlebar moustache
  if(R()<0.5)add(new THREE.CylinderGeometry(0.02,0.02,0.1,6),beard,0.13,-0.06-bl*0.9,0,0,0,0,head); // braid bead
  g.userData={wheels,lights:{head:lampM,tail:tailM,sigL,sigR},harley:true};return g}
-function newAgent(spec,color,s,v,dir=1){const mesh=spec.style==='harley'?buildHarley():spec.style==='dualie'?buildDualie():buildCar(spec,color);scene.add(mesh);return{mesh,spec,s,v,dir,x:0,z:0,head:0,wheelA:0,stopT:0,handled:new Set(),kind:'route'}}
+// human drivers: a seated figure (varied skin, hair, shirt) behind the wheel of every ordinary car. Self-driving cars show the truth:
+// robotaxis are empty or carry a back-seat rider; supervised L2/L3 cars have a driver with hands off the wheel, looking down at a phone
+const DRV_SKIN=[0xf1c9a5,0xe0ac69,0xc68642,0x8d5524,0x5c3a21,0xffdbac],DRV_HAIR=[0x1a1410,0x3b2a1a,0x6b4a2b,0xb8904f,0x9a9a9a,0xd8c28a,0x8a2a1a],DRV_SHIRT=[0x2a4a8a,0xb03030,0x2d6a3a,0xe6e6e6,0x222222,0xd0a030,0x6a3a8a,0x3a8a9a];
+function buildDriver(spec,mode){const pk=a=>a[Math.floor(Math.random()*a.length)],skin=new THREE.MeshStandardMaterial({color:pk(DRV_SKIN),roughness:0.7}),hair=new THREE.MeshStandardMaterial({color:pk(DRV_HAIR),roughness:0.9}),shirt=new THREE.MeshStandardMaterial({color:pk(DRV_SHIRT),roughness:0.85});
+ const g=new THREE.Group(),e=eyePos(spec),z=mode==='rider'?spec.W*0.2:-spec.W*0.2,x=mode==='rider'?e.x-0.95:e.x;g.position.set(x,e.y,z);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(0.105,14,10),skin);head.scale.set(1,1.12,0.95);g.add(head);
+ const hr=new THREE.Mesh(new THREE.SphereGeometry(0.112,14,8,0,Math.PI*2,0,Math.PI*(0.35+Math.random()*0.25)),hair);hr.position.set(-0.012,0.02,0);g.add(hr);
+ const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.05,0.1,8),skin);neck.position.y=-0.14;g.add(neck);
+ const torso=new THREE.Mesh(new THREE.CapsuleGeometry?new THREE.CapsuleGeometry(0.15,0.3,4,10):new THREE.CylinderGeometry(0.16,0.15,0.5,10),shirt);torso.position.set(-0.04,-0.42,0);torso.scale.set(0.8,1,1.15);g.add(torso);
+ const arms=[];for(const s of [1,-1]){const up=new THREE.Group();up.position.set(-0.02,-0.26,s*0.19);const a=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.04,0.3,8),shirt);a.position.y=-0.15;up.add(a);
+  const fo=new THREE.Group();fo.position.y=-0.3;up.add(fo);const f=new THREE.Mesh(new THREE.CylinderGeometry(0.038,0.034,0.28,8),skin);f.position.y=-0.14;fo.add(f);const h=new THREE.Mesh(new THREE.SphereGeometry(0.045,8,6),skin);h.position.y=-0.3;fo.add(h);
+  if(mode==='drive'){up.rotation.z=-1.0;fo.rotation.z=-0.55;up.rotation.x=s*0.25}else{up.rotation.z=-0.35;fo.rotation.z=-1.35;up.rotation.x=s*0.1}g.add(up);arms.push(up)}
+ if(mode==='phone'){head.rotation.z=-0.45;hr.rotation.z=-0.45;const ph=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.012,0.15),new THREE.MeshBasicMaterial({color:0x9fd8ff}));ph.position.set(0.3,-0.5,0);g.add(ph)}
+ g.userData.head=head;g.userData.mode=mode;g.userData.t=Math.random()*10;return g}
+function newAgent(spec,color,s,v,dir=1){if(spec.av&&spec.colors)color=spec.colors[Math.floor(Math.random()*spec.colors.length)][1];const mesh=spec.style==='harley'?buildHarley():spec.style==='dualie'?buildDualie():buildCar(spec,color);
+ if(spec.style!=='harley'&&spec.style!=='dualie'){const robo=spec.av&&(spec.driver===false||/rider-only|Level 4/.test(spec.level||''));const mode=!spec.av?'drive':robo?(Math.random()<0.55?'rider':null):(Math.random()<0.6?'phone':'hands');
+  if(mode){const d=buildDriver(spec,mode==='hands'?'phone':mode);if(mode==='hands'){d.children.forEach(c=>{if(c.isMesh&&c.geometry.type==='BoxGeometry')c.visible=false});d.userData.head.rotation.z=0}mesh.add(d);mesh.userData.driver=d}}scene.add(mesh);return{mesh,spec,s,v,dir,x:0,z:0,head:0,wheelA:0,stopT:0,handled:new Set(),kind:'route',av:!!spec.av}}
 const TRAFFIC_SPECS=[{style:'sedan',L:4.8,W:1.85,H:1.45,wb:2.8,wr:0.33},{style:'cross',L:4.6,W:1.86,H:1.65,wb:2.7,wr:0.35},{style:'suv',L:5.2,W:2.0,H:1.85,wb:3.0,wr:0.38},{style:'van',L:5.1,W:2.0,H:1.95,wb:3.0,wr:0.36},{style:'sedan',L:4.5,W:1.78,H:1.44,wb:2.65,wr:0.32},{style:'suv',L:5.9,W:2.03,H:1.9,wb:3.7,wr:0.4}];
 const TCOLS=['#e8e8e8','#111','#6d7176','#9ea3a8','#20355e','#7d1111','#f2f2f2','#2d2f33','#4b5a47','#a38c6b','#153a7a','#b8b8b8'];
 async function geocode(q){
