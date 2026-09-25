@@ -2284,7 +2284,7 @@ function plan(a,dt,lead,isEgo){
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
  if(CHASE.on&&!(isEgo&&game.spec.apc))for(const B of CHASE.blocks)if(B.route===game.route){const d=(a.dir<0?-1:1)*(B.s-a.s)-10;if(d>-2&&d<220){const v=allow(0,d);if(v<target){target=v;reason=isEgo?'🚧 Roadblock ahead':reason}}}
- if(isEgo&&a.spec.hyper&&game.hp&&game.hp.risk===1){const v=Math.max(0,a.v+game.hp.acc*0.6);if(game.hp.acc<=0&&v<target){target=v;reason=game.status}else if(game.hp.acc>3){target=Math.max(target,a.v+6);reason=game.status}} /* planner owns speed when a conflict is forecast */
+ if(isEgo&&a.spec.hyper&&game.hp&&game.hp.risk){const v=Math.max(0,a.v+game.hp.acc*0.6);if(game.hp.acc<0||game.hp.acc===0&&game.hp.risk===1){if(v<target){target=v;reason=game.status}}else if(game.hp.acc>3&&game.hp.risk===1){target=Math.max(target,a.v+6);reason=game.status}} /* planner owns speed when a conflict is forecast */
  // end of route
  const rem=R.total-a.s;{const v=allow(0,rem-1);if(v<target){target=v;reason='Arriving'}}
  // traffic stops for the protest crowd too (both directions)
@@ -3226,12 +3226,12 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
  let best=null;
  for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';let s=e.s,v=v0,o=cur;
   for(let i=1;i<=20;i++){const t=i*0.2;v=Math.max(0,v+acc*0.2);s+=v*0.2;o+=(off-o)*Math.min(1,0.2/0.7);if(s>R.total)break;
-   const p=routeXZ(s,base+o),h=Math.atan2(-p[3],p[2]);if(i%5===0&&rq&&!rq.inside(p[0],p[1],-0.9))cost+=40; /* line leaves the carriageway */
+   const p=routeXZ(s,laneOffsetAt(routeLLnh(s)[2])+o),h=Math.atan2(-p[3],p[2]);if(i%5===0&&rq&&!rq.inside(p[0],p[1],-0.9))cost+=40; /* line leaves the carriageway */
    const E=circ(p[0],p[1],h,'car'),grow=0.35+t*0.15+v*0.02,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
    for(const b of near){const q=b.path[i-1];if(!q)continue;if(Math.abs(q[0]-p[0])>9||Math.abs(q[1]-p[1])>9)continue;const bh=Math.atan2(-(b.vz||0),(b.vx||0.001)),O=circ(q[0],q[1],Math.hypot(b.vx,b.vz)>0.5?bh:b.h,b.kind);
     let md=1e9;for(const a of E)for(const c of O)md=Math.min(md,Math.hypot(a[0]-c[0],a[1]-c[1])-a[2]-c[2]);if(b.kind==='ped')md-=Math.min(2.2,0.4+t*0.7); /* a pedestrian can turn any way: plan around its whole reachable disc */
     if(md<grow){/* unavoidable-harm ordering: pedestrians first, then heavier vehicles; scaled by predicted impact speed and how soon */
-     const dv=Math.hypot(evx-(b.vx||0),evz-(b.vz||0)),harm=b.kind==='ped'?60:1+b.m/1200;cost+=(300+dv*dv*4)*harm*(4.5-t);risk=1;why=why||`${b.kind==='ped'?'Pedestrian':b.kind==='cop'?'Police':b.m>3000?'Heavy vehicle':'Vehicle'} #${b.id} in ${t.toFixed(1)} s`}else if(md<grow+1.2){cost+=(grow+1.2-md)*(b.kind==='ped'?2.5:1.5)*(v>2?1:0.3);risk=risk||0.5;why=why||`Tight gap with #${b.id}`}}}
+     const dv=Math.hypot(evx-(b.vx||0),evz-(b.vz||0)),harm=b.kind==='ped'?60:1+b.m/1200;cost+=(300+dv*dv*4)*harm*(4.5-t);risk=1;why=why||`${b.kind==='ped'?'Pedestrian':b.kind==='cop'?'Police':b.m>3000?'Heavy vehicle':'Vehicle'} #${b.id} in ${t.toFixed(1)} s`}else if(md<grow+1.2){const dv=Math.hypot(evx-(b.vx||0),evz-(b.vz||0));cost+=(grow+1.2-md)*(b.kind==='ped'?2.5:1.5)*(v>2?1:0.3)*(1+dv/8);risk=risk||0.5;why=why||`Tight gap with #${b.id}`}}}
   cost+=Math.max(0,vWant-v)*2.2+(acc>0&&v0>=vWant?2:0);
   if(!best||cost<best.cost)best={off,acc,cost,risk,why}}
  return best}
