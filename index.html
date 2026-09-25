@@ -2288,7 +2288,8 @@ function plan(a,dt,lead,isEgo){
     now or is moving into, cap speed so the car can always stop behind it (0.3 s latency + 1.5 m buffer, 7 m/s² braking) */
  if(isEgo&&a.spec.hyper&&game.pred&&!a.loose){const h=Math.atan2(-(routeXZ(a.s+2,0)[1]-routeXZ(a.s,0)[1]),routeXZ(a.s+2,0)[0]-routeXZ(a.s,0)[0]),fx=Math.cos(h),fz=-Math.sin(h),ex=a.mesh.position.x,ez=a.mesh.position.z;
   const dOff=laneOffsetAt(idx)+(CHASE.evade||0)-(a.off||0),lo=Math.min(0,dOff),hi=Math.max(0,dOff);
-  for(const b of game.pred){const dx=b.x-ex,dz=b.z-ez,f=dx*fx+dz*fz;if(f<0.5||f>look)continue;const lat=-dx*fz+dz*fx,half=(a.spec.W+(b.kind==='ped'?0.7:b.kind==='moto'?0.9:2.0))/2+0.45;if(lat<lo-half||lat>hi+half)continue;
+  game.latHold=false;for(const b of game.pred){const dx=b.x-ex,dz=b.z-ez,f0=dx*fx+dz*fz;if(Math.abs(dOff)>0.15&&f0>-a.spec.L-2&&f0<a.spec.L+3){const l0=-dx*fz+dz*fx,hw=(a.spec.W+2)/2+0.3;if(Math.abs(l0)>hw-0.6&&l0>lo-hw&&l0<hi+hw)game.latHold=true} /* something alongside in the lane we're moving into */
+   const f=f0;if(f<0.5||f>look)continue;const lat=-dx*fz+dz*fx,half=(a.spec.W+(b.kind==='ped'?0.7:b.kind==='moto'?0.9:2.0))/2+0.45;if(lat<lo-half||lat>hi+half)continue;
    const vr=(b.vx||0)*fx+(b.vz||0)*fz,vb=Math.max(0,vr);let gap=f-a.spec.L/2-(b.kind==='ped'?0.4:2.5)-1.5-a.v*0.3;if(vr<-0.5)gap-=gap*(-vr)/(a.v-vr+0.1); /* oncoming: it closes the gap too */const v=Math.sqrt(Math.max(0,vb*vb+2*7*Math.max(0,gap)));if(v<target){target=v;reason=`🛡️ Keeping stopping distance · #${b.id}`}}}
  if(isEgo&&a.spec.hyper&&game.hp&&game.hp.risk){const v=Math.max(0,a.v+game.hp.acc*0.6);if(game.hp.acc<0||game.hp.acc===0&&game.hp.risk===1){if(v<target){target=v;reason=game.status}}else if(game.hp.acc>3&&game.hp.risk===1){target=Math.max(target,a.v+6);reason=game.status}} /* planner owns speed when a conflict is forecast */
  // end of route
@@ -3222,7 +3223,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
   b.path=path;b.ttc=null}
  if(worst)worst.b.ttc=worst.t;G.pred=objs;G.threat=worst&&worst.t<3.5?worst:null;
  G.hpT=(G.hpT||0)-dt;if(e.loose){G.hp=null}else if(G.hpT<=0){G.hpT=0.1;G.hp=hyperPlan(objs)}
- const hp=G.hp;if(hp){if(hp.off!==0||Math.abs(CHASE.evade)>0.1)G.dodgeT=0.6;CHASE.evade=lerp(CHASE.evade,hp.off,Math.min(1,dt*3.2));
+ const hp=G.hp;if(hp){if(hp.off!==0||Math.abs(CHASE.evade)>0.1)G.dodgeT=0.6;if(G.latHold){CHASE.evade=(e.off||0)-laneOffsetAt(routeLLnh(e.s)[2])}else CHASE.evade=lerp(CHASE.evade,hp.off,Math.min(1,dt*3.2));
   if(hp.risk)G.status=hp.acc<-5?`🧠 ${hp.why} · hard brake`:hp.acc<0?`🧠 ${hp.why} · easing off`:hp.off?`🧠 ${hp.why} · line ${hp.off>0?'right':'left'} ${Math.abs(hp.off).toFixed(1)} m`:`🧠 ${hp.why} · holding line`}}
 /* sampling planner: 7 lateral lines × 4 accelerations, each rolled out 3 s against every forecast; 3-circle vehicle footprints;
    cost = collision (earlier = worse) + proximity + off-road + speed loss + lane deviation + jerk; lowest cost wins */
