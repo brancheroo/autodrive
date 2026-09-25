@@ -93,7 +93,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px"><input id="dogName" value="Biscuit" maxlength="24" placeholder="Dog’s name" style="padding:7px;border-radius:8px;background:#0e141d;color:var(--text);border:1px solid var(--line)">
       <select id="dogBreed" style="padding:7px;border-radius:8px;background:#0e141d;color:var(--text);border:1px solid var(--line)"></select>
       <label style="display:flex;align-items:center;gap:6px">Coat <input type="color" id="dogCol" value="#d9b26a" style="width:44px;height:28px;border:0;background:none"></label>
-      <label style="display:flex;align-items:center;gap:6px">Weight <input type="range" id="dogLb" min="10" max="450" value="65" style="flex:1"><span id="dogLbV">65 lb</span></label></div></div>
+      <label style="display:flex;align-items:center;gap:6px">Weight <input type="range" id="dogLb" min="10" max="250" value="65" style="flex:1"><span id="dogLbV">65 lb</span></label></div></div>
     <div><h2>6 · Starting charge</h2><div style="display:flex;gap:8px;align-items:center"><input id="socIn" type="range" min="5" max="100" value="80" style="flex:1"><b id="socV">80%</b></div><div id="socRange" style="font-size:12px;color:var(--dim)"></div>
     <details style="font-size:11px;color:var(--dim);margin-top:4px"><summary>Charger data key (optional)</summary>Free key from developer.nlr.gov raises the US DOE charger-lookup limit (demo key: ~10 lookups/hour).<input id="nlrKey" placeholder="paste API key" style="width:100%;margin-top:4px;padding:6px;border-radius:6px;border:1px solid var(--line);background:#0e141d;color:var(--text)"></details></div>
     <div id="msg"></div>
