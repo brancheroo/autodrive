@@ -2284,7 +2284,7 @@ function plan(a,dt,lead,isEgo){
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
  if(CHASE.on&&!(isEgo&&game.spec.apc))for(const B of CHASE.blocks)if(B.route===game.route){const d=(a.dir<0?-1:1)*(B.s-a.s)-10;if(d>-2&&d<220){const v=allow(0,d);if(v<target){target=v;reason=isEgo?'🚧 Roadblock ahead':reason}}}
- if(isEgo&&a.spec.hyper&&game.hp&&game.hp.risk){const v=Math.max(0,a.v+game.hp.acc*0.6);if(game.hp.acc<=0&&v<target){target=v;reason=game.status}else if(game.hp.acc>3){target=Math.max(target,a.v+6);reason=game.status}} /* planner owns speed when a conflict is forecast */
+ if(isEgo&&a.spec.hyper&&game.hp&&game.hp.risk===1){const v=Math.max(0,a.v+game.hp.acc*0.6);if(game.hp.acc<=0&&v<target){target=v;reason=game.status}else if(game.hp.acc>3){target=Math.max(target,a.v+6);reason=game.status}} /* planner owns speed when a conflict is forecast */
  // end of route
  const rem=R.total-a.s;{const v=allow(0,rem-1);if(v<target){target=v;reason='Arriving'}}
  // traffic stops for the protest crowd too (both directions)
@@ -3231,8 +3231,8 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=e.off||1.85,cur=CHA
    for(const b of near){const q=b.path[i-1];if(!q)continue;if(Math.abs(q[0]-p[0])>9||Math.abs(q[1]-p[1])>9)continue;const bh=Math.atan2(-(b.vz||0),(b.vx||0.001)),O=circ(q[0],q[1],Math.hypot(b.vx,b.vz)>0.5?bh:b.h,b.kind);
     let md=1e9;for(const a of E)for(const c of O)md=Math.min(md,Math.hypot(a[0]-c[0],a[1]-c[1])-a[2]-c[2]);
     if(md<grow){/* unavoidable-harm ordering: pedestrians first, then heavier vehicles; scaled by predicted impact speed and how soon */
-     const dv=Math.hypot(evx-(b.vx||0),evz-(b.vz||0)),harm=b.kind==='ped'?60:1+b.m/1200;cost+=(300+dv*dv*4)*harm*(4.5-t);risk=1;why=why||`${b.kind==='ped'?'Pedestrian':b.kind==='cop'?'Police':b.m>3000?'Heavy vehicle':'Vehicle'} #${b.id} in ${t.toFixed(1)} s`}else if(md<grow+1.5){cost+=(grow+1.5-md)*6;risk=risk||0.5;why=why||`Tight gap with #${b.id}`}}}
-  cost+=Math.max(0,vWant-v)*1.2+(acc>0&&v0>=vWant?2:0);
+     const dv=Math.hypot(evx-(b.vx||0),evz-(b.vz||0)),harm=b.kind==='ped'?60:1+b.m/1200;cost+=(300+dv*dv*4)*harm*(4.5-t);risk=1;why=why||`${b.kind==='ped'?'Pedestrian':b.kind==='cop'?'Police':b.m>3000?'Heavy vehicle':'Vehicle'} #${b.id} in ${t.toFixed(1)} s`}else if(md<grow+1.2){cost+=(grow+1.2-md)*(b.kind==='ped'?2.5:1.5)*(v>2?1:0.3);risk=risk||0.5;why=why||`Tight gap with #${b.id}`}}}
+  cost+=Math.max(0,vWant-v)*2.2+(acc>0&&v0>=vWant?2:0);
   if(!best||cost<best.cost)best={off,acc,cost,risk,why}}
  return best}
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
