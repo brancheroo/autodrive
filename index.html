@@ -123,7 +123,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
   </div>
   <div id="liveBug" hidden><span class="lv">● LIVE</span> <span id="liveTxt">CHOPPER 7 · POLICE PURSUIT</span></div>
   <div id="photoCard" style="position:absolute;right:10px;top:150px;width:240px;display:none;pointer-events:auto" class="panel"><img id="pcImg" style="width:100%;border-radius:8px;display:block"><div id="pcTitle" style="font-size:12px;margin-top:6px"></div><div id="pcCred" style="font-size:10px;color:var(--dim)"></div></div>
-  <div id="cvWrap"><div id="cvHead"><span id="cvTitle">PERCEPTION</span><span id="cvStats"></span></div><div id="cvAct">▶ Initialising</div><div id="cvCam"><canvas id="cvOv"></canvas></div><canvas id="cvBev"></canvas></div>
+  <div id="cvWrap"><div id="cvHead"><span id="cvTitle">PERCEPTION</span><span id="cvStats"></span></div><div id="cvExp" style="display:none;background:#e01b1b;color:#000;font:800 12px system-ui;letter-spacing:.14em;text-align:center;padding:3px 0">EXPRESS MODE</div><div id="cvAct">▶ Initialising</div><div id="cvCam"><canvas id="cvOv"></canvas></div><canvas id="cvBev"></canvas></div>
   <div id="miniWrap"><canvas id="mini" width="480" height="480"></canvas><div id="miniBtns"><button id="mzIn" title="Zoom in">+</button><button id="mzOut" title="Zoom out">−</button><button id="mzUp" title="Heading-up / North-up">N</button><button id="mzFood" title="Show fast food">🍔</button></div><div id="miniAttr">Esri, HERE, Garmin · POIs © OpenStreetMap</div></div>
 </div>
 <div id="arrive"><div class="panel" style="text-align:center;padding:28px"><h1>You've arrived</h1><p id="arrTxt"></p><button class="primary" onclick="location.reload()">New ride</button></div></div>
@@ -3223,7 +3223,7 @@ function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cv
   const col=d.cls==='light'?({RED:'#ff4d4d',YELLOW:'#ffb020',GREEN:'#35d07f'})[d.extra]:CVCOL[d.cls];x.strokeStyle=col;x.lineWidth=1.5*dpr;x.strokeRect(x0,y0,x1-x0,y1-y0);
   const lab=`${d.cls==='animal'?d.extra:d.cls==='light'?'light '+d.extra:d.cls==='stop'?'stop sign':d.cls==='ped'?'pedestrian':'vehicle'} ${d.conf.toFixed(2)} · ${Math.round(d.d)}m`;x.font=`${9*dpr}px system-ui`;const tw=x.measureText(lab).width+4*dpr;x.fillStyle=col;x.fillRect(x0,y0-11*dpr,tw,11*dpr);x.fillStyle='#000';x.fillText(lab,x0+2*dpr,y0-2.5*dpr)}
  {const G=game,e=G.ego,mph=Math.round(e.v*MPH),acc=e.acc||0,verb=G.charging?'':acc>0.3?'accelerating':acc<-0.8?'braking':acc<-0.2?'easing off':'holding speed';const sig=G.sig<0?' · signalling left':G.sig>0?' · signalling right':'';
-  $('cvAct').textContent=`▶ ${G.status||'Cruising'}${verb&&mph>0?' · '+verb:''} · ${mph} mph${sig}`}
+  $('cvExp').style.display=EXPRESS.on?'block':'none';$('cvAct').textContent=`▶ ${G.status||'Cruising'}${verb&&mph>0?' · '+verb:''} · ${mph} mph${sig}`}
  game.seen={...counts};$('cvStats').textContent=`${counts.car} veh · ${counts.ped} ped${counts.animal?` · ${counts.animal} animal`:''} · ${counts.light} lights · ${counts.stop} stop`;$('cvTitle').textContent='PERCEPTION';
  drawBEV(dets,S)}
 function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,W=c.width=Math.round(c.clientWidth*dpr),H=c.height=Math.round(c.clientHeight*dpr),x=c.getContext('2d');
