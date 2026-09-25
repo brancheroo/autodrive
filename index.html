@@ -2217,7 +2217,7 @@ function plan(a,dt,lead,isEgo){
   else if(c.type==='give_way'){const v=allow(4.5,d-6);if(v<target){target=v;reason='Yield'}}}
  if(isEgo)game.upcoming=up;
  // lead (in a chase the car overtakes while swerving away from a cruiser)
- if(chase&&lead&&lead.s-a.s<45&&lead.s-a.s>0){CHASE.pass=2;reason='CHASE · threading traffic'}
+ if(chase&&lead&&lead.s-a.s<45&&lead.s-a.s>0){CHASE.pass=2;reason=(CHASE.on?'CHASE':'EXPRESS')+' · threading traffic'}
  if(lead&&!chase){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
  // planned charging / fuel stop
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
