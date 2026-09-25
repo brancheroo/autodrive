@@ -3230,8 +3230,11 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
 function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeLLnh(e.s)[2]),cur=(e.off===undefined?base:e.off)-base,v0=e.v,fast=fastOn(); /* base = lane centre; cur = where the car really is now relative to it */
  const vWant=fast?Math.max(e.v,30):(G.limitMph||30)/MPH;const rq=roadQAt(e.x,e.z);
  const near=objs.filter(b=>b.d<200&&b.path);const circ=(x,z,h,kind)=>{if(kind==='ped')return[[x,z,0.45]];const c=Math.cos(h),sn=-Math.sin(h),k=kind==='moto'?0.8:1.5,r=kind==='moto'?0.6:1.05;return[[x+c*k,z+sn*k,r],[x,z,r],[x-c*k,z-sn*k,r]]};
- let best=null;
- for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';let s=e.s,v=v0,o=cur;
+ let best=null;const fx0=Math.cos(e.head),fz0=-Math.sin(e.head);
+ /* oncoming lane is only usable when clear for 6 s of closing distance (+30 m); every oncoming road user counts */
+ const oncomingClear=!objs.some(b=>{const dx=b.x-e.x,dz=b.z-e.z,f=dx*fx0+dz*fz0;if(f<-6)return false;const vr=(b.vx||0)*fx0+(b.vz||0)*fz0;return (b.o.kind==='oncoming'||vr<-1)&&f<(v0+Math.max(0,-vr))*6+30});
+ for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';
+  if(base+off<1.05&&!oncomingClear){cost+=4000;why='Oncoming lane not clear'}let s=e.s,v=v0,o=cur;
   for(let i=1;i<=20;i++){const t=i*0.2;v=Math.max(0,v+acc*0.2);s+=v*0.2;o+=(off-o)*Math.min(1,0.2/1.1);if(s>R.total)break;
    const p=routeXZ(s,laneOffsetAt(routeLLnh(s)[2])+o),h=Math.atan2(-p[3],p[2]);if(i%5===0&&rq&&!rq.inside(p[0],p[1],-0.9))cost+=40; /* line leaves the carriageway */
    const E=circ(p[0],p[1],h,'car'),grow=0.35+t*0.15+v*0.02,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
