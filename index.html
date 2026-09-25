@@ -647,7 +647,9 @@ function facadeTex(style,night){const k=style+(night?'N':'');if(FAC[k])return FA
    const bgR=Math.round(bgc.r*255),bgG=Math.round(bgc.g*255),bgB=Math.round(bgc.b*255),o=x.getImageData(0,0,FS,FS);for(let i=0;i<d.data.length;i+=4){if(Math.abs(d.data[i]-bgR)+Math.abs(d.data[i+1]-bgG)+Math.abs(d.data[i+2]-bgB)>12){o.data[i]=d.data[i];o.data[i+1]=d.data[i+1];o.data[i+2]=d.data[i+2]}}
    x.putImageData(o,0,0);t.image=c2;t.needsUpdate=true};img.src=`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/${HIGH?'2k':'1k'}/${photo}/${photo}_diff_${HIGH?'2k':'1k'}.jpg`}
  return t}
-function facadeMat(style){if(FACMAT[style])return FACMAT[style];const m=new THREE.MeshStandardMaterial({vertexColors:true,map:facadeTex(style,false),emissive:0xffffff,emissiveMap:facadeTex(style,true),emissiveIntensity:0,roughness:style==='glass'?0.12:0.85,metalness:style==='glass'?0.6:style==='metal'?0.4:0.02,side:THREE.DoubleSide});ENVMATS.push(m);return FACMAT[style]=m}
+/* ground-contact shading: facades darken toward the pavement over the first ~3.5 m (their v coordinate is height above the base / tile height) */
+function facadeAO(m){m.onBeforeCompile=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\n#ifdef USE_UV\n diffuseColor.rgb*=mix(0.52,1.0,smoothstep(0.0,0.55,vUv.y));\n#endif')}}
+function facadeMat(style){if(FACMAT[style])return FACMAT[style];const m=new THREE.MeshStandardMaterial({vertexColors:true,map:facadeTex(style,false),emissive:0xffffff,emissiveMap:facadeTex(style,true),emissiveIntensity:0,roughness:style==='glass'?0.12:0.85,metalness:style==='glass'?0.6:style==='metal'?0.4:0.02,side:THREE.DoubleSide});ENVMATS.push(m);facadeAO(m);return FACMAT[style]=m}
 function roofMat(k){if(ROOFMAT[k])return ROOFMAT[k];const src={clay:['clay_roof_tiles',0xffffff],shingle:['grey_roof_tiles',0xffffff],flat:['concrete_floor_worn_001',0x9a9895],metal:['corrugated_iron',0xffffff],dome:['grey_roof_01',0xffffff]}[k]||['grey_roof_tiles',0xffffff];
  const m=new THREE.MeshStandardMaterial({vertexColors:true,color:src[1],map:phTex(src[0],'diff',1,true),normalMap:phTex(src[0],'nor_gl',1),roughness:0.9,side:THREE.DoubleSide});ENVMATS.push(m);return ROOFMAT[k]=m}
 MAT.sign=new THREE.MeshBasicMaterial({color:0xffffff});
@@ -2751,8 +2753,9 @@ function step(){
  const top=new THREE.Color(0x0a1224).lerp(new THREE.Color(0x3d7fd6),day);
  skyMat.uniforms.top.value.copy(top);skyMat.uniforms.hor.value.copy(hz);skyMat.uniforms.sunDir.value.copy(sd);
  scene.fog.color.copy(hz);sky.position.copy(camera.position);
- sun.intensity=clamp(el/12,0,1)*1.8;sun.color.setHSL(0.1,0.6,0.55+0.4*clamp(el/30,0,1));
- sun.position.set(e.x+sd.x*300,Math.max(20,sd.y*300)+e.mesh.position.y,e.z+sd.z*300);sun.target.position.set(e.x,e.mesh.position.y,e.z);
+ {const lo=clamp(el/25,0,1);sun.intensity=clamp(el/10,0,1)*(1.5+0.9*lo);sun.color.set(0xff9a4c).lerp(new THREE.Color(0xfff3e2),Math.pow(lo,0.6));hemi.color.copy(top).lerp(new THREE.Color(0xdfeaff),0.55);hemi.groundColor.set(0x4a4436).lerp(new THREE.Color(0x2a2a30),1-day)} /* golden low sun, cool bright sky fill, warm ground bounce */
+ {const cd=new THREE.Vector3();camera.getWorldDirection(cd);cd.y=0;cd.normalize();const far=G.cam==='in'?35:G.cam==='heli'||G.cam==='drone'?70:45,cx=e.x+cd.x*far,cz=e.z+cd.z*far,ext=G.cam==='heli'||G.cam==='drone'?160:110;
+  sun.position.set(cx+sd.x*400,Math.max(20,sd.y*400)+e.mesh.position.y,cz+sd.z*400);sun.target.position.set(cx,e.mesh.position.y,cz);const sc=sun.shadow.camera;if(sc.right!==ext){sc.left=-ext;sc.right=ext;sc.top=ext;sc.bottom=-ext;sc.far=1000;sc.updateProjectionMatrix()}}
  hemi.intensity=0.08+0.62*day;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;weatherLighting(hz,top);G.lightsOn=G.lightsOn||WX.key!=='clear';
  MAT.bld.emissiveIntensity=G.dark?0.9:0;for(const k in FACMAT)FACMAT[k].emissiveIntensity=G.dark?(k==='store'?1.1:0.85):0;for(const m of ENVMATS)m.envMapIntensity=0.05+0.95*day;
  horizon.position.set(camera.position.x,0,camera.position.z);horizon.children.forEach(m=>m.material.color.copy(m.userData.base).lerp(hz,0.35).multiplyScalar(0.25+0.75*day));
