@@ -863,8 +863,9 @@ function clipRuns(pts,off,m,Q){if(!Q||pts.length<2)return [pts];const d=densify(
 function wallC(Q,buf,pts,off,h,th,...a){for(const r of clipRuns(pts,off,th/2+0.1,Q))wall(buf,r,off,h,th,...a)}
 function ribbonC(Q,buf,pts,w,y,off=0){for(const r of clipRuns(pts,off,w/2,Q))ribbon(buf,r,w,y,off)}
 let ROUTEROAD={r:null,ch:[]};
-function routeRoads(){const G=typeof game!=='undefined'&&game;if(!G||!G.route)return[];if(ROUTEROAD.r!==G.route){const R=G.route,ch=[];let cur=[];for(let s=0;s<=R.total;s+=8){const p=routeXZ(s,0);cur.push([p[0],p[1]]);if(cur.length>=40){ch.push({pts:cur,w:11,total:320,route:1});cur=[cur[cur.length-1]]}}if(cur.length>1)ch.push({pts:cur,w:11,total:0,route:1});ROUTEROAD={r:R,ch}}return ROUTEROAD.ch}
-function tileRoads(key){const o=[...routeRoads()];for(const k of neighbourKeys(key)){const r=rawRoads(k);if(r)o.push(...r)}return o}
+function routeRoads(){const G=typeof game!=='undefined'&&game;if(!G||!G.route)return[];if(ROUTEROAD.r!==G.route){const R=G.route,ch=[];let cur=[];for(let s=0;s<=R.total;s+=8){const p=routeXZ(s,0);cur.push([p[0],p[1]]);if(cur.length>=40){ch.push({pts:cur,w:11,total:320,route:1});cur=[cur[cur.length-1]]}}if(cur.length>1)ch.push({pts:cur,w:11,total:0,route:1});for(const c of ch){c.bb=[Math.min(...c.pts.map(p=>p[0])),Math.max(...c.pts.map(p=>p[0])),Math.min(...c.pts.map(p=>p[1])),Math.max(...c.pts.map(p=>p[1]))]}ROUTEROAD={r:R,ch}}return ROUTEROAD.ch}
+function tileRoads(key){const o=[];for(const k of neighbourKeys(key)){const r=rawRoads(k);if(r)o.push(...r)}let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const w of o)for(const p of w.pts){if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<z0)z0=p[1];if(p[1]>z1)z1=p[1]}
+ for(const c of routeRoads())if(c.bb[1]>x0-50&&c.bb[0]<x1+50&&c.bb[3]>z0-50&&c.bb[2]<z1+50)o.push(c);return o}
 function clearPoles(T,roads,lifted){const kids=T.group.children.filter(o=>!o.userData.merged&&o.position),poles=kids.filter(o=>o.geometry&&o.geometry.type==='CylinderGeometry'&&o.geometry.parameters.height>=2),rest=kids.filter(o=>!poles.includes(o));
  if(!T.owner){T.owner=new Map();for(const o of rest){let best=null,bd=9;for(const p of poles){const d=Math.hypot(p.position.x-o.position.x,p.position.z-o.position.z);if(d<bd){bd=d;best=p}}if(best){if(!T.owner.has(best))T.owner.set(best,[]);T.owner.get(best).push(o)}}}
  const near=roads.filter(w=>!w.tunnel&&!w.hts);
