@@ -1922,7 +1922,7 @@ function buildDualie(){const g=new THREE.Group(),R=Math.random,paint=new THREE.M
  // chassis + lift kit
  add(RB(5.6,0.18,0.9,0.03),blk,0,wr+0.35,0);for(const x of [1.95,-2.05])for(const z of [0.55,-0.55])add(new THREE.CylinderGeometry(0.05,0.05,0.5,10),chrome,x,wr+0.3,z);
  // body: hood, cab, bed
- add(RB(1.7,0.75,2.05,0.12),paint,2.15,fy+0.45,0);add(RB(1.95,0.8,2.2,0.12),paint,0.55,fy+0.45,0);add(RB(1.6,0.6,2.02,0.1),glass,0.5,fy+1.12,0);add(RB(1.55,0.09,2.06,0.04),paint,0.47,fy+1.44,0);for(const z of [1.02,-1.02])add(RB(0.08,0.62,0.05,0.02),paint,1.25,fy+1.1,z,0,0,-0.3); // lower cab, glass greenhouse, roof, A-pillars
+ g.userData.cabY=fy;add(RB(1.7,0.75,2.05,0.12),paint,2.15,fy+0.45,0);add(RB(1.95,0.8,2.2,0.12),paint,0.55,fy+0.45,0);add(RB(1.6,0.6,2.02,0.1),glass,0.5,fy+1.12,0);add(RB(1.55,0.09,2.06,0.04),paint,0.47,fy+1.44,0);for(const z of [1.02,-1.02])add(RB(0.08,0.62,0.05,0.02),paint,1.25,fy+1.1,z,0,0,-0.3); // lower cab, glass greenhouse, roof, A-pillars
  add(RB(2.75,0.8,2.35,0.06),paint,-1.75,fy+0.45,0);add(RB(2.6,0.1,2.05,0.02),blk,-1.75,fy+0.83,0);
  for(const z of [1.2,-1.2])add(RB(1.2,0.55,0.12,0.2),paint,-2.05,fy+0.22,z); // dually fender flares
  add(RB(0.12,0.62,1.7,0.03),chrome,3.03,fy+0.4,0);for(let k=0;k<5;k++)add(RB(0.13,0.04,1.55,0.01),blk,3.04,fy+0.18+k*0.11,0); // grille
@@ -2010,8 +2010,9 @@ function buildHarley(){const g=new THREE.Group(),R=Math.random,paint=HCOLS[Math.
 // human drivers: a seated figure (varied skin, hair, shirt) behind the wheel of every ordinary car. Self-driving cars show the truth:
 // robotaxis are empty or carry a back-seat rider; supervised L2/L3 cars have a driver with hands off the wheel, looking down at a phone
 const DRV_SKIN=[0xf1c9a5,0xe0ac69,0xc68642,0x8d5524,0x5c3a21,0xffdbac],DRV_HAIR=[0x1a1410,0x3b2a1a,0x6b4a2b,0xb8904f,0x9a9a9a,0xd8c28a,0x8a2a1a],DRV_SHIRT=[0x2a4a8a,0xb03030,0x2d6a3a,0xe6e6e6,0x222222,0xd0a030,0x6a3a8a,0x3a8a9a];
-function buildDriver(spec,mode){const pk=a=>a[Math.floor(Math.random()*a.length)],skin=new THREE.MeshStandardMaterial({color:pk(DRV_SKIN),roughness:0.7}),hair=new THREE.MeshStandardMaterial({color:pk(DRV_HAIR),roughness:0.9}),shirt=new THREE.MeshStandardMaterial({color:pk(DRV_SHIRT),roughness:0.85});
- const g=new THREE.Group(),e=eyePos(spec),z=mode==='rider'?spec.W*0.2:-spec.W*0.2,x=mode==='rider'?e.x-0.6:e.x+0.38;g.position.set(x,e.y,z);
+function buildDriver(spec,mode,seat,at){const pk=a=>a[Math.floor(Math.random()*a.length)],skin=new THREE.MeshStandardMaterial({color:pk(DRV_SKIN),roughness:0.7}),hair=new THREE.MeshStandardMaterial({color:pk(DRV_HAIR),roughness:0.9}),shirt=new THREE.MeshStandardMaterial({color:mode==='cop'?0x1a2440:pk(DRV_SHIRT),roughness:0.85});if(mode==='cop')mode='drive';
+ const g=new THREE.Group();seat=seat||(mode==='rider'?'rearR':'driver');if(at)g.position.copy(at);else{const e=eyePos(spec),rear=/rear/.test(seat),z=(seat==='driver'||seat==='rearL'?-1:1)*spec.W*0.2;g.position.set(rear?e.x-0.6:e.x+0.38,e.y-(rear?0.03:0),z)}
+ if(Math.random()<0.25&&mode==='rider')g.scale.setScalar(0.72+Math.random()*0.1); // kids
  const head=new THREE.Mesh(new THREE.SphereGeometry(0.105,14,10),skin);head.scale.set(1,1.12,0.95);g.add(head);
  const hr=new THREE.Mesh(new THREE.SphereGeometry(0.112,14,8,0,Math.PI*2,0,Math.PI*(0.35+Math.random()*0.25)),hair);hr.position.set(-0.012,0.02,0);g.add(hr);
  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.05,0.1,8),skin);neck.position.y=-0.14;g.add(neck);
@@ -2023,7 +2024,12 @@ function buildDriver(spec,mode){const pk=a=>a[Math.floor(Math.random()*a.length)
  g.userData.head=head;g.userData.mode=mode;g.userData.t=Math.random()*10;return g}
 function newAgent(spec,color,s,v,dir=1){if(spec.av&&spec.colors)color=spec.colors[Math.floor(Math.random()*spec.colors.length)][1];const mesh=spec.style==='harley'?buildHarley():spec.style==='dualie'?buildDualie():buildCar(spec,color);
  if(spec.style!=='harley'&&spec.style!=='dualie'){const robo=spec.av&&(spec.driver===false||/rider-only|Level 4/.test(spec.level||''));const mode=!spec.av?'drive':robo?(Math.random()<0.55?'rider':null):(Math.random()<0.6?'phone':'hands');
-  if(mode){const d=buildDriver(spec,mode==='hands'?'phone':mode);if(mode==='hands'){d.children.forEach(c=>{if(c.isMesh&&c.geometry.type==='BoxGeometry')c.visible=false});d.userData.head.rotation.z=0}mesh.add(d);mesh.userData.driver=d}}scene.add(mesh);return{mesh,spec,s,v,dir,x:0,z:0,head:0,wheelA:0,stopT:0,handled:new Set(),kind:'route',av:!!spec.av}}
+  if(mode&&mode!=='rider'){const d=buildDriver(spec,mode==='hands'?'phone':mode,'driver');if(mode==='hands'){d.children.forEach(c=>{if(c.isMesh&&c.geometry.type==='BoxGeometry')c.visible=false});d.userData.head.rotation.z=0}mesh.add(d);mesh.userData.driver=d}
+  // random passengers: 0–3 (robotaxis: 1–2 in the back when not empty), with occasional kids
+  const seats=robo?(mode==='rider'?['rearR','rearL'].slice(0,1+(Math.random()<0.4)):[]):['front','rearL','rearR'].filter(()=>Math.random()<0.33);mesh.userData.pax=[];
+  for(const st of seats){const q=buildDriver(spec,'rider',st);mesh.add(q);mesh.userData.pax.push(q)}
+  if(!mesh.userData.driver&&mesh.userData.pax.length)mesh.userData.driver=mesh.userData.pax[0]}
+ if(spec.style==='dualie'){const fy=mesh.userData.cabY||0.9;const d=buildDriver(spec,'drive','driver',new THREE.Vector3(0.62,fy+1.12,-0.5));mesh.add(d);mesh.userData.driver=d;if(Math.random()<0.5)mesh.add(buildDriver(spec,'rider','front',new THREE.Vector3(0.62,fy+1.1,0.5)))}scene.add(mesh);return{mesh,spec,s,v,dir,x:0,z:0,head:0,wheelA:0,stopT:0,handled:new Set(),kind:'route',av:!!spec.av}}
 const TRAFFIC_SPECS=[{style:'sedan',L:4.8,W:1.85,H:1.45,wb:2.8,wr:0.33},{style:'cross',L:4.6,W:1.86,H:1.65,wb:2.7,wr:0.35},{style:'suv',L:5.2,W:2.0,H:1.85,wb:3.0,wr:0.38},{style:'van',L:5.1,W:2.0,H:1.95,wb:3.0,wr:0.36},{style:'sedan',L:4.5,W:1.78,H:1.44,wb:2.65,wr:0.32},{style:'suv',L:5.9,W:2.03,H:1.9,wb:3.7,wr:0.4}];
 const TCOLS=['#e8e8e8','#111','#6d7176','#9ea3a8','#20355e','#7d1111','#f2f2f2','#2d2f33','#4b5a47','#a38c6b','#153a7a','#b8b8b8'];
 async function geocode(q){
@@ -2402,7 +2408,7 @@ function wdogToggle(){WDOG.on=!WDOG.on;const c=document.getElementById('dogOn');
 const CHASE={on:false,n:3,cops:[],trail:[],blocks:[],evade:0,evadeT:0,spin:0,spinDir:1,nextBlock:0,pits:0,prevCam:null,blockTimer:60};
 const COP_SPEC={style:'sedan',L:5.1,W:2.0,H:1.55,wb:3.05,wr:0.36,top:130};
 function copTex(){if(copTex.t)return copTex.t;const c=document.createElement('canvas');c.width=512;c.height=160;const x=c.getContext('2d');x.fillStyle='#f4f4f2';x.fillRect(0,0,512,160);x.fillStyle='#0b1e4a';x.font='900 86px Arial Black,Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('POLICE',256,70);x.font='700 26px Arial';x.fillText('AUTODRIVE COUNTY · 911',256,132);return copTex.t=new THREE.CanvasTexture(c)}
-function buildCop(){const g=buildCar(COP_SPEC,'#111317');const P=(profCache[COP_SPEC.style+COP_SPEC.L+COP_SPEC.W+COP_SPEC.H]||{}).P;
+function buildCop(){const g=buildCar(COP_SPEC,'#111317');{const d=buildDriver(COP_SPEC,'cop','driver');g.add(d);g.userData.driver=d;if(Math.random()<0.5)g.add(buildDriver(COP_SPEC,'cop','front'))}const P=(profCache[COP_SPEC.style+COP_SPEC.L+COP_SPEC.W+COP_SPEC.H]||{}).P;
  const door=new THREE.MeshStandardMaterial({map:copTex(),roughness:0.4,metalness:0.2}),half=P?P.half(0.5):COP_SPEC.W/2,belt=P?P.belt(0.5):0.95;
  for(const s of [1,-1]){const d=new THREE.Mesh(new THREE.PlaneGeometry(1.7,0.52),door);d.position.set(0.05,belt-0.33,s*(half+0.012));d.rotation.y=s>0?0:Math.PI;g.add(d)}
  const roofY=(P?P.top(0.5):COP_SPEC.H)+0.02,bar=new THREE.Group();bar.position.set(-0.1,roofY,0);g.add(bar);bar.add(new THREE.Mesh(new THREE.BoxGeometry(0.32,0.1,1.25),new THREE.MeshStandardMaterial({color:0x222226,roughness:0.4})));
