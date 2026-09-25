@@ -2250,7 +2250,7 @@ function plan(a,dt,lead,isEgo){
  if(isEgo)game.upcoming=up;
  // lead (in a chase the car overtakes while swerving away from a cruiser)
  if(chase&&lead&&lead.s-a.s<45&&lead.s-a.s>0){CHASE.pass=2;reason=(CHASE.on?'CHASE':'EXPRESS')+' · threading traffic'}
- if(lead&&!chase){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
+ if(lead&&!chase&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
  // planned charging / fuel stop
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
@@ -2669,7 +2669,7 @@ function step(){
   }
  }
  // place ego
- const off=laneOffsetAt(routeLLnh(e.s)[2])+(fastOn()?CHASE.evade:0);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(fastOn()?2.2:0.5)));
+ const off=laneOffsetAt(routeLLnh(e.s)[2])+(fastOn()||G.overtakeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(fastOn()||G.overtakeT>0?2.2:0.5)));
  const towAnim=G.tow&&G.tow.phase!=='towing'&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling';
  const prevHead=e.head;if(!towAnim){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw()}
  const yawRate=(e.head-prevHead)/(Math.max(1e-3,rdt*G.scale));const steerT=clamp(Math.atan(spec.wb*yawRate/Math.max(e.v,1)),-0.6,0.6);e.steer=lerp(e.steer,steerT,0.2);
@@ -3173,7 +3173,12 @@ function clearProtest(){const G=game;if(G.protest){scene.remove(G.protest.grp);p
 // gridlock…) it detours immediately. Legit waits are exempt: red light, stop-sign pause, charging/fuelling, towing, pull-over, arrival.
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
  const legit=G.charging||G.tow||G.pullOver||G.rerouting||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
- if(e.s>W.s+3||legit){W.s=e.s;W.t=0;return}W.t+=dt;if(W.t>10&&W.cd<=0){W.t=0;W.s=e.s;W.cd=20;if(e.loose&&typeof recoverEgo==='function')recoverEgo();G.status='⏱️ No progress for 10 s · detouring';rerouteNow()}}
+ if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn())CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
+ if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=dt;
+ if(W.t>10){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
+  if(W.n>=3){e.s=Math.min(G.route.total-5,e.s+35);e.v=4;W.n=0;G.status='⏱️ Still blocked · easing past the obstruction'} // last resort: squeeze past whatever it is
+  else if(/Queued|Following|vehicle/i.test(G.status||'')||W.n===1&&!W.cd){G.overtakeT=9;G.status='⏱️ No progress for 10 s · overtaking'}
+  else if(W.cd<=0){W.cd=20;G.status='⏱️ No progress for 10 s · detouring';rerouteNow()}else{G.overtakeT=9}}}
 async function rerouteNow(){const G=game;if(!G||!G.route||G.rerouting)return;if(G.tow||G.charging){G.status='Can\'t reroute right now';return}G.rerouting=true;const e=G.ego,prev=G.status;G.status='Finding a different route…';
  const here={lat:toLat(e.z),lon:toLon(e.x)},rem=[];for(let s0=e.s;s0<Math.min(G.route.total,e.s+20000);s0+=150){const p=routeLLnh(s0);rem.push([p[0],p[1]])}
  const overlap=r=>{let near=0,n=0;for(let k=0;k<r.pts.length;k+=Math.max(1,Math.floor(r.pts.length/120))){if(r.cum[k]<60)continue;n++;if(rem.some(q=>hav(q,r.pts[k])<35))near++}return n?near/n:1};
