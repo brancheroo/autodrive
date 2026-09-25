@@ -2676,7 +2676,7 @@ function step(){
  if(!towAnim)spinWheels(e,rdt*G.scale,e.steer);
  if(wheelMesh)wheelMesh.rotation.x=-e.steer*14/ (spec.wheel==='yoke'?1.4:1);
  if(e.mesh.userData.lidar)e.mesh.userData.lidar.rotation.y+=rdt*20;
- if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);updateExpress(Math.min(0.1,rdt*G.scale));updateCollisions(Math.min(0.05,rdt*G.scale));damageSmoke(rdt*G.scale);syncMusicPause();
+ if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);updateExpress(Math.min(0.1,rdt*G.scale));stuckWatch(rdt*G.scale);updateCollisions(Math.min(0.05,rdt*G.scale));damageSmoke(rdt*G.scale);syncMusicPause();
  if(e.mesh.userData.wipers){const sp=WX.rain>0.6||WX.snow?2.6:WX.rain>0?1.4:0;G.wipeT=(G.wipeT||0)+rdt*sp;const ang=sp?(1-Math.cos(G.wipeT*Math.PI))/2*1.9:0;G.wipeAng=ang;e.mesh.userData.wipers.forEach(w=>w.rotation.y=ang)}
  // body pitch on accel
  {const yf=routeY(e.s+2,e.off),yb=routeY(e.s-2,e.off),pitch=Math.atan2(yf-yb,4);e.grade=Math.sin(pitch);
@@ -3169,6 +3169,11 @@ function protestChantSynth(t,out){const C=audio.ctx;[[180,700,1200],[160,500,170
 function protestSoundStop(P){const S=P&&P.snd;if(!S)return;try{S.out.gain.setTargetAtTime(0,audio.ctx.currentTime,0.3);for(const n of S.nodes)n.stop(audio.ctx.currentTime+1.2)}catch(e){}}
 function clearProtest(){const G=game;if(G.protest){scene.remove(G.protest.grp);protestSoundStop(G.protest);G.protest=null}}
 // ---- manual reroute (N): take a genuinely different way from here — OSRM alternatives first, else a forced detour via parallel streets
+// STUCK WATCHDOG: if the car makes < 3 m of forward progress in 10 s of sim time (queue, blockage, protest, roadblock, crash,
+// gridlock…) it detours immediately. Legit waits are exempt: red light, stop-sign pause, charging/fuelling, towing, pull-over, arrival.
+function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
+ const legit=G.charging||G.tow||G.pullOver||G.rerouting||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
+ if(e.s>W.s+3||legit){W.s=e.s;W.t=0;return}W.t+=dt;if(W.t>10&&W.cd<=0){W.t=0;W.s=e.s;W.cd=20;if(e.loose&&typeof recoverEgo==='function')recoverEgo();G.status='⏱️ No progress for 10 s · detouring';rerouteNow()}}
 async function rerouteNow(){const G=game;if(!G||!G.route||G.rerouting)return;if(G.tow||G.charging){G.status='Can\'t reroute right now';return}G.rerouting=true;const e=G.ego,prev=G.status;G.status='Finding a different route…';
  const here={lat:toLat(e.z),lon:toLon(e.x)},rem=[];for(let s0=e.s;s0<Math.min(G.route.total,e.s+20000);s0+=150){const p=routeLLnh(s0);rem.push([p[0],p[1]])}
  const overlap=r=>{let near=0,n=0;for(let k=0;k<r.pts.length;k+=Math.max(1,Math.floor(r.pts.length/120))){if(r.cum[k]<60)continue;n++;if(rem.some(q=>hav(q,r.pts[k])<35))near++}return n?near/n:1};
