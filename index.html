@@ -116,7 +116,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     <label title="Time scale 1–1000×">⏱ <b id="tsv">1×</b></label><input id="ts" type="range" min="0" max="300" value="0" title="1× – 1000× (logarithmic)">
     <button id="pauseBtn" title="Pause / resume (Space)">⏸ Pause</button>
     <button id="wxBtn" title="Cycle weather (W)">🌤 Clear</button>
-    <button id="chaseBtn" onclick="chaseToggle()" title="Chase mode: flat out for the destination, evade police, detour roadblocks (K)">🚨 Chase</button><select id="copN" title="Pursuing police cars" style="padding:4px;border-radius:6px;background:#0e141d;color:var(--text);border:1px solid var(--line);font-size:12px"><option value="1">1 🚓</option><option value="2">2 🚓</option><option value="3" selected>3 🚓</option><option value="4">4 🚓</option><option value="5">5 🚓</option><option value="6">6 🚓</option><option value="7">7 🚓</option><option value="8">8 🚓</option><option value="9">9 🚓</option><option value="10">10 🚓</option></select><button id="rerouteBtn" onclick="rerouteNow()" title="Take a different route right now (N)">🔀 Reroute</button><button id="protestBtn" title="Deploy an oil protest blocking the road 100 m ahead (P)">🪧 Protest</button>
+    <button id="expBtn" onclick="expressToggle()" title="Express: chase-mode driving with no police (E)">⚡ Express</button><button id="chaseBtn" onclick="chaseToggle()" title="Chase mode: flat out for the destination, evade police, detour roadblocks (K)">🚨 Chase</button><select id="copN" title="Pursuing police cars" style="padding:4px;border-radius:6px;background:#0e141d;color:var(--text);border:1px solid var(--line);font-size:12px"><option value="1">1 🚓</option><option value="2">2 🚓</option><option value="3" selected>3 🚓</option><option value="4">4 🚓</option><option value="5">5 🚓</option><option value="6">6 🚓</option><option value="7">7 🚓</option><option value="8">8 🚓</option><option value="9">9 🚓</option><option value="10">10 🚓</option></select><button id="rerouteBtn" onclick="rerouteNow()" title="Take a different route right now (N)">🔀 Reroute</button><button id="protestBtn" title="Deploy an oil protest blocking the road 100 m ahead (P)">🪧 Protest</button>
     <button id="chaosBtn" title="Chaos mode: 100 wild cars + 500 wild pedestrians + animals (X)">🌀 Chaos</button>
     <button id="muteBtn" title="Sound on / off">🔊</button><button id="dogBtn" onclick="wdogToggle()" title="Window dog on / off (D)">🐕 Off</button><div id="dogSay"></div><button id="aifmBtn" onclick="aifmToggle()" title="AI Radio: live-written songs (R)">🎵 Off</button><div id="aifmBox"></div>
     <button id="menuBtn" title="Back to the start menu">↺ New</button>
@@ -2201,8 +2201,8 @@ function plan(a,dt,lead,isEgo){
  const [,,idx]=routeLLnh(a.s);
  const lim=speedLimitAt(idx)/MPH;
  target=Math.min(lim*WX.speedF,WX.cap/MPH);reason=WX.key==='clear'?'Cruising':'Cruising · '+WX.label.toLowerCase()+' mode';if(isEgo)game.limitMph=speedLimitAt(idx);
- const chase=isEgo&&CHASE.on;if(chase){target=Math.max(lim*2.4+12,38)*Math.min(1,WX.speedF+0.25);reason='CHASE · flat out'} // chase: well over the limit, ignores lights & signs (never other cars)
- const brake=WX.brake*(isEgo&&CHASE.on?1.8:1);
+ const chase=isEgo&&fastOn();if(chase){target=Math.max(lim*2.4+12,38)*Math.min(1,WX.speedF+0.25);reason=CHASE.on?'CHASE · flat out':'EXPRESS · flat out'} // chase: well over the limit, ignores lights & signs (never other cars)
+ const brake=WX.brake*(isEgo&&fastOn()?1.8:1);
  const allow=(vc,d)=>Math.sqrt(Math.max(0,vc*vc+2*brake*Math.max(0,d)));
  // curvature
  for(let d=5;d<look;d+=5){const p0=routeXZ(a.s+d-5,0),p1=routeXZ(a.s+d+5,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh<0.02)continue;const Rr=10/dh,vc=Math.max(3.0,Math.sqrt(WX.latA*(chase?1.9:1)*Rr));const v=allow(vc,d-4);if(v<target){target=v;reason=vc<8?'Slowing for turn':'Slowing for curve'}}
@@ -2424,6 +2424,10 @@ function sirenUpdate(c,d,t){const S=c.siren;if(!S)return;const C=audio.ctx,close
 function sirenStop(c){if(!c.siren)return;try{c.siren.g.gain.setTargetAtTime(0,audio.ctx.currentTime,0.1);c.siren.o.stop(audio.ctx.currentTime+0.4);c.siren.o2.stop(audio.ctx.currentTime+0.4)}catch(e){}c.siren=null}
 function trailLen(){const T=CHASE.trail;return T.length?T[T.length-1].d:0}
 function trailAt(d){const T=CHASE.trail;if(!T.length)return null;let lo=0,hi=T.length-1;if(d<=T[0].d)return T[0];if(d>=T[hi].d)return T[hi];while(hi-lo>1){const m=(lo+hi)>>1;if(T[m].d<d)lo=m;else hi=m}const a=T[lo],b=T[hi],k=(d-a.d)/((b.d-a.d)||1);return{x:lerp(a.x,b.x,k),z:lerp(a.z,b.z,k),y:lerp(a.y,b.y,k),h:Math.atan2(-(b.z-a.z),b.x-a.x)}}
+// Express: the chase driving brain (flat out, lights & signs ignored, threads traffic, hard corners/brakes, fast crash recovery) without police
+const EXPRESS={on:false};function fastOn(){return CHASE.on||EXPRESS.on}
+function expressToggle(){if(!game||!game.route)return;EXPRESS.on=!EXPRESS.on;if(!fastOn()){CHASE.evade=0;CHASE.pass=0}const b=document.getElementById('expBtn');if(b)b.classList.toggle('on',EXPRESS.on);game.status=EXPRESS.on?'⚡ Express mode · flat out':'Express off · normal driving'}
+function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego)return;CHASE.pass=Math.max(0,(CHASE.pass||0)-dt);CHASE.evade=lerp(CHASE.evade,CHASE.pass>0?-3.4:0,Math.min(1,dt*(CHASE.pass>0?3.5:1.2)))}
 function chaseToggle(){if(!game||!game.route)return;CHASE.on?chaseStop():chaseStart()}
 function chaseStart(){const G=game,e=G.ego;CHASE.on=true;CHASE.n=+(document.getElementById('copN')||{value:3}).value||3;CHASE.trail=[];CHASE.pits=0;CHASE.blockTimer=35;
  // seed the trail behind the car from the route so cruisers can start 150–450 m back on real roads
@@ -2531,7 +2535,7 @@ function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;c
   const y=groundY(L.x,L.z),rs=roadSurfaceY(L.x,L.z,y);const yy=Math.max(y,rs??-1e9)+0.03,roll=Math.sin(L.t*9)*Math.min(0.06,Math.abs(L.w)*0.02);
   if(b.kind==='ego'){r.x=L.x;r.z=L.z;r.head=L.h}if(b.kind==='chaos'){r.x=L.x;r.z=L.z;r.head=L.h;r.v=0}else{const m=b.kind==='ego'?r.mesh:b.kind==='block'?r.mesh:r.mesh;m.position.set(L.x,yy+(b.kind==='ego'?0.05:0.05),L.z);m.rotation.y=L.h;m.rotation.x=roll}
   r._cpx=L.x;r._cpz=L.z;r._cph=L.h;
-  if(b.kind==='ego'&&L.stopT>(CHASE.on?0.6:2.5))recoverEgo();else if(b.kind==='cop'&&L.stopT>3)recoverCop(r);else if((b.kind==='traffic'||b.kind==='way')&&L.stopT>15){scene.remove(r.mesh);const k=G.agents.indexOf(r);if(k>=0)G.agents.splice(k,1)}else if(b.kind==='chaos'&&L.stopT>6){r.x=L.x;r.z=L.z;r.head=L.h;delete r.loose}else if(b.kind==='block'&&L.stopT>0.5){delete r.loose}}
+  if(b.kind==='ego'&&L.stopT>(fastOn()?0.6:2.5))recoverEgo();else if(b.kind==='cop'&&L.stopT>3)recoverCop(r);else if((b.kind==='traffic'||b.kind==='way')&&L.stopT>15){scene.remove(r.mesh);const k=G.agents.indexOf(r);if(k>=0)G.agents.splice(k,1)}else if(b.kind==='chaos'&&L.stopT>6){r.x=L.x;r.z=L.z;r.head=L.h;delete r.loose}else if(b.kind==='block'&&L.stopT>0.5){delete r.loose}}
  if(G.ego.loose)G.status=G.crashMsg||'💥 Out of control';CRASH.shake=Math.max(0,CRASH.shake-dt*1.5)}
 function recoverEgo(){const G=game,e=G.ego,L=e.loose;let best=e.s,bd=1e9;for(let s=Math.max(0,e.s-120);s<=Math.min(G.route.total,e.s+120);s+=2){const p=routeXZ(s,e.off||1.85),d=Math.hypot(p[0]-L.x,p[1]-L.z);if(d<bd){bd=d;best=s}}
  e.s=best;e.v=0;e.x=L.x;e.z=L.z;e.head=L.h;e.mesh.rotation.x=0;delete e.loose;G.crashMsg='';G.status='Recovered · back on route'}
@@ -2633,14 +2637,14 @@ function step(){
   }
  }
  // place ego
- const off=laneOffsetAt(routeLLnh(e.s)[2])+(CHASE.on?CHASE.evade:0);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(CHASE.on?2.2:0.5)));
+ const off=laneOffsetAt(routeLLnh(e.s)[2])+(fastOn()?CHASE.evade:0);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(fastOn()?2.2:0.5)));
  const towAnim=G.tow&&G.tow.phase!=='towing'&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling';
  const prevHead=e.head;if(!towAnim){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw()}
  const yawRate=(e.head-prevHead)/(Math.max(1e-3,rdt*G.scale));const steerT=clamp(Math.atan(spec.wb*yawRate/Math.max(e.v,1)),-0.6,0.6);e.steer=lerp(e.steer,steerT,0.2);
  if(!towAnim)spinWheels(e,rdt*G.scale,e.steer);
  if(wheelMesh)wheelMesh.rotation.x=-e.steer*14/ (spec.wheel==='yoke'?1.4:1);
  if(e.mesh.userData.lidar)e.mesh.userData.lidar.rotation.y+=rdt*20;
- if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);updateCollisions(Math.min(0.05,rdt*G.scale));damageSmoke(rdt*G.scale);syncMusicPause();
+ if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);updateExpress(Math.min(0.1,rdt*G.scale));updateCollisions(Math.min(0.05,rdt*G.scale));damageSmoke(rdt*G.scale);syncMusicPause();
  if(e.mesh.userData.wipers){const sp=WX.rain>0.6||WX.snow?2.6:WX.rain>0?1.4:0;G.wipeT=(G.wipeT||0)+rdt*sp;const ang=sp?(1-Math.cos(G.wipeT*Math.PI))/2*1.9:0;G.wipeAng=ang;e.mesh.userData.wipers.forEach(w=>w.rotation.y=ang)}
  // body pitch on accel
  {const yf=routeY(e.s+2,e.off),yb=routeY(e.s-2,e.off),pitch=Math.atan2(yf-yb,4);e.grade=Math.sin(pitch);
@@ -2819,7 +2823,7 @@ canvas.addEventListener('wheel',ev=>{if(!game)return;ev.preventDefault();game.zo
 canvas.addEventListener('dblclick',()=>{if(game){game.yaw=0;game.pitch=0;game.zoom=1}});
 function toggleCam(){if(!game)return;game.cam=game.cam==='in'?'out':game.cam==='out'?'top':game.cam==='top'?'drone':game.cam==='drone'?'follow':game.cam==='follow'?'heli':'in';game.yaw=0;game.pitch=0;game.zoom=1;$('camBtn').textContent='🎥 '+({in:'Interior',out:'Exterior',top:'Overhead',drone:'Drone ○',follow:'Drone →',heli:'Helicopter'})[game.cam];chaseUI()}
 $('camBtn').onclick=toggleCam;
-addEventListener('keydown',ev=>{if(ev.target.tagName==='INPUT')return;if(ev.key==='c'||ev.key==='C')toggleCam();if(ev.key==='x'||ev.key==='X')toggleChaos();if(ev.key==='w'||ev.key==='W')cycleWeather();if(ev.key==='p'||ev.key==='P')deployProtest();if(ev.key==='r'||ev.key==='R')aifmToggle();if(ev.key==='d'||ev.key==='D')wdogToggle();if(ev.key==='n'||ev.key==='N')rerouteNow();if(ev.key==='k'||ev.key==='K')chaseToggle();if(ev.key===' '&&game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause';ev.preventDefault()}});
+addEventListener('keydown',ev=>{if(ev.target.tagName==='INPUT')return;if(ev.key==='e'||ev.key==='E')expressToggle();if(ev.key==='c'||ev.key==='C')toggleCam();if(ev.key==='x'||ev.key==='X')toggleChaos();if(ev.key==='w'||ev.key==='W')cycleWeather();if(ev.key==='p'||ev.key==='P')deployProtest();if(ev.key==='r'||ev.key==='R')aifmToggle();if(ev.key==='d'||ev.key==='D')wdogToggle();if(ev.key==='n'||ev.key==='N')rerouteNow();if(ev.key==='k'||ev.key==='K')chaseToggle();if(ev.key===' '&&game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause';ev.preventDefault()}});
 const tsMap=v=>{const x=Math.pow(10,v/100);return x<10?Math.round(x*2)/2:x<100?Math.round(x):Math.round(x/10)*10};
 $('ts').oninput=ev=>{const sc=tsMap(+ev.target.value);if(game)game.scale=sc;$('tsv').textContent=sc+'×'};
 $('pauseBtn').onclick=()=>{if(game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause'}};
