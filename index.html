@@ -195,7 +195,7 @@ const CARS=[
  colors:[['Olive Drab','#4b5320'],['Desert Tan','#b59a6a'],['Urban Grey','#5d6266'],['Gendarmerie Blue','#27364f']],dash:'rivian',wheel:'round',sensors:'none',sound:'ev',driver:true,apc:true},
 {id:'hyper',name:'Voltanza Fulmine XR',sub:'All-electric hypercar',style:'coupe',L:4.78,W:2.06,H:1.12,wb:2.75,wr:0.36,hp:2100,z60:1.7,top:300,range:'~310 mi (est.)',weight:'4,300 lb',drive:'Quad motor torque-vectoring AWD · 1,000 V',level:'SAE Level 4 · track-capable autonomy (fictional)',
  tech:'An invented 2,100 hp quad-motor hypercar. There is no steering wheel. Instead, a wall of active screens shows telemetry, a g-meter, battery temps, mirror cams and the route. An active rear wing flattens for top speed, tilts up in corners and flips vertical as an airbrake. In Express or Chase mode it runs flat out to 300 mph where the road allows.',
- colors:[['Toxic Lime','#9dff00'],['Hyper Magenta','#ff1fb4'],['Volt Orange','#ff6a00'],['Ultraviolet','#6b2cff'],['Cyber Teal','#00e5d4'],['Acid Yellow','#f4ff2e']],dash:'hyper',wheel:'none',sensors:'none',sound:'ev',driver:true,hyper:true},
+ colors:[['Toxic Lime','#9dff00'],['Hyper Magenta','#ff1fb4'],['Volt Orange','#ff6a00'],['Ultraviolet','#6b2cff'],['Cyber Teal','#00e5d4'],['Acid Yellow','#f4ff2e']],dash:'hyper',wheel:'none',sensors:'hyper',sound:'ev',driver:true,hyper:true},
 ];
 
 // ============================================================ UTIL
@@ -1367,6 +1367,17 @@ function buildCar(spec,colorHex,opts={}){
   onEnd(true,0,sh.clr+0.3,0.28,0.1,sens,0.06);
   const rack=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.06,W*0.62),sens);rack.position.set(rx,H+0.02,0);g.add(rack);
   for(const s of [1,-1]){const fu=0.86,fp=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.16,0.16),white);fp.position.set(P.xOf(fu),P.top(fu)+0.06,s*(P.half(fu)-0.12));g.add(fp);const lens=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.1,0.12),sens);lens.position.set(P.xOf(fu)+0.15,P.top(fu)+0.06,s*(P.half(fu)-0.12));g.add(lens)}
+ }else if(spec.sensors==='hyper'){ /* every sensor type: spinning roof lidar, 4 corner lidars, 6 imaging radars, 12-camera ring, thermal, 12 ultrasonics, GNSS/IMU fin, mic array */
+  const glow=new THREE.MeshBasicMaterial({color:0x00e5ff}),red=new THREE.MeshBasicMaterial({color:0xff2a2a}),lens=new THREE.MeshStandardMaterial({color:0x05070a,roughness:0.05,metalness:0.8});const rx=P.xOf(0.47),ry=P.top(0.47);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.24,0.08,24),sens);base.position.set(rx,ry+0.04,0);g.add(base);const dome=new THREE.Group();dome.position.set(rx,ry+0.16,0);g.add(dome);
+  const dm=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.15,0.16,24),sens);dome.add(dm);const win=new THREE.Mesh(new THREE.CylinderGeometry(0.135,0.135,0.05,24,1,true),glow);dome.add(win);const fin=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.06,0.02),red);fin.position.set(0.14,0,0);dome.add(fin);g.userData.lidarSpin=dome;
+  const gnss=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.05,0.04),sens);gnss.position.set(P.xOf(0.36),P.top(0.36)+0.03,0);g.add(gnss);
+  for(const [a,b] of [[1,1],[1,-1],[-1,1],[-1,-1]]){const c=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.06,0.09,14),sens);c.position.set(a*(L/2-0.45),0.62,b*(W/2-0.12));g.add(c);const cw=new THREE.Mesh(new THREE.CylinderGeometry(0.058,0.058,0.025,14,1,true),glow);cw.position.copy(c.position);g.add(cw)}
+  for(const [xx,zz,ry2] of [[L/2-0.08,0,0],[L/2-0.2,0.7,0.6],[L/2-0.2,-0.7,-0.6],[-L/2+0.1,0,Math.PI],[-L/2+0.25,0.75,2.5],[-L/2+0.25,-0.75,-2.5]]){const r=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.07,0.16),sens);r.position.set(xx,0.36,zz);r.rotation.y=ry2;g.add(r)}
+  for(let i=0;i<12;i++){const a=i/12*Math.PI*2,c=new THREE.Mesh(new THREE.SphereGeometry(0.022,8,6),lens);c.position.set(rx+Math.cos(a)*0.215,ry+0.06,Math.sin(a)*0.215);g.add(c)}
+  const th=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.07),new THREE.MeshBasicMaterial({color:0xff6a00}));th.position.set(P.xOf(0.66)+0.05,P.top(0.66)+0.02,0);g.add(th);
+  for(let i=0;i<12;i++){const fr=i<6,u=(i%6)/5-0.5,d=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.01,10),sens);d.rotation.z=Math.PI/2;d.position.set(fr?L/2-0.12:-L/2+0.08,0.3,u*W*0.8);g.add(d)}
+  for(const z of [0.25,-0.25]){const m=new THREE.Mesh(new THREE.SphereGeometry(0.015,6,6),sens);m.position.set(P.xOf(0.4),P.top(0.4)+0.01,z);g.add(m)}
  }else if(spec.sensors==='zoox'){for(const [a,b] of [[1,1],[1,-1],[-1,1],[-1,-1]]){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.19,0.34,20),sens);p.position.set(a*(L/2-0.38),H-0.16,b*(W/2-0.36));g.add(p);const c=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.12,16),white);c.position.set(a*(L/2-0.38),H+0.06,b*(W/2-0.36));g.add(c)}}
  else if(spec.sensors==='mb'||spec.sensors==='lucid'){onEnd(true,0,sh.clr+0.3,0.3,0.05,sens,0.05);
   if(spec.sensors==='mb'){const tq=new THREE.MeshBasicMaterial({color:0x10d8c8});g.userData.turq=[];for(const s of [1,-1]){const m=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.03,0.04),tq);const mu=sh.cowl-0.035;m.position.set(P.xOf(mu)+0.02,P.belt(mu)+0.08,s*(P.half(mu)*0.95+0.2));g.add(m);g.userData.turq.push(m)}}}
@@ -2273,6 +2284,7 @@ function plan(a,dt,lead,isEgo){
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
  if(CHASE.on&&!(isEgo&&game.spec.apc))for(const B of CHASE.blocks)if(B.route===game.route){const d=(a.dir<0?-1:1)*(B.s-a.s)-10;if(d>-2&&d<220){const v=allow(0,d);if(v<target){target=v;reason=isEgo?'🚧 Roadblock ahead':reason}}}
+ if(isEgo&&game.hyperBrake>0){const v=Math.max(0,a.v-12*dt*10);if(v<target){target=v;reason='🧠 Predicted conflict · braking'}}
  // end of route
  const rem=R.total-a.s;{const v=allow(0,rem-1);if(v<target){target=v;reason='Arriving'}}
  // traffic stops for the protest crowd too (both directions)
@@ -2687,14 +2699,14 @@ function step(){
   }
  }
  // place ego
- const off=laneOffsetAt(routeLLnh(e.s)[2])+(fastOn()||G.overtakeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(fastOn()||G.overtakeT>0?2.2:0.5)));
+ const off=laneOffsetAt(routeLLnh(e.s)[2])+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(fastOn()||G.overtakeT>0?2.2:0.5)));
  const towAnim=G.tow&&G.tow.phase!=='towing'&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling';
  const prevHead=e.head;if(!towAnim){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw()}
  const yawRate=(e.head-prevHead)/(Math.max(1e-3,rdt*G.scale));const steerT=clamp(Math.atan(spec.wb*yawRate/Math.max(e.v,1)),-0.6,0.6);e.steer=lerp(e.steer,steerT,0.2);
  if(!towAnim)spinWheels(e,rdt*G.scale,e.steer);
  if(wheelMesh)wheelMesh.rotation.x=-e.steer*14/ (spec.wheel==='yoke'?1.4:1);
  if(e.mesh.userData.lidar)e.mesh.userData.lidar.rotation.y+=rdt*20;
- if(e.mesh.userData.wing){const wg=e.mesh.userData.wing,acc=e.acc||0,ang=acc<-4?-1.25:e.v>60?-0.03:/curve|turn/i.test(G.status||'')?-0.38:-0.16;wg.rotation.z=lerp(wg.rotation.z,ang,Math.min(1,rdt*4))} /* active wing: flat at speed, steep in corners, vertical airbrake */
+ if(e.mesh.userData.lidarSpin)e.mesh.userData.lidarSpin.rotation.y+=rdt*18;hyperPredict(rdt*G.scale);if(e.mesh.userData.wing){const wg=e.mesh.userData.wing,acc=e.acc||0,ang=acc<-4?-1.25:e.v>60?-0.03:/curve|turn/i.test(G.status||'')?-0.38:-0.16;wg.rotation.z=lerp(wg.rotation.z,ang,Math.min(1,rdt*4))} /* active wing: flat at speed, steep in corners, vertical airbrake */
  if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);updateExpress(Math.min(0.1,rdt*G.scale));stuckWatch(rdt*G.scale);updateCollisions(Math.min(0.05,rdt*G.scale));damageSmoke(rdt*G.scale);syncMusicPause();
  if(e.mesh.userData.wipers){const sp=WX.rain>0.6||WX.snow?2.6:WX.rain>0?1.4:0;G.wipeT=(G.wipeT||0)+rdt*sp;const ang=sp?(1-Math.cos(G.wipeT*Math.PI))/2*1.9:0;G.wipeAng=ang;e.mesh.userData.wipers.forEach(w=>w.rotation.y=ang)}
  // body pitch on accel
@@ -3190,9 +3202,23 @@ function clearProtest(){const G=game;if(G.protest){scene.remove(G.protest.grp);p
 // ---- manual reroute (N): take a genuinely different way from here — OSRM alternatives first, else a forced detour via parallel streets
 // STUCK WATCHDOG: if the car makes < 3 m of forward progress in 10 s of sim time (queue, blockage, protest, roadblock, crash,
 // gridlock…) it detours immediately. Legit waits are exempt: red light, stop-sign pause, charging/fuelling, towing, pull-over, arrival.
+/* HYPER PREDICTION: tracks every road user's velocity, forecasts 4 s of motion (constant-velocity + heading-rate), forecasts the car's own path
+   along the route, and finds the earliest predicted conflict. <1.4 s → hard brake; otherwise dodge laterally away from the threat. */
+function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)return;const e=G.ego,objs=[];G.dodgeT=Math.max(0,(G.dodgeT||0)-dt);
+ const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z);if(d>160)return;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
+  if(Math.hypot(vx,vz)>90)return;const f=x=>isFinite(x)?x:0;o._vx=lerp(o._vx||0,f(vx),0.3);o._vz=lerp(o._vz||0,f(vz),0.3);o._w=lerp(o._w||0,clamp(f(w),-1,1),0.2);objs.push({o,x,z,h,kind,vx:o._vx,vz:o._vz,w:o._w,d,id:o._id||(o._id=++G._pid||(G._pid=1))})};
+ for(const a of G.agents)if(a.mesh)track(a,a.mesh.position.x,a.mesh.position.z,a.mesh.rotation.y,a.spec.style==='harley'?'moto':'car');
+ if(CHASE.on)for(const c of CHASE.cops)track(c,c.mesh.position.x,c.mesh.position.z,c.mesh.rotation.y,'cop');if(CHAOS.on)for(const a of CHAOS.cars)track(a,a.x,a.z,a.head,'car');for(const p of G.peds)track(p,p.x,p.z,p.mesh.rotation.y,'ped');
+ let worst=null;const T=4,st=0.25;
+ for(const b of objs){const path=[];let px=b.x,pz=b.z,vx=b.vx,vz=b.vz;for(let t=st;t<=T;t+=st){const c=Math.cos(b.w*st),sn=Math.sin(b.w*st),nvx=vx*c-vz*sn,nvz=vx*sn+vz*c;vx=nvx;vz=nvz;px+=vx*st;pz+=vz*st;path.push([px,pz,t]);
+   const ep=routeXZ(Math.min(G.route.total,e.s+e.v*t),e.off||1.85),gap=Math.hypot(px-ep[0],pz-ep[1]),need=b.kind==='ped'?1.8:2.4;if(gap<need&&(!worst||t<worst.t)){const fx=ep[2],fz=ep[3],lat=-(px-ep[0])*fz+(pz-ep[1])*fx;worst={b,t,lat,gap}}}
+  b.path=path;b.ttc=null}
+ if(worst)worst.b.ttc=worst.t;G.pred=objs;G.threat=worst&&worst.t<3.5?worst:null;
+ if(G.threat){if(G.threat.t<1.4){G.hyperBrake=0.6;G.status='🧠 Predicted conflict in '+G.threat.t.toFixed(1)+' s · braking'}else{G.dodgeT=1.5;CHASE.evade=lerp(CHASE.evade,clamp(-Math.sign(G.threat.lat||1)*2.2,-3.4,3.4),Math.min(1,dt*3));G.status='🧠 Anticipating #'+G.threat.b.id+' · evading'}}
+ G.hyperBrake=Math.max(0,(G.hyperBrake||0)-dt)}
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
  const legit=G.charging||G.tow||G.pullOver||G.rerouting||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
- if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn())CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
+ if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
  if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=dt;
  if(W.t>10){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
   if(W.n>=3){e.s=Math.min(G.route.total-5,e.s+35);e.v=4;W.n=0;G.status='⏱️ Still blocked · easing past the obstruction'} // last resort: squeeze past whatever it is
@@ -3239,6 +3265,7 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
 // ============================================================ PERCEPTION VIEW (camera detections + sensor range)
 // Published sensor suites: max detection ranges in metres and field-of-view wedges
 const SENSORS={
+ hyper:{label:'Fulmine OmniSense (lidar ×5 · radar ×6 · cam ×12 · thermal · ultrasonic ×12)',lidar:400,cam:600,radar:350,wedges:[[0,360,400,'lidar'],[0,30,600,'cam'],[0,120,250,'cam'],[0,20,350,'radar'],[90,120,160,'radar'],[-90,120,160,'radar'],[180,60,250,'radar'],[0,24,300,'thermal'],[0,360,6,'sonic']],h:1.35},
  waymo5:{label:'5th-gen Wayfro Driver',lidar:300,cam:500,radar:300,wedges:[[0,360,300,'lidar']],h:2.0},
  waymo6:{label:'6th-gen Wayfro Driver',lidar:300,cam:500,radar:300,wedges:[[0,360,300,'lidar']],h:2.1},
  tesla:{label:'Teslo Vision (8 cameras)',cam:250,wedges:[[0,35,250,'cam'],[0,50,150,'cam'],[0,120,60,'cam'],[90,90,80,'cam'],[-90,90,80,'cam'],[180,60,100,'cam']],h:1.3},
@@ -3289,7 +3316,7 @@ function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cv
  drawBEV(dets,S)}
 function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,W=c.width=Math.round(c.clientWidth*dpr),H=c.height=Math.round(c.clientHeight*dpr),x=c.getContext('2d');
  x.fillStyle='#070a0f';x.fillRect(0,0,W,H);{const wxs=WX.perc;S={...S,wedges:S.wedges.map(w=>[w[0],w[1],w[2]*wxs,w[3]]),lidar:S.lidar&&Math.round(S.lidar*wxs),radar:S.radar&&Math.round(S.radar*Math.max(wxs,0.7)),cam:S.cam&&Math.round(S.cam*wxs)}}const view=Math.min(maxRange(S),320),sc=(H*0.8)/view,cx=W/2,cy=H*0.86;
- const col={lidar:'rgba(62,166,255,',cam:'rgba(53,208,127,',radar:'rgba(255,174,42,'};
+ const col={lidar:'rgba(62,166,255,',cam:'rgba(53,208,127,',radar:'rgba(255,174,42,',thermal:'rgba(255,90,40,',sonic:'rgba(200,120,255,'};
  // coverage wedges
  for(const [dir,fov,rng,t] of S.wedges){x.fillStyle=col[t]+'0.10)';x.strokeStyle=col[t]+'0.45)';x.lineWidth=dpr;x.beginPath();x.moveTo(cx,cy);const a0=(-90-dir-fov/2)*Math.PI/180,a1=(-90-dir+fov/2)*Math.PI/180;x.arc(cx,cy,Math.min(rng,view*1.3)*sc,a0,a1);x.closePath();x.fill();x.stroke()}
  // range rings
