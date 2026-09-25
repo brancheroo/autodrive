@@ -2723,7 +2723,7 @@ function step(){
   const onDeck=NODEH.has(G.route.nodes[routeLLnh(e.s)[2]]);let roll=0;if(!onDeck){const sx=Math.sin(e.head)*0.9,sz=Math.cos(e.head)*0.9;roll=Math.atan2(groundY(e.x-sx,e.z-sz)-groundY(e.x+sx,e.z+sz),1.8)}
   if(!towAnim)e.mesh.rotation.order='YZX';e.pitch=lerp(e.pitch||0,pitch,0.2);e.roll=lerp(e.roll||0,roll,0.2);if(!towAnim){const buf=WX.wind>15?Math.sin(performance.now()/180)*Math.min(0.035,WX.wind*0.0005)*(0.5+Math.random()*0.5):0;e.mesh.rotation.z=e.pitch+clamp(-(e.acc||0)*0.004,-0.02,0.02);e.mesh.rotation.x=clamp(e.roll+buf,-0.2,0.2)}}
  // other route agents
- for(const a of G.agents){if(a.kind==='route'){place(a,a.off||1.85);spinWheels(a,rdt*G.scale,0)}else if(a.kind==='oncoming'){place(a,-1.9);spinWheels(a,rdt*G.scale,0)}else spinWheels(a,rdt*G.scale,0)}
+ for(const a of G.agents){if(a.kind==='route'){if(!a.loose){const lo=laneOffsetAt(routeLLnh(a.s)[2]);a.off=a.off===undefined?lo:lerp(a.off,lo,Math.min(1,rdt*G.scale*0.5))}place(a,a.off||1.85);spinWheels(a,rdt*G.scale,0)}else if(a.kind==='oncoming'){place(a,-1.9);spinWheels(a,rdt*G.scale,0)}else spinWheels(a,rdt*G.scale,0)}
  // peds
  for(const p of G.peds){const q=wayPos(p.w,p.s,1.0*p.dir);p.x=q[0];p.z=q[1];p.mesh.position.set(q[0],groundY(q[0],q[1])+(p.w.sidewalk?0.16:0),q[1]);p.mesh.rotation.y=Math.atan2(-q[3]*p.dir,q[2]*p.dir);p.ph+=rdt*G.scale*p.v*4;p.l1.rotation.z=Math.sin(p.ph)*0.5;p.l2.rotation.z=-Math.sin(p.ph)*0.5;if(p.seg){for(const w of p.seg.wheels)w.rotation.y=-p.ph*0.9;p.seg.inner.rotation.z=-0.06-Math.sin(p.ph*0.3)*0.02;if(p.seg.flag)p.seg.flag.rotation.y=Math.sin(p.ph*1.7)*0.4}
   if(p.dog){const D=p.dog,dt2=rdt*G.scale,t=performance.now()/1000;D.sniffT-=dt2;if(D.sniffT<=0){D.sniffing=!D.sniffing&&Math.random()<0.45;D.sniffT=D.sniffing?1+Math.random()*2.5:3+Math.random()*6}
@@ -3251,7 +3251,7 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
  return best}
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
  const legit=G.charging||G.tow||G.pullOver||G.rerouting||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
- if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
+ if(G.overtakeT>0&&G.spec.hyper){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
  if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=dt;
  if(W.t>10){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
   if(W.n>=3){e.s=Math.min(G.route.total-5,e.s+35);e.v=4;W.n=0;G.status='⏱️ Still blocked · easing past the obstruction'} // last resort: squeeze past whatever it is
