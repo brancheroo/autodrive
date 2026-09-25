@@ -887,6 +887,23 @@ function bAdd(ring,key){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const p of ring){x
  b.cells=cells;let o=BOWN.get(key);if(!o)BOWN.set(key,o=[]);o.push(b)}
 // SYSTEM CHECK (runs every 2 s): sample the whole active route across the carriageway; any building footprint found there
 // means its tile was fitted against stale roads (reroute, late road data) → rebuild that tile immediately
+// ROAD SWEEP — the last line of defence for EVERY static object a tile contains (fixtures, poles, signs, carts, billboards,
+// trees, walls-of-anything, props added in future): nothing may occupy a carriageway below 4.6 m (legal overhead clearance, so
+// signal mast arms, overhead signs and bridges above are fine). Road-surface layers are the only things allowed on the road.
+const SWEEP_SKIP=()=>new Set([MAT.road,MAT.road2,MAT.yellow,MAT.white,MAT.path,MAT.pier,MAT.wall].filter(Boolean));const CLEAR_H=4.6;
+function roadSweep(grp,RQ){if(!RQ)return 0;const skip=SWEEP_SKIP(),v=new THREE.Vector3(),M=new THREE.Matrix4(),box=new THREE.Box3();let n=0;grp.updateMatrixWorld(true);
+ const onRoad=(x,z,y,m)=>y<groundY(x,z)+CLEAR_H&&RQ.inside(x,z,m);
+ for(const o of [...grp.children]){
+  if(o.isInstancedMesh){let ch=false;for(let i=0;i<o.count;i++){o.getMatrixAt(i,M);v.setFromMatrixPosition(M).applyMatrix4(o.matrixWorld);if(M.elements[0]===0&&M.elements[5]===0)continue;if(onRoad(v.x,v.z,v.y,0.4)){M.makeScale(0,0,0);o.setMatrixAt(i,M);ch=true;n++}}if(ch)o.instanceMatrix.needsUpdate=true;continue}
+  const mats=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];if(mats.some(m=>skip.has(m)))continue;
+  if(o.isMesh&&o.userData.merged&&!o.isGroup){const g=o.geometry,P=g.attributes.position;if(!P)continue;const idx=g.index,tri=idx?idx.count/3:P.count/3,A=idx?idx.array:null;let ch=false;
+   for(let t=0;t<tri;t++){const i0=A?A[t*3]:t*3,i1=A?A[t*3+1]:t*3+1,i2=A?A[t*3+2]:t*3+2;const x=(P.getX(i0)+P.getX(i1)+P.getX(i2))/3,z=(P.getZ(i0)+P.getZ(i1)+P.getZ(i2))/3,y=Math.min(P.getY(i0),P.getY(i1),P.getY(i2));
+    v.set(x,y,z).applyMatrix4(o.matrixWorld);if(!onRoad(v.x,v.z,v.y,0))continue;if(A){A[t*3+1]=A[t*3+2]=A[t*3]}else{for(const k of [i1,i2])P.setXYZ(k,P.getX(i0),P.getY(i0),P.getZ(i0))}ch=true;n++}
+   if(ch){if(A)g.index.needsUpdate=true;else P.needsUpdate=true;g.computeBoundingSphere()}continue}
+  // single objects (signs, carts, billboards, props): judged by their footprint centre and lowest point
+  box.setFromObject(o);if(box.isEmpty())continue;const sx=box.max.x-box.min.x,sz=box.max.z-box.min.z;if(sx>60||sz>60)continue; // terrain / sky-scale meshes
+  const cx=(box.min.x+box.max.x)/2,cz=(box.min.z+box.max.z)/2;if(onRoad(cx,cz,box.min.y,Math.min(sx,sz)*0.35)){grp.remove(o);n++}}
+ return n}
 function roadClearCheck(){const G=game;if(!G||!G.route||!G.ego)return 0;const bad=new Set();const s0=Math.max(0,G.ego.s-300),s1=Math.min(G.route.total,G.ego.s+1500);
  for(let s=s0;s<=s1;s+=3)for(const o of [0,-2,2,-4,4]){const p=routeXZ(s,o),b=bAt(p[0],p[1]);if(b)for(const [k,list] of BOWN)if(list.includes(b))bad.add(k)}
  for(const k of bad){RAWROADS.delete(k);unloadTile(k);buildTile(k)}if(bad.size)console.warn('road-clear check rebuilt tiles',[...bad]);return bad.size}
@@ -1024,7 +1041,7 @@ placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
    L.forEach((t,i)=>{const r=rng(t[2]),sc=Math.min((sp==='conifer'?0.75:0.7)+r()*0.6,t[3]||9);q.setFromAxisAngle(UPV,r()*6.283);s.set(sc,sc*(0.85+r()*0.35),sc);p.set(t[0],groundY(t[0],t[1])-0.1,t[1]);m.compose(p,q,s);wood.setMatrixAt(i,m);leaf.setMatrixAt(i,m);
     col.setHSL((sp==='palm'?0.23:0.26)+(r()-0.5)*0.05,0.9,0.95-r()*0.25);if(WX.snow>0.3&&sp!=='palm')col.lerp(new THREE.Color(0xffffff),0.35);leaf.setColorAt(i,col)});
    wood.castShadow=true;leaf.castShadow=true;leaf.receiveShadow=true;wood.frustumCulled=leaf.frustumCulled=false;T.group.add(wood,leaf)}}
- scene.add(T.group);TILES.set(key,T);
+ T.swept=roadSweep(T.group,RQ);scene.add(T.group);TILES.set(key,T);
 
 }
 const UPV=new THREE.Vector3(0,1,0);
