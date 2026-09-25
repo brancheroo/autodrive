@@ -1376,7 +1376,7 @@ function buildCar(spec,colorHex,opts={}){
   const piv=new THREE.Group();piv.position.y=0.1;w.add(piv);const blade=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.035,W*0.94),cf);blade.position.x=-0.12;piv.add(blade);
   for(const z of [1,-1]){const ep=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.26,0.02),cf);ep.position.set(-0.12,0.02,z*W*0.47);piv.add(ep)}
   const acc=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.012,W*0.9),new THREE.MeshBasicMaterial({color:0xff2a2a}));acc.position.set(-0.12,0.022,0);piv.add(acc);g.userData.wing=piv;
-  const dif=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.12,W*0.85),cf);dif.position.set(-L/2+0.2,0.2,0);dif.rotation.z=-0.35;g.add(dif);const spl=new THREE.Mesh(new THREE.BoxGeometry(0.35,0.03,W*0.95),cf);spl.position.set(L/2-0.1,0.12,0);g.add(spl)}
+  const dif=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.12,W*0.85),cf);dif.position.set(-L/2+0.2,0.2,0);dif.rotation.z=-0.35;g.add(dif);const spl=new THREE.Mesh(new THREE.BoxGeometry(0.25,0.025,W*0.86),cf);spl.position.set(L/2-0.34,0.13,0);g.add(spl)}
  if(spec.apc){const arm=new THREE.MeshStandardMaterial({color:new THREE.Color(colorHex).multiplyScalar(0.92),roughness:0.85,metalness:0.2}),dk=new THREE.MeshStandardMaterial({color:0x1d1f1b,roughness:0.9}),gl=new THREE.MeshStandardMaterial({color:0x2a3a3a,roughness:0.15,metalness:0.4});
   const B=(w,h,d,m,x,y,z,rz=0,ry=0)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);b.rotation.z=rz;b.rotation.y=ry;g.add(b);return b};
   B(0.9,0.12,W*0.96,arm,L/2-0.25,H*0.5,0,-0.9);B(0.5,0.1,W*0.9,arm,L/2-0.05,H*0.28,0,0.6); // sloped glacis + lower V plate
