@@ -2284,6 +2284,12 @@ function plan(a,dt,lead,isEgo){
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
  if(CHASE.on&&!(isEgo&&game.spec.apc))for(const B of CHASE.blocks)if(B.route===game.route){const d=(a.dir<0?-1:1)*(B.s-a.s)-10;if(d>-2&&d<220){const v=allow(0,d);if(v<target){target=v;reason=isEgo?'🚧 Roadblock ahead':reason}}}
+ /* HYPER SAFETY ENVELOPE (hard layer, overrides everything): for every tracked object ahead that overlaps the lateral band the car occupies
+    now or is moving into, cap speed so the car can always stop behind it (0.3 s latency + 1.5 m buffer, 7 m/s² braking) */
+ if(isEgo&&a.spec.hyper&&game.pred&&!a.loose){const h=Math.atan2(-(routeXZ(a.s+2,0)[1]-routeXZ(a.s,0)[1]),routeXZ(a.s+2,0)[0]-routeXZ(a.s,0)[0]),fx=Math.cos(h),fz=-Math.sin(h),ex=a.mesh.position.x,ez=a.mesh.position.z;
+  const dOff=laneOffsetAt(idx)+(CHASE.evade||0)-(a.off||0),lo=Math.min(0,dOff),hi=Math.max(0,dOff);
+  for(const b of game.pred){const dx=b.x-ex,dz=b.z-ez,f=dx*fx+dz*fz;if(f<0.5||f>look)continue;const lat=-dx*fz+dz*fx,half=(a.spec.W+(b.kind==='ped'?0.7:b.kind==='moto'?0.9:2.0))/2+0.45;if(lat<lo-half||lat>hi+half)continue;
+   const vb=Math.max(0,(b.vx||0)*fx+(b.vz||0)*fz),gap=f-a.spec.L/2-(b.kind==='ped'?0.4:2.5)-1.5-a.v*0.3,v=Math.sqrt(Math.max(0,vb*vb+2*7*Math.max(0,gap)));if(v<target){target=v;reason=`🛡️ Keeping stopping distance · #${b.id}`}}}
  if(isEgo&&a.spec.hyper&&game.hp&&game.hp.risk){const v=Math.max(0,a.v+game.hp.acc*0.6);if(game.hp.acc<0||game.hp.acc===0&&game.hp.risk===1){if(v<target){target=v;reason=game.status}}else if(game.hp.acc>3&&game.hp.risk===1){target=Math.max(target,a.v+6);reason=game.status}} /* planner owns speed when a conflict is forecast */
  // end of route
  const rem=R.total-a.s;{const v=allow(0,rem-1);if(v<target){target=v;reason='Arriving'}}
@@ -2293,7 +2299,7 @@ function plan(a,dt,lead,isEgo){
  const top=(typeof a.spec.top==='number'?a.spec.top:85)/MPH;target=Math.min(target,top);
  const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){if(!chase)target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
  const amax=isEgo&&a.spec.hyper?Math.min(26.8/1.7*(chase?1:0.35)*DP.acc,WX.mu*9.81*(chase?1.6:0.6)):Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc))*(chase?2.3:1):1.8,WX.mu*9.81*(chase?0.7:0.35)); // traction-limited on wet/snow/ice
- let acc=target>a.v?amax*(1-Math.pow(a.v/Math.max(target,0.1),4)):clamp((target-a.v)*1.6,-6.5,0);
+ let acc=target>a.v?amax*(1-Math.pow(a.v/Math.max(target,0.1),4)):clamp((target-a.v)*1.6,isEgo&&a.spec.hyper?-9.5:-6.5,0);
  if(isEgo&&a.spec.plim&&acc>0){const E=ES(),vv=Math.max(a.v,2.5),Pw=a.spec.hp*745.7*0.85,drag=0.5*1.2*E.cda*vv*vv+E.crr*E.kg*9.81,gr=(a.grade||0)*E.kg*9.81;acc=Math.min(acc,Math.max(0,(Pw/vv-drag-gr)/E.kg),2.6)} // power-limited: slow 0–60, runs out of breath near 86 mph
  if(target>a.v&&target-a.v<0.2)acc=0;
  a.v=Math.max(0,a.v+acc*dt);a.s+=a.v*dt;a.acc=acc;
@@ -3225,7 +3231,7 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
  const near=objs.filter(b=>b.d<200&&b.path);const circ=(x,z,h,kind)=>{if(kind==='ped')return[[x,z,0.45]];const c=Math.cos(h),sn=-Math.sin(h),k=kind==='moto'?0.8:1.5,r=kind==='moto'?0.6:1.05;return[[x+c*k,z+sn*k,r],[x,z,r],[x-c*k,z-sn*k,r]]};
  let best=null;
  for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';let s=e.s,v=v0,o=cur;
-  for(let i=1;i<=20;i++){const t=i*0.2;v=Math.max(0,v+acc*0.2);s+=v*0.2;o+=(off-o)*Math.min(1,0.2/0.7);if(s>R.total)break;
+  for(let i=1;i<=20;i++){const t=i*0.2;v=Math.max(0,v+acc*0.2);s+=v*0.2;o+=(off-o)*Math.min(1,0.2/1.1);if(s>R.total)break;
    const p=routeXZ(s,laneOffsetAt(routeLLnh(s)[2])+o),h=Math.atan2(-p[3],p[2]);if(i%5===0&&rq&&!rq.inside(p[0],p[1],-0.9))cost+=40; /* line leaves the carriageway */
    const E=circ(p[0],p[1],h,'car'),grow=0.35+t*0.15+v*0.02,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
    for(const b of near){const q=b.path[i-1];if(!q)continue;if(Math.abs(q[0]-p[0])>9||Math.abs(q[1]-p[1])>9)continue;const bh=Math.atan2(-(b.vz||0),(b.vx||0.001)),O=circ(q[0],q[1],Math.hypot(b.vx,b.vz)>0.5?bh:b.h,b.kind);
