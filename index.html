@@ -118,7 +118,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
     <button id="wxBtn" title="Cycle weather (W)">🌤 Clear</button>
     <button id="expBtn" onclick="expressToggle()" title="Express: chase-mode driving with no police (E)">⚡ Express</button><button id="chaseBtn" onclick="chaseToggle()" title="Chase mode: flat out for the destination, evade police, detour roadblocks (K)">🚨 Chase</button><select id="copN" title="Pursuing police cars" style="padding:4px;border-radius:6px;background:#0e141d;color:var(--text);border:1px solid var(--line);font-size:12px"><option value="1">1 🚓</option><option value="2">2 🚓</option><option value="3" selected>3 🚓</option><option value="4">4 🚓</option><option value="5">5 🚓</option><option value="6">6 🚓</option><option value="7">7 🚓</option><option value="8">8 🚓</option><option value="9">9 🚓</option><option value="10">10 🚓</option></select><button id="rerouteBtn" onclick="rerouteNow()" title="Take a different route right now (N)">🔀 Reroute</button><button id="protestBtn" title="Deploy an oil protest blocking the road 100 m ahead (P)">🪧 Protest</button>
     <button id="chaosBtn" title="Chaos mode: 100 wild cars + 500 wild pedestrians + animals (X)">🌀 Chaos</button>
-    <button id="muteBtn" title="Sound on / off">🔊</button><button id="dogBtn" onclick="wdogToggle()" title="Window dog on / off (D)">🐕 Off</button><div id="dogSay"></div><button id="aifmBtn" onclick="aifmToggle()" title="AI Radio: live-written songs (R)">🎵 Off</button><div id="aifmBox"></div>
+    <button id="muteBtn" title="Sound on / off">🔊</button><button id="dogBtn" onclick="wdogToggle()" title="Window dog on / off (D)">🐕 Off</button><div id="dogSay"></div><button id="techBtn" onclick="techToggle()" title="Techno FM: generated live from speed, situation &amp; surroundings (T)">📡 Off</button><button id="aifmBtn" onclick="aifmToggle()" title="AI Radio: live-written songs (R)">🎵 Off</button><div id="aifmBox"></div>
     <button id="menuBtn" title="Back to the start menu">↺ New</button>
   </div>
   <div id="liveBug" hidden><span class="lv">● LIVE</span> <span id="liveTxt">CHOPPER 7 · POLICE PURSUIT</span></div>
@@ -1515,7 +1515,7 @@ function sigIcons(x,X,Y,s){const on=game.blinkOn;x.font=`bold ${s}px system-ui`;
 function batt(x,X,Y,W,H,th){x.strokeStyle=th.dim;x.lineWidth=2;x.strokeRect(X,Y,W,H);x.fillStyle=game.soc>0.2?th.ok:'#ff4040';x.fillRect(X+2,Y+2,(W-4)*game.soc,H-4);x.fillStyle=th.fg;x.font=`${H*0.9}px system-ui`;x.fillText(game.spec.sound==='v8'?Math.round(game.soc*100)+'% fuel':Math.round(game.soc*100)+'%',X+W+6,Y+H*0.85)}
 // ============================================================ INFOTAINMENT (clickable screens: Nav · Media · Climate · Energy · Drive)
 const RADIO={stations:[['KEXP 90.3 Seattle','https://kexp-mp3-128.streamguys1.com/kexp128.mp3'],['KQED 88.5 San Francisco','https://streams.kqed.org/kqedradio'],['WNYC 93.9 New York','https://fm939.wnyc.org/wnycfm'],['BBC World Service','https://stream.live.vc.bbcmedia.co.uk/bbc_world_service'],['Jazz Radio','https://jazz-wr04.ice.infomaniak.ch/jazz-wr04-128.mp3']],idx:0,playing:false,vol:0.6,el:null,status:''};
-function radioPlay(i){if(AIFM.on)aifmStop();if(i!==undefined)RADIO.idx=(i+RADIO.stations.length)%RADIO.stations.length;if(!RADIO.el){RADIO.el=new Audio();RADIO.el.crossOrigin='anonymous'}const e=RADIO.el;e.src=RADIO.stations[RADIO.idx][1];e.volume=RADIO.vol;RADIO.status='Buffering…';e.onplaying=()=>RADIO.status='Live';e.onerror=()=>RADIO.status='Stream unavailable';e.play().then(()=>RADIO.playing=true).catch(()=>RADIO.status='Tap again to play');RADIO.playing=true}
+function radioPlay(i){if(TECH.on)techStop();if(AIFM.on)aifmStop();if(i!==undefined)RADIO.idx=(i+RADIO.stations.length)%RADIO.stations.length;if(!RADIO.el){RADIO.el=new Audio();RADIO.el.crossOrigin='anonymous'}const e=RADIO.el;e.src=RADIO.stations[RADIO.idx][1];e.volume=RADIO.vol;RADIO.status='Buffering…';e.onplaying=()=>RADIO.status='Live';e.onerror=()=>RADIO.status='Stream unavailable';e.play().then(()=>RADIO.playing=true).catch(()=>RADIO.status='Tap again to play');RADIO.playing=true}
 function radioStop(){if(typeof AIFM!=='undefined'&&AIFM.on)aifmStop();if(RADIO.el)RADIO.el.pause();RADIO.playing=false;RADIO.status='Paused'}
 // ============================================================ AUTODRIVE FM: 15 original AI-written songs, synthesized live
 // Everything here is generated in the browser: a 16th-note sequencer drives synthesized drums, bass, chords and a lead line,
@@ -1557,10 +1557,55 @@ function aifmStart(){if(!AIFM.ctx)AIFM.ctx=new (window.AudioContext||window.webk
 document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.closest('#ctrl button,#aifmBox button');if(b)setTimeout(()=>b.blur(),0)},true);
 document.addEventListener('keydown',ev=>{if((ev.key===' '||ev.key==='Enter')&&ev.target&&ev.target.tagName==='BUTTON'&&game&&game.route){ev.preventDefault();ev.target.blur()}},true);
 document.addEventListener('keyup',ev=>{if(ev.key===' '&&ev.target&&ev.target.tagName==='BUTTON'&&game&&game.route)ev.preventDefault()},true);
-function syncMusicPause(){const p=!!(game&&game.paused);if(AIFM.on&&AIFM.ctx){if(p&&AIFM.ctx.state==='running'){AIFM.ctx.suspend();try{speechSynthesis.pause()}catch(e){}}else if(!p&&AIFM.ctx.state==='suspended'){AIFM.ctx.resume();try{speechSynthesis.resume()}catch(e){}}}
+function syncMusicPause(){const p=!!(game&&game.paused);if(TECH.on&&TECH.ctx){if(p&&TECH.ctx.state==='running')TECH.ctx.suspend();else if(!p&&TECH.ctx.state==='suspended')TECH.ctx.resume()}if(AIFM.on&&AIFM.ctx){if(p&&AIFM.ctx.state==='running'){AIFM.ctx.suspend();try{speechSynthesis.pause()}catch(e){}}else if(!p&&AIFM.ctx.state==='suspended'){AIFM.ctx.resume();try{speechSynthesis.resume()}catch(e){}}}
  if(RADIO.el&&RADIO.playing){if(p&&!RADIO.el.paused){RADIO.el.pause();RADIO.heldByPause=true}else if(!p&&RADIO.heldByPause){RADIO.heldByPause=false;RADIO.el.play().catch(()=>{})}}}
+/* ============================================================ TECHNO FM — a second station, fully generated in real time.
+   Tempo follows speed (25 BPM parked → 200 BPM flat out); chase/express/threats/crashes add drive; night darkens the pads, rain muffles
+   the mix, traffic density fills the hats; red lights drop into a breakdown; acceleration opens the acid filter; key follows location. */
+const TECH={on:false,ctx:null,bpm:25,target:25,step:0,next:0,timer:null,energy:0,root:45,bar:0,acid:[],stab:[],brk:false,glitch:0,lastCrash:0};
+const TK_SCALE=[0,2,3,5,7,8,10];
+function techInit(){if(TECH.ctx)return;const C=new (window.AudioContext||window.webkitAudioContext)();TECH.ctx=C;
+ const comp=C.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=5;comp.attack.value=0.003;comp.release.value=0.15;
+ const master=C.createGain();master.gain.value=0.75;const lp=C.createBiquadFilter();lp.type='lowpass';lp.frequency.value=18000;lp.Q.value=0.7;
+ master.connect(lp);lp.connect(comp);comp.connect(C.destination);TECH.master=master;TECH.lp=lp;
+ const dl=C.createDelay(1.5),fb=C.createGain(),dw=C.createGain();fb.gain.value=0.38;dw.gain.value=0.25;dl.connect(fb);fb.connect(dl);dl.connect(dw);dw.connect(master);TECH.delay=dl;
+ const n=C.createBuffer(1,C.sampleRate*1.5,C.sampleRate),d=n.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;TECH.noise=n;techPatterns()}
+function techPatterns(){const r=Math.random;TECH.acid=Array.from({length:16},(_,i)=>({on:r()<(i%4===0?0.85:0.55),n:[0,0,0,7,12,3,5,10][Math.floor(r()*8)],acc:r()<0.3,slide:r()<0.2}));TECH.stab=Array.from({length:16},(_,i)=>i%4===2&&r()<0.8||r()<0.12)}
+/* read the world ~4×/s: speed → BPM, situation → energy */
+function techSense(){const G=game;if(!G||!G.ego)return;const e=G.ego,mph=e.v*2.237;let bpm=25+clamp(mph/130,0,1)*175;
+ if(CHASE.on)bpm+=22;else if(EXPRESS.on)bpm+=10;if(G.threat||(G.hp&&G.hp.risk===1))bpm+=12;TECH.target=clamp(bpm,25,200);
+ const traffic=Math.min(1,(G.agents||[]).length/12),city=TILES.size>8?1:0.5;TECH.energy=clamp(0.25+mph/120*0.5+(CHASE.on?0.35:EXPRESS.on?0.2:0)+traffic*0.15,0,1);
+ TECH.brk=mph<2&&/red light|Stop|Queued|protest/i.test(G.status||'');TECH.night=!!G.dark;TECH.rain=(WX.rain||0)+(WX.snow?0.6:0);TECH.hatDens=0.3+traffic*0.5*city;TECH.throttle=clamp((e.acc||0)/4,-1,1);
+ if(CRASH.log.length&&CRASH.log[CRASH.log.length-1]!==TECH.lastCrash){TECH.lastCrash=CRASH.log[CRASH.log.length-1];TECH.glitch=1.2}
+ const lat=toLat(e.z),lon=toLon(e.x);TECH.root=40+Math.abs(Math.round(lat*3+lon*2))%8; /* key drifts with location */
+ const C=TECH.ctx;TECH.master.gain.setTargetAtTime(audio.muted?0:0.75,C.currentTime,0.05);TECH.lp.frequency.setTargetAtTime(TECH.rain>0.2?1800+ (1-Math.min(1,TECH.rain))*4000:18000,C.currentTime,0.4);
+ const b=document.getElementById('techBtn');if(b)b.textContent='📡 '+Math.round(TECH.bpm)+' BPM'}
+function tkKick(t,v){const C=TECH.ctx,o=C.createOscillator(),g=C.createGain();o.frequency.setValueAtTime(155,t);o.frequency.exponentialRampToValueAtTime(44,t+0.12);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+Math.min(0.5,30/TECH.bpm));o.connect(g);g.connect(TECH.master);o.start(t);o.stop(t+0.6)}
+function tkNoise(t,v,type,f,q,dur,send){const C=TECH.ctx,s=C.createBufferSource();s.buffer=TECH.noise;const fl=C.createBiquadFilter();fl.type=type;fl.frequency.value=f;fl.Q.value=q;const g=C.createGain();g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);s.connect(fl);fl.connect(g);g.connect(TECH.master);if(send)g.connect(TECH.delay);s.start(t,Math.random());s.stop(t+dur+0.05)}
+function tkAcid(t,note,acc,dur){const C=TECH.ctx,o=C.createOscillator(),f=C.createBiquadFilter(),g=C.createGain();o.type='sawtooth';o.frequency.value=mtof(note);f.type='lowpass';f.Q.value=14+TECH.energy*6;
+ const base=180+TECH.energy*500+Math.max(0,TECH.throttle)*1800,peak=base+(acc?2600:1300)*(0.4+TECH.energy);f.frequency.setValueAtTime(peak,t);f.frequency.exponentialRampToValueAtTime(base,t+dur*0.9);
+ g.gain.setValueAtTime(acc?0.32:0.22,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.connect(f);f.connect(g);g.connect(TECH.master);o.start(t);o.stop(t+dur+0.02)}
+function tkStab(t,root){const C=TECH.ctx,g=C.createGain(),f=C.createBiquadFilter();f.type='bandpass';f.frequency.value=TECH.night?700:1400;f.Q.value=1.2;g.gain.setValueAtTime(0.16,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.22);
+ for(const iv of [0,3,7,10]){const o=C.createOscillator();o.type='square';o.frequency.value=mtof(root+24+iv);o.connect(f);o.start(t);o.stop(t+0.25)}f.connect(g);g.connect(TECH.master);g.connect(TECH.delay)}
+function tkPad(t,root,len){const C=TECH.ctx,f=C.createBiquadFilter(),g=C.createGain();f.type='lowpass';f.frequency.value=TECH.night?650:1500;f.Q.value=0.8;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.09,t+len*0.3);g.gain.exponentialRampToValueAtTime(0.0001,t+len);
+ for(const iv of (TECH.night?[0,3,7,14]:[0,7,10,15]))for(const det of [-7,7]){const o=C.createOscillator();o.type='sawtooth';o.frequency.value=mtof(root+12+iv);o.detune.value=det;o.connect(f);o.start(t);o.stop(t+len+0.05)}f.connect(g);g.connect(TECH.master)}
+function techStep(i,t){const E=TECH.energy,s=i%16,sd=TECH.stepDur,root=TECH.root,brk=TECH.brk,r=Math.random;
+ if(s===0){TECH.bar++;if(TECH.bar%8===0)techPatterns();if(TECH.bar%4===0)tkPad(t,root+[0,-4,3,-2][(TECH.bar/4)%4|0],sd*64)}
+ if(TECH.glitch>0){if(r()<0.6)tkNoise(t,0.3,'bandpass',300+r()*4000,6,sd*0.8,true);if(s%2===0)tkKick(t,0.5);return}
+ if(!brk&&s%4===0&&E>0.15)tkKick(t,0.95);
+ if(!brk&&E>0.45&&(s===4||s===12))tkNoise(t,0.35,'bandpass',1500,1.5,0.14,true);
+ if(s%4===2)tkNoise(t,0.16,'highpass',7000,0.7,0.12);else if(r()<TECH.hatDens*E)tkNoise(t,0.07,'highpass',9000,0.7,0.035);
+ const a=TECH.acid[s];if(!brk&&E>0.3&&a.on)tkAcid(t,root-12+a.n,a.acc,sd*(a.slide?1.8:0.9));
+ if(!brk&&E>0.6&&TECH.stab[s])tkStab(t,root);
+ if(TECH.throttle>0.5&&s%2===0)tkNoise(t,0.05+TECH.throttle*0.08,'bandpass',2000+s*400,4,sd,true); /* acceleration riser */}
+function techTick(){if(!TECH.on)return;const C=TECH.ctx;if(C.state!=='running')return;TECH.senseT=(TECH.senseT||0)+1;if(TECH.senseT%10===0)techSense();
+ const maxStep=4*(1/16);TECH.bpm+=clamp(TECH.target-TECH.bpm,-maxStep*8,maxStep*8);TECH.stepDur=60/TECH.bpm/4;TECH.delay.delayTime.setTargetAtTime(TECH.stepDur*3,C.currentTime,0.2);TECH.glitch=Math.max(0,TECH.glitch-0.025);
+ while(TECH.next<C.currentTime+0.2){techStep(TECH.step,TECH.next);TECH.step++;TECH.next+=TECH.stepDur}}
+function techStart(){if(AIFM.on)aifmStop();if(RADIO.playing)radioStop();techInit();const C=TECH.ctx;C.resume();TECH.on=true;TECH.bpm=TECH.target=25;techSense();TECH.bpm=TECH.target;TECH.next=C.currentTime+0.1;TECH.step=0;clearInterval(TECH.timer);TECH.timer=setInterval(techTick,25)}
+function techStop(){TECH.on=false;clearInterval(TECH.timer);if(TECH.ctx)TECH.ctx.suspend();const b=document.getElementById('techBtn');if(b)b.textContent='📡 Off'}
+function techToggle(){TECH.on?techStop():techStart()}
 function aifmStop(){AIFM.on=false;clearInterval(AIFM.timer);try{speechSynthesis.cancel()}catch(e){}if(AIFM.ctx)AIFM.ctx.suspend();aifmUI()}
-function aifmToggle(){if(RADIO.playing&&!AIFM.on)radioStop();AIFM.on?aifmStop():aifmStart()}
+function aifmToggle(){if(!AIFM.on&&TECH.on)techStop();if(RADIO.playing&&!AIFM.on)radioStop();AIFM.on?aifmStop():aifmStart()}
 function aifmSkip(){try{speechSynthesis.cancel()}catch(e){}if(AIFM.on){if(AIFM.ctx.state==='suspended')AIFM.ctx.resume();aifmLoad()}aifmUI()}
 function aifmLoad(){const S=aifmGenerate(),C=AIFM.ctx;AIFM.S=S;AIFM.song++;AIFM.arr=aifmArrange(S);AIFM.bars=AIFM.arr.reduce((a,s)=>a+s[1],0);AIFM.stepDur=60/S.bpm/4;AIFM.step=0;AIFM.next=C.currentTime+0.15;AIFM.t0=AIFM.next;
  const sc=S.minor||S.blues?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];AIFM.scale=sc;AIFM.rng=rng(Math.floor(Math.random()*1e9));if(AIFM.voxDelay)AIFM.voxDelay.delayTime.value=Math.min(1.9,60/S.bpm*0.75);AIFM.line='';AIFM.nextLine='';AIFM.mel=null}
@@ -2917,7 +2962,7 @@ canvas.addEventListener('wheel',ev=>{if(!game)return;ev.preventDefault();game.zo
 canvas.addEventListener('dblclick',()=>{if(game){game.yaw=0;game.pitch=0;game.zoom=1}});
 function toggleCam(){if(!game)return;game.cam=game.cam==='in'?'out':game.cam==='out'?'top':game.cam==='top'?'drone':game.cam==='drone'?'follow':game.cam==='follow'?'heli':'in';game.yaw=0;game.pitch=0;game.zoom=1;$('camBtn').textContent='🎥 '+({in:'Interior',out:'Exterior',top:'Overhead',drone:'Drone ○',follow:'Drone →',heli:'Helicopter'})[game.cam];chaseUI()}
 $('camBtn').onclick=toggleCam;
-addEventListener('keydown',ev=>{if(ev.target.tagName==='INPUT')return;if(ev.key==='e'||ev.key==='E')expressToggle();if(ev.key==='c'||ev.key==='C')toggleCam();if(ev.key==='x'||ev.key==='X')toggleChaos();if(ev.key==='w'||ev.key==='W')cycleWeather();if(ev.key==='p'||ev.key==='P')deployProtest();if(ev.key==='r'||ev.key==='R')aifmToggle();if(ev.key==='d'||ev.key==='D')wdogToggle();if(ev.key==='n'||ev.key==='N')rerouteNow();if(ev.key==='k'||ev.key==='K')chaseToggle();if(ev.key===' '&&game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause';ev.preventDefault()}});
+addEventListener('keydown',ev=>{if(ev.target.tagName==='INPUT')return;if(ev.key==='t'||ev.key==='T')techToggle();if(ev.key==='e'||ev.key==='E')expressToggle();if(ev.key==='c'||ev.key==='C')toggleCam();if(ev.key==='x'||ev.key==='X')toggleChaos();if(ev.key==='w'||ev.key==='W')cycleWeather();if(ev.key==='p'||ev.key==='P')deployProtest();if(ev.key==='r'||ev.key==='R')aifmToggle();if(ev.key==='d'||ev.key==='D')wdogToggle();if(ev.key==='n'||ev.key==='N')rerouteNow();if(ev.key==='k'||ev.key==='K')chaseToggle();if(ev.key===' '&&game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause';ev.preventDefault()}});
 const tsMap=v=>{const x=Math.pow(10,v/100);return x<10?Math.round(x*2)/2:x<100?Math.round(x):Math.round(x/10)*10};
 $('ts').oninput=ev=>{const sc=tsMap(+ev.target.value);if(game)game.scale=sc;$('tsv').textContent=sc+'×'};
 $('pauseBtn').onclick=()=>{if(game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause'}};
