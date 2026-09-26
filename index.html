@@ -3071,7 +3071,7 @@ function step(){
   let sdt=rawDt*(busy?Math.min(G.scale,G.soc<0.2?1:3):ff?Math.max(G.scale,60):G.scale);const n=Math.min(2500,Math.ceil(sdt/0.05));const dt=sdt/n;
   for(let k=0;k<n;k++){G.simTime+=dt;modCall('sim',dt);
    // lead vehicle on route
-   const routeAg=G.agents.filter(a=>a.kind==='route'&&a.s>e.s).sort((a,b)=>a.s-b.s);
+   const latOf=a=>(a.off??1.85)+(a.offAdd||0),egoLat=e.off??laneOffsetAt(routeLLnh(e.s)[2]);const routeAg=G.agents.filter(a=>a.kind==='route'&&a.s>e.s&&Math.abs(latOf(a)-egoLat)<2.7).sort((a,b)=>a.s-b.s); /* lane-aware: only cars in (or straddling) our lane are leads */
    // ambient cars crossing directly in front of ego act as obstacles
    let obst=routeAg[0]||null;
    const fx=Math.cos(e.head),fz=-Math.sin(e.head);
@@ -3101,7 +3101,7 @@ function step(){
    if(!G.tow){const E=ES(),P=powerW(E,e.v,e.acc||0,e.grade||0);G.energy=Math.max(0,G.energy-P*dt);G.usedJ+=P*dt;if(routeRef===G.route&&e.s>sPrev)G.expJ=(G.expJ||0)+energyBetween0(G.route,sPrev,e.s);G.odo+=e.v*dt;G.soc=G.energy/capJ(E);
     if(G.energy<=0){e.v=Math.max(0,e.v-3*dt);G.status=E.ice?'Out of fuel · coasting to a stop':'Battery depleted · coasting to a stop';if(e.v<0.1){e.v=0;startTow()}}}
    {const allR=G.agents.filter(a=>a.kind==='route'&&!a.loose).sort((a,b)=>a.s-b.s),egoLead={s:e.s,v:e.v,spec:G.spec};
-    allR.forEach((a,i)=>{const nx=allR[i+1]||null;plan(a,dt,a.s<e.s&&(!nx||nx.s>e.s)?egoLead:nx,false)})} /* cars behind the ride follow it too */
+    const lat=a=>(a.off??1.85)+(a.offAdd||0),eL=e.off??1.85;allR.forEach((a,i)=>{let nx=null;for(let j=i+1;j<allR.length;j++)if(Math.abs(lat(allR[j])-lat(a))<2.7){nx=allR[j];break}plan(a,dt,a.s<e.s&&(!nx||nx.s>e.s)&&Math.abs(lat(a)-eL)<2.7?egoLead:nx,false)})} /* cars behind the ride follow it too */
    for(const a of G.agents)if(a.kind==='oncoming'&&!a.loose){if(window.ONC_HOOK){try{ONC_HOOK(a,dt)}catch(err){}}a.s-=a.v*dt}
    for(let i=G.agents.length-1;i>=0;i--){const a=G.agents[i];if(a.kind==='oncoming'&&!a.loose&&routeOnewayAt(Math.max(0,a.s))){scene.remove(a.mesh);G.agents.splice(i,1)}} /* divided highway: the other carriageway isn't ours to drive on */
    for(let i=G.agents.length-1;i>=0;i--){const a=G.agents[i];if(a.kind==='way'&&!updateWayCar(a,dt)){scene.remove(a.mesh);G.agents.splice(i,1)}}
