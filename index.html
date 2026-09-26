@@ -3528,13 +3528,16 @@ function hyperBrakeCap(v){const fg=1+2*Math.min(4,0.5+((game&&game.fans)||[0,0,0
 function senseHorizon(){const G=game,e=G.ego,R=G.route;let edge=0;const ex=e.mesh.position.x,ez=e.mesh.position.z,lid=420*WX.perc,dr=HDRONE.mesh?HDRONE:null;
  for(let d=10;d<7000;d+=20){const s2=e.s+d;if(s2>R.total){edge=d;break}const p=routeXZ(s2,0);let ok=false;const dd=Math.hypot(p[0]-ex,p[1]-ez);
   if(dd<lid){ok=true;for(let k=10;k<dd;k+=12){const x=ex+(p[0]-ex)*k/dd,z=ez+(p[1]-ez)*k/dd;if(bAt(x,z)){ok=false;break}}}
+  if(!ok&&dd<1000)ok=true; /* satellite: open-sky view of the first 1 km */
   if(!ok&&dr&&Math.hypot(p[0]-dr.x,p[1]-dr.z)<dr.range)ok=true;if(!ok&&G.swept&&s2>=G.swept.a&&s2<=G.swept.b&&G.simTime-G.swept.t<6)ok=true; /* road the drone swept in the last 6 s */if(!ok){edge=d;break}edge=d}
  /* extend the swept memory with whatever the drone covers now, if it joins what we already know */
  if(dr){let a=null,b=null;for(let d=0;d<7000;d+=25){const s2=e.s+d;if(s2>R.total)break;const p=routeXZ(s2,0);if(Math.hypot(p[0]-dr.x,p[1]-dr.z)<dr.range){if(a===null)a=s2;b=s2}else if(a!==null)break}
   if(a!==null){if(G.swept&&a<=G.swept.b+30&&G.simTime-G.swept.t<6){G.swept.b=Math.max(G.swept.b,b);G.swept.t=G.simTime}else if(a<=e.s+edge+30)G.swept={a:e.s,b,t:G.simTime}}}
  G.senseEdge=edge;return edge}
+/* TRACKING SATELLITE: overhead, tracks every road user within 1 km (no line-of-sight limits), 1 Hz downlink into the hypercar's computer */
+const SATL={n:0,down:0,useT:0,flash:0};
 function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)return;const e=G.ego,objs=[];G.dodgeT=Math.max(0,(G.dodgeT||0)-dt);
- const drone=HDRONE.mesh?HDRONE:null;let dOnly=0;const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z),dd=drone?Math.hypot(x-drone.x,z-drone.z):1e9;if(d>450&&!(dd<=(drone?drone.range:0)))return; /* own sensors 450 m, plus anything the drone sees */const byDrone=d>120&&dd<(drone?drone.range:0);if(byDrone)dOnly++;o._drone=byDrone;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
+ const drone=HDRONE.mesh?HDRONE:null;let dOnly=0;SATL.n=0;SATL.down-=dt;if(SATL.down<=0){SATL.down=1;SATL.flash=0.25}SATL.flash=Math.max(0,SATL.flash-dt);SATL.useT=Math.max(0,SATL.useT-dt);const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z),dd=drone?Math.hypot(x-drone.x,z-drone.z):1e9;if(d>1000&&!(dd<=(drone?drone.range:0)))return; /* own sensors 450 m + satellite 1 km + anything the drone sees */const byDrone=d>120&&dd<(drone?drone.range:0);if(byDrone)dOnly++;o._drone=byDrone;o._sat=d>450&&!byDrone;if(o._sat)SATL.n++;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
   if(Math.hypot(vx,vz)>90)return;const f=x=>isFinite(x)?x:0;o._vx=lerp(o._vx||0,f(vx),0.65);o._vz=lerp(o._vz||0,f(vz),0.65);o._w=lerp(o._w||0,clamp(f(w),-1.2,1.2),0.35);const sp=Math.hypot(o._vx,o._vz);o._acc=o._sp===undefined?0:lerp(o._acc||0,clamp(f((sp-o._sp)/dt),-10,6),0.25);o._sp=sp; /* longitudinal acceleration (braking < 0) */
   objs.push({o,x,z,h,kind,vx:o._vx,vz:o._vz,w:o._w,acc:o._acc,d,m:kind==='ped'?80:o.spec?massOf(o.spec,kind):kind==='cop'?2000:1500,id:o._id||(o._id=++G._pid||(G._pid=1))})};
  for(const a of G.agents)if(a.mesh)track(a,a.mesh.position.x,a.mesh.position.z,a.mesh.rotation.y,a.spec.style==='harley'?'moto':'car');
@@ -3554,7 +3557,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
    cost = collision (earlier = worse) + proximity + off-road + speed loss + lane deviation + jerk; lowest cost wins */
 function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeLLnh(e.s)[2]),cur=(e.off===undefined?base:e.off)-base,v0=e.v,fast=fastOn(); /* base = lane centre; cur = where the car really is now relative to it */
  const vWant=fast?Math.max(e.v,30):(G.limitMph||30)/MPH;const rq=roadQAt(e.x,e.z);
- const near=objs.filter(b=>b.d<200&&b.path);const circ=(x,z,h,kind,sp)=>{if(kind==='ped')return[[x,z,0.45]];const L=sp&&sp.L||(kind==='moto'?2.3:4.8),W=sp&&sp.W||(kind==='moto'?0.9:1.9),r=W/2+0.05,k=Math.max(0,L/2-r),c=Math.cos(h),sn=-Math.sin(h);return[[x+c*k,z+sn*k,r],[x+c*k/2,z+sn*k/2,r],[x,z,r],[x-c*k/2,z-sn*k/2,r],[x-c*k,z-sn*k,r]]}; /* 5 circles spanning the real length */
+ const near=objs.filter(b=>b.d<200&&b.path);if(near.some(b=>b.o._sat)||objs.some(b=>b.o._sat&&b.d<600))SATL.useT=0.4; /* recalculating with satellite data */const circ=(x,z,h,kind,sp)=>{if(kind==='ped')return[[x,z,0.45]];const L=sp&&sp.L||(kind==='moto'?2.3:4.8),W=sp&&sp.W||(kind==='moto'?0.9:1.9),r=W/2+0.05,k=Math.max(0,L/2-r),c=Math.cos(h),sn=-Math.sin(h);return[[x+c*k,z+sn*k,r],[x+c*k/2,z+sn*k/2,r],[x,z,r],[x-c*k/2,z-sn*k/2,r],[x-c*k,z-sn*k,r]]}; /* 5 circles spanning the real length */
  let best=null;const fx0=Math.cos(e.head),fz0=-Math.sin(e.head);
  /* oncoming lane is only usable when clear for 6 s of closing distance (+30 m); every oncoming road user counts */
  const ni0=NODEINFO.get(R.nodes[routeLLnh(e.s)[2]]),oneway=!!(ni0&&ni0.oneway); /* one-way: left of the centreline is just another lane */
@@ -3717,7 +3720,7 @@ function hyperOverlay(x,W,H,dpr,proj,dets){const G=game,e=G.ego,t=performance.no
  for(const b of G.pred||[]){if(!b.path)continue;const thr=G.threat&&G.threat.b===b;x.strokeStyle=thr?'#ff2a2a':b.kind==='ped'?'rgba(255,174,42,.8)':'rgba(255,31,180,.75)';x.lineWidth=(thr?2.2:1.1)*dpr;x.beginPath();let st=false;
   for(const [px,pz] of b.path){const q=proj(px,groundY(px,pz)+0.3,pz);if(!q){st=false;continue}st?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]);st=true}x.stroke();
   const q0=proj(b.x,groundY(b.x,b.z)+1.6,b.z);if(q0){const sp=Math.hypot(b.vx,b.vz)*MPH;x.fillStyle=thr?'#ff2a2a':'rgba(0,0,0,.55)';x.fillRect(q0[0],q0[1],62*dpr,20*dpr);x.fillStyle=thr?'#000':'#9dff00';
-   x.fillText(`#${b.id} ${b.kind.toUpperCase()} ${sp.toFixed(0)}mph${b.o._drone?' ·DRONE':''}`,q0[0]+2*dpr,q0[1]+1*dpr);x.fillText(`ψ${(b.h*57.3%360).toFixed(0)}° ω${(b.w*57.3).toFixed(0)}°/s${b.ttc?' TTC '+b.ttc.toFixed(1)+'s':''}`,q0[0]+2*dpr,q0[1]+10*dpr)}}
+   x.fillText(`#${b.id} ${b.kind.toUpperCase()} ${sp.toFixed(0)}mph${b.o._drone?' ·DRONE':b.o._sat?' ·SAT':''}`,q0[0]+2*dpr,q0[1]+1*dpr);x.fillText(`ψ${(b.h*57.3%360).toFixed(0)}° ω${(b.w*57.3).toFixed(0)}°/s${b.ttc?' TTC '+b.ttc.toFixed(1)+'s':''}`,q0[0]+2*dpr,q0[1]+10*dpr)}}
  if(G.threat){const b=G.threat.b,q=proj(b.x,groundY(b.x,b.z)+0.8,b.z);if(q){const r=(14+Math.sin(t*12)*3)*dpr;x.strokeStyle='#ff2a2a';x.lineWidth=2*dpr;x.beginPath();x.arc(q[0],q[1],r,0,7);x.moveTo(q[0]-r*1.5,q[1]);x.lineTo(q[0]+r*1.5,q[1]);x.moveTo(q[0],q[1]-r*1.5);x.lineTo(q[0],q[1]+r*1.5);x.stroke()}}
  /* telemetry columns */
  const n=(G.pred||[]).length,col=(xx,lines,c)=>{x.fillStyle='rgba(0,0,0,.5)';x.fillRect(xx,0,86*dpr,lines.length*8.5*dpr+4*dpr);x.fillStyle=c;lines.forEach((l,i)=>x.fillText(l,xx+3*dpr,2*dpr+i*8.5*dpr))};
@@ -3725,8 +3728,11 @@ function hyperOverlay(x,W,H,dpr,proj,dets){const G=game,e=G.ego,t=performance.no
  col(W-86*dpr,[`TRACKS ${n}`,`FUSION ${(0.9+Math.sin(t)*0.05).toFixed(3)}`,`PRED 4.0s ×${n*16}`,`PLAN ${G.threat?'EVADE':'NOMINAL'}`,`LAT ${(7.8+Math.sin(t*7)*0.9).toFixed(1)}ms`,HDRONE.mesh?`DRONE ${HDRONE.mode||''} ${Math.round(HDRONE.y-groundY(HDRONE.x,HDRONE.z))}m · +${HDRONE.seen}`:'DRONE —',`SEEN ${Math.round(G.senseEdge||0)}m ahead`,G.fans?`FANS ${G.fans.map(v=>Math.round(v*100)).join('/')}`:'FANS —',`NPU ${(1840+Math.sin(t*2)*120).toFixed(0)} TOPS`,`v ${(e.v*MPH).toFixed(1)} mph`],G.threat?'#ff2a2a':'#9dff00');
  /* occupancy mini grid */
  const gx=W-60*dpr,gy=H-60*dpr,cs=3*dpr;for(let i=0;i<18;i++)for(let j=0;j<18;j++){const wx=e.x+fx*(18-j)*4-fz*(i-9)*2,wz=e.z+fz*(18-j)*4+fx*(i-9)*2;let occ=0;for(const b of G.pred||[])if(Math.abs(b.x-wx)<2.5&&Math.abs(b.z-wz)<2.5)occ=1;x.fillStyle=occ?'#ff1fb4':'rgba(0,229,255,.12)';x.fillRect(gx+i*cs,gy+j*cs,cs-dpr*0.5,cs-dpr*0.5)}
- /* data stream */
- x.fillStyle='rgba(157,255,0,.55)';for(let i=0;i<6;i++){let hx='';for(let k=0;k<10;k++)hx+=(((t*97+i*31+k*7)|0)*2654435761>>>0).toString(16).slice(0,4)+' ';x.fillText(hx,2*dpr,H-(8.5*(6-i))*dpr)}}
+ /* satellite status icon: bright while the planner is recalculating with satellite tracks, brief blink on each downlink, dim otherwise */
+ {const on=SATL.useT>0,bl=SATL.flash>0,cx=W-16*dpr,cy=H-16*dpr;x.save();x.globalAlpha=on?1:bl?0.75:0.28;x.fillStyle=on?'#ffd23a':bl?'#8fe8ff':'#9aa6b2';x.strokeStyle=x.fillStyle;x.lineWidth=1.3*dpr;
+  x.translate(cx,cy);x.rotate(-0.6);x.fillRect(-2.5*dpr,-2.5*dpr,5*dpr,5*dpr);for(const s2 of [-1,1]){x.fillRect(s2>0?3.5*dpr:-9.5*dpr,-2*dpr,6*dpr,4*dpr);x.beginPath();x.moveTo(s2*2.5*dpr,0);x.lineTo(s2*3.5*dpr,0);x.stroke()}
+  x.beginPath();x.moveTo(0,-2.5*dpr);x.lineTo(0,-5.5*dpr);x.stroke();if(on||bl){x.beginPath();x.arc(0,-5.5*dpr,3.5*dpr,Math.PI*1.1,Math.PI*1.9);x.stroke()}x.restore();
+  if(on){x.font=`${6.5*dpr}px system-ui`;x.textAlign='right';x.fillStyle='#ffd23a';x.fillText(`SAT ${SATL.n}`,cx-12*dpr,cy-4*dpr);x.textAlign='left'}}}
 function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,W=c.width=Math.round(c.clientWidth*dpr),H=c.height=Math.round(c.clientHeight*dpr),x=c.getContext('2d');
  x.fillStyle='#070a0f';x.fillRect(0,0,W,H);{const wxs=WX.perc;S={...S,wedges:S.wedges.map(w=>[w[0],w[1],w[2]*wxs,w[3]]),lidar:S.lidar&&Math.round(S.lidar*wxs),radar:S.radar&&Math.round(S.radar*Math.max(wxs,0.7)),cam:S.cam&&Math.round(S.cam*wxs)}}const view=Math.min(maxRange(S),320),sc=(H*0.8)/view,cx=W/2,cy=H*0.86;
  const col={lidar:'rgba(62,166,255,',cam:'rgba(53,208,127,',radar:'rgba(255,174,42,',thermal:'rgba(255,90,40,',sonic:'rgba(200,120,255,'};
