@@ -4948,6 +4948,54 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!isEgo||!L.letIn)return null;const m=L.letIn,gap=m.s-a.s-(m.spec.L+a.spec.L)/2-6;if(gap>-6)return {v:allow(Math.max(0,m.v-1),Math.max(0,gap)),reason:'🤝 Easing off to let a car merge in'};return null});
 })();
 </script>
+<script>/* mods/32-traffic.js */
+/* (4) Unprotected left turns with gap acceptance, oncoming traffic that obeys signals/stop signs and follows
+   each other, (6) roundabouts with yield-on-entry, (11) aggressive human drivers (speeding, tailgating,
+   lane-weaving, brake-checking) and (12) drunk drivers at night (drifting, erratic speed, centre-line
+   crossing). Your car reacts: widens gaps, moves over, slows and shifts away from a drifting oncoming car. */
+(function(){
+ const T={};window.TRAF=T;const HK=(window.PLAN_HOOKS=window.PLAN_HOOKS||[]);
+ const R=()=>game.route,ow=s=>routeOnewayAt(clamp(s,0,R().total));
+ function nextTurn(e,range){for(const st of R().steps){const d=st.s-e.s;if(d<-3)continue;if(d>range)break;if(st.type==='arrive'||st.type==='depart')continue;return st}return null}
+ /* ---------- 4: unprotected left: wait at the line (or in the box on a green) for a gap of ≥5.5 s in oncoming traffic ---------- */
+ HK.push((a,isEgo,lead,allow)=>{if(!isEgo)return null;const G=game,e=a,st=nextTurn(e,120);if(!st||!/left/.test(st.mod||'')||/slight/.test(st.mod||'')||/roundabout|rotary/.test(st.type)||ow(st.s))return null;
+  const d=st.s-e.s;if(d<-2)return null;let sig=null;{const i=routeLLnh(st.s)[2];for(let k=i-2;k<=i+2;k++){const c=CONTROLS.get(R().nodes[k]);if(c&&c.type==='signal'){const p0=R().pts[Math.max(0,k-1)],p1=R().pts[k];sig=signalState(c.id,axisOf(p1[0]-p0[0],-(p1[1]-p0[1])),G.simTime)}}}
+  if(sig==='R')return null; /* the red light rule already stops us */
+  const need=(a.spec.hyper?4:5.5)+(WX.wet?1:0);let blocker=null;for(const o of G.agents){if(o.kind!=='oncoming'||o.loose)continue;const ds=o.s-st.s;if(ds<-4)continue;const t=ds/Math.max(o.v,0.5);if(o.v<0.5&&ds>8)continue;if(t<need){blocker=o;break}}
+  T.leftWait=blocker?{n:G.agents.filter(o=>o.kind==='oncoming'&&o.s>st.s-4&&(o.s-st.s)/Math.max(o.v,0.5)<need).length}:null;
+  if(!blocker)return null;const stopAt=sig==='G'||sig==='Y'?d+1.5:d-5;return {v:allow(0,Math.max(0,stopAt)),reason:`⏳ Waiting for a ${need.toFixed(1)} s gap to turn left${sig==='G'?' (creeping into the box on green)':''}`}});
+ /* ---------- oncoming traffic: signals, stop signs, following ---------- */
+ const _oh=window.ONC_HOOK;
+ window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);const G=game,Rt=R();let target=speedLimitAt(routeLLnh(clamp(a.s,0,Rt.total))[2])/MPH*(a.drunk?0.75+0.35*Math.sin(a.ph*0.3):a.aggro?1.12:0.92);
+  const i0=routeLLnh(clamp(a.s,0,Rt.total))[2];for(let i=i0;i>=0&&Rt.cum[i]>a.s-60;i--){const c=CONTROLS.get(Rt.nodes[i]);if(!c)continue;const d=a.s-Rt.cum[i];if(d<2)continue;
+   if(c.type==='signal'){const p0=Rt.pts[Math.max(0,i-1)],p1=Rt.pts[i],st=signalState(c.id,axisOf(p1[0]-p0[0],-(p1[1]-p0[1])),G.simTime);if(st==='R'||(st==='Y'&&d>a.v*a.v/7+3))target=Math.min(target,Math.sqrt(Math.max(0,2*3.5*(d-7))))}
+   else if(c.type==='stop'){a.handledO=a.handledO||new Set();if(!a.handledO.has(c.id)){target=Math.min(target,Math.sqrt(Math.max(0,2*3.5*(d-6))));if(d<9&&a.v<0.3){a.stopT=(a.stopT||0)+dt;if(window.ISECT)ISECT.arrive(c,a);if(a.stopT>1.8&&(!window.ISECT||ISECT.mayGo(c,a))){a.handledO.add(c.id);a.stopT=0;if(window.ISECT)ISECT.go(c,a)}}}}}
+  let lead=null;for(const b of G.agents){if(b===a||b.kind!=='oncoming'||b.loose)continue;if(b.s<a.s&&(!lead||b.s>lead.s))lead=b}if(lead){const gap=a.s-lead.s-(a.spec.L+lead.spec.L)/2,want=(a.aggro?1:2.5)+(a.aggro?0.6:1.4)*a.v;target=Math.min(target,Math.sqrt(Math.max(0,lead.v*lead.v+2*4*Math.max(0,gap-want))))}
+  a.v=Math.max(0,a.v+clamp((target-a.v)*0.9,-6,a.aggro?3:1.8)*dt)};
+ /* ---------- 6: roundabouts ---------- */
+ HK.push((a,isEgo,lead,allow)=>{if(!isEgo)return null;const G=game,e=a,st=nextTurn(e,90);if(!st||!/roundabout|rotary/.test(st.type))return null;const d=st.s-e.s;
+  const q=routeXZ(st.s,0),circ=G.agents.filter(o=>o.kind==='way'&&o.v>1.5&&Math.hypot(o.x-q[0],o.z-q[1])<28);let r={v:allow(15/MPH,Math.max(0,d-12)),reason:'🔄 Slowing for the roundabout'};
+  if(circ.length&&d>2){const yieldV=allow(0,Math.max(0,d-7));if(yieldV<r.v)r={v:yieldV,reason:`🔄 Yielding to ${circ.length} car${circ.length>1?'s':''} already in the roundabout`}}return r});
+ /* ---------- 11 / 12: human drivers ---------- */
+ function persona(a){if(a._p)return;a._p=1;a.ph=Math.random()*20;const G=game,r=Math.random();if(r<0.09)a.aggro=true;else if(G.dark&&r<0.15)a.drunk=true}
+ HK.push((a,isEgo,lead,allow,look,idx,dt)=>{if(isEgo||!a.kind)return null;persona(a);const G=game,e=G.ego;
+  if(a.aggro){const lim=speedLimitAt(idx)/MPH;if(a.bc>0){a.bc-=dt;return {v:0,force:true}} /* brake check */
+   if(lead){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2,want=1.5+0.55*a.v;const v=Math.min(lim*1.18,Math.sqrt(Math.max(0,lead.v*lead.v+2*6*Math.max(0,gap-want))));
+    if(lead===undefined)return null;const aheadOfEgo=a.s>e.s&&a.s-e.s<35&&Math.abs(((a.off??1.85)+(a.offAdd||0))-(e.off??1.85))<2;if(aheadOfEgo&&Math.random()<dt*0.035&&a.v>9){a.bc=1+Math.random()*0.8;T.bcMsg=performance.now()}return {v,force:true}}
+   return {v:lim*1.18,force:true}}
+  if(a.drunk){const lim=speedLimitAt(idx)/MPH;return {v:lim*(0.72+0.3*Math.sin(a.ph*0.23)),force:!lead}}
+  return null});
+ MODS.push({id:'traffic',
+  sim(dt){const G=game,e=G.ego;if(!G.route)return;let xb=0,cap=null,msg=null;
+   for(const a of G.agents){if(a.kind!=='route'&&a.kind!=='oncoming')continue;persona(a);a.ph+=dt;
+    if(a.drunk){a.wobble=Math.sin(a.ph*0.55)*0.8+Math.sin(a.ph*1.7)*0.25+(a.kind==='oncoming'&&Math.sin(a.ph*0.13)>0.85?1.5:0)}
+    else if(a.aggro&&a.kind==='route'&&window.LANES){if(Math.random()<dt*0.25){const n=LANES.count(a.s);if(n>1){const tk=clamp((a.laneK||0)+(Math.random()<0.5?-1:1),0,n-1);if(!G.agents.some(b=>b!==a&&b.kind==='route'&&b.laneK===tk&&Math.abs(b.s-a.s)<7))a.laneK=tk}}a.wobble=0}
+    if(a.kind==='oncoming'&&a.drunk){const d=a.s-e.s;if(d>0&&d<140&&a.wobble>0.7){xb=Math.max(xb,1.1);cap=Math.min(cap??99,Math.max(8,e.v*0.7));msg='🍺 Oncoming car drifting over the line – slowing and moving right'}}
+    if(a.kind==='route'&&a.drunk){const d=a.s-e.s;if(d>0&&d<60&&Math.abs(((a.off??1.85)+(a.offAdd||0))-(e.off??1.85))<3.5){cap=Math.min(cap??99,Math.max(5,a.v-2));msg='🍺 Erratic driver ahead – keeping well back, not passing'}}}
+   XB.drunk=xb;capSet('traffic',cap);T.msg=msg||(T.bcMsg&&performance.now()-T.bcMsg<3000?'⚠️ Car ahead brake-checked us':null)},
+  preRender(){if(T.msg&&game&&game.route&&!/🛡/.test(game.status||''))game.status=T.msg}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
