@@ -2953,7 +2953,7 @@ function step(){
   if(U.rockets){const sp=Math.min(1,e.v/150);for(const q of U.rockets.noz){q.f1.visible=q.f2.visible=q.gl.visible=on;q.hot.material.color.setHex(on?0xffd090:0x3a2a20);if(on){const fl=0.85+Math.random()*0.3;q.f1.scale.set(1,fl*(1+sp*1.5),1);q.f1.position.x=-0.95-sp*1.2;q.f2.scale.set(1,fl*(1+sp),1);q.gl.scale.setScalar(1+Math.random()*0.4);if(Math.random()<rdt*25)puff(new THREE.Vector3().setFromMatrixPosition(q.n.matrixWorld),new THREE.Vector3(0,0.6,0),false)}}
    U.rockets.light.intensity=on?3+Math.random()*1.5:0}
   if(on)G.status='🚀 ROCKETS · '+Math.round(e.v*MPH)+' mph'} /* active wing: flat at speed, steep in corners, vertical airbrake */
- if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);updateExpress(Math.min(0.1,rdt*G.scale));stuckWatch(rdt*G.scale);updateCollisions(Math.min(0.05,rdt*G.scale));damageSmoke(rdt*G.scale);syncMusicPause();
+ if(e.mesh.userData.bobble)animateBobble(e.mesh.userData.bobble,e,rdt);wdogUpdate(rdt);updateSmoke(Math.min(0.05,rdt*G.scale));updateGrass(Math.min(0.1,rdt));updateChase(Math.min(0.1,rdt*G.scale),rdt);updateExpress(Math.min(0.1,rdt*G.scale));stuckWatch(rdt*G.scale);impasseWatch(rdt*G.scale);updateCollisions(Math.min(0.05,rdt*G.scale));damageSmoke(rdt*G.scale);syncMusicPause();
  if(e.mesh.userData.wipers){const sp=WX.rain>0.6||WX.snow?2.6:WX.rain>0?1.4:0;G.wipeT=(G.wipeT||0)+rdt*sp;const ang=sp?(1-Math.cos(G.wipeT*Math.PI))/2*1.9:0;G.wipeAng=ang;e.mesh.userData.wipers.forEach(w=>w.rotation.y=ang)}
  // body pitch on accel
  {const yf=routeY(e.s+2,e.off),yb=routeY(e.s-2,e.off),pitch=Math.atan2(yf-yb,4);e.grade=Math.sin(pitch);
@@ -3551,6 +3551,18 @@ function updateUturn(dt){const G=game,e=G.ego,U=G.uturn;G.sig=-1;
  const pz=uturnPose(U,U.u);e.v=Math.min(5.5,e.v+2*dt);U.u=Math.min(1,U.u+e.v*dt/Math.max(1,pz.sp));const p=uturnPose(U,U.u);
  e.mesh.position.set(p.x,Math.max(groundY(p.x,p.z),(roadSurfaceY(p.x,p.z,groundY(p.x,p.z))??-1e9))+0.03,p.z);e.mesh.rotation.y=p.h;e.x=p.x;e.z=p.z;e.head=p.h;spinWheels(e,dt,0.55);G.status='↩️ Making a U-turn';
  if(U.u>=1){G.uturn=null;e.s=12;e.off=laneOffsetAt(0);G.sig=0;G.status='U-turn complete · on the new route'}}
+/* IMPASSE DETECTOR (every 0.5 s): a protest, a roadblock, or stationary/wrecked vehicles leaving no car-wide gap across the road within
+   250 m ahead → reroute immediately, preferring a U-turn, instead of waiting to get stuck */
+function impasseWatch(dt){const G=game,e=G.ego;if(!G.route||G.uturn||G.rerouting||e.loose)return;G.impT=(G.impT||0)-dt;if(G.impT>0)return;G.impT=0.5;
+ const reach=Math.min(G.route.total-e.s,250);let hit=null;
+ if(G.protest&&G.protest.state==='blocking'){for(let d=0;d<reach;d+=10){const q=routeXZ(e.s+d,0);if(Math.hypot(q[0]-G.protest.x,q[1]-G.protest.z)<20){hit={x:G.protest.x,z:G.protest.z,why:'protest'};break}}}
+ if(!hit&&CHASE.on&&!G.spec.apc)for(const B of CHASE.blocks){for(let d=0;d<reach;d+=10){const q=routeXZ(e.s+d,0);if(Math.hypot(q[0]-B.x,q[1]-B.z)<15){hit={x:B.x,z:B.z,why:'roadblock'};break}}if(hit)break}
+ if(!hit){const stat=G.agents.filter(a=>a.mesh&&(a.loose||a.v<0.4));if(stat.length)for(let d=15;d<reach&&!hit;d+=12){const q=routeXZ(e.s+d,0),key=Math.floor(toLat(q[1])/TS)+'_'+Math.floor(toLon(q[0])/TS),rd=TILES.has(key)?mkNearRoad(key,q[0],q[1],12):null,hw=rd?rd.w/2:4;
+   const rx=q[3],rz=-q[2],iv=[];for(const a of stat){const dx=a.mesh.position.x-q[0],dz=a.mesh.position.z-q[1],f=dx*q[2]+dz*q[3];if(Math.abs(f)>5)continue;const l=-(dx*rx+dz*rz),w=((a.spec&&a.spec.W)||1.9)/2+0.3;iv.push([l-w,l+w])}
+   if(!iv.length)continue;iv.sort((a,b)=>a[0]-b[0]);let cur=-hw,gap=0;for(const [a,b] of iv){gap=Math.max(gap,a-cur);cur=Math.max(cur,b)}gap=Math.max(gap,hw-cur);
+   if(gap<G.spec.W+0.8)hit={x:q[0],z:q[1],why:'road blocked by stopped vehicles'}}}
+ if(hit&&(!G.impasse||Math.hypot(G.impasse.x-hit.x,G.impasse.z-hit.z)>30||G.simTime-G.impasse.t>60)){G.impasse={...hit,t:G.simTime};G.status='⛔ '+hit.why+' ahead · turning around';
+  if(hit.why==='protest'&&G.protest.state==='blocking')protestReroute();else rerouteNow({preferUturn:true})}}
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
  const legit=G.charging||G.tow||G.pullOver||G.rerouting||(G.protest&&G.protest.state==='rerouting')||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
  if(G.overtakeT>0&&G.spec.hyper){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
@@ -3560,17 +3572,17 @@ function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.pause
   else if(/Queued|Following|vehicle/i.test(G.status||'')||W.n===1&&!W.cd){G.overtakeT=9;G.status='⏱️ No progress for 10 s · overtaking'}
   else if(W.cd<=0){W.cd=20;G.status='⏱️ No progress for 10 s · detouring';rerouteNow()}else{G.overtakeT=9}}}
 /* points no new route may pass through (within 14 m): an active protest and any police roadblocks */
-function blockedPts(){const G=game,o=[];if(G.protest&&G.protest.state!=='dispersing')o.push([toLon(G.protest.x),toLat(G.protest.z)]);if(CHASE.on)for(const B of CHASE.blocks)o.push([toLon(B.x),toLat(B.z)]);return o}
+function blockedPts(){const G=game,o=[];if(G.protest&&G.protest.state!=='dispersing')o.push([toLon(G.protest.x),toLat(G.protest.z)]);if(CHASE.on)for(const B of CHASE.blocks)o.push([toLon(B.x),toLat(B.z)]);if(G.impasse&&G.simTime-G.impasse.t<120)o.push([toLon(G.impasse.x),toLat(G.impasse.z)]);return o}
 function routeHitsBlock(r,bl){if(!bl.length)return false;for(let k=0;k<r.pts.length;k++){if(r.cum[k]<30)continue;for(const b of bl)if(hav(r.pts[k],b)<14)return true}return false} /* passes through the crowd/roadblock itself (not just a parallel carriageway nearby) */
 /* car's compass bearing (0 = north, clockwise); world x = east, z = south */
 function egoBearing(){const e=game.ego,h=e.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h);return (Math.atan2(fx,-fz)*180/Math.PI+360)%360}
-async function rerouteNow(){const G=game;if(!G||!G.route||G.rerouting)return;if(G.tow||G.charging){G.status='Can\'t reroute right now';return}G.rerouting=true;const e=G.ego,prev=G.status;G.status='Finding a different route…';
+async function rerouteNow(opt={}){const G=game;if(!G||!G.route||G.rerouting)return;if(G.tow||G.charging){G.status='Can\'t reroute right now';return}G.rerouting=true;const e=G.ego,prev=G.status;G.status='Finding a different route…';
  const here={lat:toLat(e.z),lon:toLon(e.x)},rem=[];for(let s0=e.s;s0<Math.min(G.route.total,e.s+20000);s0+=150){const p=routeLLnh(s0);rem.push([p[0],p[1]])}
  const overlap=r=>{let near=0,n=0;for(let k=0;k<r.pts.length;k+=Math.max(1,Math.floor(r.pts.length/120))){if(r.cum[k]<60)continue;n++;if(rem.some(q=>hav(q,r.pts[k])<35))near++}return n?near/n:1};
  try{const cands=[],bF=egoBearing();for(const pick of [1,2,3]){try{cands.push(await getRoute(here,G.B,[],pick,{bearing:bF}))}catch(err){break}}
   try{const u=await getRoute(here,G.B,[],0,{bearing:bF+180});u.uturn=true;cands.push(u)}catch(err){} /* turning around is a legitimate option */
   if(!cands.length){const fx=Math.cos(e.head),fz=-Math.sin(e.head);for(const side of [1,-1])for(const lat of [250,500]){const x=e.x+fx*600-fz*side*lat,z=e.z+fz*600+fx*side*lat;try{cands.push(await getRoute(here,G.B,[{lat:toLat(z),lon:toLon(x)}]))}catch(err){}}}
-  const bl=blockedPts();let best=null,bo=1;const sc=r=>overlap(r)+r.total/5e6+(r.uturn?0.02:0);for(const r of cands){if(routeHitsBlock(r,bl))continue;const o=overlap(r);if(o<0.85&&(best===null||sc(r)<sc(best))){best=r;bo=o}}
+  const bl=blockedPts();let best=null,bo=1;const sc=r=>overlap(r)+r.total/5e6+(r.uturn?(opt.preferUturn?-0.3:0.02):0);for(const r of cands){if(routeHitsBlock(r,bl))continue;const o=overlap(r);if((o<0.85||opt.preferUturn&&r.uturn)&&(best===null||sc(r)<sc(best))){best=r;bo=o}}
   if(!best){G.status='No different route found — staying on this one';return}
   best.stops=[];buildEnergyProfile(best,ES());G.route=best;G.stops=[];G.stopIdx=0;G.lastPlanCheck=0;e.s=0;e.x=0;e.z=0;e.handled.clear();G.agents.forEach(a=>scene.remove(a.mesh));G.agents=[];if(G.rr){scene.remove(G.rr.mesh);G.rr=null}
   G.status=`Rerouted · ${fmtDist(best.total)} · ${Math.round((1-bo)*100)}% different roads`}catch(err){G.status='Reroute failed — staying on this route'}finally{G.rerouting=false}}
