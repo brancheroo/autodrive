@@ -597,8 +597,12 @@ const mkHit=(a,b)=>a&&b&&a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
 async function mkDiscover(){const G=game;if(!G||!G.ego||MKSRC.busy)return;const lat=toLat(G.ego.z),lon=toLon(G.ego.x);if(MKSRC.center&&hav([lon,lat],[MKSRC.center[1],MKSRC.center[0]])<25000)return;
  MKSRC.busy=true;MKSRC.center=[lat,lon];const box=mkBoxAround(lat,lon,80),found=new Map();
  for(const s of MK_SF)if(mkHit(s.ext,box))found.set(s.url,{...s});
- try{for(const C of MK_CATS)for(const q of C.qs){try{const r=await fetch(`https://hub.arcgis.com/api/v3/search?q=${encodeURIComponent(q)}&bbox=${box.map(v=>v.toFixed(3)).join(',')}`).then(r=>r.json());
-    for(const d of (r.data||[])){const a=d.attributes||{},u=a.url||'';if(!/FeatureServer/.test(u)||!C.re.test(a.name||''))continue;const e=a.extent&&a.extent.coordinates;if(!e)continue;const ext=[e[0][0],e[0][1],e[1][0],e[1][1]];
+ const junk=/survey|_form|_results|proposal|request|application|test|collector|feedback|pilot|condition/i;
+ try{for(const C of MK_CATS)for(const q of C.qs){try{const r=await fetch(`https://hub.arcgis.com/api/search/v1/collections/dataset/items?q=${encodeURIComponent(q)}&limit=100`).then(r=>r.json());
+    for(const f of (r.features||[])){const p=f.properties||{},u=p.url||'',n=p.title||'';if(!/FeatureServer/.test(u)||!C.re.test(n)||junk.test(n+' '+u))continue;const e=p.extent;if(!e||!e[0])continue;const ext=[e[0][0],e[0][1],e[1][0],e[1][1]];
+     if(ext[2]-ext[0]>3||!mkHit(ext,box))continue;const url=/FeatureServer\/\d+$/.test(u)?u:u.replace(/\/?$/,'/0');if(!found.has(url))found.set(url,{cat:C.cat,kind:'arcgis',url,name:n+' · '+(p.owner||''),ext})}}catch(err){}}
+  for(const C of MK_CATS)for(const q of C.qs){try{const r=await fetch(`https://hub.arcgis.com/api/v3/search?q=${encodeURIComponent(q)}&bbox=${box.map(v=>v.toFixed(3)).join(',')}`).then(r=>r.json());
+    for(const d of (r.data||[])){const a=d.attributes||{},u=a.url||'';if(!/FeatureServer/.test(u)||!C.re.test(a.name||'')||junk.test((a.name||'')+' '+u))continue;const e=a.extent&&a.extent.coordinates;if(!e)continue;const ext=[e[0][0],e[0][1],e[1][0],e[1][1]];
      if(ext[2]-ext[0]>3||!mkHit(ext,box))continue; /* city/county-scale layers only */const url=/FeatureServer\/\d+$/.test(u)?u:u.replace(/\/?$/,'/0');if(!found.has(url))found.set(url,{cat:C.cat,kind:'arcgis',url,name:(a.name||'')+' · '+(a.source||a.owner||''),ext})}}catch(err){}}
    const city=(G.city||'').split(',')[0].trim();if(city){for(const C of MK_CATS){try{const r=await fetch(`https://api.us.socrata.com/api/catalog/v1?q=${encodeURIComponent(C.qs[0]+' '+city)}&only=dataset&limit=10`).then(r=>r.json());
      for(const it of (r.results||[])){const res=it.resource||{},dom=(it.metadata||{}).domain||'';if(!C.re.test(res.name||''))continue;const cols=res.columns_field_name||[],types=res.columns_datatype||[];const gi=types.findIndex(t=>/Point|Line|Polygon|MultiLine|Location/i.test(t));if(gi<0)continue;
