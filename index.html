@@ -3557,7 +3557,7 @@ function impasseWatch(dt){const G=game,e=G.ego;if(!G.route||G.uturn||G.rerouting
  const reach=Math.min(G.route.total-e.s,250);let hit=null;
  if(G.protest&&G.protest.state==='blocking'){for(let d=0;d<reach;d+=10){const q=routeXZ(e.s+d,0);if(Math.hypot(q[0]-G.protest.x,q[1]-G.protest.z)<20){hit={x:G.protest.x,z:G.protest.z,why:'protest'};break}}}
  if(!hit&&CHASE.on&&!G.spec.apc)for(const B of CHASE.blocks){for(let d=0;d<reach;d+=10){const q=routeXZ(e.s+d,0);if(Math.hypot(q[0]-B.x,q[1]-B.z)<15){hit={x:B.x,z:B.z,why:'roadblock'};break}}if(hit)break}
- if(!hit){const stat=G.agents.filter(a=>a.mesh&&(a.loose||a.v<0.4));if(stat.length)for(let d=15;d<reach&&!hit;d+=12){const q=routeXZ(e.s+d,0),key=Math.floor(toLat(q[1])/TS)+'_'+Math.floor(toLon(q[0])/TS),rd=TILES.has(key)?mkNearRoad(key,q[0],q[1],12):null,hw=rd?rd.w/2:4;
+ if(!hit){for(const a of G.agents)a._stillT=a.v<0.4?(a._stillT||0)+0.5:0;const stat=G.agents.filter(a=>a.mesh&&(a.loose||a._stillT>30)); /* wrecks, or vehicles dead still >30 s (not a red-light queue) */if(stat.length)for(let d=15;d<reach&&!hit;d+=12){const q=routeXZ(e.s+d,0),key=Math.floor(toLat(q[1])/TS)+'_'+Math.floor(toLon(q[0])/TS),rd=TILES.has(key)?mkNearRoad(key,q[0],q[1],12):null,hw=rd?rd.w/2:4;
    const rx=q[3],rz=-q[2],iv=[];for(const a of stat){const dx=a.mesh.position.x-q[0],dz=a.mesh.position.z-q[1],f=dx*q[2]+dz*q[3];if(Math.abs(f)>5)continue;const l=-(dx*rx+dz*rz),w=((a.spec&&a.spec.W)||1.9)/2+0.3;iv.push([l-w,l+w])}
    if(!iv.length)continue;iv.sort((a,b)=>a[0]-b[0]);let cur=-hw,gap=0;for(const [a,b] of iv){gap=Math.max(gap,a-cur);cur=Math.max(cur,b)}gap=Math.max(gap,hw-cur);
    if(gap<G.spec.W+0.8)hit={x:q[0],z:q[1],why:'road blocked by stopped vehicles'}}}
