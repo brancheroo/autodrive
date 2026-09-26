@@ -742,7 +742,7 @@ function bridgeStruct(t,pts,w,bufs){const L=[0];for(let i=1;i<pts.length;i++)L.p
  for(const o of [-w*0.3,0,w*0.3])wall(wallB,pts.map(p=>[p[0],p[1],p[2]-1.2]),o,0.01,0.45,conc,0.9);
  // piers: hammerhead columns where the deck is well above ground
  const span=/suspension|cable/.test(st)?0:(st==='arch'?0:32);
- if(span)for(let d=span/2;d<tot-6;d+=span){let P=poseAt(pts,L,d);if(CUR_RQ&&CUR_RQ.inside(P.x,P.z,1.3)){let ok=false;for(let s=2;s<span/2&&!ok;s+=2)for(const sg of [1,-1]){const dd=d+sg*s;if(dd<3||dd>tot-3)continue;const Q=poseAt(pts,L,dd);if(!CUR_RQ.inside(Q.x,Q.z,1.3)){P=Q;ok=true;break}}if(!ok)continue}const g=groundY(P.x,P.z);if(P.y-g<3)continue;box(pierB,P.x,P.z,g-1,P.y-2.2,0.9,0.9,P.fx,P.fz,conc);box(pierB,P.x,P.z,P.y-2.2,P.y-1.25,0.9,w*0.45,P.fx,P.fz,conc)}
+ if(span)for(let d=span/2;d<tot-6;d+=span){let P=poseAt(pts,L,d);if(CUR_RQG&&CUR_RQG.inside(P.x,P.z,1.3)){let ok=false;for(let s=2;s<span/2&&!ok;s+=2)for(const sg of [1,-1]){const dd=d+sg*s;if(dd<3||dd>tot-3)continue;const Q=poseAt(pts,L,dd);if(!CUR_RQG.inside(Q.x,Q.z,1.3)){P=Q;ok=true;break}}if(!ok)continue}const g=groundY(P.x,P.z);if(P.y-g<3)continue;box(pierB,P.x,P.z,g-1,P.y-2.2,0.9,0.9,P.fx,P.fz,conc);box(pierB,P.x,P.z,P.y-2.2,P.y-1.25,0.9,w*0.45,P.fx,P.fz,conc)}
  const ends=[poseAt(pts,L,0.5),poseAt(pts,L,tot-0.5)];
  if(st==='truss'){for(const sd of [1,-1]){const o=sd*(w/2+0.3);const top=[],bot=[];for(let d=0;d<=tot;d+=6){const P=poseAt(pts,L,Math.min(d,tot));const x=P.x-P.fz*o,z=P.z+P.fx*o;bot.push([x,P.y,z]);top.push([x,P.y+6,z])}
   for(let i=0;i<bot.length-1;i++){line(wallB,top[i],top[i+1],0.18,steel);line(wallB,bot[i],top[i],0.12,steel);line(wallB,bot[i],top[i+1],0.1,steel)}line(wallB,bot[bot.length-1],top[top.length-1],0.12,steel)}
@@ -856,7 +856,7 @@ function fuelCanopy(ctx,ring,t){const o=obb(ring);if(!o)return;const L=Math.min(
 // (half road width + 0.7 m) of every nearby drivable road; plates / mast arms / signal heads follow their nearest pole.
 const RAWROADS=new Map();
 function rawRoads(key){if(RAWROADS.has(key))return RAWROADS.get(key);const d=RAW.get(key);if(!d)return null;const out=[];
- for(const el of d.elements){const t=el.tags||{};if(el.type!=='way'||!el.geometry||!DRIVABLE.has(t.highway)||(t.tunnel&&t.tunnel!=='no'))continue;const pts=el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);let tot=0;for(let i=1;i<pts.length;i++)tot+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);out.push({pts,w:roadWidthOf(t),total:tot})}
+ for(const el of d.elements){const t=el.tags||{};if(el.type!=='way'||!el.geometry||!DRIVABLE.has(t.highway)||(t.tunnel&&t.tunnel!=='no'))continue;const isBr=!!(t.bridge&&t.bridge!=='no');const pts=el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);let tot=0;for(let i=1;i<pts.length;i++)tot+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);out.push({pts,w:roadWidthOf(t),total:tot,bridge:isBr})}
  RAWROADS.set(key,out);return out}
 function neighbourKeys(key){const [i,j]=key.split('_').map(Number),o=[];for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)o.push((i+a)+'_'+(j+b));return o}
 // ---- building fit: no footprint may reach into a carriageway (+kerb/sidewalk margin). Long edges are subdivided so a wall can
@@ -987,6 +987,7 @@ function placeFoodCarts(T,key,RQ,bRecs){if(bRecs.length<150)return; // cities on
   m(CGEO.leg,dark,-0.1,0.42,0.8);m(CGEO.leg,dark,0.12,0.42,0.8);m(CGEO.torso,vc,0,1.13,0.8);m(CGEO.head,sk,0,1.58,0.8);
   grp.userData.merged=true;grp.userData.cart=name;T.group.add(grp);(T.carts=T.carts||[]).push(grp)}}
 let CUR_RQ=null;
+let CUR_RQG=null;
 function roadIndex(roads){const C=8,G=new Map();for(const w of roads){if(w.tunnel||w.hts)continue;const hw=w.w/2;for(let i=0;i<w.pts.length-1;i++){const a=w.pts[i],b=w.pts[i+1],s={a,b,hw};
   const x0=Math.floor((Math.min(a[0],b[0])-hw-3)/C),x1=Math.floor((Math.max(a[0],b[0])+hw+3)/C),z0=Math.floor((Math.min(a[1],b[1])-hw-3)/C),z1=Math.floor((Math.max(a[1],b[1])+hw+3)/C);
   for(let x=x0;x<=x1;x++)for(let z=z0;z<=z1;z++){const k=x+'_'+z;if(!G.has(k))G.set(k,[]);G.get(k).push(s)}}}
@@ -1054,7 +1055,7 @@ function buildTile(key){
  const data=RAW.get(key),T={key,group:new THREE.Group(),ways:[],peds:[],ids:[],lamps:[],signals:[]};
  const bRoad=new Buf(),bRoad2=new Buf(),bPath=new Buf(),bY=new Buf(),bW=new Buf(),bB=new Buf(),bR=new Buf(),bG=new Buf(),bWa=new Buf();MK.red=new Buf();MK.dec=new Buf();
  const trees=[];const bio=game.bio;const nodeWays=new Map();
- const BC={bio,walls:new Map(),roofs:new Map(),parapet:new Buf(),canopy:new Buf(),storeIds:new Set(),group:T.group},bRecs=[],partRings=[],pois=[];const SFBT=data.sfb||SFB.get(key)||null;const BROADS=tileRoads(key),RQ=roadIndex(BROADS);CUR_RQ=RQ;T.missing=neighbourKeys(key).filter(k=>!RAW.has(k));
+ const BC={bio,walls:new Map(),roofs:new Map(),parapet:new Buf(),canopy:new Buf(),storeIds:new Set(),group:T.group},bRecs=[],partRings=[],pois=[];const SFBT=data.sfb||SFB.get(key)||null;const BROADS=tileRoads(key),RQ=roadIndex(BROADS);CUR_RQ=RQ;CUR_RQG=roadIndex(BROADS.filter(w=>!w.bridge)); /* ground-level roads only: piers must clear these */T.missing=neighbourKeys(key).filter(k=>!RAW.has(k));
  for(const el of data.elements){const t=el.tags||{};if(el.type==='way'&&el.geometry&&t['building:part']&&t['building:part']!=='no')partRings.push(el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]));if(el.type==='node'&&t.name&&(t.shop||t.amenity||t.tourism))pois.push({x:toX(el.lon),z:toZ(el.lat),name:t.brand||t.name,shop:!!t.shop||/restaurant|cafe|fast_food|bank|pharmacy|bar|pub|ice_cream/.test(t.amenity||'')})}
  // mark buildings that contain a shop/restaurant POI (storefront ground floor)
  for(const el of data.elements){if(el.type==='way'&&el.geometry&&(el.tags||{}).building){const ring=el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);if(pois.some(p=>p.shop&&pip([p.x,p.z],ring)))BC.storeIds.add(el.id)}}const roadBufs=new Map(),bWall=new Buf(),bPier=new Buf(),bCurb=new Buf();const rb=k=>{if(!roadBufs.has(k))roadBufs.set(k,new Buf());return roadBufs.get(k)};
@@ -1085,7 +1086,7 @@ function buildTile(key){
     const sk=surfKey(t),paved=sk==='asphalt'||sk==='concrete';
     ribbon(hw==='service'&&sk==='asphalt'?bRoad2:sk==='asphalt'?bRoad:rb(sk),pts,w,y);
     if(isBridge){const stt=bridgeStruct(t,pts,w,{wallB:bWall,pierB:bPier,cableB:bWall});const concrete=/truss|suspension|cable|arch/.test(stt)?new THREE.Color(/golden gate/i.test(t.name||'')?'#c0362c':'#7d8388'):new THREE.Color(0xa8a59d);wall(bWall,pts,w/2+0.25,1.05,/truss|suspension|cable|arch/.test(stt)?0.1:0.4,concrete,1.3);wall(bWall,pts,-w/2-0.25,1.05,/truss|suspension|cable|arch/.test(stt)?0.1:0.4,concrete,1.3);if(!/suspension|cable|arch/.test(stt)){
-     {const Lb=[0];for(let i=1;i<pts.length;i++)Lb.push(Lb[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));for(let d=12;d<Lb[Lb.length-1]-8;d+=28){let i=0;while(i<Lb.length-2&&Lb[i+1]<d)i++;const tt=(d-Lb[i])/((Lb[i+1]-Lb[i])||1),px=lerp(pts[i][0],pts[i+1][0],tt),pz=lerp(pts[i][1],pts[i+1][1],tt),dy=lerp(pts[i][2],pts[i+1][2],tt),g=groundY(px,pz);if(dy-g<2.5)continue;
+     {const Lb=[0];for(let i=1;i<pts.length;i++)Lb.push(Lb[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));for(let d0=12;d0<Lb[Lb.length-1]-8;d0+=28){let d=d0;const clr=dd=>{let i=0;while(i<Lb.length-2&&Lb[i+1]<dd)i++;const tt=(dd-Lb[i])/((Lb[i+1]-Lb[i])||1),x=lerp(pts[i][0],pts[i+1][0],tt),z=lerp(pts[i][1],pts[i+1][1],tt);return !CUR_RQG||!CUR_RQG.inside(x,z,w*0.28+1.3)};if(!clr(d)){let ok=false;for(let s2=2;s2<14&&!ok;s2+=2)for(const sg of [1,-1]){const dd=d0+sg*s2;if(dd>4&&dd<Lb[Lb.length-1]-4&&clr(dd)){d=dd;ok=true;break}}if(!ok)continue} /* never stand a pier in a road below */let i=0;while(i<Lb.length-2&&Lb[i+1]<d)i++;const tt=(d-Lb[i])/((Lb[i+1]-Lb[i])||1),px=lerp(pts[i][0],pts[i+1][0],tt),pz=lerp(pts[i][1],pts[i+1][1],tt),dy=lerp(pts[i][2],pts[i+1][2],tt),g=groundY(px,pz);if(dy-g<2.5)continue;
       const dx=pts[i+1][0]-pts[i][0],dz=pts[i+1][1]-pts[i][1],l=Math.hypot(dx,dz)||1;for(const o of [-w*0.28,w*0.28]){const cx=px-dz/l*o,cz=pz+dx/l*o,r=0.7;const ring=[[cx-r,cz-r],[cx+r,cz-r],[cx+r,cz+r],[cx-r,cz+r]];for(let k=0;k<4;k++){const a=ring[k],b=ring[(k+1)%4];bPier.tri([a[0],g-1,a[1]],[b[0],g-1,b[1]],[b[0],dy-1.2,b[1]],null);bPier.tri([a[0],g-1,a[1]],[b[0],dy-1.2,b[1]],[a[0],dy-1.2,a[1]],null)}}}}
      }
      // deck fascia / soffit
