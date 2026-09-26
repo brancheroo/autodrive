@@ -2292,8 +2292,8 @@ async function geocode(q){
  const u=`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=7&lang=en&bbox=-125,24.3,-66.8,49.5`;
  const r=await fetch(u);const j=await r.json();
  return j.features.filter(f=>f.properties.countrycode==='US'&&!/Alaska|Hawaii/.test(f.properties.state||'')).map(f=>{const p=f.properties;const l1=[p.housenumber,p.street].filter(Boolean).join(' ')||p.name||'';const l2=[p.name&&p.street?p.name:'',p.city||p.county,p.state,p.postcode].filter(Boolean).join(', ');return{label:(l1?l1+', ':'')+l2,short:l1||p.name||p.city,lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0]}})}
-async function getRoute(a,b,via=[],pick=0){
- const wp=[a,...via,b];const u=`https://router.project-osrm.org/route/v1/driving/${wp.map(p=>p.lon+','+p.lat).join(';')}?overview=full&geometries=geojson&steps=true&annotations=nodes,speed,distance${pick>0&&!via.length?'&alternatives=3':''}`;
+async function getRoute(a,b,via=[],pick=0,opt={}){
+ const wp=[a,...via,b];const brg=opt.bearing!==undefined?'&bearings='+Math.round((opt.bearing+360)%360)+',70'+';'.repeat(wp.length-1):'';const u=`https://router.project-osrm.org/route/v1/driving/${wp.map(p=>p.lon+','+p.lat).join(';')}?overview=full&geometries=geojson&steps=true&annotations=nodes,speed,distance${pick>0&&!via.length?'&alternatives=3':''}${brg}`; /* bearing: force the start direction (forward vs U-turn) */
  const r=await fetch(u);const j=await r.json();if(j.code!=='Ok')throw new Error(j.message||j.code);if(pick>0&&j.routes.length<=pick)throw new Error('no alternative');
  const rt=j.routes[pick],pts=rt.geometry.coordinates,cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+hav(pts[i-1],pts[i]));
  const nodes=[],speed=[],steps=[],legEnds=[];
@@ -2926,6 +2926,7 @@ function step(){
     else{G.status=E.ice?'Paying & pulling away':'Unplugging';c.kw=0;if(G.simTime-c.tDone>=UNPLUG_S){G.lastSession={name:c.st.name,from:c.from,to:G.soc,mins:(G.simTime-c.t0)/60,kwh:(G.soc-c.from)*(E.kwh||0),pred:c.st.mins};G.charging=null;G.stopIdx++;G.status='Leaving charger'}}
     continue}
    if(!G.tow&&G.energy<=0){const E0=ES();e.acc=-1.2;e.v=Math.max(0,e.v-1.2*dt);e.s+=e.v*dt;G.soc=0;G.status=(E0.ice?'Out of fuel':'Battery depleted')+' · coasting to the shoulder';if(e.v<0.05){e.v=0;startTow()}continue}
+   if(G.route!==G._rt){const had=!!G._rt;G._rt=G.route;if(had)uturnCheck()}if(G.uturn){updateUturn(dt);continue}
    const sPrev=e.s,routeRef=G.route;if(!e.loose)G.status=plan(e,dt,obst,true);else{e.v=0;e.acc=0}
    if(!G.tow){const E=ES(),P=powerW(E,e.v,e.acc||0,e.grade||0);G.energy=Math.max(0,G.energy-P*dt);G.usedJ+=P*dt;if(routeRef===G.route&&e.s>sPrev)G.expJ=(G.expJ||0)+energyBetween0(G.route,sPrev,e.s);G.odo+=e.v*dt;G.soc=G.energy/capJ(E);
     if(G.energy<=0){e.v=Math.max(0,e.v-3*dt);G.status=E.ice?'Out of fuel · coasting to a stop':'Battery depleted · coasting to a stop';if(e.v<0.1){e.v=0;startTow()}}}
@@ -2940,7 +2941,7 @@ function step(){
  // place ego
  const off=laneOffsetAt(routeLLnh(e.s)[2])+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(fastOn()||G.overtakeT>0||G.dodgeT>0?2.2:0.5)));
  const towAnim=G.tow&&G.tow.phase!=='towing'&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling';
- const prevHead=e.head;if(!towAnim){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw()}
+ const prevHead=e.head;if(!towAnim&&!G.uturn){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw()}
  const yawRate=(e.head-prevHead)/(Math.max(1e-3,rdt*G.scale));const steerT=clamp(Math.atan(spec.wb*yawRate/Math.max(e.v,1)),-0.6,0.6);e.steer=lerp(e.steer,steerT,0.2);
  if(!towAnim)spinWheels(e,rdt*G.scale,e.steer);
  if(wheelMesh)wheelMesh.rotation.x=-e.steer*14/ (spec.wheel==='yoke'?1.4:1);
@@ -3537,6 +3538,19 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
   cost+=Math.max(0,vWant-v)*(fast?4.5:2.2)+(acc>0&&v0>=vWant?2:0);
   if(!best||cost<best.cost)best={off,acc,cost,risk,why}}
  return best}
+/* ---- U-TURN: when a new route starts behind the car, drive a real U-turn onto it (signal, stop, wait for a gap, arc across) */
+function uturnCheck(){const G=game,e=G.ego;if(!G.route||e.loose)return;const p=routeXZ(Math.min(8,G.route.total),0),rh=Math.atan2(-p[3],p[2]);let d=rh-e.mesh.rotation.y;d=Math.atan2(Math.sin(d),Math.cos(d));
+ if(Math.abs(d)<2.1)return;const lo=laneOffsetAt(0),q=routeXZ(Math.min(12,G.route.total),lo);const P0=[e.mesh.position.x,e.mesh.position.z],h0=e.mesh.rotation.y,P1=[q[0],q[1]],h1=Math.atan2(-q[3],q[2]);
+ const k=Math.max(8,Math.hypot(P1[0]-P0[0],P1[1]-P0[1])*1.6+6);G.uturn={P0,P1,T0:[Math.cos(h0)*k,-Math.sin(h0)*k],T1:[Math.cos(h1)*k,-Math.sin(h1)*k],u:0,wait:0,phase:'stop',v0:e.v};e.s=12;G.sig=-1}
+function uturnPose(U,u){const h00=2*u*u*u-3*u*u+1,h10=u*u*u-2*u*u+u,h01=-2*u*u*u+3*u*u,h11=u*u*u-u*u;const x=h00*U.P0[0]+h10*U.T0[0]+h01*U.P1[0]+h11*U.T1[0],z=h00*U.P0[1]+h10*U.T0[1]+h01*U.P1[1]+h11*U.T1[1];
+ const d00=6*u*u-6*u,d10=3*u*u-4*u+1,d01=-6*u*u+6*u,d11=3*u*u-2*u;const dx=d00*U.P0[0]+d10*U.T0[0]+d01*U.P1[0]+d11*U.T1[0],dz=d00*U.P0[1]+d10*U.T0[1]+d01*U.P1[1]+d11*U.T1[1];return{x,z,h:Math.atan2(-dz,dx),sp:Math.hypot(dx,dz)}}
+function updateUturn(dt){const G=game,e=G.ego,U=G.uturn;G.sig=-1;
+ if(U.phase==='stop'){e.v=Math.max(0,e.v-6*dt);G.status='↩️ Preparing to U-turn';if(e.v<0.3){e.v=0;U.phase='wait'}return}
+ if(U.phase==='wait'){const fx=Math.cos(e.mesh.rotation.y),fz=-Math.sin(e.mesh.rotation.y);const busy=G.agents.some(a=>{if(!a.mesh)return false;const dx=a.mesh.position.x-U.P0[0],dz=a.mesh.position.z-U.P0[1],d=Math.hypot(dx,dz);return d<70&&a.v>1&&(dx*fx+dz*fz)>-10&&d>3});
+  U.wait+=dt;G.status=busy&&U.wait<12?'↩️ Waiting for a gap to U-turn':'↩️ Making a U-turn';if(!busy||U.wait>=12)U.phase='turn';return}
+ const pz=uturnPose(U,U.u);e.v=Math.min(5.5,e.v+2*dt);U.u=Math.min(1,U.u+e.v*dt/Math.max(1,pz.sp));const p=uturnPose(U,U.u);
+ e.mesh.position.set(p.x,Math.max(groundY(p.x,p.z),(roadSurfaceY(p.x,p.z,groundY(p.x,p.z))??-1e9))+0.03,p.z);e.mesh.rotation.y=p.h;e.x=p.x;e.z=p.z;e.head=p.h;spinWheels(e,dt,0.55);G.status='↩️ Making a U-turn';
+ if(U.u>=1){G.uturn=null;e.s=12;e.off=laneOffsetAt(0);G.sig=0;G.status='U-turn complete · on the new route'}}
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
  const legit=G.charging||G.tow||G.pullOver||G.rerouting||(G.protest&&G.protest.state==='rerouting')||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
  if(G.overtakeT>0&&G.spec.hyper){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
@@ -3548,12 +3562,15 @@ function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.pause
 /* points no new route may pass through (within 14 m): an active protest and any police roadblocks */
 function blockedPts(){const G=game,o=[];if(G.protest&&G.protest.state!=='dispersing')o.push([toLon(G.protest.x),toLat(G.protest.z)]);if(CHASE.on)for(const B of CHASE.blocks)o.push([toLon(B.x),toLat(B.z)]);return o}
 function routeHitsBlock(r,bl){if(!bl.length)return false;for(let k=0;k<r.pts.length;k++){if(r.cum[k]<30)continue;for(const b of bl)if(hav(r.pts[k],b)<14)return true}return false} /* passes through the crowd/roadblock itself (not just a parallel carriageway nearby) */
+/* car's compass bearing (0 = north, clockwise); world x = east, z = south */
+function egoBearing(){const e=game.ego,h=e.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h);return (Math.atan2(fx,-fz)*180/Math.PI+360)%360}
 async function rerouteNow(){const G=game;if(!G||!G.route||G.rerouting)return;if(G.tow||G.charging){G.status='Can\'t reroute right now';return}G.rerouting=true;const e=G.ego,prev=G.status;G.status='Finding a different route…';
  const here={lat:toLat(e.z),lon:toLon(e.x)},rem=[];for(let s0=e.s;s0<Math.min(G.route.total,e.s+20000);s0+=150){const p=routeLLnh(s0);rem.push([p[0],p[1]])}
  const overlap=r=>{let near=0,n=0;for(let k=0;k<r.pts.length;k+=Math.max(1,Math.floor(r.pts.length/120))){if(r.cum[k]<60)continue;n++;if(rem.some(q=>hav(q,r.pts[k])<35))near++}return n?near/n:1};
- try{const cands=[];for(const pick of [1,2,3]){try{cands.push(await getRoute(here,G.B,[],pick))}catch(err){break}}
+ try{const cands=[],bF=egoBearing();for(const pick of [1,2,3]){try{cands.push(await getRoute(here,G.B,[],pick,{bearing:bF}))}catch(err){break}}
+  try{const u=await getRoute(here,G.B,[],0,{bearing:bF+180});u.uturn=true;cands.push(u)}catch(err){} /* turning around is a legitimate option */
   if(!cands.length){const fx=Math.cos(e.head),fz=-Math.sin(e.head);for(const side of [1,-1])for(const lat of [250,500]){const x=e.x+fx*600-fz*side*lat,z=e.z+fz*600+fx*side*lat;try{cands.push(await getRoute(here,G.B,[{lat:toLat(z),lon:toLon(x)}]))}catch(err){}}}
-  const bl=blockedPts();let best=null,bo=1;for(const r of cands){if(routeHitsBlock(r,bl))continue;const o=overlap(r);if(o<0.85&&(best===null||o+r.total/5e6<bo+best.total/5e6)){best=r;bo=o}}
+  const bl=blockedPts();let best=null,bo=1;const sc=r=>overlap(r)+r.total/5e6+(r.uturn?0.02:0);for(const r of cands){if(routeHitsBlock(r,bl))continue;const o=overlap(r);if(o<0.85&&(best===null||sc(r)<sc(best))){best=r;bo=o}}
   if(!best){G.status='No different route found — staying on this one';return}
   best.stops=[];buildEnergyProfile(best,ES());G.route=best;G.stops=[];G.stopIdx=0;G.lastPlanCheck=0;e.s=0;e.x=0;e.z=0;e.handled.clear();G.agents.forEach(a=>scene.remove(a.mesh));G.agents=[];if(G.rr){scene.remove(G.rr.mesh);G.rr=null}
   G.status=`Rerouted · ${fmtDist(best.total)} · ${Math.round((1-bo)*100)}% different roads`}catch(err){G.status='Reroute failed — staying on this route'}finally{G.rerouting=false}}
@@ -3564,7 +3581,8 @@ async function protestReroute(){const G=game,P=G.protest,e=G.ego;P.state='rerout
   const vias=[];for(const side of [1,-1])for(const ahead of [150,0,300])for(const lat of [180,320]){const x=P.x+rx*side*lat+fx*ahead,z=P.z+rz*side*lat+fz*ahead;vias.push({lat:toLat(z),lon:toLon(x)})}
   for(const side of [1,-1])for(const back of [120,250]){const x=e.x-fx*back+rx*side*200,z=e.z-fz*back+rz*side*200;vias.push({lat:toLat(z),lon:toLon(x)})}
   let best=null;const bl=blockedPts();
-  for(let i=0;i<vias.length&&!best;i+=4){const rs=await Promise.all(vias.slice(i,i+4).map(v=>getRoute(here,G.B,[v]).catch(()=>null)));for(const r of rs){if(!r||routeHitsBlock(r,bl))continue;if(!best||r.total<best.total)best=r}}
+  try{const u=await getRoute(here,G.B,[],0,{bearing:egoBearing()+180});if(!routeHitsBlock(u,bl)){u.uturn=true;best=u}}catch(err){} /* simplest diversion: turn around */
+  for(let i=0;i<vias.length&&(!best||best.uturn);i+=4){const rs=await Promise.all(vias.slice(i,i+4).map(v=>getRoute(here,G.B,[v]).catch(()=>null)));for(const r of rs){if(!r||routeHitsBlock(r,bl))continue;if(!best||r.total+150<best.total)best=r}}
   if(!best){for(const pick of [1,2,3]){try{const r=await getRoute(here,G.B,[],pick);if(!routeHitsBlock(r,bl)&&(!best||r.total<best.total))best=r}catch(err){}}}
   if(best){best.stops=[];buildEnergyProfile(best,ES());G.route=best;G.stops=[];G.stopIdx=0;e.s=0;e.x=0;e.z=0;e.handled.clear();G.agents.forEach(a=>scene.remove(a.mesh));G.agents=[];if(G.rr){scene.remove(G.rr.mesh);G.rr=null}
    P.state='bypassed';G.status='Re-routed around the protest ('+fmtDist(best.total)+')';return}
