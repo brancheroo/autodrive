@@ -4229,6 +4229,225 @@ renderCars();renderInfo();refreshShowcar();socPreview();
 {const n=new Date(Date.now()-new Date().getTimezoneOffset()*60000);$('depAt').value=n.toISOString().slice(0,16);$('depAt').oninput=()=>{document.querySelector('input[name=dep][value=custom]').checked=true}}
 requestAnimationFrame(step);
 </script>
-<!--mods--><!--/mods-->
+<!--mods-->
+<script>/* mods/00-ui.js */
+/* shared helpers for feature modules: HUD buttons, start-screen sections, simple overlays */
+window.UIX={
+ btn(id,label,title,fn){const host=document.getElementById('menuBtn');if(!host||document.getElementById(id))return document.getElementById(id);const b=document.createElement('button');b.id=id;b.textContent=label;b.title=title;b.onclick=fn;host.parentElement.insertBefore(b,host);return b},
+ section(title,html,beforeH2){const hs=[...document.querySelectorAll('#start h2')];const at=hs.find(h=>(beforeH2||/Starting charge/).test(h.textContent));const d=document.createElement('div');d.innerHTML=`<h2>${title}</h2>`+html;if(at)at.parentElement.before(d);else document.getElementById('go').before(d);return d},
+ sel:'padding:7px;border-radius:8px;background:#0e141d;color:var(--text);border:1px solid var(--line)',
+ banner(id,css){let d=document.getElementById(id);if(!d){d=document.createElement('div');d.id=id;d.style.cssText='position:fixed;z-index:62;font:600 13px system-ui;pointer-events:none;'+(css||'');document.body.appendChild(d)}return d},
+ save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},load(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}}
+};
+</script>
+<script>/* mods/01-net.js */
+/* Network resilience: retry rate-limited / flaky requests with growing back-off, cap parallel requests per
+   host so we stop tripping 429s, and cache successful GET responses for the session. */
+(function(){
+ const raw=fetchT,CACHE=new Map(),HOST={},MAXPAR=4,sleepMs=ms=>new Promise(r=>setTimeout(r,ms));
+ const hostOf=u=>{try{return new URL(u,location.href).host}catch(e){return ''}};
+ async function slot(h){const H=HOST[h]||(HOST[h]={n:0,q:[],coolUntil:0});while(H.n>=MAXPAR)await new Promise(r=>H.q.push(r));H.n++;const w=H.coolUntil-Date.now();if(w>0)await sleepMs(w);return H}
+ function free(H){H.n--;const r=H.q.shift();if(r)r()}
+ window.fetchT=async function(u,opt={},ms=15000){
+  const get=!opt.method||opt.method==='GET',key=get?String(u):null;
+  if(key&&CACHE.has(key))return CACHE.get(key).clone();
+  const h=hostOf(u);let last;
+  for(let tries=0;tries<4;tries++){const H=await slot(h);let r;
+   try{r=await raw(u,opt,ms)}catch(e){last=e;free(H);if(e&&e.name==='AbortError'&&tries>0)throw e;await sleepMs(600*2**tries);continue}
+   free(H);
+   if(r.status===429||r.status===502||r.status===503||r.status===504){const ra=+r.headers.get('retry-after');const wait=isFinite(ra)&&ra>0?Math.min(ra*1000,8000):700*2**tries+Math.random()*400;H.coolUntil=Date.now()+wait;last=r;await sleepMs(wait);continue}
+   if(key&&r.ok&&CACHE.size<400)CACHE.set(key,r.clone());
+   return r}
+  if(last instanceof Response)return last;throw last||new Error('network')};
+ MODS.push({id:'net'});
+})();
+</script>
+<script>/* mods/02-loading.js */
+/* Loading feedback: elapsed time + step on the route-planning screen, then a banner in the ride until the
+   first map tiles are built and the car is actually moving. */
+(function(){
+ let t0=0,tick=null;const lt=document.getElementById('loadTxt');
+ if(lt){const b=document.createElement('div');b.id='loadSub';b.style.cssText='font-size:12px;opacity:.75;margin-top:6px';lt.after(b);
+  new MutationObserver(()=>{if(document.getElementById('load').style.display!=='none'){if(!tick){t0=performance.now();tick=setInterval(()=>{const s=(performance.now()-t0)/1000;b.textContent=`${s.toFixed(0)} s elapsed`+(s>25?' · map servers are slow right now, still working…':'')},500)}}else{clearInterval(tick);tick=null}}).observe(document.getElementById('load'),{attributes:true,attributeFilter:['style']})}
+ let ban=null,st=0;
+ MODS.push({id:'loading',
+  start(){st=performance.now();if(!ban){ban=document.createElement('div');ban.style.cssText='position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;background:#0e141dcc;color:#cfe3ff;border:1px solid #2a3a52;border-radius:10px;padding:7px 14px;font:13px system-ui;pointer-events:none';document.body.appendChild(ban)}ban.style.display='block'},
+  frame(){if(!ban||ban.style.display==='none'||!game||!game.ego||!game.ego.mesh)return;const n=typeof TILES!=='undefined'?TILES.size:0,s=(performance.now()-st)/1000;
+   if(n>0&&game.status){ban.style.display='none';return}
+   ban.textContent=(n?`Map ready (${n} tiles) · starting the drive…`:`Loading the map around you… ${s.toFixed(0)} s`)+(s>20&&!n?' (map servers are slow)':'')}});
+})();
+</script>
+<script>/* mods/03-quality.js */
+/* Graphics quality setting (Low / High / Ultra) on the start screen and HUD, plus a small FPS readout. */
+(function(){
+ const PRE={low:{maxPR:1,minPR:Math.min(devicePixelRatio,0.75),shadow:1024,shadows:true},high:{maxPR:Math.min(devicePixelRatio,2),minPR:Math.min(devicePixelRatio,1.25),shadow:2048,shadows:true},ultra:{maxPR:Math.min(devicePixelRatio*1.25,2.5),minPR:Math.min(devicePixelRatio,1.5),shadow:4096,shadows:true}};
+ let cur='high';try{cur=localStorage.getItem('gfx')||(HIGH?'ultra':'high')}catch(e){}
+ function apply(k){cur=PRE[k]?k:'high';const P=PRE[cur];Q.maxPR=P.maxPR;Q.minPR=P.minPR;Q.pr=Math.min(Math.max(Q.pr,P.minPR),P.maxPR);renderer.setPixelRatio(Q.pr);try{resize()}catch(e){}
+  if(typeof sun!=='undefined'&&sun.shadow&&sun.shadow.mapSize.x!==P.shadow){sun.shadow.mapSize.set(P.shadow,P.shadow);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}}
+  try{localStorage.setItem('gfx',cur)}catch(e){}const s=document.getElementById('gfxSel');if(s)s.value=cur;const b=document.getElementById('gfxBtn');if(b)b.textContent='🖥 '+cur[0].toUpperCase()+cur.slice(1)}
+ window.GFX={apply,get:()=>cur};
+ const sel=`<select id="gfxSel" style="width:100%;padding:8px;border-radius:8px;background:#0e141d;color:var(--text);border:1px solid var(--line)"><option value="low">Low – smoothest frame rate</option><option value="high">High – balanced</option><option value="ultra">Ultra – sharpest (fast computers)</option></select>`;
+ const anchor=[...document.querySelectorAll('#start h2')].find(h=>/Weather/.test(h.textContent));
+ if(anchor){const d=document.createElement('div');d.innerHTML='<h2>Graphics quality</h2>'+sel;anchor.parentElement.after(d);document.getElementById('gfxSel').onchange=e=>apply(e.target.value)}
+ const fps=document.createElement('div');fps.id='fpsBox';fps.style.cssText='position:fixed;right:8px;top:8px;z-index:55;font:11px ui-monospace,monospace;color:#9fb3c8;background:#0008;padding:2px 6px;border-radius:6px;display:none;cursor:pointer';fps.title='Click to change graphics quality';document.body.appendChild(fps);
+ fps.onclick=()=>apply(cur==='low'?'high':cur==='high'?'ultra':'low');
+ let n=0,t=performance.now();
+ MODS.push({id:'quality',start(){apply(cur);fps.style.display='block'},frame(){n++;const now=performance.now();if(now-t>1000){fps.textContent=`${Math.round(n*1000/(now-t))} fps · ${cur} · ${Q.pr.toFixed(2)}×`;n=0;t=now}}});
+ setTimeout(()=>apply(cur),0);
+})();
+</script>
+<script>/* mods/05-replay.js */
+/* Crash replay: keeps the last 15 s of every nearby vehicle's pose; after a crash involving your car the ride
+   pauses and replays it in slow motion from a trackside camera, perception overlay still up. Esc / Skip ends it. */
+(function(){
+ const BUF=[],KEEP=15,R={on:false};let lastLog=0,rec=0,pending=0;
+ const snap=()=>{const G=game,items=[];const add=m=>{if(m&&m.parent)items.push([m,m.position.x,m.position.y,m.position.z,m.quaternion.x,m.quaternion.y,m.quaternion.z,m.quaternion.w])};add(G.ego.mesh);const e=G.ego;
+  for(const a of G.agents)if(a.mesh&&Math.abs(a.mesh.position.x-e.x)+Math.abs(a.mesh.position.z-e.z)<220)add(a.mesh);if(typeof CHASE!=='undefined')for(const c of CHASE.cops||[])add(c.mesh);return {t:performance.now()/1000,items}};
+ const apply=f=>{for(const it of f.items){const m=it[0];m.position.set(it[1],it[2],it[3]);m.quaternion.set(it[4],it[5],it[6],it[7])}};
+ const ban=()=>UIX.banner('replayBan','top:60px;left:50%;transform:translateX(-50%);background:#b3121fdd;color:#fff;padding:8px 16px;border-radius:10px;letter-spacing:.12em;pointer-events:auto;cursor:pointer');
+ function start(){const G=game;if(R.on||BUF.length<10)return;R.on=true;R.live=snap();R.wasPaused=G.paused;G.paused=true;R.frames=BUF.slice();R.t=0;R.dur=R.frames[R.frames.length-1].t-R.frames[0].t;R.t0=R.frames[0].t;
+  const e=G.ego.mesh.position,h=G.ego.head,nx=Math.sin(h),nz=Math.cos(h);let side=1;if(typeof bAt==='function'&&bAt(e.x+nx*12,e.z+nz*12))side=-1;
+  const back=Math.max(10,Math.min(40,(G.ego.v||10)*1.2));R.cam=new THREE.Vector3(e.x+nx*12*side-Math.cos(h)*back*0.3,e.y+2.2,e.z+nz*12*side+Math.sin(h)*back*0.3);
+  const b=ban();b.style.display='block';b.textContent='⏪ CRASH REPLAY · ½ speed · click or Esc to skip';b.onclick=stop}
+ function stop(){if(!R.on)return;R.on=false;apply(R.live);game.paused=R.wasPaused;BUF.length=0;const b=document.getElementById('replayBan');if(b)b.style.display='none'}
+ addEventListener('keydown',ev=>{if(ev.key==='Escape'&&R.on)stop()});
+ window.REPLAY=R;R.start=start;R.stop=stop;
+ MODS.push({id:'replay',
+  start(){BUF.length=0;lastLog=CRASH.log.length;R.on=false},
+  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;const now=performance.now()/1000;
+   if(R.on){R.t+=1/60*0.5;const tt=R.t0+R.t;let f=R.frames[0];for(const q of R.frames){if(q.t>tt)break;f=q}R.cur=f;if(R.t>=R.dur+0.8)stop();return}
+   if(!G.paused&&now-rec>0.1){rec=now;BUF.push(snap());while(BUF.length&&now-BUF[0].t>KEEP)BUF.shift()}
+   if(CRASH.log.length>lastLog){const n=CRASH.log.slice(lastLog);lastLog=CRASH.log.length;if(n.some(c=>(c.a==='ego'||c.b==='ego')&&c.mph>=8)&&!pending&&!(window.BENCH&&BENCH.on))pending=now+1.6}
+   if(pending&&now>pending){pending=0;start()}},
+  preRender(){if(!R.on)return;if(R.cur)apply(R.cur);const m=game.ego.mesh.position;camera.position.copy(R.cam);camera.lookAt(m.x,m.y+0.8,m.z);const d=R.cam.distanceTo(m);camera.fov=Math.max(12,Math.min(60,2*Math.atan(8/d)*57.3));camera.updateProjectionMatrix()}});
+})();
+</script>
+<script>/* mods/06-explain.js */
+/* "Why did it do that?" – one line under the perception header explaining the latest brake, swerve or crab. */
+(function(){
+ let prevV=null,prevOff=null,hold=0,line=null,accs=[];
+ const el=()=>{let d=document.getElementById('cvWhy');if(!d){const act=document.getElementById('cvAct');if(!act)return null;d=document.createElement('div');d.id='cvWhy';d.style.cssText='font:600 11px system-ui;color:#ffd166;background:#1a1408;padding:3px 6px;border-top:1px solid #3a2f14;min-height:15px';act.after(d)}return d};
+ function threat(){const G=game,e=G.ego,fx=Math.cos(e.head),fz=-Math.sin(e.head);let best=null;
+  const list=G.pred&&G.pred.length?G.pred.map(p=>({x:p.x,z:p.z,vx:p.vx||0,vz:p.vz||0,kind:p.kind})):G.agents.filter(a=>a.mesh).map(a=>({x:a.x,z:a.z,vx:Math.cos(a.head||0)*a.v,vz:-Math.sin(a.head||0)*a.v,kind:a.kind==='ped'?'ped':'car'})).concat(G.peds.map(p=>({x:p.x,z:p.z,vx:0,vz:0,kind:'ped'})));
+  for(const o of list){const dx=o.x-e.x,dz=o.z-e.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;if(f<1||f>120||Math.abs(l)>12)continue;
+   const vf=o.vx*fx+o.vz*fz,vl=-o.vx*fz+o.vz*fx,close=e.v-vf,ttc=close>0.3?(f-4)/close:99,cut=Math.abs(l)>1.8&&Math.sign(vl)===-Math.sign(l)&&Math.abs(vl)>0.6;
+   const score=(Math.abs(l)<2?1:cut?0.8:0.2)/Math.max(0.3,ttc);if(!best||score>best.score)best={score,f,l,ttc,cut,kind:o.kind,vf}}
+  return best}
+ const noun=k=>k==='ped'?'pedestrian':k==='cop'?'police car':k==='animal'?'animal':'car';
+ MODS.push({id:'explain',
+  start(){prevV=null;hold=0;line=null},
+  frame(){const G=game;if(!G||!G.route||!G.ego||G.paused)return;const e=G.ego,d=el();if(!d)return;const now=performance.now()/1000;
+   if(prevV!=null){accs.push([now,e.v]);while(accs.length&&now-accs[0][0]>0.4)accs.shift()}prevV=e.v;
+   const a=accs.length>1?(accs[accs.length-1][1]-accs[0][1])/Math.max(0.05,accs[accs.length-1][0]-accs[0][0]):0,dOff=prevOff==null?0:(e.off||0)-prevOff;prevOff=e.off||0;
+   const crab=Math.abs(G.crab||0)>0.12,brake=a<-2.2,swerve=Math.abs(dOff)>0.02;
+   if((brake||swerve||crab)&&now>hold){const t=threat(),st=(G.status||'').replace(/^[^\w]*/,'');let why;
+    const verb=crab?`Crabbing ${G.crab>0?'right':'left'} (all-wheel steer ${Math.round(Math.abs(G.crab)*57)}°)`:brake?`Braking ${(-a/9.81).toFixed(2)} g`:`Moving ${dOff>0?'right':'left'} in lane`;
+    if(t&&t.ttc<8)why=`${t.cut?`predicted cut-in by ${noun(t.kind)} from ${t.l<0?'left':'right'}`:`${noun(t.kind)} ahead ${t.vf<1?'stopped':'slower'}`}, ${t.ttc<20?t.ttc.toFixed(1)+' s to contact':Math.round(t.f)+' m'}`;
+    else if(/red|stop|light|yield|sign/i.test(st))why=st.toLowerCase();else if(/curve|turn/i.test(st))why=st.toLowerCase();else why=st?st.toLowerCase():'keeping a safe gap';
+    line=`🧠 ${verb}: ${why}`;hold=now+1.2;d.textContent=line}
+   else if(now>hold+4&&line){line=null;d.textContent=''}}});
+})();
+</script>
+<script>/* mods/07-conditions.js */
+/* Harsh camera conditions: dense fog weather, low-sun glare and lens/windscreen dirt. Camera-only cars (no lidar,
+   no radar, no satellite) lose sight range – shown as CAMQ – while lidar/satellite cars are unaffected. */
+(function(){
+ WX_PRESETS.fog={label:'Dense fog',mu:0.8,latA:2.0,brake:2.0,cap:999,speedF:0.8,gap:1.6,perc:0.75,crrMul:1.05,auxKW:0.3,wind:1,vis:70,rain:0,snow:0,debris:0,cloud:0.95,wet:0.3,snowCover:0,lightning:0};
+ if(!WX_ORDER.includes('fog'))WX_ORDER.splice(1,0,'fog');
+ const ws=document.getElementById('wxSel');if(ws&&!ws.querySelector('option[value=fog]')){const o=document.createElement('option');o.value='fog';o.textContent='Dense fog (worst at night)';ws.querySelector('option[value=rain]').before(o)}
+ window.CAMQ=1;let dirt=0,wipe=0;
+ const flare=UIX.banner('glareFx','inset:0;z-index:4;mix-blend-mode:screen;opacity:0;transition:opacity .4s');
+ const cv=document.createElement('canvas');cv.width=256;cv.height=160;cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0';
+ {const x=cv.getContext('2d');for(let i=0;i<260;i++){const r=1+Math.random()*5;x.fillStyle=`rgba(${120+Math.random()*60|0},${100+Math.random()*50|0},${70+Math.random()*40|0},${0.25+Math.random()*0.5})`;x.beginPath();x.arc(Math.random()*256,Math.random()*160,r,0,7);x.fill()}}
+ const camOnly=()=>{const S=sensorsOf();return !S.lidar&&!S.radar&&!satActive()};
+ MODS.push({id:'conditions',
+  start(){dirt=0;const w=document.getElementById('cvWrap');if(w&&!cv.parentElement){if(getComputedStyle(w).position==='static')w.style.position='relative';w.appendChild(cv)}},
+  sim(dt){const G=game;if(!G.ego)return;dirt=Math.min(1,dirt+dt*(WX.rain*0.004+WX.snow*0.006+WX.debris*0.012+(WX.wet>0?0.0015:0)));
+   if(WX.rain>0||WX.snow>0){wipe+=dt;if(wipe>(WX.rain>0.5?1.2:3)){wipe=0;dirt*=0.55}}},
+  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;const e=G.ego;let q=1,why=[];
+   if(WX.vis<200){q*=G.dark?0.35:0.55;why.push('fog')}else if(WX.vis<800){q*=0.8}
+   if(G.dark){q*=0.7;why.push('night')}
+   let glare=0;if(!G.dark&&typeof sun!=='undefined'&&WX.cloud<0.6){const dx=sun.position.x-e.x,dy=sun.position.y-e.mesh.position.y,dz=sun.position.z-e.z,L=Math.hypot(dx,dy,dz),el=Math.asin(dy/L),h=Math.hypot(dx,dz),fdot=(dx*Math.cos(e.head)-dz*Math.sin(e.head))/h;
+    if(el<0.26&&fdot>0.9){glare=(fdot-0.9)/0.1*(1-el/0.26);q*=1-0.65*glare;why.push('sun glare')}}
+   if(dirt>0.15){q*=1-0.6*dirt;why.push('dirty lens')}
+   window.CAMQ=Math.max(0.12,q);
+   flare.style.opacity=G.cam==='in'?(glare*0.85).toFixed(2):'0';if(glare>0){flare.style.background='radial-gradient(circle at 50% 30%,rgba(255,250,220,.95) 0,rgba(255,220,150,.45) 12%,rgba(255,200,120,.12) 35%,transparent 60%)'}
+   cv.style.opacity=(dirt*0.9).toFixed(2);
+   const co=camOnly(),st=document.getElementById('cvStats');if(co&&st&&why.length&&!/📷/.test(st.textContent))st.textContent+=` · 📷 ${Math.round(CAMQ*100)}% (${why.join(', ')})`}});
+})();
+</script>
+<script>/* mods/08-emergency.js */
+/* Emergency vehicles: ambulances and fire engines run up the route behind you with lights and siren. Your car
+   and the traffic around it slow and pull right to let them pass on the left. 🚑 button (or V) calls one now. */
+(function(){
+ const EV={list:[],next:0};window.EVS=EV;
+ function lightBar(g,y,len){const bar=new THREE.Group();bar.position.set(-0.1,y,0);g.add(bar);bar.add(new THREE.Mesh(new THREE.BoxGeometry(0.32,0.1,len),new THREE.MeshStandardMaterial({color:0x222226,roughness:0.4})));
+  const red=new THREE.MeshBasicMaterial({color:0x550000}),blue=new THREE.MeshBasicMaterial({color:0x550000});const lr=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.09,len*0.44),red),lb=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.09,len*0.44),blue);lr.position.set(0,0.07,len*0.26);lb.position.set(0,0.07,-len*0.26);bar.add(lr,lb);
+  const gr=new THREE.SpriteMaterial({map:glowTex(),color:0xff2020,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}),gb=new THREE.SpriteMaterial({map:glowTex(),color:0xff5050,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0});
+  const sr=new THREE.Sprite(gr),sb=new THREE.Sprite(gb);sr.position.set(0,0.1,len*0.3);sb.position.set(0,0.1,-len*0.3);sr.scale.setScalar(2.4);sb.scale.setScalar(2.4);bar.add(sr,sb);g.userData.bar={red,blue,gr,gb}}
+ function sideTex(txt,bg,fg,stripe){const c=document.createElement('canvas');c.width=512;c.height=128;const x=c.getContext('2d');x.fillStyle=bg;x.fillRect(0,0,512,128);x.fillStyle=stripe;x.fillRect(0,86,512,26);x.fillStyle=fg;x.font='900 60px Arial Black,Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(txt,256,46);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t}
+ function build(kind){const fire=kind==='fire',spec=fire?{style:'van',L:9.5,W:2.5,H:3.1,wb:5.2,wr:0.5}:{style:'van',L:6.4,W:2.25,H:2.7,wb:3.8,wr:0.42};
+  const g=buildCar(spec,fire?'#c8141c':'#f2f2ef');const P=(profCache[spec.style+spec.L+spec.W+spec.H]||{}).P,half=P?P.half(0.5):spec.W/2,top=P?P.top(0.5):spec.H;
+  const m=new THREE.MeshStandardMaterial({map:fire?sideTex('FIRE RESCUE','#c8141c','#fff','#f2c400'):sideTex('AMBULANCE','#f2f2ef','#c8141c','#c8141c'),roughness:0.5});
+  for(const s of [1,-1]){const d=new THREE.Mesh(new THREE.PlaneGeometry(spec.L*0.55,spec.H*0.3),m);d.position.set(-spec.L*0.08,spec.H*0.5,s*(half+0.015));d.rotation.y=s>0?0:Math.PI;g.add(d)}
+  lightBar(g,top+0.02,spec.W*0.62);g.userData.cop=true;return {g,spec}}
+ function spawn(kind){const G=game;if(!G||!G.route||!G.ego)return;kind=kind||(Math.random()<0.6?'amb':'fire');const {g,spec}=build(kind);scene.add(g);
+  const e=G.ego,o={kind,mesh:g,spec,s:Math.max(0,e.s-260),v:Math.max(24,e.v+12),off:0,audible:true,t:0};EV.list.push(o);try{sirenStart(o)}catch(err){}}
+ function remove(o){scene.remove(o.mesh);try{sirenStop(o)}catch(e){}EV.list.splice(EV.list.indexOf(o),1)}
+ addEventListener('keydown',ev=>{if(/^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName))return;if((ev.key==='v'||ev.key==='V')&&game&&game.route)spawn()});
+ MODS.push({id:'emergency',
+  start(){for(const o of EV.list.slice())remove(o);EV.next=240+Math.random()*360;UIX.btn('evBtn','🚑','Call an emergency vehicle up behind you (V)',()=>spawn())},
+  sim(dt){const G=game,e=G.ego;if(!G.route)return;EV.next-=dt;if(EV.next<0){EV.next=300+Math.random()*480;if(!(typeof CHASE!=='undefined'&&CHASE.on)&&!(window.BENCH&&BENCH.on))spawn()}
+   let cap=null;
+   for(const o of EV.list.slice()){o.t+=dt;const gap=e.s-o.s;o.v=Math.min(o.v+3*dt,Math.max(26,e.v+14));o.s+=o.v*dt;
+    const pass=gap<70&&gap>-40;o.off+=((pass?-3.6:0)-o.off)*Math.min(1,dt*1.5);
+    if(gap>0&&gap<220){cap=Math.min(cap??99,Math.max(2,gap/30));CHASE.evade=lerp(CHASE.evade||0,2.3,Math.min(1,dt*1.2));G.dodgeT=Math.max(G.dodgeT||0,0.3);G.status=`${o.kind==='fire'?'🚒 Pulling over for a fire engine':'🚑 Pulling over for an ambulance'}`}
+    for(const a of G.agents)if(a.kind==='route'&&a.s>o.s&&a.s-o.s<180)a.v=Math.min(a.v,4);
+    if(o.s>e.s+500||o.s>G.route.total-5||o.t>240)remove(o)}
+   window.EGO_CAP=cap},
+  frame(){const G=game;if(!G||!G.route||!G.ego)return;const t=performance.now()/1000,e=G.ego;
+   for(const o of EV.list){const lane=laneOffsetAt(routeLLnh(o.s)[2]),p=routeXZ(o.s,lane+o.off),h=Math.atan2(-p[3],p[2]);o.mesh.position.set(p[0],routeY(o.s,lane+o.off),p[1]);o.mesh.rotation.set(0,h,0);flashBar(o.mesh,t,0);
+    const d=Math.hypot(p[0]-e.x,p[1]-e.z);try{sirenUpdate(o,d,t)}catch(err){}}}});
+})();
+</script>
+<script>/* mods/20-rider.js */
+/* ---- the user's own rider: shirt style/colour, headwear and skin tone chosen on the start screen */
+const RIDER={shirt:'tee',col:'#2f6fd6',hat:'none',skin:2};const RD_SKIN=[0xf1d3b8,0xd9ab84,0xb27a52,0x7d4f30,0x4a2e1c];
+try{Object.assign(RIDER,JSON.parse(localStorage.getItem('rider')||'{}'))}catch(e){}
+function riderSettings(){const g=id=>document.getElementById(id);if(!g('rdShirt'))return;RIDER.shirt=g('rdShirt').value;RIDER.col=g('rdCol').value;RIDER.hat=g('rdHat').value;RIDER.skin=+g('rdSkin').value;try{localStorage.setItem('rider',JSON.stringify(RIDER))}catch(e){}}
+function riderInit(){const g=id=>document.getElementById(id);if(!g('rdShirt'))return;g('rdShirt').value=RIDER.shirt;g('rdCol').value=RIDER.col;g('rdHat').value=RIDER.hat;g('rdSkin').value=RIDER.skin;for(const k of ['rdShirt','rdCol','rdHat','rdSkin'])g(k).addEventListener('change',riderSettings)}
+if(document.readyState!=='loading')setTimeout(riderInit,0);else document.addEventListener('DOMContentLoaded',riderInit);
+function shirtTex(kind,col){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d'),C=new THREE.Color(col),dk='#'+C.clone().multiplyScalar(0.55).getHexString(),lt='#'+C.clone().lerp(new THREE.Color(1,1,1),0.55).getHexString();x.fillStyle=col;x.fillRect(0,0,256,256);
+ if(kind==='stripes'){x.fillStyle='#f4f4f4';for(let y=0;y<256;y+=32)x.fillRect(0,y,256,14)}
+ else if(kind==='plaid'){x.globalAlpha=0.45;x.fillStyle=dk;for(let i=0;i<256;i+=64){x.fillRect(i,0,26,256);x.fillRect(0,i,256,26)}x.fillStyle='#111';x.globalAlpha=0.5;for(let i=40;i<256;i+=64){x.fillRect(i,0,4,256);x.fillRect(0,i,256,4)}x.globalAlpha=1}
+ else if(kind==='hawaiian'){const P=['#ffe14d','#ff5a8a','#ffffff','#3fd18a'];for(let i=0;i<22;i++){const cx=Math.random()*256,cy=Math.random()*256,r=10+Math.random()*12;x.fillStyle=P[i%4];for(let k=0;k<5;k++){const a=k*1.2566;x.beginPath();x.ellipse(cx+Math.cos(a)*r*0.6,cy+Math.sin(a)*r*0.6,r*0.5,r*0.3,a,0,7);x.fill()}x.fillStyle='#ff9d1a';x.beginPath();x.arc(cx,cy,r*0.25,0,7);x.fill()}
+  x.fillStyle='#1d7a3a';for(let i=0;i<14;i++){x.save();x.translate(Math.random()*256,Math.random()*256);x.rotate(Math.random()*6);x.beginPath();x.ellipse(0,0,22,7,0,0,7);x.fill();x.restore()}}
+ else if(kind==='jersey'){x.fillStyle=lt;x.fillRect(0,0,256,26);x.fillRect(0,230,256,26);x.font='bold 120px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillStyle='#fff';x.strokeStyle=dk;x.lineWidth=8;x.strokeText('88',128,130);x.fillText('88',128,130)}
+ else if(kind==='hoodie'){x.strokeStyle=dk;x.lineWidth=3;x.beginPath();x.moveTo(0,190);x.lineTo(256,190);x.stroke()}
+ const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=ANISO;t.wrapS=t.wrapT=THREE.RepeatWrapping;return t}
+function riderHat(kind,col){const g=new THREE.Group(),M=(c,r=0.7,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m}),add=(geo,mat,px,py,pz)=>{const m=new THREE.Mesh(geo,mat);m.position.set(px||0,py||0,pz||0);g.add(m);return m},cm=M(col);
+ const dome=(r,mat,f=0.5)=>add(new THREE.SphereGeometry(r,20,12,0,Math.PI*2,0,Math.PI*f),mat);
+ if(kind==='cap'||kind==='backcap'){dome(0.113,cm,0.48).position.y=0.02;const b=add(new THREE.CylinderGeometry(0.1,0.1,0.008,20,1,false,-Math.PI/2,Math.PI),cm,0.07,0.035,0);b.scale.set(1,1,1.05);if(kind==='backcap')g.rotation.y=Math.PI}
+ else if(kind==='beanie'){dome(0.118,cm,0.55).scale.y=1.15;add(new THREE.TorusGeometry(0.112,0.018,8,24),cm,0,0.02,0).rotation.x=Math.PI/2;add(new THREE.SphereGeometry(0.035,10,8),M(0xf4f4f4,1),0,0.15,0)}
+ else if(kind==='cowboy'){const br=M(0x8a5a2b,0.85);add(new THREE.CylinderGeometry(0.075,0.1,0.13,20),br,0,0.1,0);const r=add(new THREE.CylinderGeometry(0.22,0.22,0.012,28),br,0,0.04,0);r.scale.set(1,1,0.85);add(new THREE.TorusGeometry(0.098,0.01,6,24),M(0x2a1a0e),0,0.05,0).rotation.x=Math.PI/2}
+ else if(kind==='fedora'){const f=M(0x3a3f48,0.8);add(new THREE.CylinderGeometry(0.085,0.1,0.11,20),f,0,0.09,0);add(new THREE.CylinderGeometry(0.16,0.16,0.01,26),f,0,0.04,0);add(new THREE.CylinderGeometry(0.101,0.101,0.025,20),M(0x111111),0,0.055,0)}
+ else if(kind==='bucket'){add(new THREE.CylinderGeometry(0.095,0.115,0.1,20),cm,0,0.07,0);add(new THREE.CylinderGeometry(0.115,0.16,0.04,24,1,true),cm,0,0.02,0).material.side=THREE.DoubleSide}
+ else if(kind==='helmet'){const h=dome(0.14,M(col,0.25,0.3),0.62);h.scale.set(1.05,1.05,1);h.position.y=-0.02;const v=add(new THREE.SphereGeometry(0.142,20,10,-0.9,1.8,Math.PI*0.35,Math.PI*0.22),M(0x111418,0.05,0.8));v.position.y=-0.02}
+ else if(kind==='crown'){const au=M(0xffc93a,0.25,0.9);add(new THREE.CylinderGeometry(0.1,0.095,0.05,20,1,true),au,0,0.07,0).material.side=THREE.DoubleSide;for(let i=0;i<8;i++){const a=i/8*Math.PI*2;add(new THREE.ConeGeometry(0.018,0.05,6),au,Math.cos(a)*0.097,0.115,Math.sin(a)*0.097);add(new THREE.SphereGeometry(0.009,6,4),M(i%2?0xd0103a:0x1a5fd0,0.2),Math.cos(a)*0.1,0.075,Math.sin(a)*0.1)}}
+ else if(kind==='headphones'){const k=M(0x1a1a1a,0.5);const band=add(new THREE.TorusGeometry(0.12,0.012,8,24,Math.PI),cm,0,0.0,0);band.rotation.y=Math.PI/2;for(const s of [1,-1])add(new THREE.CylinderGeometry(0.045,0.045,0.03,16),k,0,-0.01,s*0.115).rotation.x=Math.PI/2}
+ else if(kind==='tophat'){const b=M(0x111111,0.5);add(new THREE.CylinderGeometry(0.09,0.09,0.2,22),b,0,0.14,0);add(new THREE.CylinderGeometry(0.15,0.15,0.01,26),b,0,0.04,0);add(new THREE.CylinderGeometry(0.092,0.092,0.03,22),M(col),0,0.06,0)}
+ return g}
+function riderAttach(){const G=game;if(!G||!G.ego)return;const car=G.ego.mesh,spec=G.ego.spec;if(car.userData.rider){car.remove(car.userData.rider);car.userData.rider=null}
+ const e=eyePos(spec),d=buildDriver(spec,'rider','front',new THREE.Vector3(e.x,e.y-0.02,e.z));d.scale.setScalar(1);const skin=new THREE.MeshStandardMaterial({color:RD_SKIN[RIDER.skin]||RD_SKIN[2],roughness:0.65});
+ const formal=RIDER.shirt==='suit'||RIDER.shirt==='tux',sm=new THREE.MeshStandardMaterial({color:formal?(RIDER.shirt==='tux'?0x111111:RIDER.col):0xffffff,map:formal?null:shirtTex(RIDER.shirt,RIDER.col),roughness:formal?0.55:0.85});
+ const hideIn=[];d.traverse(o=>{if(!o.isMesh)return;const c=o.material.color&&o.material.color.getHex();if(o.parent===d&&o.geometry.type==='SphereGeometry'&&o!==d.userData.head&&o.position.y>-0.1){hideIn.push(o);return}if(o.geometry.type==='SphereGeometry'||(o.geometry.type==='CylinderGeometry'&&o.geometry.parameters.radiusTop<0.05&&o.geometry.parameters.height!==0.3))o.material=skin;else o.material=sm});
+ d.userData.head.material=skin;hideIn.push(d.userData.head);
+ if(formal){const W=new THREE.MeshStandardMaterial({color:0xf6f6f6,roughness:0.6}),v=new THREE.Mesh(new THREE.PlaneGeometry(0.1,0.26),W);v.position.set(0.085,-0.36,0);v.rotation.y=Math.PI/2;d.add(v);const t=new THREE.Mesh(RIDER.shirt==='tux'?new THREE.BoxGeometry(0.02,0.035,0.09):new THREE.BoxGeometry(0.012,0.2,0.035),new THREE.MeshStandardMaterial({color:RIDER.shirt==='tux'?0x0a0a0a:0xa0142a,roughness:0.5}));t.position.set(0.092,RIDER.shirt==='tux'?-0.25:-0.34,0);d.add(t)}
+ if(RIDER.shirt==='hoodie'){const h=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.04,8,20,Math.PI*1.3),sm);h.position.set(-0.09,-0.2,0);h.rotation.set(0,Math.PI/2,Math.PI*1.35);d.add(h)}
+ if(RIDER.hat!=='none'){const h=riderHat(RIDER.hat,RIDER.col);h.position.y=0.03;h.scale.set(1,1/1.12,1/0.95);d.userData.head.add(h);if(RIDER.hat==='helmet'||RIDER.hat==='beanie'||RIDER.hat==='tophat'||RIDER.hat==='cowboy'){}}
+ d.userData.hideIn=hideIn;car.add(d);car.userData.rider=d}
+function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userData.rider;if(!r||!r.userData.hideIn)return;const v=game.cam!=='in';for(const o of r.userData.hideIn)o.visible=v}
+</script>
+<!--/mods-->
 </body>
 </html>
