@@ -1599,7 +1599,7 @@ function techStep(i,t){const E=TECH.energy,s=i%16,sd=TECH.stepDur,root=TECH.root
  if(!brk&&E>0.6&&TECH.stab[s])tkStab(t,root);
  if(TECH.throttle>0.5&&s%2===0)tkNoise(t,0.05+TECH.throttle*0.08,'bandpass',2000+s*400,4,sd,true); /* acceleration riser */}
 function techTick(){if(!TECH.on)return;const C=TECH.ctx;if(C.state!=='running')return;TECH.senseT=(TECH.senseT||0)+1;if(TECH.senseT%10===0)techSense();
- const maxStep=4*(1/16);TECH.bpm+=clamp(TECH.target-TECH.bpm,-maxStep*8,maxStep*8);TECH.stepDur=60/TECH.bpm/4;TECH.delay.delayTime.setTargetAtTime(TECH.stepDur*3,C.currentTime,0.2);TECH.glitch=Math.max(0,TECH.glitch-0.025);
+ TECH.bpm+=clamp(TECH.target-TECH.bpm,-0.15,0.15); /* ~6 BPM per second: DJ-smooth tempo ride */TECH.stepDur=60/TECH.bpm/4;TECH.delay.delayTime.setTargetAtTime(TECH.stepDur*3,C.currentTime,0.2);TECH.glitch=Math.max(0,TECH.glitch-0.025);
  while(TECH.next<C.currentTime+0.2){techStep(TECH.step,TECH.next);TECH.step++;TECH.next+=TECH.stepDur}}
 function techStart(){if(AIFM.on)aifmStop();if(RADIO.playing)radioStop();techInit();const C=TECH.ctx;C.resume();TECH.on=true;TECH.bpm=TECH.target=25;techSense();TECH.bpm=TECH.target;TECH.next=C.currentTime+0.1;TECH.step=0;clearInterval(TECH.timer);TECH.timer=setInterval(techTick,25)}
 function techStop(){TECH.on=false;clearInterval(TECH.timer);if(TECH.ctx)TECH.ctx.suspend();const b=document.getElementById('techBtn');if(b)b.textContent='📡 Off'}
