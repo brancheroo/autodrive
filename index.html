@@ -609,7 +609,7 @@ async function mkDiscover(){const G=game;if(!G||!G.ego||MKSRC.busy)return;const 
    const city=(G.city||'').split(',')[0].trim();if(city){for(const C of MK_CATS){try{const r=await fetch(`https://api.us.socrata.com/api/catalog/v1?q=${encodeURIComponent(C.qs[0]+' '+city)}&only=dataset&limit=10`).then(r=>r.json());
      for(const it of (r.results||[])){const res=it.resource||{},dom=(it.metadata||{}).domain||'';if(!C.re.test(res.name||''))continue;const cols=res.columns_field_name||[],types=res.columns_datatype||[];const gi=types.findIndex(t=>/Point|Line|Polygon|MultiLine|Location/i.test(t));if(gi<0)continue;
       if(!new RegExp(city.replace(/\s+/g,'.?'),'i').test(dom+' '+(res.attribution||'')))continue;const url=`https://${dom}/resource/${res.id}.json`;if(!found.has(url))found.set(url,{cat:C.cat,kind:'socrata',url,geo:cols[gi],name:res.name+' · '+(res.attribution||dom)})}}catch(err){}}}}
- finally{MKSRC.sources=[...found.values()];MKSRC.busy=false;MKSRC.tileFeats.clear();for(const k of TILES.keys())mkTile(k)}}
+ finally{const cur=[...found.values()].filter(x=>x.kind==='socrata'&&/SFMTA/.test(x.name));MKSRC.sources=[...found.values()].filter(x=>!(x.kind==='arcgis'&&/sfmta/i.test(x.name)&&cur.some(c=>c.cat===x.cat))); /* curated SFMTA sources win over their hub copies */MKSRC.busy=false;MKSRC.tileFeats.clear();for(const k of TILES.keys())mkTile(k)}}
 /* fetch one tile's features from every source (GeoJSON-ish: {cat,g:{type,coordinates},p}) */
 async function mkTile(key){if(!MKSRC.sources.length||!TILES.has(key))return;const [i,j]=key.split('_').map(Number),bb=[j*TS,i*TS,(j+1)*TS,(i+1)*TS],feats=[];
  await Promise.all(MKSRC.sources.map(async S=>{if(S.ext&&!mkHit(S.ext,bb))return;try{
