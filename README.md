@@ -39,4 +39,4 @@ SF buildings: DataSF · Signs & street names: OpenStreetMap · Live vocals: meSp
 ## Controls
 
 C camera (interior / exterior / overhead / drone circle / drone follow / helicopter) · drag pan · wheel zoom · Space pause · W weather · X chaos ·
-P oil protest · R AI Radio (songs written live about where you are) · D window dog · N reroute now · K chase mode (1–10 police) · E express (chase driving, no police) · click the in-car screens (interior view) · time slider 1–1000×.
+P oil protest · R AI Radio (songs written live about where you are) · T Techno FM (generated live, 25–200 BPM from speed &amp; situation) · D window dog · N reroute now · K chase mode (1–10 police) · E express (chase driving, no police) · click the in-car screens (interior view) · time slider 1–1000×.
