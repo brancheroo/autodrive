@@ -3541,18 +3541,18 @@ let FANSND=null;function fanSound(p){if(!audio.ctx||!audio.master)return;const C
 function hyperBrakeCap(v){const fg=1+2*Math.min(4,0.5+((game&&game.fans)||[0,0,0,0]).reduce((q,x)=>q+x,0)/4);return Math.min(38,(v>60?11:7)*Math.pow(fg,0.6))+22*Math.pow(Math.min(v,450)/450,2)}
 /* how far along the ROUTE is sensed: own lidar only with line of sight (buildings block it), plus anything under the drone's footprint */
 function senseHorizon(){const G=game,e=G.ego,R=G.route;let edge=0;const ex=e.mesh.position.x,ez=e.mesh.position.z,lid=1000*WX.perc,dr=HDRONE.mesh?HDRONE:null;
- for(let d=10;d<7000;d+=20){const s2=e.s+d;if(s2>R.total){edge=d;break}const p=routeXZ(s2,0);let ok=false;const dd=Math.hypot(p[0]-ex,p[1]-ez);
+ for(let d=10;d<7000;d+=d<3000?20:40){const s2=e.s+d;if(s2>R.total){edge=d;break}const p=routeXZ(s2,0);let ok=false;const dd=Math.hypot(p[0]-ex,p[1]-ez);
   if(dd<lid)ok=true; /* hypercar lidar: 1 km, sees through buildings and objects */
-  if(!ok&&dd<1000)ok=true; /* satellite: open-sky view of the first 1 km */
+  if(!ok&&dd<3000)ok=true; /* satellite: complete open-sky view of the route within 3 km */
   if(!ok&&dr&&Math.hypot(p[0]-dr.x,p[1]-dr.z)<dr.range)ok=true;if(!ok&&G.swept&&s2>=G.swept.a&&s2<=G.swept.b&&G.simTime-G.swept.t<6)ok=true; /* road the drone swept in the last 6 s */if(!ok){edge=d;break}edge=d}
  /* extend the swept memory with whatever the drone covers now, if it joins what we already know */
  if(dr){let a=null,b=null;for(let d=0;d<7000;d+=25){const s2=e.s+d;if(s2>R.total)break;const p=routeXZ(s2,0);if(Math.hypot(p[0]-dr.x,p[1]-dr.z)<dr.range){if(a===null)a=s2;b=s2}else if(a!==null)break}
   if(a!==null){if(G.swept&&a<=G.swept.b+30&&G.simTime-G.swept.t<6){G.swept.b=Math.max(G.swept.b,b);G.swept.t=G.simTime}else if(a<=e.s+edge+30)G.swept={a:e.s,b,t:G.simTime}}}
  G.senseEdge=edge;return edge}
-/* TRACKING SATELLITE: overhead, tracks every road user within 1 km (no line-of-sight limits), 1 Hz downlink into the hypercar's computer */
+/* TRACKING SATELLITE: overhead, tracks and predicts every road user within 3 km (no line-of-sight limits), 1 Hz downlink into the hypercar's computer */
 const SATL={n:0,down:0,useT:0,flash:0};
 function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)return;const e=G.ego,objs=[];G.dodgeT=Math.max(0,(G.dodgeT||0)-dt);
- const drone=HDRONE.mesh?HDRONE:null;let dOnly=0;SATL.n=0;SATL.down-=dt;if(SATL.down<=0){SATL.down=1;SATL.flash=0.25}SATL.flash=Math.max(0,SATL.flash-dt);SATL.useT=Math.max(0,SATL.useT-dt);const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z),dd=drone?Math.hypot(x-drone.x,z-drone.z):1e9;if(d>1000&&!(dd<=(drone?drone.range:0)))return; /* own sensors 450 m + satellite 1 km + anything the drone sees */const byDrone=d>120&&dd<(drone?drone.range:0);if(byDrone)dOnly++;o._drone=byDrone;o._sat=d>450&&!byDrone;if(o._sat)SATL.n++;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
+ const drone=HDRONE.mesh?HDRONE:null;let dOnly=0;SATL.n=0;SATL.down-=dt;if(SATL.down<=0){SATL.down=1;SATL.flash=0.25}SATL.flash=Math.max(0,SATL.flash-dt);SATL.useT=Math.max(0,SATL.useT-dt);const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z),dd=drone?Math.hypot(x-drone.x,z-drone.z):1e9;if(d>3000&&!(dd<=(drone?drone.range:0)))return; /* lidar 1 km + satellite 3 km complete vision + anything the drone sees */const byDrone=d>120&&dd<(drone?drone.range:0);if(byDrone)dOnly++;o._drone=byDrone;o._sat=d>1000&&!byDrone;if(o._sat)SATL.n++;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
   if(Math.hypot(vx,vz)>90)return;const f=x=>isFinite(x)?x:0;o._vx=lerp(o._vx||0,f(vx),0.65);o._vz=lerp(o._vz||0,f(vz),0.65);o._w=lerp(o._w||0,clamp(f(w),-1.2,1.2),0.35);const sp=Math.hypot(o._vx,o._vz);o._acc=o._sp===undefined?0:lerp(o._acc||0,clamp(f((sp-o._sp)/dt),-10,6),0.25);o._sp=sp; /* longitudinal acceleration (braking < 0) */
   objs.push({o,x,z,h,kind,vx:o._vx,vz:o._vz,w:o._w,acc:o._acc,d,m:kind==='ped'?80:o.spec?massOf(o.spec,kind):kind==='cop'?2000:1500,id:o._id||(o._id=++G._pid||(G._pid=1))})};
  for(const a of G.agents)if(a.mesh)track(a,a.mesh.position.x,a.mesh.position.z,a.mesh.rotation.y,a.spec.style==='harley'?'moto':'car');
@@ -3572,7 +3572,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
    cost = collision (earlier = worse) + proximity + off-road + speed loss + lane deviation + jerk; lowest cost wins */
 function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeLLnh(e.s)[2]),cur=(e.off===undefined?base:e.off)-base,v0=e.v,fast=fastOn(); /* base = lane centre; cur = where the car really is now relative to it */
  const vWant=fast?Math.max(e.v,30):(G.limitMph||30)/MPH;const rq=roadQAt(e.x,e.z);
- const near=objs.filter(b=>b.d<200&&b.path);if(near.some(b=>b.o._sat)||objs.some(b=>b.o._sat&&b.d<600))SATL.useT=0.4; /* recalculating with satellite data */const circ=(x,z,h,kind,sp)=>{if(kind==='ped')return[[x,z,0.45]];const L=sp&&sp.L||(kind==='moto'?2.3:4.8),W=sp&&sp.W||(kind==='moto'?0.9:1.9),r=W/2+0.05,k=Math.max(0,L/2-r),c=Math.cos(h),sn=-Math.sin(h);return[[x+c*k,z+sn*k,r],[x+c*k/2,z+sn*k/2,r],[x,z,r],[x-c*k/2,z-sn*k/2,r],[x-c*k,z-sn*k,r]]}; /* 5 circles spanning the real length */
+ const near=objs.filter(b=>b.d<200&&b.path);if(objs.some(b=>b.o._sat)||(game.senseEdge||0)>1000)SATL.useT=0.4; /* recalculating with satellite data */const circ=(x,z,h,kind,sp)=>{if(kind==='ped')return[[x,z,0.45]];const L=sp&&sp.L||(kind==='moto'?2.3:4.8),W=sp&&sp.W||(kind==='moto'?0.9:1.9),r=W/2+0.05,k=Math.max(0,L/2-r),c=Math.cos(h),sn=-Math.sin(h);return[[x+c*k,z+sn*k,r],[x+c*k/2,z+sn*k/2,r],[x,z,r],[x-c*k/2,z-sn*k/2,r],[x-c*k,z-sn*k,r]]}; /* 5 circles spanning the real length */
  let best=null;const fx0=Math.cos(e.head),fz0=-Math.sin(e.head);
  /* oncoming lane is only usable when clear for 6 s of closing distance (+30 m); every oncoming road user counts */
  const ni0=NODEINFO.get(R.nodes[routeLLnh(e.s)[2]]),oneway=!!(ni0&&ni0.oneway); /* one-way: left of the centreline is just another lane */
