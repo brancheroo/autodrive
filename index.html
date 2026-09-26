@@ -4553,7 +4553,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
 })();
 </script>
 <script>/* mods/14-radar.js */
-/* Weather radar + weather that changes along the route. Live radar (RainViewer, free public tiles) in a small
+/* Weather that changes along the route (radar panel removed at the user's request; drawing code kept unused). Live radar (RainViewer, free public tiles) in a small
    panel around your car (🌧 button / M); forecast precipitation is sampled every ~15 km ahead along the route
    (Open-Meteo) and the in-game weather switches between clear / rain / snow / fog as you drive through it. */
 (function(){
@@ -4574,11 +4574,11 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
    let j=await (await fetch(u)).json();if(!Array.isArray(j))j=[j];const t0=G.simTime;
    pts.forEach((p,i)=>{const h=j[i]&&j[i].hourly;if(!h)return;const eta=t0+p.s/25,idx=Math.max(0,h.time.findIndex(t=>Date.parse(t+'Z')/1000>=eta)),pr=h.precipitation[idx]||0,sn=h.snowfall[idx]||0,vis=h.visibility?h.visibility[idx]:99999;
     p.key=sn>0.3?'blizzard':pr>0.2?'rain':vis<400?'fog':'clear';wxPts.push(p)})}catch(e){}}
- addEventListener('keydown',ev=>{if(/^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName))return;if((ev.key==='m'||ev.key==='M')&&game&&game.route)toggle()});
- function toggle(){on=!on;UIX.save('radarOn',on);box.style.display=on?'block':'none';if(on)draw()}
+ addEventListener('keydown',ev=>{if(/^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName))return;});
+ function toggle(){on=!on;UIX.save('radarOn',on);box.style.display='none';if(on)draw()}
  MODS.push({id:'radar',disable(){box.style.display='none'},
-  start(){manual=document.getElementById('wxSel').value!=='live';lastKey='';box.style.display=on?'block':'none';UIX.btn('radarBtn','🌧','Weather radar (M)',toggle);if(!manual)setTimeout(forecast,4000)},
-  frame(){const G=game;if(!G||!G.route||!G.ego)return;const now=performance.now();if(on&&now-lastDraw>15000){lastDraw=now;draw()}
+  start(){manual=document.getElementById('wxSel').value!=='live';lastKey='';box.style.display='none';if(!manual)setTimeout(forecast,4000)},
+  frame(){const G=game;if(!G||!G.route||!G.ego)return;const now=performance.now();
    if(manual||!wxPts.length||(typeof CHASE!=='undefined'&&CHASE.on))return;let cur=wxPts[0];for(const p of wxPts){if(p.s>G.ego.s)break;cur=p}if(cur&&cur.key&&cur.key!==lastKey){lastKey=cur.key;if(cur.key!==WX.key&&WX_PRESETS[cur.key])setWeather(cur.key)}}});
 })();
 </script>
@@ -4813,7 +4813,7 @@ function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userDa
 <script>/* mods/95-settings.js */
 /* ⚙️ Settings: switch each feature module on or off (remembered). Available on the start screen and in the ride. */
 (function(){
- const NAMES={loading:'Loading progress banner',quality:'FPS / graphics readout',replay:'Crash replays',explain:'"Why" explanation line',conditions:'Fog, glare & lens dirt',emergency:'Emergency vehicles',comfort:'Comfort score',rain:'Wipers, spray & puddles',night:'Headlight beams & window lights',parked:'Parked cars',ghost:'Ghost car / time trial',delivery:'Delivery runs',rideranim:'Rider animation',riderstyle:'Rider extras & photo mode',rival:'Live AI rival',radar:'Weather radar & changing weather',replayclip:'Save replay clips',passengers:'Passengers at delivery stops'};
+ const NAMES={loading:'Loading progress banner',quality:'FPS / graphics readout',replay:'Crash replays',explain:'"Why" explanation line',conditions:'Fog, glare & lens dirt',emergency:'Emergency vehicles',comfort:'Comfort score',rain:'Wipers, spray & puddles',night:'Headlight beams & window lights',parked:'Parked cars',ghost:'Ghost car / time trial',delivery:'Delivery runs',rideranim:'Rider animation',riderstyle:'Rider extras & photo mode',rival:'Live AI rival',radar:'Weather changes along the route',replayclip:'Save replay clips',passengers:'Passengers at delivery stops'};
  const off=new Set(UIX.load('modsOff',[]));
  const apply=()=>{for(const m of MODS)m.off=off.has(m.id)};
  function panel(){let d=document.getElementById('setBox');if(d){d.remove();return}d=UIX.banner('setBox','top:50%;left:50%;transform:translate(-50%,-50%);z-index:9998;background:#0e141df5;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:14px 18px;pointer-events:auto;font:13px system-ui;max-height:80vh;overflow:auto;min-width:280px');
