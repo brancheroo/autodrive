@@ -2330,8 +2330,8 @@ function plan(a,dt,lead,isEgo){
   else if(c.type==='give_way'){const v=allow(4.5,d-6);if(v<target){target=v;reason='Yield'}}}
  if(isEgo)game.upcoming=up;
  // lead (in a chase the car overtakes while swerving away from a cruiser)
- if(chase&&lead&&lead.s-a.s<45&&lead.s-a.s>0){CHASE.pass=2;reason=(CHASE.on?'CHASE':'EXPRESS')+' · threading traffic'}
- if(lead&&!chase&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
+ if(chase&&lead&&lead.s-a.s<90&&lead.s-a.s>0&&lead.v<a.v+3){CHASE.pass=2.5;reason=(CHASE.on?'CHASE':'EXPRESS')+(CHASE.passSide>0?' · passing on the right':CHASE.passSide<0?' · passing on the left':' · boxed in, waiting for a gap')}
+ if(lead&&(!chase||(EXPRESS.on&&!CHASE.on&&!a.spec.hyper&&CHASE.passSide===0))&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
  // planned charging / fuel stop
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
@@ -2563,7 +2563,15 @@ function trailAt(d){const T=CHASE.trail;if(!T.length)return null;let lo=0,hi=T.l
 // Express: the chase driving brain (flat out, lights & signs ignored, threads traffic, hard corners/brakes, fast crash recovery) without police
 const EXPRESS={on:false};function fastOn(){return CHASE.on||EXPRESS.on}
 function expressToggle(){if(!game||!game.route)return;EXPRESS.on=!EXPRESS.on;if(!fastOn()){CHASE.evade=0;CHASE.pass=0}const b=document.getElementById('expBtn');if(b)b.classList.toggle('on',EXPRESS.on);game.status=EXPRESS.on?'⚡ Express mode · flat out':'Express off · normal driving'}
-function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego||game.spec.hyper)return;CHASE.pass=Math.max(0,(CHASE.pass||0)-dt);CHASE.evade=lerp(CHASE.evade,CHASE.pass>0?-3.4:0,Math.min(1,dt*(CHASE.pass>0?3.5:1.2)))}
+/* Express overtaking (non-hypercar): pick whichever side is actually free — right lane, or the oncoming lane only when it's clear for 5 s
+   of closing distance — swing out early and hard, hold it until past, then tuck back in. Both blocked → follow and wait for a gap. */
+function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego||game.spec.hyper)return;const G=game,e=G.ego;CHASE.pass=Math.max(0,(CHASE.pass||0)-dt);
+ if(CHASE.pass>0){CHASE.sideT=(CHASE.sideT||0)-dt;if(CHASE.sideT<=0){CHASE.sideT=0.4;const fx=Math.cos(e.head),fz=-Math.sin(e.head),cur=CHASE.evade||0;
+   const free=side=>{const o=side*3.4;for(const b of G.agents){if(!b.mesh)continue;const dx=b.mesh.position.x-e.x,dz=b.mesh.position.z-e.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;
+     const rel=(b.kind==='oncoming'?-1:1)*((b.mesh.rotation.y-e.head+9.42)%6.283-3.14<1.6?1:1);if(f>-10&&f<45&&Math.abs(l-(o))<2.3)return false;
+     if(side<0&&b.kind==='oncoming'&&f>0&&f<(e.v+b.v)*5+30&&Math.abs(l-o)<3.2)return false}return true};
+   const L=free(-1),Rt=free(1);CHASE.passSide=(cur>0.5&&Rt)?1:(cur<-0.5&&L)?-1:L?-1:Rt?1:0}}else{CHASE.passSide=0;CHASE.sideT=0}
+ CHASE.evade=lerp(CHASE.evade,CHASE.pass>0?CHASE.passSide*3.4:0,Math.min(1,dt*(CHASE.pass>0?4:1.5)))}
 function chaseToggle(){if(!game||!game.route)return;CHASE.on?chaseStop():chaseStart()}
 function chaseStart(){const G=game,e=G.ego;CHASE.on=true;CHASE.n=+(document.getElementById('copN')||{value:3}).value||3;CHASE.trail=[];CHASE.pits=0;CHASE.blockTimer=35;
  // seed the trail behind the car from the route so cruisers can start 150–450 m back on real roads
@@ -3315,7 +3323,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
   b.path=path;b.ttc=null}
  if(worst)worst.b.ttc=worst.t;G.pred=objs;G.threat=worst&&worst.t<3.5?worst:null;
  G.hpT=(G.hpT||0)-dt;if(e.loose){G.hp=null}else if(G.hpT<=0){G.hpT=0.1;G.hp=hyperPlan(objs)}
- const hp=G.hp;if(!hp&&!e.loose){CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*3))}if(hp){if(hp.off!==0||Math.abs(CHASE.evade)>0.1)G.dodgeT=0.6;const crawlHold=e.v<6&&objs.some(b=>b.kind!=='ped'&&b.d<6.5); /* crawling beside a vehicle: no sideways creeping (box corners) */G.latFreeze=!!(G.latHold||crawlHold);if(G.latHold||crawlHold){CHASE.evade=(e.off||0)-laneOffsetAt(routeLLnh(e.s)[2])}else CHASE.evade=lerp(CHASE.evade,hp.off,Math.min(1,dt*3.2));
+ const hp=G.hp;if(!hp&&!e.loose){CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*3))}if(hp){if(hp.off!==0||Math.abs(CHASE.evade)>0.1)G.dodgeT=0.6;const crawlHold=e.v<(fastOn()?2.5:6)&&objs.some(b=>b.kind!=='ped'&&b.d<6.5); /* crawling beside a vehicle: no sideways creeping (box corners) */G.latFreeze=!!(G.latHold||crawlHold);if(G.latHold||crawlHold){CHASE.evade=(e.off||0)-laneOffsetAt(routeLLnh(e.s)[2])}else CHASE.evade=lerp(CHASE.evade,hp.off,Math.min(1,dt*3.2));
   if(hp.risk)G.status=hp.acc<-5?`🧠 ${hp.why} · hard brake`:hp.acc<0?`🧠 ${hp.why} · easing off`:hp.off?`🧠 ${hp.why} · line ${hp.off>0?'right':'left'} ${Math.abs(hp.off).toFixed(1)} m`:`🧠 ${hp.why} · holding line`}}
 /* sampling planner: 7 lateral lines × 4 accelerations, each rolled out 3 s against every forecast; 3-circle vehicle footprints;
    cost = collision (earlier = worse) + proximity + off-road + speed loss + lane deviation + jerk; lowest cost wins */
@@ -3327,7 +3335,7 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
  const oncomingClear=!objs.some(b=>{const dx=b.x-e.x,dz=b.z-e.z,f=dx*fx0+dz*fz0;if(f<-6)return false;const vr=(b.vx||0)*fx0+(b.vz||0)*fz0;return (b.o.kind==='oncoming'||vr<-1)&&f<(v0+Math.max(0,-vr))*6+30});
  /* one route trajectory per speed profile (shared by all 7 lateral lines): position on the lane centre + its right-hand normal */
  const trajs={};for(const acc of [0,2.5,7,-3,-8]){const T=[null];let s=e.s,v=v0;for(let i=1;i<=20;i++){v=Math.max(0,v+acc*0.2);s+=v*0.2;if(s>R.total)break;const lo=laneOffsetAt(routeLLnh(s)[2]),p=routeXZ(s,lo),q=routeXZ(s,lo+1);T.push({x:p[0],z:p[1],rx:q[0]-p[0],rz:q[1]-p[1],dx:p[2],dz:p[3],h:Math.atan2(-p[3],p[2]),v})}trajs[acc]=T}
- for(const off of [0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=Math.abs(off)*1.4+Math.abs(off-cur)*0.8+(acc<-5?3:0),risk=0,why='';
+ const lw=fast?0.35:1;for(const off of fast?[0,-1.8,1.8,-3.4,3.4,-5,5]:[0,-1.2,1.2,-2.4,2.4,-3.4,3.4])for(const acc of [0,2.5,7,-3,-8]){let cost=(Math.abs(off)*1.4+Math.abs(off-cur)*0.8)*lw+(acc<-5?3:0),risk=0,why=''; /* Express/Chase: lane changes are cheap, lost time is expensive */
   if(base+off<1.05&&!oncomingClear)continue; /* never cross the centre line into oncoming traffic */let s=e.s,v=v0,o=cur;
   const TR=trajs[acc];for(let i=1;i<=20;i++){const t=i*0.2,Q=TR[i];if(!Q)break;v=Q.v;o+=(off-o)*Math.min(1,0.2/1.1);
    const p=[Q.x+Q.rx*o,Q.z+Q.rz*o,Q.dx,Q.dz],h=Q.h;if(i%3===0){const rq2=roadQAt(p[0],p[1]);if(rq2&&!rq2.inside(p[0],p[1],-1.15))cost+=400} /* line leaves the carriageway */
@@ -3336,7 +3344,7 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
     let md=1e9;for(const a of E)for(const c of O)md=Math.min(md,Math.hypot(a[0]-c[0],a[1]-c[1])-a[2]-c[2]);if(b.kind==='ped')md-=Math.min(2.2,0.4+t*0.7); /* a pedestrian can turn any way: plan around its whole reachable disc */if(b.kind!=='ped'&&t<=1.0&&md<0.3){cost+=1e5;risk=1;why=why||`No room past #${b.id}`} /* never squeeze: hard minimum clearance in the next second */
     if(md<grow){/* unavoidable-harm ordering: pedestrians first, then heavier vehicles; scaled by predicted impact speed and how soon */
      const dv=Math.hypot(evx-(b.vx||0),evz-(b.vz||0)),harm=b.kind==='ped'?60:1+b.m/1200;cost+=(300+dv*dv*4)*harm*(4.5-t);risk=1;why=why||`${b.kind==='ped'?'Pedestrian':b.kind==='cop'?'Police':b.m>3000?'Heavy vehicle':'Vehicle'} #${b.id} in ${t.toFixed(1)} s`}else if(md<grow+1.2){const dv=Math.hypot(evx-(b.vx||0),evz-(b.vz||0));cost+=(grow+1.2-md)*(b.kind==='ped'?2.5:1.5)*(v>2?1:0.3)*(1+dv/8);risk=risk||0.5;why=why||`Tight gap with #${b.id}`}}}
-  cost+=Math.max(0,vWant-v)*2.2+(acc>0&&v0>=vWant?2:0);
+  cost+=Math.max(0,vWant-v)*(fast?4.5:2.2)+(acc>0&&v0>=vWant?2:0);
   if(!best||cost<best.cost)best={off,acc,cost,risk,why}}
  return best}
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
