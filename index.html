@@ -3110,7 +3110,7 @@ function step(){
   }
  }
  // place ego
- const off=laneOffsetAt(routeLLnh(e.s)[2])+(window.LANEBIAS||0)+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);const offPrev=e.off;e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(spec.hyper?6:fastOn()||G.overtakeT>0||G.dodgeT>0?2.2:0.5))); /* hypercar: 360° wheels = fast sideways crab */
+ const off=laneOffsetAt(routeLLnh(e.s)[2])+(window.LANEBIAS||0)+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);const offPrev=e.off;e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(spec.hyper?(e.v<=44.7?9:9*44.7/e.v):fastOn()||G.overtakeT>0||G.dodgeT>0?2.2:0.5))); /* hypercar: 360° wheels = fast sideways crab */
  if(spec.hyper&&rdt>0&&offPrev!==undefined){const latV=(e.off-offPrev)/(rdt*G.scale||1e-3);G.crab=lerp(G.crab||0,-Math.atan2(latV,Math.max(e.v,0.25)),Math.min(1,rdt*10))}
  const towAnim=G.tow&&G.tow.phase!=='towing'&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling';
  const prevHead=e.head;if(!towAnim&&!G.uturn){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw()}
@@ -3732,7 +3732,7 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
  const trajs={};for(const acc of [0,2.5,7,-3,-8]){const T=[null];let s=e.s,v=v0;for(let i=1;i<=20;i++){v=Math.max(0,v+acc*0.2);s+=v*0.2;if(s>R.total)break;const lo=laneOffsetAt(routeLLnh(s)[2]),p=routeXZ(s,lo),q=routeXZ(s,lo+1);T.push({x:p[0],z:p[1],rx:q[0]-p[0],rz:q[1]-p[1],dx:p[2],dz:p[3],h:Math.atan2(-p[3],p[2]),v})}trajs[acc]=T}
  const lw=fast?0.35:1;for(const off of fast?[0,-1.8,1.8,-3.6,3.6,-5.4,5.4]:[0,-1.2,1.2,-2.4,2.4,-3.6,3.6])for(const acc of [0,2.5,7,-3,-8]){let cost=(Math.abs(off)*1.4+Math.abs(off-cur)*0.8)*lw+(acc<-5?3:0)+(G.hp?Math.abs(off-G.hp.off)*0.9:0),risk=0,why=''; /* hysteresis: commit to a chosen line */ /* Express/Chase: lane changes are cheap, lost time is expensive */
   if(!oneway&&base+off<1.05&&!oncomingClear)continue; /* never cross the centre line into oncoming traffic */let s=e.s,v=v0,o=cur;
-  const TR=trajs[acc];for(let i=1;i<=20;i++){const t=i*0.2,Q=TR[i];if(!Q)break;v=Q.v;o+=(off-o)*Math.min(1,0.2/(G.spec.hyper?0.35:1.1)); /* hypercar crabs sideways ~3× faster */
+  const TR=trajs[acc];for(let i=1;i<=20;i++){const t=i*0.2,Q=TR[i];if(!Q)break;v=Q.v;o+=(off-o)*Math.min(1,0.2/(G.spec.hyper?(v0<=44.7?0.22:0.22*v0/44.7):1.1)); /* hypercar: full-rate sideways crab up to 100 mph (44.7 m/s), gentler above */
    const p=[Q.x+Q.rx*o,Q.z+Q.rz*o,Q.dx,Q.dz],h=Q.h;if(i%3===0){const rq2=roadQAt(p[0],p[1]);if(rq2&&!rq2.inside(p[0],p[1],-1.15))cost+=i<=10?1e6:400} /* never leave the roadway in the next 2 s */ /* line leaves the carriageway */
    const E=circ(p[0],p[1],h,'car',G.spec),grow=0.15+t*0.08+v*0.008,evx=Math.cos(h)*v,evz=-Math.sin(h)*v;
    for(const b of near){const q=b.path[i-1];if(!q)continue;if(Math.abs(q[0]-p[0])>9||Math.abs(q[1]-p[1])>9)continue;const bh=Math.atan2(-(b.vz||0),(b.vx||0.001)),O=circ(q[0],q[1],Math.hypot(b.vx,b.vz)>0.5?bh:b.h,b.kind,b.o.spec||(b.kind==='cop'?COP_SPEC:null));
