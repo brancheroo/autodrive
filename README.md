@@ -40,3 +40,14 @@ SF buildings: DataSF · Signs & street names: OpenStreetMap · Live vocals: meSp
 
 C camera (interior / exterior / overhead / drone circle / drone follow / helicopter / trackside follow shots) · drag pan · wheel zoom · Space pause · W weather · X chaos ·
 P oil protest · R AI Radio (songs written live about where you are) · S tracking satellite on/off (3 km prediction-based self-driving, any car) · I trip &amp; data panel on/off · T Techno FM (generated live, 25–200 BPM from speed &amp; situation) · D window dog · N reroute now · K chase mode (1–10 police) · E express (chase driving, no police) · click the in-car screens (interior view) · time slider 1–1000×.
+V call an emergency vehicle (🚑) · F photo mode (📸, drag to orbit, Save photo) · Esc skip crash replay · 🔗 copy a shareable trip link · click the FPS readout to change graphics quality.
+
+## Features on the start screen
+
+Graphics quality (Low / High / Ultra) · Dense fog weather · your rider's shirt, headwear, glasses, hair and beard · Time trial against a ghost of your best run (or any car's best run) on the same trip · Delivery run: one stop per line, optional "by 3:30pm" deadline · driving-skill grade on each car card (at-fault crashes per 100 km in the benchmark).
+
+Add `?selftest` to the URL to start a ride in every car and check each one keeps running.
+
+## Code layout
+
+`autodrive/index.html` is the core game. Newer features live as separate modules in `autodrive/mods/*.js`; `python3 autodrive/build.py` inlines them into index.html so the published page stays one self-contained file.
