@@ -563,7 +563,7 @@ function parseH(v){if(!v)return null;const f=parseFloat(v);if(isNaN(f))return nu
 function parseSpeed(v){if(!v)return null;const f=parseFloat(v);if(isNaN(f))return null;return /mph/.test(v)?f:Math.round(f/1.609)}
 const BCOL={house:['#d8cfbf','#e6e1d6','#c9b79c','#b8b3aa','#e4d9c3','#a78f7a'],res:['#c4b6a3','#b8a795','#d1c7b8','#9d8b7a'],com:['#aeb4ba','#c2c6c9','#8f98a1','#bfb7aa','#d6d2c8'],ind:['#9ea3a6','#b3aea3','#8a8f94']};
 // ============================================================ PAVEMENT MARKINGS (MUTCD Part 3, driven by OSM lane tags)
-function roadWidthOf(t){const hw=t.highway,lanes=+t.lanes||0,oneway=t.oneway==='yes'||hw==='motorway'||(hw||'').endsWith('_link')&&t.oneway!=='no';return lanes?lanes*3.6+(oneway?1.2:0.6):(DEF_W[hw]||7)}
+function roadWidthOf(t){const hw=t.highway,lanes=+t.lanes||0,oneway=owDir(t)!==0;return lanes?lanes*3.6+(oneway?1.2:0.6):(DEF_W[hw]||7)}
 // polylines as [x,z(,y)] → sub-polyline between distances a..b
 function subLine(pts,L,a,b){const out=[];const at=d=>{let i=0;while(i<L.length-2&&L[i+1]<d)i++;const t=(d-L[i])/((L[i+1]-L[i])||1),p=pts[i],q=pts[i+1],r=[lerp(p[0],q[0],t),lerp(p[1],q[1],t)];if(p[2]!==undefined)r.push(lerp(p[2],q[2],t));return r};
  out.push(at(a));for(let i=0;i<pts.length;i++)if(L[i]>a&&L[i]<b)out.push(pts[i]);out.push(at(b));return out}
@@ -1063,7 +1063,7 @@ function buildTile(key){
   if(el.type!=='way'||!el.geometry)continue;const t=el.tags||{};
   if(t.highway){ // register nodes for speed limit/names even when way already built
    const spd=parseSpeed(t.maxspeed)||DEF_SPD[t.highway]||null;
-   if(el.nodes)el.nodes.forEach((nid,k)=>{if(DRIVABLE.has(t.highway)){if(!NODEINFO.has(nid)||t.maxspeed)NODEINFO.set(nid,{spd,hw:t.highway,name:t.name||t.ref||'',ref:t.ref||'',ms:!!t.maxspeed,lanes:+t.lanes||0,oneway:t.oneway==='yes'||t.highway==='motorway'});
+   if(el.nodes)el.nodes.forEach((nid,k)=>{if(DRIVABLE.has(t.highway)){if(!NODEINFO.has(nid)||t.maxspeed)NODEINFO.set(nid,{spd,hw:t.highway,name:t.name||t.ref||'',ref:t.ref||'',ms:!!t.maxspeed,lanes:+t.lanes||0,oneway:owDir(t)!==0,owDir:owDir(t)||1});
     if(!nodeWays.has(nid))nodeWays.set(nid,[]);nodeWays.get(nid).push({el,k})}})}
   if(BUILTWAYS.has(el.id))continue;BUILTWAYS.add(el.id);T.ids.push(el.id);
   const pts=P(el.geometry);
@@ -1077,9 +1077,9 @@ function buildTile(key){
     pts.forEach((p,i)=>{const lin=lerp(h0,h1,L[i]/tot);if(isTunnel){p.push(lin)}else{const g=groundY(p[0],p[1]),ramp=clamp(Math.min(L[i],tot-L[i])/30,0,1);p.push(Math.max(lin,g+clr*ramp*ramp*(3-2*ramp)))}});
     if(el.nodes)el.nodes.forEach((nid,k)=>NODEH.set(nid,pts[k][2]))}
    if(isTunnel&&DRIVABLE.has(hw)){const len=[0];for(let i=1;i<pts.length;i++)len.push(len[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const lanes=+t.lanes||0;
-    T.ways.push({pts,len,total:len[len.length-1],oneway:t.oneway==='yes',hw,lanes,w:lanes?lanes*3.6:(DEF_W[hw]||7),spd:(parseSpeed(t.maxspeed)||DEF_SPD[hw]||25)/MPH,nodes:el.nodes||[],hts:true,tunnel:true});continue}
+    T.ways.push({pts,len,total:len[len.length-1],oneway:owDir(t)!==0,owDir:owDir(t)||1,hw,lanes,w:lanes?lanes*3.6:(DEF_W[hw]||7),spd:(parseSpeed(t.maxspeed)||DEF_SPD[hw]||25)/MPH,nodes:el.nodes||[],hts:true,tunnel:true});continue}
    if(DRIVABLE.has(hw)){
-    const lanes=+t.lanes||0,oneway=t.oneway==='yes'||hw==='motorway'||hw.endsWith('_link')&&t.oneway!=='no';
+    const lanes=+t.lanes||0,oneway=owDir(t)!==0;
     const w=lanes?lanes*3.6+(oneway?1.2:0.6):(DEF_W[hw]||7);
     const y=hw==='service'?0.07:0.08+(['motorway','trunk','primary'].includes(hw)?0.01:0);
     const sk=surfKey(t),paved=sk==='asphalt'||sk==='concrete';
@@ -2590,8 +2590,12 @@ function allWays(){const arr=[];for(const T of TILES.values())for(const w of T.w
 function wayPos(w,s,off){const L=w.len;s=clamp(s,0,w.total);let i=0;while(i<L.length-2&&L[i+1]<s)i++;const t=(s-L[i])/((L[i+1]-L[i])||1),a=w.pts[i],b=w.pts[i+1];const dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1;return[a[0]+dx*t-dz/l*off,a[1]+dz*t+dx/l*off,dx/l,dz/l]}
 function trafficFactor(){return trafficFactor0()*({clear:1,rain:0.85,blizzard:0.3,hurricane:0.08})[WX.key]}
 function trafficFactor0(){const hr=tzHour(new Date(game.simTime*1000));const f=[.12,.08,.06,.06,.1,.25,.55,.95,1,.75,.6,.65,.7,.68,.7,.8,.95,1,.85,.6,.45,.35,.25,.18][hr];return f}
+/* one-way direction of an OSM way: 1 = along its geometry, -1 = against it (oneway=-1), 0 = two-way. Motorways, motorway links and
+   roundabouts are one-way by definition unless explicitly tagged otherwise. */
+function owDir(t){const o=String(t.oneway||'').toLowerCase();if(o==='-1'||o==='reverse')return -1;if(o==='yes'||o==='true'||o==='1')return 1;if(o==='no'||o==='false'||o==='0'||o==='alternating'||o==='reversible')return 0;
+ const hw=t.highway||'';if(hw==='motorway'||t.junction==='roundabout'||t.junction==='circular'||hw.endsWith('_link')&&/motorway|trunk/.test(hw))return 1;return 0}
 function spawnWayCar(ways){const cand=ways.filter(w=>w.hw!=='service');if(!cand.length)return;const w=cand[Math.floor(Math.random()*cand.length)];
- const sp=pickSpec();const dir=w.oneway?1:(Math.random()<0.5?1:-1);
+ const sp=pickSpec();const dir=w.oneway?(w.owDir||1):(Math.random()<0.5?1:-1); /* one-way roads: only in the legal direction */
  const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],Math.random()*w.total,w.spd*0.8,dir);a.kind='way';a.way=w;a.mesh.position.y=0;
  const p=wayPos(a.way,a.s,0);if(Math.hypot(p[0]-game.ego.x,p[1]-game.ego.z)<40){scene.remove(a.mesh);return}
  game.agents.push(a)}
