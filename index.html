@@ -3095,7 +3095,7 @@ function step(){
    if(G.route!==G._rt){const had=!!G._rt;G._rt=G.route;if(had)uturnCheck()}if(G.uturn){updateUturn(dt);continue}
    if(spec.basicAD&&!smartOn()){ /* camera-only basic self-driving: obstacles outside the 60 m / 50° camera cone don't exist for it; ~0.7 s reaction lag */
     if(obst){const d=obst.s-e.s;const inCam=d<60*(window.CAMQ??1);if(!inCam)obst=null}G.camLag=G.camLag||[];G.camLag.push({t:G.simTime,o:obst&&{s:obst.s,v:obst.v,spec:obst.spec}});while(G.camLag.length>1&&G.simTime-G.camLag[0].t>0.7)G.camLag.shift();const old=G.camLag[0].o;obst=old&&obst?{s:Math.min(old.s,obst.s+0),v:old.v,spec:obst.spec}:old||null;G.overtakeT=0}
-   const sPrev=e.s,routeRef=G.route;if(!e.loose)G.status=plan(e,dt,obst,true);else{e.v=0;e.acc=0}
+   const sPrev=e.s,routeRef=G.route;if(!e.loose){G.status=plan(e,dt,obst,true);modCall('postPlan',dt,obst)}else{e.v=0;e.acc=0}
    if(!G.tow){const E=ES(),P=powerW(E,e.v,e.acc||0,e.grade||0);G.energy=Math.max(0,G.energy-P*dt);G.usedJ+=P*dt;if(routeRef===G.route&&e.s>sPrev)G.expJ=(G.expJ||0)+energyBetween0(G.route,sPrev,e.s);G.odo+=e.v*dt;G.soc=G.energy/capJ(E);
     if(G.energy<=0){e.v=Math.max(0,e.v-3*dt);G.status=E.ice?'Out of fuel · coasting to a stop':'Battery depleted · coasting to a stop';if(e.v<0.1){e.v=0;startTow()}}}
    {const allR=G.agents.filter(a=>a.kind==='route'&&!a.loose).sort((a,b)=>a.s-b.s),egoLead={s:e.s,v:e.v,spec:G.spec};
