@@ -570,7 +570,7 @@ function decalMat(){if(DECAL_MAT)return DECAL_MAT;const c=document.createElement
 /* decal: name centred at (x,z), reading toward a driver travelling along (fx,fz); len along the road, wid across */
 function decal(name,x,z,fx,fz,len,wid,y){const b=MK.dec;if(!b)return;const i=DECALS.indexOf(name),v0=1-(i+1)/DECALS.length,v1=1-i/DECALS.length,rx=-fz,rz=fx;
  const P=(a,c)=>{const px=x+fx*a*len/2+rx*c*wid/2,pz=z+fz*a*len/2+rz*c*wid/2;return[px,groundY(px,pz)+y,pz]};const nl=P(-1,-1),nr=P(-1,1),fr=P(1,1),fl=P(1,-1);
- b.tri(nl,nr,fr,UP,[0,v1],[1,v1],[1,v0]);b.tri(nl,fr,fl,UP,[0,v1],[1,v0],[0,v0])} /* word's top edge is the far edge (reads bottom-up to an approaching driver) */
+ b.tri(nl,nr,fr,UP,[0,v0],[1,v0],[1,v1]);b.tri(nl,fr,fl,UP,[0,v0],[1,v1],[0,v1])} /* word's top edge is the far edge: reads bottom-up to an approaching driver */
 function markRoad(t,hw,pts,w,lanes,oneway,y,bY,bW){
  if(t.lane_markings==='no')return;const L=[0];for(let i=1;i<pts.length;i++)L.push(L[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const tot=L[L.length-1];
  const fwy=hw==='motorway'||hw==='trunk',lw=fwy?0.15:0.10,my=y+0.025,major=/primary|secondary|tertiary|trunk/.test(hw)&&!hw.endsWith('_link');
