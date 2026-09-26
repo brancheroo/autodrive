@@ -2980,6 +2980,7 @@ function step(){
    {const allR=G.agents.filter(a=>a.kind==='route'&&!a.loose).sort((a,b)=>a.s-b.s),egoLead={s:e.s,v:e.v,spec:G.spec};
     allR.forEach((a,i)=>{const nx=allR[i+1]||null;plan(a,dt,a.s<e.s&&(!nx||nx.s>e.s)?egoLead:nx,false)})} /* cars behind the ride follow it too */
    for(const a of G.agents)if(a.kind==='oncoming'&&!a.loose){a.s-=a.v*dt}
+   for(let i=G.agents.length-1;i>=0;i--){const a=G.agents[i];if(a.kind==='oncoming'&&!a.loose&&(NODEINFO.get(G.route.nodes[routeLLnh(Math.max(0,a.s))[2]])||{}).oneway){scene.remove(a.mesh);G.agents.splice(i,1)}} /* divided highway: the other carriageway isn't ours to drive on */
    for(let i=G.agents.length-1;i>=0;i--){const a=G.agents[i];if(a.kind==='way'&&!updateWayCar(a,dt)){scene.remove(a.mesh);G.agents.splice(i,1)}}
    for(const p of G.peds){p.s+=p.v*dt*p.dir;if(p.s<0||p.s>p.w.total){p.dir*=-1;p.s=clamp(p.s,0,p.w.total)}}
    if(!G.tow&&e.s>=G.route.total-1.5&&e.v<0.1&&G.stopIdx>=G.stops.length){arrive();break}
@@ -3117,7 +3118,7 @@ function manageTraffic(){if(game.fast){for(const a of game.agents)scene.remove(a
  const lead=G.agents.filter(a=>a.kind==='route'&&a.s>e.s).sort((a,b)=>a.s-b.s);
  if(nRoute<Math.round((big?5:3)*f+0.4)&&Math.random()<0.5){const s0=e.s+180+Math.random()*250;const between=lead.length&&lead[0].s<s0;if(!between&&s0<G.route.total-100){const sp=pickSpec();const idx=routeLLnh(s0)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],s0,speedLimitAt(idx)/MPH*0.85,1);a.off=laneOffsetAt(idx);G.agents.push(a)}}
  const oneway=(NODEINFO.get(G.route.nodes[routeLLnh(e.s)[2]])||{}).oneway;
- if(!oneway&&nOn<Math.round(4*f+0.3)&&Math.random()<0.5){const sp=pickSpec();const idx=routeLLnh(e.s+300)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],e.s+250+Math.random()*80,speedLimitAt(idx)/MPH*0.9,-1);a.kind='oncoming';G.agents.push(a)}
+ if(!oneway&&nOn<Math.round(4*f+0.3)&&Math.random()<0.5&&!(NODEINFO.get(G.route.nodes[routeLLnh(Math.min(G.route.total,e.s+290))[2]])||{}).oneway){const sp=pickSpec(); /* never spawn oncoming onto a one-way carriageway */const idx=routeLLnh(e.s+300)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],e.s+250+Math.random()*80,speedLimitAt(idx)/MPH*0.9,-1);a.kind='oncoming';G.agents.push(a)}
  const ways=allWays();if(nWay<Math.round(26*f)&&ways.length)spawnWayCar(ways);
  // pedestrians: more in daytime & dense areas
  const pedTarget=Math.round((G.dark?6:22)*Math.min(1,f+0.3));
