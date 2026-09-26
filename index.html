@@ -4039,6 +4039,7 @@ $('go').onclick=async()=>{
   {const wsel=$('wxSel').value;if(wsel==='live'){$('loadTxt').textContent='Fetching current weather…';const lw=await liveWeather(addrA.lat,addrA.lon);setWeather(lw?lw.key:'clear',lw)}else setWeather(wsel)}
   const depCustom=document.querySelector('input[name=dep]:checked').value==='custom'&&$('depAt').value;route2.departUTC=depCustom?zonedToUtc($('depAt').value,route2.tz):Date.now();
   $('loadTxt').textContent=`Route ${fmtDist(route2.total)}${route2.stops?` · ${route2.stops.length} charging stop(s)`:''} · streaming OpenStreetMap around start…`;
+  try{const pick=o=>({label:o.label,short:o.short,lat:o.lat,lon:o.lon});localStorage.setItem('lastTrip',JSON.stringify({a:pick(addrA),b:pick(addrB)}))}catch(e){} /* remember this trip as next time's default */
   setOrigin(addrA.lat,addrA.lon);game={ego:{x:0,z:0},bio:biome(addrA.lat,addrA.lon,new Date())};
   $('loadTxt').textContent='Loading terrain elevation…';terrReadyLL(addrA.lat,addrA.lon);await waitFor(()=>terrReadyLL(addrA.lat,addrA.lon),10000);TERR.ref=elevLL(addrA.lat,addrA.lon)??0;
   {const [fx,fy]=terrTileOf(addrA.lat,addrA.lon);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)loadTerr(Math.floor(fx)+i,Math.floor(fy)+j)}
