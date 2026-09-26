@@ -1002,7 +1002,7 @@ function clipRuns(pts,off,m,Q){if(!Q||pts.length<2)return [pts];const d=densify(
 function wallC(Q,buf,pts,off,h,th,...a){for(const r of clipRuns(pts,off,th/2+0.1,Q))wall(buf,r,off,h,th,...a)}
 function ribbonC(Q,buf,pts,w,y,off=0){for(const r of clipRuns(pts,off,w/2,Q))ribbon(buf,r,w,y,off)}
 let ROUTEROAD={r:null,ch:[]};
-function routeRoads(){const G=typeof game!=='undefined'&&game;if(!G||!G.route)return[];if(ROUTEROAD.r!==G.route){const R=G.route,ch=[];let cur=[],mo=0;const W=()=>Math.max(7.4,2*(mo+1.4));for(let s=0;s<=R.total;s+=8){const p=routeXZ(s,0);cur.push([p[0],p[1]]);mo=Math.max(mo,Math.abs(laneOffsetAt(routeLLnh(s)[2])));if(cur.length>=40){ch.push({pts:cur,w:W(),total:320,route:1});cur=[cur[cur.length-1]];mo=0}}if(cur.length>1)ch.push({pts:cur,w:W(),total:0,route:1}); /* wide enough for the lane the car actually drives in */for(const c of ch){c.bb=[Math.min(...c.pts.map(p=>p[0])),Math.max(...c.pts.map(p=>p[0])),Math.min(...c.pts.map(p=>p[1])),Math.max(...c.pts.map(p=>p[1]))]}ROUTEROAD={r:R,ch}}return ROUTEROAD.ch}
+function routeRoads(){const G=typeof game!=='undefined'&&game;if(!G||!G.route)return[];if(ROUTEROAD.r!==G.route){const R=G.route,ch=[];let cur=[],mo=0;const W=()=>Math.max(7.4,2*(mo+1.4));for(let s=0;s<=R.total;s+=8){const p=routeXZ(s,0);cur.push([p[0],p[1],s]);mo=Math.max(mo,Math.abs(laneOffsetAt(routeLLnh(s)[2])));if(cur.length>=40){ch.push({pts:cur,w:W(),total:320,route:1});cur=[cur[cur.length-1]];mo=0}}if(cur.length>1)ch.push({pts:cur,w:W(),total:0,route:1}); /* wide enough for the lane the car actually drives in */for(const c of ch){c.bb=[Math.min(...c.pts.map(p=>p[0])),Math.max(...c.pts.map(p=>p[0])),Math.min(...c.pts.map(p=>p[1])),Math.max(...c.pts.map(p=>p[1]))]}ROUTEROAD={r:R,ch}}return ROUTEROAD.ch}
 function tileRoads(key){const o=[];for(const k of neighbourKeys(key)){const r=rawRoads(k);if(r)o.push(...r)}let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const w of o)for(const p of w.pts){if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<z0)z0=p[1];if(p[1]>z1)z1=p[1]}
  for(const c of routeRoads())if(c.bb[1]>x0-50&&c.bb[0]<x1+50&&c.bb[3]>z0-50&&c.bb[2]<z1+50)o.push(c);return o}
 function clearPoles(T,roads,lifted){const kids=T.group.children.filter(o=>!o.userData.merged&&o.position),poles=kids.filter(o=>o.geometry&&o.geometry.type==='CylinderGeometry'&&o.geometry.parameters.height>=2),rest=kids.filter(o=>!poles.includes(o));
@@ -2148,19 +2148,24 @@ function lon2tx(lon,z){return Math.floor((lon+180)/360*2**z)}
 function lat2ty(lat,z){const r=lat*Math.PI/180;return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*2**z)}
 function tx2lon(x,z){return x/2**z*360-180}
 function ty2lat(y,z){const n=Math.PI-2*Math.PI*y/2**z;return 180/Math.PI*Math.atan(Math.sinh(n))}
+/* ROAD CUTTINGS: the drawn road follows the route's own (smoother) elevation; where the terrain model sits higher, cut the ground down under
+   the road (12 cm below it) and blend back to natural ground on a ~30° embankment so no ground ever pokes through the carriageway */
+function roadCut(x,z,y){const ch=routeRoads();let best=null;for(const c of ch){if(!c.bb||x<c.bb[0]-25||x>c.bb[1]+25||z<c.bb[2]-25||z>c.bb[3]+25)continue;const P=c.pts;
+  for(let k=0;k<P.length-1;k++){const a=P[k],b=P[k+1],dx=b[0]-a[0],dz=b[1]-a[1],L2=dx*dx+dz*dz||1,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/L2,0,1),d=Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t);if(!best||d<best.d)best={d,s:a[2]+(b[2]-a[2])*t,hw:c.w/2}}}
+ if(!best||best.d>best.hw+22)return y;const ry=routeY(best.s,0)-0.12,cut=best.d<=best.hw+3?ry:ry+(best.d-best.hw-3)*0.58;return Math.min(y,cut)}
 function satTile(z,x,y,yLevel){const k=z+'/'+x+'/'+y;if(SAT.tiles.has(k))return k;
  const w=tx2lon(x,z),e=tx2lon(x+1,z),n=ty2lat(y,z),s=ty2lat(y+1,z);
  if(TERR.ref===null||!terrReadyLL(n,w)||!terrReadyLL(s,e)||!terrReadyLL(n,e)||!terrReadyLL(s,w))return null;
- const N=z>=19?(HIGH?16:8):(HIGH?64:32),W=toX(e)-toX(w),H=toZ(s)-toZ(n),x0=toX(w),z0=toZ(n);
+ const N=z>=19?(HIGH?24:16):z>=17?(HIGH?96:64):(HIGH?64:32),W=toX(e)-toX(w),H=toZ(s)-toZ(n),x0=toX(w),z0=toZ(n);
  const g=new THREE.PlaneGeometry(1,1,N,N).rotateX(-Math.PI/2).translate(0.5,0,0.5),pa=g.attributes.position;
- for(let i=0;i<pa.count;i++){const lx=pa.getX(i)*W,lz=pa.getZ(i)*H;pa.setXYZ(i,lx,groundY(x0+lx,z0+lz)+yLevel,lz)}g.computeVertexNormals();
+ for(let i=0;i<pa.count;i++){const lx=pa.getX(i)*W,lz=pa.getZ(i)*H;let yy=groundY(x0+lx,z0+lz)+yLevel;if(z>=17)yy=roadCut(x0+lx,z0+lz,yy);pa.setXYZ(i,lx,yy,lz)}g.computeVertexNormals();
  const mat=new THREE.MeshLambertMaterial({color:0xc4c4c4,transparent:true,opacity:0,depthWrite:false}) /* satellite photos are pre-lit: tone down so they don't glare */;
  const m=new THREE.Mesh(g,mat);m.receiveShadow=true;m.renderOrder=z<16?-3:z<18?-2:-1;m.position.set(x0,0,z0);scene.add(m);
  SAT.busy++;const remoteSat=`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,regS=regionAt((n+s)/2,(w+e)/2),satUrl=regS&&regS.m.sat_zooms&&regS.m.sat_zooms.includes(z)?`${regS.path}sat/${z}/${x}/${y}.jpg`:remoteSat;
  const onSatErr=()=>{if(satUrl!==remoteSat){texLoader.load(remoteSat,onSat,undefined,()=>{SAT.fail++;SAT.busy--;scene.remove(m)})}else{SAT.fail++;SAT.busy--;scene.remove(m)}};const onSat=t=>{t.encoding=THREE.sRGBEncoding;t.anisotropy=ANISO;mat.map=t;wxSat(mat);mat.opacity=1;mat.transparent=false;mat.depthWrite=true;mat.needsUpdate=true;SAT.ok=true;SAT.busy--};texLoader.load(satUrl,onSat,undefined,onSatErr);
  SAT.tiles.set(k,{m,ll:[w,n,e,s]});return k}
 function manageSat(){if(!game||!game.route||game.fast)return;const lat=toLat(game.ego.z),lon=toLon(game.ego.x),want=new Set();
- for(const [z,r,yl] of [[19,2,0.0],[17,2,-0.15],[14,1,-0.8]]){const cx=lon2tx(lon,z),cy=lat2ty(lat,z);for(let i=-r;i<=r;i++)for(let j=-r;j<=r;j++){const k=z+'/'+(cx+i)+'/'+(cy+j);if(SAT.tiles.has(k)||SAT.busy<8||z>=17){const got=satTile(z,cx+i,cy+j,yl);if(got)want.add(got)}}}
+ for(const [z,r,yl] of [[19,2,0.0],[17,2,-0.15],[14,1,-3]]){ /* coarse far tiles sit lower so their long spans can't bulge through roads */const cx=lon2tx(lon,z),cy=lat2ty(lat,z);for(let i=-r;i<=r;i++)for(let j=-r;j<=r;j++){const k=z+'/'+(cx+i)+'/'+(cy+j);if(SAT.tiles.has(k)||SAT.busy<8||z>=17){const got=satTile(z,cx+i,cy+j,yl);if(got)want.add(got)}}}
  for(const [k,t] of SAT.tiles)if(!want.has(k)){scene.remove(t.m);t.m.geometry.dispose();t.m.material.map&&t.m.material.map.dispose();t.m.material.dispose();SAT.tiles.delete(k)}}
 function satRebase(){for(const t of SAT.tiles.values()){const [w,n]=t.ll;t.m.position.x=toX(w);t.m.position.z=toZ(n)}}
 
