@@ -4304,12 +4304,12 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
 /* Driving-skill scores on the start-screen car cards: at-fault crashes per 100 km in normal mode, measured by
    the headless benchmark (random traffic, 45 s episodes on the default trip). Lower is better. */
 (function(){
- const SCORES={}; /* filled from the benchmark run */
+ const SCORES={"waymo-ipace":{"per100":23.1,"km":26.03,"primary":6},"waymo-zeekr":{"per100":21.3,"km":28.11,"primary":6},"cybercab":{"per100":6.6,"km":30.13,"primary":2},"model-y":{"per100":3.5,"km":28.42,"primary":1},"model-3":{"per100":3.2,"km":31.19,"primary":1},"model-s":{"per100":6.7,"km":30,"primary":2},"zoox":{"per100":0,"km":26.93,"primary":0},"s580":{"per100":6.2,"km":32.34,"primary":2},"i7":{"per100":0,"km":32.61,"primary":0},"escalade-iq":{"per100":41.6,"km":28.87,"primary":12},"mache":{"per100":0,"km":30.28,"primary":0},"lucid":{"per100":0,"km":30.71,"primary":0},"r1s":{"per100":31.6,"km":25.29,"primary":8},"yugo":{"per100":0,"km":30.24,"primary":0},"ezpt":{"per100":46.9,"km":32.01,"primary":15},"hyper":{"per100":0,"km":31.51,"primary":0}}; /* benchmark 2026-09-26: 50 episodes per car, satellite off, normal mode */
  const grade=v=>v==null?null:v<=1?['A+','#3fd18a']:v<=4?['A','#7bd88f']:v<=10?['B','#c9e265']:v<=25?['C','#ffd166']:v<=60?['D','#ff9f43']:['F','#ff5a5a'];
  const _rc=window.renderCars;
- window.renderCars=function(){_rc.apply(this,arguments);const S=Object.assign({},SCORES,UIX.load('carScores',{}));
+ window.renderCars=function(){_rc.apply(this,arguments);const S=SCORES;
   [...document.querySelectorAll('#cars .car')].forEach((d,i)=>{const c=CARS[i],s=c&&S[c.id];if(!s||s.per100==null)return;const g=grade(s.per100);const b=document.createElement('span');
-   b.textContent=`${g[0]} · ${s.per100}/100 km`;b.title=`Benchmark: ${s.primary} at-fault crashes in ${s.km} km of random traffic (normal mode). Lower is better.`;b.style.cssText=`display:inline-block;margin-top:3px;font:700 10px system-ui;color:#0b0f14;background:${g[1]};border-radius:6px;padding:1px 5px`;d.appendChild(b)})};
+   b.textContent=`${g[0]} · ${s.per100}/100 km`;b.title=`Benchmark: ${s.primary} at-fault crashes in ${s.km} km of random traffic (normal mode, own sensors, satellite off). Lower is better; about 30 km per car, so small differences are noise.`;b.style.cssText=`display:inline-block;margin-top:3px;font:700 10px system-ui;color:#0b0f14;background:${g[1]};border-radius:6px;padding:1px 5px`;d.appendChild(b)})};
  setTimeout(()=>{try{renderCars()}catch(e){}},0);
  MODS.push({id:'scores'});
 })();
