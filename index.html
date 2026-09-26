@@ -3135,6 +3135,17 @@ function camColliders(){const now=performance.now();if(now-_collT<500)return _co
 function updateCamera(dt){
  const G=game,e=G.ego,spec=G.spec,m=e.mesh;if(m.userData.interior)for(const o of m.userData.interior.children)if(o.userData.inOnly)o.visible=G.cam==='in';if(G.tow&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling'&&G.cam==='in')G.cam='out';
  m.updateMatrixWorld();
+ if(G.cam==='side'){ /* TRACKSIDE: fixed roadside cameras placed ahead of the car; each pans to follow it zooming past, then cuts to the next one down the road */
+  if(m.userData.cab)m.userData.cab.visible=true;if(m.userData.body)m.userData.body.visible=true;if(m.userData.hood)m.userData.hood.visible=false;if(m.userData.interior)m.userData.interior.visible=true;
+  const R=G.route,cy=e.mesh.position.y+0.7;let S=G.sideCam;const passed=S&&(e.s>S.s+Math.max(25,e.v*1.6)||Math.abs(e.s-S.s)>Math.max(600,e.v*12)||S.route!==R);
+  if(!S||passed){const types=['low','tripod','high','gantry','long'],ty=types[Math.floor(Math.random()*types.length)],lead=Math.max(45,e.v*(ty==='long'?5:3.2)),s0=Math.min(R.total-5,e.s+lead),q=routeXZ(s0,0),rx=q[3],rz=-q[2];
+   let side=Math.random()<0.5?1:-1,best=null;
+   for(const sd of [side,-side])for(const back of [0,8,16]){const off=ty==='gantry'?laneOffsetAt(routeLLnh(s0)[2]):sd*({low:7,tripod:11,high:14,long:22}[ty]+back);const px=q[0]+rx*off,pz=q[1]+rz*off;if(bAt(px,pz))continue;best={px,pz,sd};break}
+   if(!best)best={px:q[0]+rx*9,pz:q[1]+rz*9,sd:1};const gy=groundY(best.px,best.pz),h={low:0.45,tripod:1.6,high:7,gantry:6.5,long:2.2}[ty]+Math.random()*0.4;
+   S=G.sideCam={s:s0,x:best.px,y:Math.max(gy,e.mesh.position.y-2)+h,z:best.pz,type:ty,route:R,t:0,look:new THREE.Vector3(e.x,cy,e.z)}}
+  S.t+=dt;const d=Math.hypot(e.x-S.x,e.z-S.z,cy-S.y),frame=S.type==='long'?5.5:S.type==='gantry'?9:7,fov=clamp(2*Math.atan(frame/Math.max(1,d))*180/Math.PI*G.zoom,S.type==='long'?4:10,65); /* zoom keeps the car a similar size in frame */
+  const lead2=clamp(e.v*0.08,0,3),tgt=new THREE.Vector3(e.x+Math.cos(e.head)*lead2,cy,e.z-Math.sin(e.head)*lead2);S.look.lerp(tgt,Math.min(1,dt*(S.t<0.2?50:9))); /* operator pans smoothly, slight lead */
+  const tt=performance.now()/1000,shake=S.type==='tripod'||S.type==='long'?0.02:0.005;camera.position.set(S.x+Math.sin(tt*1.9)*shake,S.y+Math.sin(tt*2.3)*shake,S.z);camera.lookAt(S.look);camera.fov=fov;camera.updateProjectionMatrix();G.status2='🎬 '+{low:'Low roadside',tripod:'Tripod',high:'High angle',gantry:'Overhead gantry',long:'Long lens'}[S.type];return}
  if(G.cam==='heli'){ // TV news helicopter: long lens framing the car and every pursuing cruiser, slow orbit, handheld sway
   if(m.userData.cab)m.userData.cab.visible=true;if(m.userData.body)m.userData.body.visible=true;if(m.userData.hood)m.userData.hood.visible=false;if(m.userData.interior)m.userData.interior.visible=true;
   const pts=[[e.x,e.z,2]];for(const c of CHASE.cops)if(c.dist<900)pts.push([c.mesh.position.x,c.mesh.position.z,1]);let cx=0,cz=0,wt=0;for(const p of pts){cx+=p[0]*p[2];cz+=p[1]*p[2];wt+=p[2]}cx/=wt;cz/=wt;let r=12;for(const p of pts)r=Math.max(r,Math.hypot(p[0]-cx,p[1]-cz)+10);
@@ -3181,7 +3192,7 @@ canvas.addEventListener('pointermove',ev=>{if(!drag||!game)return;game.yaw-=(ev.
 canvas.addEventListener('pointerup',ev=>{drag=null;if(_down&&Math.hypot(ev.clientX-_down.x,ev.clientY-_down.y)<5)screenClick(ev);_down=null});
 canvas.addEventListener('wheel',ev=>{if(!game)return;ev.preventDefault();game.zoom=clamp(game.zoom*(ev.deltaY>0?1.1:0.9),game.cam==='in'?0.6:game.cam==='top'?0.25:0.5,game.cam==='in'?4:game.cam==='top'?10:12)},{passive:false});
 canvas.addEventListener('dblclick',()=>{if(game){game.yaw=0;game.pitch=0;game.zoom=1}});
-function toggleCam(){if(!game)return;game.cam=game.cam==='in'?'out':game.cam==='out'?'top':game.cam==='top'?'drone':game.cam==='drone'?'follow':game.cam==='follow'?'heli':'in';game.yaw=0;game.pitch=0;game.zoom=1;$('camBtn').textContent='🎥 '+({in:'Interior',out:'Exterior',top:'Overhead',drone:'Drone ○',follow:'Drone →',heli:'Helicopter'})[game.cam];chaseUI()}
+function toggleCam(){if(!game)return;game.cam=game.cam==='in'?'out':game.cam==='out'?'top':game.cam==='top'?'drone':game.cam==='drone'?'follow':game.cam==='follow'?'heli':game.cam==='heli'?'side':'in';game.sideCam=null;game.yaw=0;game.pitch=0;game.zoom=1;$('camBtn').textContent='🎥 '+({in:'Interior',out:'Exterior',top:'Overhead',drone:'Drone ○',follow:'Drone →',heli:'Helicopter',side:'Trackside'})[game.cam];chaseUI()}
 $('camBtn').onclick=toggleCam;
 addEventListener('keydown',ev=>{if(ev.target.tagName==='INPUT')return;if(ev.key==='s'||ev.key==='S')satToggle();if(ev.key==='i'||ev.key==='I')tripToggle();if(ev.key==='t'||ev.key==='T')techToggle();if(ev.key==='e'||ev.key==='E')expressToggle();if(ev.key==='c'||ev.key==='C')toggleCam();if(ev.key==='x'||ev.key==='X')toggleChaos();if(ev.key==='w'||ev.key==='W')cycleWeather();if(ev.key==='p'||ev.key==='P')deployProtest();if(ev.key==='r'||ev.key==='R')aifmToggle();if(ev.key==='d'||ev.key==='D')wdogToggle();if(ev.key==='n'||ev.key==='N')rerouteNow();if(ev.key==='k'||ev.key==='K')chaseToggle();if(ev.key===' '&&game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause';ev.preventDefault()}});
 const tsMap=v=>{const x=Math.pow(10,v/100);return x<10?Math.round(x*2)/2:x<100?Math.round(x):Math.round(x/10)*10};
