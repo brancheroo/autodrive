@@ -3295,28 +3295,34 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
   if(!best||cost<best.cost)best={off,acc,cost,risk,why}}
  return best}
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
- const legit=G.charging||G.tow||G.pullOver||G.rerouting||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
+ const legit=G.charging||G.tow||G.pullOver||G.rerouting||(G.protest&&G.protest.state==='rerouting')||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
  if(G.overtakeT>0&&G.spec.hyper){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
  if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=dt;
  if(W.t>10){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
   if(W.n>=3){e.s=Math.min(G.route.total-5,e.s+35);e.v=4;W.n=0;G.status='⏱️ Still blocked · easing past the obstruction'} // last resort: squeeze past whatever it is
   else if(/Queued|Following|vehicle/i.test(G.status||'')||W.n===1&&!W.cd){G.overtakeT=9;G.status='⏱️ No progress for 10 s · overtaking'}
   else if(W.cd<=0){W.cd=20;G.status='⏱️ No progress for 10 s · detouring';rerouteNow()}else{G.overtakeT=9}}}
+/* points no new route may pass (within 30 m): an active protest and any police roadblocks */
+function blockedPts(){const G=game,o=[];if(G.protest&&G.protest.state!=='dispersing')o.push([toLon(G.protest.x),toLat(G.protest.z)]);if(CHASE.on)for(const B of CHASE.blocks)o.push([toLon(B.x),toLat(B.z)]);return o}
+function routeHitsBlock(r,bl){if(!bl.length)return false;for(let k=0;k<r.pts.length;k++){if(r.cum[k]<30)continue;for(const b of bl)if(hav(r.pts[k],b)<30)return true}return false}
 async function rerouteNow(){const G=game;if(!G||!G.route||G.rerouting)return;if(G.tow||G.charging){G.status='Can\'t reroute right now';return}G.rerouting=true;const e=G.ego,prev=G.status;G.status='Finding a different route…';
  const here={lat:toLat(e.z),lon:toLon(e.x)},rem=[];for(let s0=e.s;s0<Math.min(G.route.total,e.s+20000);s0+=150){const p=routeLLnh(s0);rem.push([p[0],p[1]])}
  const overlap=r=>{let near=0,n=0;for(let k=0;k<r.pts.length;k+=Math.max(1,Math.floor(r.pts.length/120))){if(r.cum[k]<60)continue;n++;if(rem.some(q=>hav(q,r.pts[k])<35))near++}return n?near/n:1};
  try{const cands=[];for(const pick of [1,2,3]){try{cands.push(await getRoute(here,G.B,[],pick))}catch(err){break}}
   if(!cands.length){const fx=Math.cos(e.head),fz=-Math.sin(e.head);for(const side of [1,-1])for(const lat of [250,500]){const x=e.x+fx*600-fz*side*lat,z=e.z+fz*600+fx*side*lat;try{cands.push(await getRoute(here,G.B,[{lat:toLat(z),lon:toLon(x)}]))}catch(err){}}}
-  let best=null,bo=1;for(const r of cands){const o=overlap(r);if(o<0.85&&(best===null||o+r.total/5e6<bo+best.total/5e6)){best=r;bo=o}}
+  const bl=blockedPts();let best=null,bo=1;for(const r of cands){if(routeHitsBlock(r,bl))continue;const o=overlap(r);if(o<0.85&&(best===null||o+r.total/5e6<bo+best.total/5e6)){best=r;bo=o}}
   if(!best){G.status='No different route found — staying on this one';return}
   best.stops=[];buildEnergyProfile(best,ES());G.route=best;G.stops=[];G.stopIdx=0;G.lastPlanCheck=0;e.s=0;e.x=0;e.z=0;e.handled.clear();G.agents.forEach(a=>scene.remove(a.mesh));G.agents=[];if(G.rr){scene.remove(G.rr.mesh);G.rr=null}
   G.status=`Rerouted · ${fmtDist(best.total)} · ${Math.round((1-bo)*100)}% different roads`}catch(err){G.status='Reroute failed — staying on this route'}finally{G.rerouting=false}}
 async function protestReroute(){const G=game,P=G.protest,e=G.ego;P.state='rerouting';P.lastTry=G.simTime;G.status='Protest blocking road · finding a way around';
  try{const here={lat:toLat(e.z),lon:toLon(e.x)},plat=toLat(P.z),plon=toLon(P.x);const fx=Math.cos(e.head),fz=-Math.sin(e.head),rx=-fz,rz=fx;
   // detour waypoints on parallel streets either side (like a road-closure diversion)
+  /* diversion waypoints: parallel streets either side of the protest, plus turn-around options behind the car (when there is no side street before it) */
   const vias=[];for(const side of [1,-1])for(const ahead of [150,0,300])for(const lat of [180,320]){const x=P.x+rx*side*lat+fx*ahead,z=P.z+rz*side*lat+fz*ahead;vias.push({lat:toLat(z),lon:toLon(x)})}
-  let best=null;
-  for(const v of vias){try{const r=await getRoute(here,G.B,[v]);let minD=1e9;for(let k=0;k<r.pts.length;k++){if(r.cum[k]<40)continue;minD=Math.min(minD,hav(r.pts[k],[plon,plat]))}if(minD<25)continue;if(!best||r.total<best.total)best=r;if(best&&vias.indexOf(v)>=3)break}catch(err){}}
+  for(const side of [1,-1])for(const back of [120,250]){const x=e.x-fx*back+rx*side*200,z=e.z-fz*back+rz*side*200;vias.push({lat:toLat(z),lon:toLon(x)})}
+  let best=null;const bl=blockedPts();
+  for(let i=0;i<vias.length&&!best;i+=4){const rs=await Promise.all(vias.slice(i,i+4).map(v=>getRoute(here,G.B,[v]).catch(()=>null)));for(const r of rs){if(!r||routeHitsBlock(r,bl))continue;if(!best||r.total<best.total)best=r}}
+  if(!best){for(const pick of [1,2,3]){try{const r=await getRoute(here,G.B,[],pick);if(!routeHitsBlock(r,bl)&&(!best||r.total<best.total))best=r}catch(err){}}}
   if(best){best.stops=[];buildEnergyProfile(best,ES());G.route=best;G.stops=[];G.stopIdx=0;e.s=0;e.x=0;e.z=0;e.handled.clear();G.agents.forEach(a=>scene.remove(a.mesh));G.agents=[];if(G.rr){scene.remove(G.rr.mesh);G.rr=null}
    P.state='bypassed';G.status='Re-routed around the protest ('+fmtDist(best.total)+')';return}
   P.state='waiting';G.status='No way around – waiting for the protest to clear'}catch(err){P.state='waiting';G.status='Waiting for the protest to clear'}}
@@ -3334,7 +3340,8 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
  if(P.banner){const g=P.banner.geometry.attributes.position,b=P.banner.userData.base;for(let i=0;i<g.count;i++){const x=b[i*3];g.setZ(i,Math.sin(x*1.3+t*3.1)*0.08+Math.sin(x*0.5-t*1.7)*0.05);g.setY(i,b[i*3+1]+Math.sin(t*2+x)*0.02)}g.needsUpdate=true;P.banner.position.y=P.banner.userData.y0??(P.banner.userData.y0=P.banner.position.y);P.banner.position.y+=Math.sin(ct*Math.PI/0.6)*0.04}
  protestSoundUpdate(P);
  const e=G.ego,d=Math.hypot(P.x-e.x,P.z-e.z);
- if(P.state==='blocking'&&d<30&&e.v<0.3){P.wait+=dt;G.status=`Stopped for protest · ${Math.ceil(Math.max(0,8-P.wait))} s`;if(P.wait>8)protestReroute()}
+ if(P.state==='blocking'){let onRoute=false;for(let s2=e.s;s2<Math.min(G.route.total,e.s+400);s2+=10){const q=routeXZ(s2,0);if(Math.hypot(q[0]-P.x,q[1]-P.z)<25){onRoute=true;break}}
+  if(onRoute&&!G.rerouting){P.wait+=dt;if(P.wait>1.5)protestReroute();else G.status='Protest reported on route ahead · planning a diversion'}} /* divert as soon as it's seen on the route, not only when stuck at the front */
  if(P.state==='waiting'&&G.simTime-(P.lastTry||0)>60){P.lastTry=G.simTime;protestReroute()}
  if(G.simTime-P.t0>P.dur&&P.state!=='dispersing'){P.state='dispersing'}
  if(P.state==='dispersing'){for(const q of P.people)q.f.position.y-=0;P.grp.children.forEach((o,i)=>{o.position.x+=Math.sin(i)*dt*1.2;o.position.z+=Math.cos(i)*dt*1.2});if(G.simTime-P.t0>P.dur+40)clearProtest()}
