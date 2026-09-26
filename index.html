@@ -3541,7 +3541,7 @@ function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeL
 /* ---- U-TURN: when a new route starts behind the car, drive a real U-turn onto it (signal, stop, wait for a gap, arc across) */
 function uturnCheck(){const G=game,e=G.ego;if(!G.route||e.loose)return;const p=routeXZ(Math.min(8,G.route.total),0),rh=Math.atan2(-p[3],p[2]);let d=rh-e.mesh.rotation.y;d=Math.atan2(Math.sin(d),Math.cos(d));
  if(Math.abs(d)<2.1)return;const lo=laneOffsetAt(0),q=routeXZ(Math.min(12,G.route.total),lo);const P0=[e.mesh.position.x,e.mesh.position.z],h0=e.mesh.rotation.y,P1=[q[0],q[1]],h1=Math.atan2(-q[3],q[2]);
- const k=Math.max(8,Math.hypot(P1[0]-P0[0],P1[1]-P0[1])*1.6+6);G.uturn={P0,P1,T0:[Math.cos(h0)*k,-Math.sin(h0)*k],T1:[Math.cos(h1)*k,-Math.sin(h1)*k],u:0,wait:0,phase:'stop',v0:e.v};e.s=12;G.sig=-1}
+ const k=Math.max(6,Math.hypot(P1[0]-P0[0],P1[1]-P0[1])*1.15+3); /* tight but drivable arc */G.uturn={P0,P1,T0:[Math.cos(h0)*k,-Math.sin(h0)*k],T1:[Math.cos(h1)*k,-Math.sin(h1)*k],u:0,wait:0,phase:'stop',v0:e.v};e.s=12;G.sig=-1}
 function uturnPose(U,u){const h00=2*u*u*u-3*u*u+1,h10=u*u*u-2*u*u+u,h01=-2*u*u*u+3*u*u,h11=u*u*u-u*u;const x=h00*U.P0[0]+h10*U.T0[0]+h01*U.P1[0]+h11*U.T1[0],z=h00*U.P0[1]+h10*U.T0[1]+h01*U.P1[1]+h11*U.T1[1];
  const d00=6*u*u-6*u,d10=3*u*u-4*u+1,d01=-6*u*u+6*u,d11=3*u*u-2*u;const dx=d00*U.P0[0]+d10*U.T0[0]+d01*U.P1[0]+d11*U.T1[0],dz=d00*U.P0[1]+d10*U.T0[1]+d01*U.P1[1]+d11*U.T1[1];return{x,z,h:Math.atan2(-dz,dx),sp:Math.hypot(dx,dz)}}
 function updateUturn(dt){const G=game,e=G.ego,U=G.uturn;G.sig=-1;
@@ -3564,7 +3564,7 @@ function impasseWatch(dt){const G=game,e=G.ego;if(!G.route||G.uturn||G.rerouting
  if(hit&&(!G.impasse||Math.hypot(G.impasse.x-hit.x,G.impasse.z-hit.z)>30||G.simTime-G.impasse.t>60)){G.impasse={...hit,t:G.simTime};G.status='⛔ '+hit.why+' ahead · turning around';
   if(hit.why==='protest'&&G.protest.state==='blocking')protestReroute();else rerouteNow({preferUturn:true})}}
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
- const legit=G.charging||G.tow||G.pullOver||G.rerouting||(G.protest&&G.protest.state==='rerouting')||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
+ const legit=G.charging||G.tow||G.pullOver||G.rerouting||G.uturn||(G.protest&&G.protest.state==='rerouting')||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
  if(G.overtakeT>0&&G.spec.hyper){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
  if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=dt;
  if(W.t>10){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
