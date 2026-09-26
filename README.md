@@ -44,7 +44,7 @@ V call an emergency vehicle (🚑) · F photo mode (📸, drag to orbit, Save ph
 
 ## Features on the start screen
 
-Graphics quality (Low / High / Ultra) · Dense fog weather · your rider's shirt, headwear, glasses, hair and beard · Time trial against a ghost of your best run (or any car's best run) on the same trip · Delivery run: one stop per line, optional "by 3:30pm" deadline · driving-skill grade on each car card (at-fault crashes per 100 km in the benchmark).
+Graphics quality (Low / High / Ultra) · Dense fog weather · your rider's shirt, headwear, glasses, hair and beard · Time trial against a ghost of your best run (or any car's best run) on the same trip · Delivery run: one stop per line, optional "by 3:30pm" deadline · driving-skill grade on each car card (at-fault crashes per 100 km: benchmark plus your own trips, updated as you drive) · Live AI rival that drives the same route · ⚙️ Features on/off. With Live weather, conditions change along the route from the forecast. Crash replays can be saved as video clips; couriers and passengers walk to and from the car at delivery stops.
 
 Add `?selftest` to the URL to start a ride in every car and check each one keeps running.
 
