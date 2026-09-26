@@ -3000,10 +3000,10 @@ function step(){
  const top=new THREE.Color(0x0a1224).lerp(new THREE.Color(0x3d7fd6),day);
  skyMat.uniforms.top.value.copy(top);skyMat.uniforms.hor.value.copy(hz);skyMat.uniforms.sunDir.value.copy(sd);
  scene.fog.color.copy(hz);sky.position.copy(camera.position);
- {const lo=clamp(el/25,0,1);sun.intensity=clamp(el/8,0,1)*(2.3+0.9*lo);sun.color.set(0xff9a4c).lerp(new THREE.Color(0xfff3e2),Math.pow(lo,0.6));hemi.color.copy(top).lerp(new THREE.Color(0xdfeaff),0.55);hemi.groundColor.set(0x4a4436).lerp(new THREE.Color(0x2a2a30),1-day)} /* golden low sun, cool bright sky fill, warm ground bounce */
+ {const lo=clamp(el/25,0,1);sun.intensity=clamp(el/8,0,1)*(1.9+0.6*lo);sun.color.set(0xff9a4c).lerp(new THREE.Color(0xfff3e2),Math.pow(lo,0.6));hemi.color.copy(top).lerp(new THREE.Color(0xdfeaff),0.55);hemi.groundColor.set(0x4a4436).lerp(new THREE.Color(0x2a2a30),1-day)} /* golden low sun, cool bright sky fill, warm ground bounce */
  {const cd=new THREE.Vector3();camera.getWorldDirection(cd);cd.y=0;cd.normalize();const far=G.cam==='in'?35:G.cam==='heli'||G.cam==='drone'?70:45,ext=G.cam==='heli'||G.cam==='drone'?160:110,tx=2*ext/sun.shadow.mapSize.x,cx=Math.round((e.x+cd.x*far)/tx)*tx,cz=Math.round((e.z+cd.z*far)/tx)*tx; /* texel-snapped: no shadow shimmer */
   sun.position.set(cx+sd.x*400,Math.max(20,sd.y*400)+e.mesh.position.y,cz+sd.z*400);sun.target.position.set(cx,e.mesh.position.y,cz);const sc=sun.shadow.camera;if(sc.right!==ext){sc.left=-ext;sc.right=ext;sc.top=ext;sc.bottom=-ext;sc.far=1000;sc.updateProjectionMatrix()}}
- hemi.intensity=0.06+0.4*day;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0; /* less flat fill, more sun contrast = readable shading */weatherLighting(hz,top);G.lightsOn=G.lightsOn||WX.key!=='clear';
+ hemi.intensity=0.05+0.32*day;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.82; /* darker, richer daylight — no washed-out whites */ /* less flat fill, more sun contrast = readable shading */weatherLighting(hz,top);G.lightsOn=G.lightsOn||WX.key!=='clear';
  MAT.bld.emissiveIntensity=G.dark?0.9:0;for(const k in FACMAT)FACMAT[k].emissiveIntensity=G.dark?(k==='store'?1.1:0.85):0;for(const m of ENVMATS)m.envMapIntensity=0.05+0.95*day;
  horizon.position.set(camera.position.x,0,camera.position.z);horizon.children.forEach(m=>m.material.color.copy(m.userData.base).lerp(hz,0.35).multiplyScalar(0.25+0.75*day));
  ground.position.set(e.x,e.mesh.position.y-3,e.z);horizon.position.y=TERR.ref===null?0:(elev0-TERR.ref);
