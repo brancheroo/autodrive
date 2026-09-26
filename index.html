@@ -2479,7 +2479,7 @@ function plan(a,dt,lead,isEgo){
  /* HYPER SAFETY ENVELOPE (hard layer, overrides everything): for every tracked object ahead that overlaps the lateral band the car occupies
     now or is moving into, cap speed so the car can always stop behind it (0.3 s latency + 1.5 m buffer, 7 m/s² braking) */
  if(isEgo&&a.spec.hyper&&!a.loose){ /* never outrun perception: must be able to stop within what lidar + scout drone can currently see */
-  const dr=HDRONE.mesh?Math.hypot(HDRONE.x-a.x,HDRONE.z-a.z)+HDRONE.range*0.8:0,horizon=Math.max(380,dr)*WX.perc,bk=a.v>60?11:7,cap=Math.sqrt(2*bk*Math.max(0,horizon-40));if(cap<target){target=cap;if(cap<a.v)reason='🛡️ Sensor horizon '+Math.round(horizon)+' m · capping speed'}}
+  const horizon=Math.max(60,game.senseEdge||380),bk=hyperBrakeCap(a.v)*0.85,cap=Math.sqrt(2*bk*Math.max(0,horizon-40)); /* along-route sensed distance, blind corners included */if(cap<target){target=cap;if(cap<a.v)reason='🛡️ Sensor horizon '+Math.round(horizon)+' m · capping speed'}}
  if(isEgo&&a.spec.hyper&&game.pred&&!a.loose){const h=Math.atan2(-(routeXZ(a.s+2,0)[1]-routeXZ(a.s,0)[1]),routeXZ(a.s+2,0)[0]-routeXZ(a.s,0)[0]),fx=Math.cos(h),fz=-Math.sin(h),ex=a.mesh.position.x,ez=a.mesh.position.z;
   const dOff=laneOffsetAt(idx)+(CHASE.evade||0)-(a.off||0),lo=Math.min(0,dOff),hi=Math.max(0,dOff);
   game.latHold=false;for(const b of game.pred){const dx=b.x-ex,dz=b.z-ez,f0=dx*fx+dz*fz;if(Math.abs(dOff)>0.15&&f0>-a.spec.L-2&&f0<a.spec.L+3){const l0=-dx*fz+dz*fx,hw=(a.spec.W+2)/2+0.3;if(Math.abs(l0)>hw-0.6&&l0>lo-hw&&l0<hi+hw&&Math.sign(l0)===Math.sign(dOff))game.latHold=true} /* only what's on the side we're moving toward */ /* something alongside in the lane we're moving into */
@@ -3461,12 +3461,17 @@ function buildScoutDrone(){const g=new THREE.Group(),cf=new THREE.MeshStandardMa
  const gim=new THREE.Group();gim.position.set(0.18,-0.1,0);g.add(gim);const pod=new THREE.Mesh(new THREE.SphereGeometry(0.075,14,10),cf);gim.add(pod);const lens=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.03,14),new THREE.MeshStandardMaterial({color:0x05070a,metalness:0.9,roughness:0.05}));lens.rotation.z=Math.PI/2;lens.position.x=0.07;gim.add(lens);
  const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.05,14),acc);lid.position.y=-0.2;g.add(lid);g.scale.setScalar(2.2);g.userData={rotors,strobe,gim,lid};return g}
 function updateHyperDrone(dt){const G=game;if(!G||!G.ego)return;const want=G.spec.hyper&&!G.fast;if(!want){if(HDRONE.mesh){scene.remove(HDRONE.mesh);HDRONE.mesh=null}return}
- const e=G.ego;if(!HDRONE.mesh){HDRONE.mesh=buildScoutDrone();scene.add(HDRONE.mesh);HDRONE.x=e.x;HDRONE.z=e.z;HDRONE.y=e.mesh.position.y+30}if(Math.hypot(HDRONE.x-e.x,HDRONE.z-e.z)>Math.max(600,(25+e.v*9)*1.6+400)){HDRONE.x=e.x;HDRONE.z=e.z;HDRONE.vx=HDRONE.vz=0;HDRONE.y=e.mesh.position.y+30} /* world re-centred */
- HDRONE.range=220+Math.max(0,e.v-60)*2; /* higher altitude at speed = wider sensor footprint */const lead=Math.min(2600,25+e.v*(e.v>40?9:2.2)),t=performance.now()/1000,ahead=routeXZ(Math.min(G.route.total,e.s+lead),0),cur=routeXZ(Math.min(G.route.total,e.s+lead*0.5),0);
- /* on a bend, swing wide to the outside to look round the corner */const bend=Math.atan2(ahead[3],ahead[2])-Math.atan2(cur[3],cur[2]),bw=Math.atan2(Math.sin(bend),Math.cos(bend));
- const tx=ahead[0]+Math.sin(t*0.4)*6-ahead[3]*bw*25,tz=ahead[1]+Math.cos(t*0.33)*6+ahead[2]*bw*25;let floor=groundY(tx,tz)+30;const b=bAt(tx,tz);if(b)floor+=25;
- const ty=Math.max(floor,e.mesh.position.y+30)+Math.sin(t*0.7)*2+Math.min(90,e.v*0.4); /* climbs to ~120 m at 500 mph */
- const k=Math.min(1,dt*1.6);const nvx=(tx-HDRONE.x)*1.6,nvz=(tz-HDRONE.z)*1.6;HDRONE.vx=lerp(HDRONE.vx,nvx,k);HDRONE.vz=lerp(HDRONE.vz,nvz,k);HDRONE.x+=HDRONE.vx*dt;HDRONE.z+=HDRONE.vz*dt;HDRONE.y=lerp(HDRONE.y,ty,Math.min(1,dt*0.8));
+ const e=G.ego;if(!HDRONE.mesh){HDRONE.mesh=buildScoutDrone();scene.add(HDRONE.mesh);HDRONE.x=e.x;HDRONE.z=e.z;HDRONE.y=e.mesh.position.y+30}if(Math.hypot(HDRONE.x-e.x,HDRONE.z-e.z)>Math.max(600,Math.min(6000,25+e.v*9)*1.6+400)){HDRONE.x=e.x;HDRONE.z=e.z;HDRONE.vx=HDRONE.vz=0;HDRONE.y=e.mesh.position.y+30} /* world re-centred */
+ HDRONE.range=220+Math.max(0,e.v-60)*1.8; /* higher altitude at speed = wider sensor footprint */
+ const lead=Math.min(6000,25+e.v*(e.v>40?9:2.2)),t=performance.now()/1000,R=G.route;
+ /* curve scout: find the tightest bend between the car and the lead point; hover over its inside so the view wraps round the corner */
+ let apex=null,best=0.12;for(let d=60;d<lead;d+=40){const s0=Math.min(R.total,e.s+d),a0=routeXZ(Math.max(0,s0-40),0),a1=routeXZ(Math.min(R.total,s0+40),0);let dh=Math.atan2(a1[3],a1[2])-Math.atan2(a0[3],a0[2]);dh=Math.atan2(Math.sin(dh),Math.cos(dh));if(Math.abs(dh)>best){best=Math.abs(dh);apex={s:s0,dh}}}
+ const blindUntil=G.senseEdge||0;let tx,tz;
+ if(apex&&apex.s-e.s<Math.max(250,lead*0.8)){const q=routeXZ(apex.s+20,0),inn=apex.dh>0?-1:1,off=25+best*60;tx=q[0]+q[3]*inn*off;tz=q[1]-q[2]*inn*off;HDRONE.mode='CURVE'}
+ else{const ahead=routeXZ(Math.min(R.total,e.s+lead),0);tx=ahead[0]+Math.sin(t*0.4)*6;tz=ahead[1]+Math.cos(t*0.33)*6;HDRONE.mode='LEAD'}
+ let floor=groundY(tx,tz)+30;const b=bAt(tx,tz);if(b)floor+=25;
+ const ty=Math.max(floor,e.mesh.position.y+30)+Math.sin(t*0.7)*2+Math.min(160,e.v*0.35)+(HDRONE.mode==='CURVE'?25:0); /* higher at speed and over bends */
+ const k=Math.min(1,dt*2.2);const nvx=(tx-HDRONE.x)*2.2+Math.cos(e.head)*e.v*0.8,nvz=(tz-HDRONE.z)*2.2-Math.sin(e.head)*e.v*0.8; /* feed-forward car speed so it can stay ahead at 1000 mph */HDRONE.vx=lerp(HDRONE.vx,nvx,k);HDRONE.vz=lerp(HDRONE.vz,nvz,k);HDRONE.x+=HDRONE.vx*dt;HDRONE.z+=HDRONE.vz*dt;HDRONE.y=lerp(HDRONE.y,ty,Math.min(1,dt*0.8));
  const m=HDRONE.mesh,U=m.userData;m.position.set(HDRONE.x,HDRONE.y,HDRONE.z);const hd=Math.atan2(-HDRONE.vz,HDRONE.vx);if(Math.hypot(HDRONE.vx,HDRONE.vz)>1)m.rotation.y=lerp(m.rotation.y,hd,Math.min(1,dt*2));
  const sp=Math.hypot(HDRONE.vx,HDRONE.vz);m.rotation.z=-Math.min(0.35,sp*0.006);/* pitch nose-down into its travel */for(const r of U.rotors)r.rotation.y+=dt*90;U.strobe.visible=(t*2%1)<0.12;U.gim.rotation.z=-0.6-Math.sin(t*0.5)*0.1;U.lid.rotation.y+=dt*15;if(e.v>90&&Math.random()<dt*20)puff(m.position.clone(),new THREE.Vector3(-HDRONE.vx*0.02,0,-HDRONE.vz*0.02),false) /* contrail at speed */}
 /* rocket roar: filtered noise rumble + crackle, fades in/out */
@@ -3479,6 +3484,12 @@ let FANSND=null;function fanSound(p){if(!audio.ctx||!audio.master)return;const C
  const f=300+p*1500;FANSND.o.frequency.setTargetAtTime(f,C.currentTime,0.1);FANSND.o2.frequency.setTargetAtTime(f*1.5,C.currentTime,0.1);FANSND.bp.frequency.setTargetAtTime(f*1.2,C.currentTime,0.1);FANSND.g.gain.setTargetAtTime(audio.muted||!game||game.paused?0:p*0.12,C.currentTime,0.15)}
 /* hypercar braking the planner may rely on: discs+tyres (×fan grip, capped) plus airbrake drag that grows with v² */
 function hyperBrakeCap(v){const fg=1+2*Math.min(4,0.5+((game&&game.fans)||[0,0,0,0]).reduce((q,x)=>q+x,0)/4);return Math.min(38,(v>60?11:7)*Math.pow(fg,0.6))+22*Math.pow(Math.min(v,450)/450,2)}
+/* how far along the ROUTE is sensed: own lidar only with line of sight (buildings block it), plus anything under the drone's footprint */
+function senseHorizon(){const G=game,e=G.ego,R=G.route;let edge=0;const ex=e.mesh.position.x,ez=e.mesh.position.z,lid=420*WX.perc,dr=HDRONE.mesh?HDRONE:null;
+ for(let d=10;d<7000;d+=20){const s2=e.s+d;if(s2>R.total){edge=d;break}const p=routeXZ(s2,0);let ok=false;const dd=Math.hypot(p[0]-ex,p[1]-ez);
+  if(dd<lid){ok=true;for(let k=10;k<dd;k+=12){const x=ex+(p[0]-ex)*k/dd,z=ez+(p[1]-ez)*k/dd;if(bAt(x,z)){ok=false;break}}}
+  if(!ok&&dr&&Math.hypot(p[0]-dr.x,p[1]-dr.z)<dr.range)ok=true;if(!ok){edge=d;break}edge=d}
+ G.senseEdge=edge;return edge}
 function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)return;const e=G.ego,objs=[];G.dodgeT=Math.max(0,(G.dodgeT||0)-dt);
  const drone=HDRONE.mesh?HDRONE:null;let dOnly=0;const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z),dd=drone?Math.hypot(x-drone.x,z-drone.z):1e9;if(d>450&&!(dd<=(drone?drone.range:0)))return; /* own sensors 450 m, plus anything the drone sees */const byDrone=d>120&&dd<(drone?drone.range:0);if(byDrone)dOnly++;o._drone=byDrone;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
   if(Math.hypot(vx,vz)>90)return;const f=x=>isFinite(x)?x:0;o._vx=lerp(o._vx||0,f(vx),0.65);o._vz=lerp(o._vz||0,f(vz),0.65);o._w=lerp(o._w||0,clamp(f(w),-1.2,1.2),0.35);const sp=Math.hypot(o._vx,o._vz);o._acc=o._sp===undefined?0:lerp(o._acc||0,clamp(f((sp-o._sp)/dt),-10,6),0.25);o._sp=sp; /* longitudinal acceleration (braking < 0) */
@@ -3493,7 +3504,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
    const ep=routeXZ(Math.min(G.route.total,e.s+e.v*t),e.off||1.85),gap=Math.hypot(px-ep[0],pz-ep[1]),need=b.kind==='ped'?1.8:2.4;if(gap<need&&(!worst||t<worst.t)){const fx=ep[2],fz=ep[3],lat=-(px-ep[0])*fz+(pz-ep[1])*fx;worst={b,t,lat,gap}}}
   b.path=path;b.ttc=null}
  if(worst)worst.b.ttc=worst.t;G.pred=objs;G.threat=worst&&worst.t<3.5?worst:null;
- G.hpT=(G.hpT||0)-dt;if(e.loose){G.hp=null}else if(G.hpT<=0){G.hpT=0.1;G.hp=hyperPlan(objs)}
+ G.shT=(G.shT||0)-dt;if(G.shT<=0){G.shT=0.2;senseHorizon()}G.hpT=(G.hpT||0)-dt;if(e.loose){G.hp=null}else if(G.hpT<=0){G.hpT=0.1;G.hp=hyperPlan(objs)}
  const hp=G.hp;if(!hp&&!e.loose){CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*3))}if(hp){if(hp.off!==0||Math.abs(CHASE.evade)>0.1)G.dodgeT=0.6;const fx1=Math.cos(e.head),fz1=-Math.sin(e.head);const crawlHold=e.v<(fastOn()?2.5:6)&&objs.some(b=>{if(b.kind==='ped'||b.d>6.5)return false;const dx=b.x-e.x,dz=b.z-e.z,f=dx*fx1+dz*fz1,l=-dx*fz1+dz*fx1;return Math.abs(f)<5&&Math.abs(l)>1.4}); /* only when something is actually beside us, not ahead */ /* crawling beside a vehicle: no sideways creeping (box corners) */G.latFreeze=!!(G.latHold||crawlHold);if(G.latHold||crawlHold){CHASE.evade=(e.off||0)-laneOffsetAt(routeLLnh(e.s)[2])}else CHASE.evade=lerp(CHASE.evade,hp.off,Math.min(1,dt*3.2));
   if(hp.risk)G.status=hp.acc<-5?`🧠 ${hp.why} · hard brake`:hp.acc<0?`🧠 ${hp.why} · easing off`:hp.off?`🧠 ${hp.why} · line ${hp.off>0?'right':'left'} ${Math.abs(hp.off).toFixed(1)} m`:`🧠 ${hp.why} · holding line`}}
 /* sampling planner: 7 lateral lines × 4 accelerations, each rolled out 3 s against every forecast; 3-circle vehicle footprints;
@@ -3639,7 +3650,7 @@ function hyperOverlay(x,W,H,dpr,proj,dets){const G=game,e=G.ego,t=performance.no
  /* telemetry columns */
  const n=(G.pred||[]).length,col=(xx,lines,c)=>{x.fillStyle='rgba(0,0,0,.5)';x.fillRect(xx,0,86*dpr,lines.length*8.5*dpr+4*dpr);x.fillStyle=c;lines.forEach((l,i)=>x.fillText(l,xx+3*dpr,2*dpr+i*8.5*dpr))};
  const pts=Math.round(4.6e6+Math.sin(t*3)*2e5);col(0,[`LIDAR ${(pts/1e6).toFixed(2)}M pt/s`,`RADAR ${180+Math.round(Math.sin(t*5)*20)} ret`,`CAM 12×8MP ${(59.9+Math.sin(t)*0.1).toFixed(1)}fps`,`THERM ${dets.filter(d=>d.cls==='ped'||d.cls==='animal').length} warm`,`SONAR ${(0.6+Math.abs(Math.sin(t*2))*4).toFixed(1)}m`,`GNSS RTK ±0.02m`,`IMU ${((e.acc||0)/9.81).toFixed(2)}g`],'#00e5ff');
- col(W-86*dpr,[`TRACKS ${n}`,`FUSION ${(0.9+Math.sin(t)*0.05).toFixed(3)}`,`PRED 4.0s ×${n*16}`,`PLAN ${G.threat?'EVADE':'NOMINAL'}`,`LAT ${(7.8+Math.sin(t*7)*0.9).toFixed(1)}ms`,HDRONE.mesh?`DRONE ${Math.round(HDRONE.y-groundY(HDRONE.x,HDRONE.z))}m · +${HDRONE.seen} trk`:'DRONE —',G.fans?`FANS ${G.fans.map(v=>Math.round(v*100)).join('/')}`:'FANS —',`NPU ${(1840+Math.sin(t*2)*120).toFixed(0)} TOPS`,`v ${(e.v*MPH).toFixed(1)} mph`],G.threat?'#ff2a2a':'#9dff00');
+ col(W-86*dpr,[`TRACKS ${n}`,`FUSION ${(0.9+Math.sin(t)*0.05).toFixed(3)}`,`PRED 4.0s ×${n*16}`,`PLAN ${G.threat?'EVADE':'NOMINAL'}`,`LAT ${(7.8+Math.sin(t*7)*0.9).toFixed(1)}ms`,HDRONE.mesh?`DRONE ${HDRONE.mode||''} ${Math.round(HDRONE.y-groundY(HDRONE.x,HDRONE.z))}m · +${HDRONE.seen}`:'DRONE —',`SEEN ${Math.round(G.senseEdge||0)}m ahead`,G.fans?`FANS ${G.fans.map(v=>Math.round(v*100)).join('/')}`:'FANS —',`NPU ${(1840+Math.sin(t*2)*120).toFixed(0)} TOPS`,`v ${(e.v*MPH).toFixed(1)} mph`],G.threat?'#ff2a2a':'#9dff00');
  /* occupancy mini grid */
  const gx=W-60*dpr,gy=H-60*dpr,cs=3*dpr;for(let i=0;i<18;i++)for(let j=0;j<18;j++){const wx=e.x+fx*(18-j)*4-fz*(i-9)*2,wz=e.z+fz*(18-j)*4+fx*(i-9)*2;let occ=0;for(const b of G.pred||[])if(Math.abs(b.x-wx)<2.5&&Math.abs(b.z-wz)<2.5)occ=1;x.fillStyle=occ?'#ff1fb4':'rgba(0,229,255,.12)';x.fillRect(gx+i*cs,gy+j*cs,cs-dpr*0.5,cs-dpr*0.5)}
  /* data stream */
