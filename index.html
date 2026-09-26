@@ -3316,6 +3316,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
   if(Math.hypot(vx,vz)>90)return;const f=x=>isFinite(x)?x:0;o._vx=lerp(o._vx||0,f(vx),0.65);o._vz=lerp(o._vz||0,f(vz),0.65);o._w=lerp(o._w||0,clamp(f(w),-1.2,1.2),0.35);objs.push({o,x,z,h,kind,vx:o._vx,vz:o._vz,w:o._w,d,m:kind==='ped'?80:o.spec?massOf(o.spec,kind):kind==='cop'?2000:1500,id:o._id||(o._id=++G._pid||(G._pid=1))})};
  for(const a of G.agents)if(a.mesh)track(a,a.mesh.position.x,a.mesh.position.z,a.mesh.rotation.y,a.spec.style==='harley'?'moto':'car');
  if(CHASE.on)for(const c of CHASE.cops)track(c,c.mesh.position.x,c.mesh.position.z,c.mesh.rotation.y,'cop');if(CHAOS.on)for(const a of CHAOS.cars)track(a,a.x,a.z,a.head,'car');for(const p of G.peds){track(p,p.x,p.z,p.mesh.rotation.y,'ped');if(p.dog)track(p.dog,p.dog.x,p.dog.z,0,'ped')}if(CHAOS.on){for(const p of CHAOS.peds)track(p,p.x,p.z,p.head||0,'ped');for(const a of CHAOS.animals||[])track(a,a.x,a.z,a.head||0,'ped')}
+ if(G.protest&&G.protest.state!=='dispersing')for(const q of G.protest.people)track(q,q.f.position.x,q.f.position.z,0,'ped');
  for(const B of CHASE.blocks)for(const m of B.cars){const r=m.userData.rb||(m.userData.rb={mesh:m});track(r,m.position.x,m.position.z,m.rotation.y,'car')}
  HDRONE.seen=dOnly;let worst=null;const T=4,st=0.2;
  for(const b of objs){const path=[];let px=b.x,pz=b.z,vx=b.vx,vz=b.vz;for(let t=st;t<=T;t+=st){const c=Math.cos(b.w*st),sn=Math.sin(b.w*st),nvx=vx*c-vz*sn,nvz=vx*sn+vz*c;vx=nvx;vz=nvz;px+=vx*st;pz+=vz*st;path.push([px,pz,t]);
