@@ -4307,11 +4307,20 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  const SCORES={"waymo-ipace":{"per100":23.1,"km":26.03,"primary":6},"waymo-zeekr":{"per100":21.3,"km":28.11,"primary":6},"cybercab":{"per100":6.6,"km":30.13,"primary":2},"model-y":{"per100":3.5,"km":28.42,"primary":1},"model-3":{"per100":3.2,"km":31.19,"primary":1},"model-s":{"per100":6.7,"km":30,"primary":2},"zoox":{"per100":0,"km":26.93,"primary":0},"s580":{"per100":6.2,"km":32.34,"primary":2},"i7":{"per100":0,"km":32.61,"primary":0},"escalade-iq":{"per100":41.6,"km":28.87,"primary":12},"mache":{"per100":0,"km":30.28,"primary":0},"lucid":{"per100":0,"km":30.71,"primary":0},"r1s":{"per100":31.6,"km":25.29,"primary":8},"yugo":{"per100":0,"km":30.24,"primary":0},"ezpt":{"per100":46.9,"km":32.01,"primary":15},"hyper":{"per100":0,"km":31.51,"primary":0}}; /* benchmark 2026-09-26: 50 episodes per car, satellite off, normal mode */
  const grade=v=>v==null?null:v<=1?['A+','#3fd18a']:v<=4?['A','#7bd88f']:v<=10?['B','#c9e265']:v<=25?['C','#ffd166']:v<=60?['D','#ff9f43']:['F','#ff5a5a'];
  const _rc=window.renderCars;
- window.renderCars=function(){_rc.apply(this,arguments);const S=SCORES;
+ window.renderCars=function(){_rc.apply(this,arguments);const S={},T=UIX.load('tripStats',{});for(const c of CARS){const b=SCORES[c.id]||{km:0,primary:0},t=T[c.id]||{km:0,crashes:0},km=b.km+t.km,pr=b.primary+t.crashes;if(km>0.5)S[c.id]={km:+km.toFixed(1),primary:pr,per100:+(pr/km*100).toFixed(1),trip:t.km}}
   [...document.querySelectorAll('#cars .car')].forEach((d,i)=>{const c=CARS[i],s=c&&S[c.id];if(!s||s.per100==null)return;const g=grade(s.per100);const b=document.createElement('span');
-   b.textContent=`${g[0]} · ${s.per100}/100 km`;b.title=`Benchmark: ${s.primary} at-fault crashes in ${s.km} km of random traffic (normal mode, own sensors, satellite off). Lower is better; about 30 km per car, so small differences are noise.`;b.style.cssText=`display:inline-block;margin-top:3px;font:700 10px system-ui;color:#0b0f14;background:${g[1]};border-radius:6px;padding:1px 5px`;d.appendChild(b)})};
+   b.textContent=`${g[0]} · ${s.per100}/100 km`;b.title=`${s.primary} at-fault crashes in ${s.km} km (benchmark${s.trip>0.05?` + ${s.trip.toFixed(1)} km of your own trips`:''}) of random traffic (normal mode, own sensors, satellite off). Lower is better; about 30 km per car, so small differences are noise.`;b.style.cssText=`display:inline-block;margin-top:3px;font:700 10px system-ui;color:#0b0f14;background:${g[1]};border-radius:6px;padding:1px 5px`;d.appendChild(b)})};
  setTimeout(()=>{try{renderCars()}catch(e){}},0);
- MODS.push({id:'scores'});
+ /* live trip stats: every ride adds its distance and at-fault crashes to that car's grade */
+ let lastS=null,lastLog=0,acc={km:0,crashes:0},saveT=0;
+ const flush=()=>{if(!game||!game.spec||(acc.km<0.01&&!acc.crashes))return;const T=UIX.load('tripStats',{}),t=T[game.spec.id]||(T[game.spec.id]={km:0,crashes:0});t.km+=acc.km;t.crashes+=acc.crashes;acc={km:0,crashes:0};UIX.save('tripStats',T)};
+ addEventListener('beforeunload',flush);
+ MODS.push({id:'scores',
+  start(){lastS=null;lastLog=CRASH.log.length;acc={km:0,crashes:0}},
+  sim(){const G=game,e=G.ego;if(window.BENCH&&BENCH.on)return;if(lastS!=null){const d=e.s-lastS;if(d>0&&d<10&&!e.loose)acc.km+=d/1000}lastS=e.s;
+   if(CRASH.log.length>lastLog){for(const c of CRASH.log.slice(lastLog))if((c.a==='ego'||c.b==='ego')&&c.mph>=5&&!/💥|Out of control|Recovered/.test(G.status||'')&&!(typeof CHASE!=='undefined'&&(CHASE.on||EXPRESS.on)))acc.crashes++;lastLog=CRASH.log.length}},
+  frame(){if(performance.now()-saveT>30000){saveT=performance.now();flush()}},
+  arrive(){flush()}});
 })();
 </script>
 <script>/* mods/05-replay.js */
