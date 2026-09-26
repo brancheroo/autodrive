@@ -3448,13 +3448,13 @@ function buildScoutDrone(){const g=new THREE.Group(),cf=new THREE.MeshStandardMa
  const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.05,14),acc);lid.position.y=-0.2;g.add(lid);g.scale.setScalar(2.2);g.userData={rotors,strobe,gim,lid};return g}
 function updateHyperDrone(dt){const G=game;if(!G||!G.ego)return;const want=G.spec.hyper&&!G.fast;if(!want){if(HDRONE.mesh){scene.remove(HDRONE.mesh);HDRONE.mesh=null}return}
  const e=G.ego;if(!HDRONE.mesh){HDRONE.mesh=buildScoutDrone();scene.add(HDRONE.mesh);HDRONE.x=e.x;HDRONE.z=e.z;HDRONE.y=e.mesh.position.y+30}if(Math.hypot(HDRONE.x-e.x,HDRONE.z-e.z)>600){HDRONE.x=e.x;HDRONE.z=e.z;HDRONE.vx=HDRONE.vz=0;HDRONE.y=e.mesh.position.y+30} /* world re-centred */
- const lead=Math.min(1600,25+e.v*(e.v>40?7:2.2)),t=performance.now()/1000,ahead=routeXZ(Math.min(G.route.total,e.s+lead),0),cur=routeXZ(Math.min(G.route.total,e.s+lead*0.5),0);
+ HDRONE.range=220+Math.max(0,e.v-60)*2; /* higher altitude at speed = wider sensor footprint */const lead=Math.min(2600,25+e.v*(e.v>40?9:2.2)),t=performance.now()/1000,ahead=routeXZ(Math.min(G.route.total,e.s+lead),0),cur=routeXZ(Math.min(G.route.total,e.s+lead*0.5),0);
  /* on a bend, swing wide to the outside to look round the corner */const bend=Math.atan2(ahead[3],ahead[2])-Math.atan2(cur[3],cur[2]),bw=Math.atan2(Math.sin(bend),Math.cos(bend));
  const tx=ahead[0]+Math.sin(t*0.4)*6-ahead[3]*bw*25,tz=ahead[1]+Math.cos(t*0.33)*6+ahead[2]*bw*25;let floor=groundY(tx,tz)+30;const b=bAt(tx,tz);if(b)floor+=25;
- const ty=Math.max(floor,e.mesh.position.y+30)+Math.sin(t*0.7)*2+Math.min(15,e.v*0.2);
+ const ty=Math.max(floor,e.mesh.position.y+30)+Math.sin(t*0.7)*2+Math.min(90,e.v*0.4); /* climbs to ~120 m at 500 mph */
  const k=Math.min(1,dt*1.6);const nvx=(tx-HDRONE.x)*1.6,nvz=(tz-HDRONE.z)*1.6;HDRONE.vx=lerp(HDRONE.vx,nvx,k);HDRONE.vz=lerp(HDRONE.vz,nvz,k);HDRONE.x+=HDRONE.vx*dt;HDRONE.z+=HDRONE.vz*dt;HDRONE.y=lerp(HDRONE.y,ty,Math.min(1,dt*0.8));
  const m=HDRONE.mesh,U=m.userData;m.position.set(HDRONE.x,HDRONE.y,HDRONE.z);const hd=Math.atan2(-HDRONE.vz,HDRONE.vx);if(Math.hypot(HDRONE.vx,HDRONE.vz)>1)m.rotation.y=lerp(m.rotation.y,hd,Math.min(1,dt*2));
- const sp=Math.hypot(HDRONE.vx,HDRONE.vz);m.rotation.z=-Math.min(0.35,sp*0.006);/* pitch nose-down into its travel */for(const r of U.rotors)r.rotation.y+=dt*90;U.strobe.visible=(t*2%1)<0.12;U.gim.rotation.z=-0.6-Math.sin(t*0.5)*0.1;U.lid.rotation.y+=dt*15}
+ const sp=Math.hypot(HDRONE.vx,HDRONE.vz);m.rotation.z=-Math.min(0.35,sp*0.006);/* pitch nose-down into its travel */for(const r of U.rotors)r.rotation.y+=dt*90;U.strobe.visible=(t*2%1)<0.12;U.gim.rotation.z=-0.6-Math.sin(t*0.5)*0.1;U.lid.rotation.y+=dt*15;if(e.v>90&&Math.random()<dt*20)puff(m.position.clone(),new THREE.Vector3(-HDRONE.vx*0.02,0,-HDRONE.vz*0.02),false) /* contrail at speed */}
 /* rocket roar: filtered noise rumble + crackle, fades in/out */
 let ROCKSND=null;function rocketSound(on){if(!audio.ctx||!audio.noiseBuf)return;const C=audio.ctx,t=C.currentTime;
  if(on&&!ROCKSND){const s=C.createBufferSource();s.buffer=audio.noiseBuf;s.loop=true;const lp=C.createBiquadFilter();lp.type='lowpass';lp.frequency.value=420;const bp=C.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1800;bp.Q.value=0.6;
