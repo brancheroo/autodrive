@@ -2200,9 +2200,12 @@ function updateGrass(dt){const G=game;if(!G||!G.ego)return;GRASS.uni.time.value+
  const M=new THREE.Matrix4(),q=new THREE.Quaternion(),sc=new THREE.Vector3(),p=new THREE.Vector3(),col=new THREE.Color(),rnd=mulberry(Math.floor(cx/10)*7919+Math.floor(cz/10));
  const urban=(()=>{const T=TILES.get(Math.floor(toLat(cz)/TS)+'_'+Math.floor(toLon(cx)/TS));return T&&T.group&&T.group.children.length>60})();const hBase=urban?0.1:0.36,hVar=urban?0.05:0.18,snow=WX.snow>0.3;
  let n=0;const MAX=60000,R1=25,R2=75;
+ /* route corridor near the camera: grass never grows on the carriageway even where only the route ribbon is drawn (rural, no OSM tile yet) */
+ const segs=[];for(const c of routeRoads()){if(!c.bb||c.bb[1]<cx-R2-20||c.bb[0]>cx+R2+20||c.bb[3]<cz-R2-20||c.bb[2]>cz+R2+20)continue;for(let k=0;k<c.pts.length-1;k++)segs.push([c.pts[k],c.pts[k+1],(c.w/2)+0.9])}
+ const onRoute=(x,z)=>{for(const [a,b,h] of segs){const dx=b[0]-a[0],dz=b[1]-a[1],L2=dx*dx+dz*dz||1,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/L2,0,1);if(Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t)<h)return true}return false};
  for(const [R0,Rr,step,big] of [[0,R1,0.34,1],[R1,R2,0.75,1.9]]){for(let gx=Math.floor((cx-Rr)/step);gx<=Math.ceil((cx+Rr)/step)&&n<MAX;gx++)for(let gz=Math.floor((cz-Rr)/step);gz<=Math.ceil((cz+Rr)/step)&&n<MAX;gz++){
    const x=gx*step+(rnd()-0.5)*step,z=gz*step+(rnd()-0.5)*step,d=Math.hypot(x-cx,z-cz);if(d<R0||d>Rr)continue;
-   const c=vegAt(toLat(z),toLon(x));if(!c)continue;const rq=roadQAt(x,z);if(rq&&rq.inside(x,z,0.3))continue;
+   const c=vegAt(toLat(z),toLon(x));if(!c)continue;const rq=roadQAt(x,z);if(rq&&rq.inside(x,z,0.6))continue;if(segs.length&&onRoute(x,z))continue;
    const fade=d>R2*0.8?1-(d-R2*0.8)/(R2*0.2):1,h=(hBase+rnd()*hVar)*fade*(snow?0.3:1);if(h<0.02)continue;
    q.setFromAxisAngle(UPV,rnd()*6.283);sc.set(big*(0.8+rnd()*0.5),h,big*(0.8+rnd()*0.5));p.set(x,groundY(x,z)-0.01,z);M.compose(p,q,sc);im.setMatrixAt(n,M);
    col.setRGB(c[0]*0.9,c[1]*1.05,c[2]*0.8);if(snow)col.lerp(new THREE.Color(0xe8eef2),0.6);im.setColorAt(n,col);n++}}
