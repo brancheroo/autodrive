@@ -2518,24 +2518,24 @@ function plan(a,dt,lead,isEgo){
  if(isEgo)game.upcoming=up;
  // lead (in a chase the car overtakes while swerving away from a cruiser)
  if(chase&&lead&&lead.s-a.s<90&&lead.s-a.s>0&&lead.v<a.v+3){CHASE.pass=2.5;reason=(CHASE.on?'CHASE':'EXPRESS')+(CHASE.passSide>0?' · passing on the right':CHASE.passSide<0?' · passing on the left':' · boxed in, waiting for a gap')}
- if(lead&&!(isEgo&&a.spec.hyper)&&(!chase||(EXPRESS.on&&!CHASE.on&&!a.spec.hyper&&CHASE.passSide===0))&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
+ if(lead&&!(isEgo&&smartOn())&&(!chase||(EXPRESS.on&&!CHASE.on&&!smartOn()&&CHASE.passSide===0))&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
  // planned charging / fuel stop
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
  if(CHASE.on&&!(isEgo&&game.spec.apc))for(const B of CHASE.blocks)if(B.route===game.route){const d=(a.dir<0?-1:1)*(B.s-a.s)-10;if(d>-2&&d<220){const v=allow(0,d);if(v<target){target=v;reason=isEgo?'🚧 Roadblock ahead':reason}}}
  /* HYPER SAFETY ENVELOPE (hard layer, overrides everything): for every tracked object ahead that overlaps the lateral band the car occupies
     now or is moving into, cap speed so the car can always stop behind it (0.3 s latency + 1.5 m buffer, 7 m/s² braking) */
- if(isEgo&&a.spec.hyper&&!a.loose){ /* never outrun perception: must be able to stop within what lidar + scout drone can currently see */
-  const horizon=Math.max(60,game.senseEdge||1000),bk=hyperBrakeCap(a.v)*0.85,cap=Math.sqrt(2*bk*Math.max(0,horizon-40)); /* along-route sensed distance, blind corners included */if(cap<target){target=cap;if(cap<a.v)reason='🛡️ Sensor horizon '+Math.round(horizon)+' m · capping speed'}}
- if(isEgo&&a.spec.hyper&&game.pred&&!a.loose){const h=Math.atan2(-(routeXZ(a.s+2,0)[1]-routeXZ(a.s,0)[1]),routeXZ(a.s+2,0)[0]-routeXZ(a.s,0)[0]),fx=Math.cos(h),fz=-Math.sin(h),ex=a.mesh.position.x,ez=a.mesh.position.z;
+ if(isEgo&&smartOn()&&!a.loose){ /* never outrun perception: must be able to stop within what lidar + scout drone can currently see */
+  const horizon=Math.max(60,game.senseEdge||1000),bk=egoBrake(a.v)*0.85,cap=Math.sqrt(2*bk*Math.max(0,horizon-40)); /* along-route sensed distance, blind corners included */if(cap<target){target=cap;if(cap<a.v)reason='🛡️ Sensor horizon '+Math.round(horizon)+' m · capping speed'}}
+ if(isEgo&&smartOn()&&game.pred&&!a.loose){const h=Math.atan2(-(routeXZ(a.s+2,0)[1]-routeXZ(a.s,0)[1]),routeXZ(a.s+2,0)[0]-routeXZ(a.s,0)[0]),fx=Math.cos(h),fz=-Math.sin(h),ex=a.mesh.position.x,ez=a.mesh.position.z;
   const dOff=laneOffsetAt(idx)+(CHASE.evade||0)-(a.off||0),lo=Math.min(0,dOff),hi=Math.max(0,dOff);
   game.latHold=false;for(const b of game.pred){const dx=b.x-ex,dz=b.z-ez,f0=dx*fx+dz*fz;if(Math.abs(dOff)>0.15&&f0>-a.spec.L-2&&f0<a.spec.L+3){const l0=-dx*fz+dz*fx,hw=(a.spec.W+2)/2+0.3;if(Math.abs(l0)>hw-0.6&&l0>lo-hw&&l0<hi+hw&&Math.sign(l0)===Math.sign(dOff))game.latHold=true} /* only what's on the side we're moving toward */ /* something alongside in the lane we're moving into */
    if(b.path)for(let k=0;k<b.path.length;k+=2){const q=b.path[k],qx=q[0]-ex,qz=q[1]-ez,fp=qx*fx+qz*fz;if(fp<0.5||fp>look)continue;const lp=-qx*fz+qz*fx,hp2=(a.spec.W+(b.kind==='ped'?0.7:2.0))/2+(b.kind==='ped'?0.45:0.25);if(lp<lo-hp2||lp>hi+hp2)continue;
     const tArr=fp/Math.max(a.v,0.5);if(Math.abs(tArr-q[2])<1.2){const g2=fp-a.spec.L/2-(b.kind==='ped'?0.4:2.2)-1.5-a.v*0.3,v2=Math.sqrt(Math.max(0,2*7*Math.max(0,g2)));if(v2<target){target=v2;reason=`🛡️ Yielding to #${b.id}'s predicted path`}break}} /* crossing / merging: don't arrive where it will be */
    if(b.kind!=='ped'&&f0>0){const sp=b.o.spec||COP_SPEC,l0=-dx*fz+dz*fx;if(f0<(a.spec.L+(sp.L||4.8))/2+1.2&&Math.abs(l0)<(a.spec.W+(sp.W||1.9))/2+0.35){target=0;reason=`🛡️ Holding · #${b.id} too close`}} /* hard stop zone from real lengths/widths */
    const f=f0;if(f<0.5||f>look)continue;const lat=-dx*fz+dz*fx,half=(a.spec.W+(b.kind==='ped'?0.7:b.kind==='moto'?0.9:2.0))/2+(b.kind==='ped'?0.45:0.25);if(window.ENVDBG&&f<25&&b.kind!=='ped')ENVDBG.push([b.id,+f.toFixed(1),+lat.toFixed(2),+lo.toFixed(2),+hi.toFixed(2),+half.toFixed(2)]);if(lat<lo-half||lat>hi+half)continue;
-   const vr=(b.vx||0)*fx+(b.vz||0)*fz,vb=Math.max(0,vr);let gap=f-a.spec.L/2-(b.kind==='ped'?0.4:2.5)-1.5-a.v*0.3;if(vr<-0.5)gap-=gap*(-vr)/(a.v-vr+0.1); /* oncoming: it closes the gap too */const bk=hyperBrakeCap(a.v)*0.85,ab=Math.max(bk,-(b.acc||0),3),leadStop=vb*vb/(2*(b.acc<-0.5?Math.max(-b.acc,3):bk)),v=Math.sqrt(Math.max(0,2*bk*Math.max(0,gap+leadStop-(vb<0.5?3:0)))); /* its stopping distance from ITS measured braking vs ours; stationary: extra 3 m */if(v<target){target=v;reason=`🛡️ Keeping stopping distance · #${b.id}`}}}
- if(isEgo&&a.spec.hyper&&game.hp&&game.hp.risk){const v=Math.max(0,a.v+game.hp.acc*0.6);if(game.hp.acc<0||game.hp.acc===0&&game.hp.risk===1){if(v<target){target=v;reason=game.status}}else if(game.hp.acc>3&&game.hp.risk===1){target=Math.max(target,a.v+6);reason=game.status}} /* planner owns speed when a conflict is forecast */
+   const vr=(b.vx||0)*fx+(b.vz||0)*fz,vb=Math.max(0,vr);let gap=f-a.spec.L/2-(b.kind==='ped'?0.4:2.5)-1.5-a.v*0.3;if(vr<-0.5)gap-=gap*(-vr)/(a.v-vr+0.1); /* oncoming: it closes the gap too */const bk=egoBrake(a.v)*0.85,ab=Math.max(bk,-(b.acc||0),3),leadStop=vb*vb/(2*(b.acc<-0.5?Math.max(-b.acc,3):bk)),v=Math.sqrt(Math.max(0,2*bk*Math.max(0,gap+leadStop-(vb<0.5?3:0)))); /* its stopping distance from ITS measured braking vs ours; stationary: extra 3 m */if(v<target){target=v;reason=`🛡️ Keeping stopping distance · #${b.id}`}}}
+ if(isEgo&&smartOn()&&game.hp&&game.hp.risk){const v=Math.max(0,a.v+game.hp.acc*0.6);if(game.hp.acc<0||game.hp.acc===0&&game.hp.risk===1){if(v<target){target=v;reason=game.status}}else if(game.hp.acc>3&&game.hp.risk===1){target=Math.max(target,a.v+6);reason=game.status}} /* planner owns speed when a conflict is forecast */
  // end of route
  const rem=R.total-a.s;{const v=allow(0,rem-1);if(v<target){target=v;reason='Arriving'}}
  // traffic stops for the protest crowd too (both directions)
@@ -2770,7 +2770,7 @@ const EXPRESS={on:false};function fastOn(){return CHASE.on||EXPRESS.on}
 function expressToggle(){if(!game||!game.route)return;EXPRESS.on=!EXPRESS.on;if(!fastOn()){CHASE.evade=0;CHASE.pass=0}const b=document.getElementById('expBtn');if(b)b.classList.toggle('on',EXPRESS.on);game.status=EXPRESS.on?'⚡ Express mode · flat out':'Express off · normal driving'}
 /* Express overtaking (non-hypercar): pick whichever side is actually free — right lane, or the oncoming lane only when it's clear for 5 s
    of closing distance — swing out early and hard, hold it until past, then tuck back in. Both blocked → follow and wait for a gap. */
-function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego||game.spec.hyper)return;const G=game,e=G.ego;CHASE.pass=Math.max(0,(CHASE.pass||0)-dt);
+function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego||smartOn())return;const G=game,e=G.ego;CHASE.pass=Math.max(0,(CHASE.pass||0)-dt);
  if(CHASE.pass>0){CHASE.sideT=(CHASE.sideT||0)-dt;if(CHASE.sideT<=0){CHASE.sideT=0.4;const fx=Math.cos(e.head),fz=-Math.sin(e.head),cur=CHASE.evade||0;
    const free=side=>{const o=side*3.4;for(const b of G.agents){if(!b.mesh)continue;const dx=b.mesh.position.x-e.x,dz=b.mesh.position.z-e.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;
      const rel=(b.kind==='oncoming'?-1:1)*((b.mesh.rotation.y-e.head+9.42)%6.283-3.14<1.6?1:1);if(f>-10&&f<45&&Math.abs(l-(o))<2.3)return false;
@@ -2821,7 +2821,7 @@ function updateChase(dt,rt){const G=game;if(!CHASE.on||!G||!G.ego)return;const e
  [...CHASE.cops].sort((a,b)=>a.dist-b.dist).forEach((c,i)=>{c.audible=i<3;sirenUpdate(c,c.dist,t)});
  // evasion: move away from the closest cruiser's side, flat out
  CHASE.pass=Math.max(0,(CHASE.pass||0)-dt);CHASE.weave=(CHASE.weave||0)+dt;
- if(G.spec.hyper){}else if(closest<45){CHASE.evade=lerp(CHASE.evade,-side*2.6+Math.sin(CHASE.weave*2.2)*0.8,Math.min(1,dt*3));CHASE.evadeT=2.5}else if(CHASE.pass>0){CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*3.5));CHASE.evadeT=1}else{CHASE.evadeT-=dt;if(CHASE.evadeT<=0)CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.6))}
+ if(smartOn()){}else if(closest<45){CHASE.evade=lerp(CHASE.evade,-side*2.6+Math.sin(CHASE.weave*2.2)*0.8,Math.min(1,dt*3));CHASE.evadeT=2.5}else if(CHASE.pass>0){CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*3.5));CHASE.evadeT=1}else{CHASE.evadeT-=dt;if(CHASE.evadeT<=0)CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.6))}
  if(CHASE.spin>0){CHASE.spin-=dt;e.v=Math.min(e.v,6)}
  G.chaseInfo=`🚨 ${CHASE.cops.length} unit${CHASE.cops.length>1?'s':''} · closest ${Math.round(closest)} m · PITs ${CHASE.pits}`;chaseUI()}
 function chaseCrunch(){if(!audio.ctx||audio.muted)return;const C=audio.ctx,n=C.createBufferSource();n.buffer=audio.noiseBuf;const f=C.createBiquadFilter();f.type='lowpass';f.frequency.value=900;const g=C.createGain();g.gain.setValueAtTime(0.9,C.currentTime);g.gain.exponentialRampToValueAtTime(0.001,C.currentTime+0.7);n.connect(f);f.connect(g);g.connect(audio.master);n.start();n.stop(C.currentTime+0.8)}
@@ -3540,19 +3540,24 @@ let FANSND=null;function fanSound(p){if(!audio.ctx||!audio.master)return;const C
 /* hypercar braking the planner may rely on: discs+tyres (×fan grip, capped) plus airbrake drag that grows with v² */
 function hyperBrakeCap(v){const fg=1+2*Math.min(4,0.5+((game&&game.fans)||[0,0,0,0]).reduce((q,x)=>q+x,0)/4);return Math.min(38,(v>60?11:7)*Math.pow(fg,0.6))+22*Math.pow(Math.min(v,450)/450,2)}
 /* how far along the ROUTE is sensed: own lidar only with line of sight (buildings block it), plus anything under the drone's footprint */
-function senseHorizon(){const G=game,e=G.ego,R=G.route;let edge=0;const ex=e.mesh.position.x,ez=e.mesh.position.z,lid=1000*WX.perc,dr=HDRONE.mesh?HDRONE:null;
+function senseHorizon(){const G=game,e=G.ego,R=G.route;let edge=0;const ex=e.mesh.position.x,ez=e.mesh.position.z,lid=(G.spec.hyper?1000:45)*WX.perc,sat=SATL.on?3000:0,dr=HDRONE.mesh?HDRONE:null;
  for(let d=10;d<7000;d+=d<3000?20:40){const s2=e.s+d;if(s2>R.total){edge=d;break}const p=routeXZ(s2,0);let ok=false;const dd=Math.hypot(p[0]-ex,p[1]-ez);
   if(dd<lid)ok=true; /* hypercar lidar: 1 km, sees through buildings and objects */
-  if(!ok&&dd<3000)ok=true; /* satellite: complete open-sky view of the route within 3 km */
+  if(!ok&&dd<sat)ok=true; /* satellite: complete open-sky view of the route within 3 km */
   if(!ok&&dr&&Math.hypot(p[0]-dr.x,p[1]-dr.z)<dr.range)ok=true;if(!ok&&G.swept&&s2>=G.swept.a&&s2<=G.swept.b&&G.simTime-G.swept.t<6)ok=true; /* road the drone swept in the last 6 s */if(!ok){edge=d;break}edge=d}
  /* extend the swept memory with whatever the drone covers now, if it joins what we already know */
  if(dr){let a=null,b=null;for(let d=0;d<7000;d+=25){const s2=e.s+d;if(s2>R.total)break;const p=routeXZ(s2,0);if(Math.hypot(p[0]-dr.x,p[1]-dr.z)<dr.range){if(a===null)a=s2;b=s2}else if(a!==null)break}
   if(a!==null){if(G.swept&&a<=G.swept.b+30&&G.simTime-G.swept.t<6){G.swept.b=Math.max(G.swept.b,b);G.swept.t=G.simTime}else if(a<=e.s+edge+30)G.swept={a:e.s,b,t:G.simTime}}}
  G.senseEdge=edge;return edge}
 /* TRACKING SATELLITE: overhead, tracks and predicts every road user within 3 km (no line-of-sight limits), 1 Hz downlink into the hypercar's computer */
-const SATL={n:0,down:0,useT:0,flash:0};
-function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)return;const e=G.ego,objs=[];G.dodgeT=Math.max(0,(G.dodgeT||0)-dt);
- const drone=HDRONE.mesh?HDRONE:null;let dOnly=0;SATL.n=0;SATL.down-=dt;if(SATL.down<=0){SATL.down=1;SATL.flash=0.25}SATL.flash=Math.max(0,SATL.flash-dt);SATL.useT=Math.max(0,SATL.useT-dt);const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z),dd=drone?Math.hypot(x-drone.x,z-drone.z):1e9;if(d>3000&&!(dd<=(drone?drone.range:0)))return; /* lidar 1 km + satellite 3 km complete vision + anything the drone sees */const byDrone=d>120&&dd<(drone?drone.range:0);if(byDrone)dOnly++;o._drone=byDrone;o._sat=d>1000&&!byDrone;if(o._sat)SATL.n++;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
+const SATL={n:0,down:0,useT:0,flash:0,on:(()=>{try{const v=localStorage.getItem('satOn');return v===null?true:v==='1'}catch(e){return true}})()};
+/* the hypercar's driving brain (prediction planner + safety envelope) runs for the hypercar always, and for ANY car while the satellite is on */
+function smartOn(){const G=game;return !!(G&&G.spec&&(G.spec.hyper||SATL.on))}
+function egoBrake(v){const G=game;return G&&G.spec&&G.spec.hyper?hyperBrakeCap(v):6.5} /* each car keeps its own braking */
+function satToggle(){SATL.on=!SATL.on;try{localStorage.setItem('satOn',SATL.on?'1':'0')}catch(e){}const b=document.getElementById('satBtn');if(b)b.textContent='🛰 '+(SATL.on?'On':'Off');if(game&&!smartOn()){game.hp=null;game.pred=null;game.threat=null;CHASE.evade=0}}
+setTimeout(()=>{const b=document.getElementById('satBtn');if(b)b.textContent='🛰 '+(SATL.on?'On':'Off')},0);
+function hyperPredict(dt){const G=game;if(!G||!G.ego||!smartOn()||dt<=0)return;const e=G.ego,objs=[];G.dodgeT=Math.max(0,(G.dodgeT||0)-dt);
+ const drone=HDRONE.mesh?HDRONE:null;let dOnly=0;SATL.n=0;SATL.down-=dt;if(SATL.down<=0){SATL.down=1;SATL.flash=0.25}SATL.flash=Math.max(0,SATL.flash-dt);SATL.useT=Math.max(0,SATL.useT-dt);const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z),dd=drone?Math.hypot(x-drone.x,z-drone.z):1e9;if(d>Math.max(G.spec.hyper?1000:0,SATL.on?3000:0)&&!(dd<=(drone?drone.range:0)))return; /* lidar 1 km (hypercar) + satellite 3 km complete vision + anything the drone sees */const byDrone=d>120&&dd<(drone?drone.range:0);if(byDrone)dOnly++;o._drone=byDrone;o._sat=SATL.on&&d>(G.spec.hyper?1000:45)&&!byDrone;if(o._sat)SATL.n++;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
   if(Math.hypot(vx,vz)>90)return;const f=x=>isFinite(x)?x:0;o._vx=lerp(o._vx||0,f(vx),0.65);o._vz=lerp(o._vz||0,f(vz),0.65);o._w=lerp(o._w||0,clamp(f(w),-1.2,1.2),0.35);const sp=Math.hypot(o._vx,o._vz);o._acc=o._sp===undefined?0:lerp(o._acc||0,clamp(f((sp-o._sp)/dt),-10,6),0.25);o._sp=sp; /* longitudinal acceleration (braking < 0) */
   objs.push({o,x,z,h,kind,vx:o._vx,vz:o._vz,w:o._w,acc:o._acc,d,m:kind==='ped'?80:o.spec?massOf(o.spec,kind):kind==='cop'?2000:1500,id:o._id||(o._id=++G._pid||(G._pid=1))})};
  for(const a of G.agents)if(a.mesh)track(a,a.mesh.position.x,a.mesh.position.z,a.mesh.rotation.y,a.spec.style==='harley'?'moto':'car');
@@ -3572,7 +3577,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!G.spec.hyper||dt<=0)retur
    cost = collision (earlier = worse) + proximity + off-road + speed loss + lane deviation + jerk; lowest cost wins */
 function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeLLnh(e.s)[2]),cur=(e.off===undefined?base:e.off)-base,v0=e.v,fast=fastOn(); /* base = lane centre; cur = where the car really is now relative to it */
  const vWant=fast?Math.max(e.v,30):(G.limitMph||30)/MPH;const rq=roadQAt(e.x,e.z);
- const near=objs.filter(b=>b.d<200&&b.path);if(objs.some(b=>b.o._sat)||(game.senseEdge||0)>1000)SATL.useT=0.4; /* recalculating with satellite data */const circ=(x,z,h,kind,sp)=>{if(kind==='ped')return[[x,z,0.45]];const L=sp&&sp.L||(kind==='moto'?2.3:4.8),W=sp&&sp.W||(kind==='moto'?0.9:1.9),r=W/2+0.05,k=Math.max(0,L/2-r),c=Math.cos(h),sn=-Math.sin(h);return[[x+c*k,z+sn*k,r],[x+c*k/2,z+sn*k/2,r],[x,z,r],[x-c*k/2,z-sn*k/2,r],[x-c*k,z-sn*k,r]]}; /* 5 circles spanning the real length */
+ const near=objs.filter(b=>b.d<200&&b.path);if(SATL.on&&(objs.some(b=>b.o._sat)||(game.senseEdge||0)>(G.spec.hyper?1000:45)))SATL.useT=0.4; /* recalculating with satellite data */const circ=(x,z,h,kind,sp)=>{if(kind==='ped')return[[x,z,0.45]];const L=sp&&sp.L||(kind==='moto'?2.3:4.8),W=sp&&sp.W||(kind==='moto'?0.9:1.9),r=W/2+0.05,k=Math.max(0,L/2-r),c=Math.cos(h),sn=-Math.sin(h);return[[x+c*k,z+sn*k,r],[x+c*k/2,z+sn*k/2,r],[x,z,r],[x-c*k/2,z-sn*k/2,r],[x-c*k,z-sn*k,r]]}; /* 5 circles spanning the real length */
  let best=null;const fx0=Math.cos(e.head),fz0=-Math.sin(e.head);
  /* oncoming lane is only usable when clear for 6 s of closing distance (+30 m); every oncoming road user counts */
  const ni0=NODEINFO.get(R.nodes[routeLLnh(e.s)[2]]),oneway=!!(ni0&&ni0.oneway); /* one-way: left of the centreline is just another lane */
@@ -3618,7 +3623,7 @@ function impasseWatch(dt){const G=game,e=G.ego;if(!G.route||G.uturn||G.rerouting
   if(hit.why==='protest'&&G.protest.state==='blocking')protestReroute();else rerouteNow({preferUturn:true})}}
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
  const legit=G.charging||G.tow||G.pullOver||G.rerouting||G.uturn||(G.protest&&G.protest.state==='rerouting')||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
- if(G.overtakeT>0&&G.spec.hyper){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
+ if(G.overtakeT>0&&smartOn()){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
  if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=dt;
  if(W.t>10){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
   if(W.n>=3){e.s=Math.min(G.route.total-5,e.s+35);e.v=4;W.n=0;G.status='⏱️ Still blocked · easing past the obstruction'} // last resort: squeeze past whatever it is
@@ -3721,7 +3726,7 @@ function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cv
   if(pts.length<4)continue;let x0=Math.min(...pts.map(p=>p[0])),x1=Math.max(...pts.map(p=>p[0])),y0=Math.min(...pts.map(p=>p[1])),y1=Math.max(...pts.map(p=>p[1]));if(x1<0||x0>W||y1<0||y0>H)continue;
   const col=d.cls==='light'?({RED:'#ff4d4d',YELLOW:'#ffb020',GREEN:'#35d07f'})[d.extra]:CVCOL[d.cls];x.strokeStyle=col;x.lineWidth=1.5*dpr;x.strokeRect(x0,y0,x1-x0,y1-y0);
   const lab=`${d.cls==='animal'?d.extra:d.cls==='light'?'light '+d.extra:d.cls==='stop'?'stop sign':d.cls==='ped'?'pedestrian':'vehicle'} ${d.conf.toFixed(2)} · ${Math.round(d.d)}m`;x.font=`${9*dpr}px system-ui`;const tw=x.measureText(lab).width+4*dpr;x.fillStyle=col;x.fillRect(x0,y0-11*dpr,tw,11*dpr);x.fillStyle='#000';x.fillText(lab,x0+2*dpr,y0-2.5*dpr)}
- if(G.spec.hyper)hyperOverlay(x,W,H,dpr,proj,dets);
+ if(G.spec.hyper)hyperOverlay(x,W,H,dpr,proj,dets);else if(SATL.on)satIcon(x,W,H,dpr);
  {const G=game,e=G.ego,mph=Math.round(e.v*MPH),acc=e.acc||0,verb=G.charging?'':acc>0.3?'accelerating':acc<-0.8?'braking':acc<-0.2?'easing off':'holding speed';const sig=G.sig<0?' · signalling left':G.sig>0?' · signalling right':'';
   $('cvExp').style.display=EXPRESS.on?'block':'none';$('cvAct').textContent=`▶ ${G.status||'Cruising'}${verb&&mph>0?' · '+verb:''} · ${mph} mph${sig}`}
  game.seen={...counts};$('cvStats').textContent=`${counts.car} veh · ${counts.ped} ped${counts.animal?` · ${counts.animal} animal`:''} · ${counts.light} lights · ${counts.stop} stop`;$('cvTitle').textContent='PERCEPTION';
@@ -3759,7 +3764,7 @@ function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,
  for(const d of dets){const px=cx+d.lat*sc,py=cy-d.f*sc;x.fillStyle=d.cls==='light'?({RED:'#ff4d4d',YELLOW:'#ffb020',GREEN:'#35d07f'})[d.extra]:CVCOL[d.cls];const s=d.cls==='car'?Math.max(2.5*dpr,d.l*sc):2.5*dpr;x.save();x.translate(px,py);x.rotate(e.head-d.head);x.fillRect(-Math.max(1.5*dpr,d.w*sc)/2,-s/2,Math.max(1.5*dpr,d.w*sc),s);x.restore()}
  // ego
  if(G.spec.hyper&&HDRONE.mesh){const dx=HDRONE.x-e.x,dz=HDRONE.z-e.z,f=dx*Math.cos(e.head)+dz*-Math.sin(e.head),l=-dx*-Math.sin(e.head)+dz*Math.cos(e.head),X=cx+l*sc,Y=cy-f*sc;x.strokeStyle='rgba(0,229,212,.5)';x.setLineDash([3*dpr,3*dpr]);x.beginPath();x.arc(X,Y,HDRONE.range*sc,0,7);x.stroke();x.setLineDash([]);x.fillStyle='#00e5d4';x.beginPath();x.moveTo(X,Y-4*dpr);x.lineTo(X+4*dpr,Y);x.lineTo(X,Y+4*dpr);x.lineTo(X-4*dpr,Y);x.fill();x.font=`${7*dpr}px system-ui`;x.fillText('DRONE',X+5*dpr,Y-3*dpr)}
- if(G.spec.hyper)for(const b of G.pred||[]){if(!b.path)continue;x.strokeStyle=G.threat&&G.threat.b===b?'#ff2a2a':'rgba(255,31,180,.7)';x.lineWidth=dpr;x.beginPath();b.path.forEach(([px,pz],i)=>{const dx=px-e.x,dz=pz-e.z,f=dx*Math.cos(e.head)+dz*-Math.sin(e.head),l=-dx*-Math.sin(e.head)+dz*Math.cos(e.head);const X=cx+l*sc,Y=cy-f*sc;i?x.lineTo(X,Y):x.moveTo(X,Y)});x.stroke()}
+ if(smartOn())for(const b of G.pred||[]){if(!b.path)continue;x.strokeStyle=G.threat&&G.threat.b===b?'#ff2a2a':'rgba(255,31,180,.7)';x.lineWidth=dpr;x.beginPath();b.path.forEach(([px,pz],i)=>{const dx=px-e.x,dz=pz-e.z,f=dx*Math.cos(e.head)+dz*-Math.sin(e.head),l=-dx*-Math.sin(e.head)+dz*Math.cos(e.head);const X=cx+l*sc,Y=cy-f*sc;i?x.lineTo(X,Y):x.moveTo(X,Y)});x.stroke()}
  x.fillStyle='#fff';x.fillRect(cx-G.spec.W*sc/2-1,cy-G.spec.L*sc/2-1,Math.max(3,G.spec.W*sc),Math.max(5,G.spec.L*sc));
  // legend
  const leg=[S.lidar&&`Lidar ${S.lidar} m`,S.radar&&`Radar ${S.radar} m`,S.cam&&`Camera ${S.cam} m`].filter(Boolean);x.font=`${9*dpr}px system-ui`;
