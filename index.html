@@ -4568,10 +4568,10 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  async function draw(){if(!on||!game||!game.ego)return;await meta();if(!path)return;const e=game.ego,lat=toLat(e.z),lon=toLon(e.x),fx=tx(lon),fy=ty(lat),x=cv.getContext('2d');x.fillStyle='#0b1118';x.fillRect(0,0,440,440);
   const cx=Math.floor(fx),cy=Math.floor(fy),ox=220-(fx-cx)*T,oy=220-(fy-cy)*T;
   for(const kind of ['m','r'])for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const im=tile(cx+i,cy+j,kind);const d=()=>{x.globalAlpha=kind==='m'?0.55:0.9;x.drawImage(im,ox+i*T,oy+j*T);x.globalAlpha=1};if(im.complete&&im.naturalWidth)d();else im.onload=()=>draw()}
-  if(game.route){x.strokeStyle='#4da3ff';x.lineWidth=3;x.beginPath();for(let s=Math.max(0,e.s-80000);s<Math.min(game.route.total,e.s+150000);s+=2000){const ll=routeLL(s),px=ox+(tx(ll[1])-cx)*T,py=oy+(ty(ll[0])-cy)*T;s===Math.max(0,e.s-80000)?x.moveTo(px,py):x.lineTo(px,py)}x.stroke()}
+  if(game.route){x.strokeStyle='#4da3ff';x.lineWidth=3;x.beginPath();for(let s=Math.max(0,e.s-80000);s<Math.min(game.route.total,e.s+150000);s+=2000){const ll=routeLL(s),px=ox+(tx(ll[0])-cx)*T,py=oy+(ty(ll[1])-cy)*T;s===Math.max(0,e.s-80000)?x.moveTo(px,py):x.lineTo(px,py)}x.stroke()}
   x.fillStyle='#fff';x.strokeStyle='#000';x.lineWidth=3;x.beginPath();x.arc(220,220,7,0,7);x.fill();x.stroke();x.fillStyle='#fff';x.font='bold 18px system-ui';x.fillText('Radar · live',12,26);
   const nx=wxPts.find(p=>p.s>e.s&&p.key!==WX.key);if(nx){x.fillText(`${{clear:'☀️ Clear',rain:'🌧 Rain',blizzard:'❄️ Snow',fog:'🌫 Fog'}[nx.key]} in ${fmtDist(nx.s-e.s)}`,12,425)}}
- async function forecast(){const G=game,R=G.route;wxPts=[];const n=Math.min(40,Math.ceil(R.total/15000)),pts=[];for(let i=0;i<=n;i++){const s=R.total*i/Math.max(1,n),ll=routeLL(s);pts.push({s,lat:ll[0],lon:ll[1]})}
+ async function forecast(){const G=game,R=G.route;wxPts=[];const n=Math.min(40,Math.ceil(R.total/15000)),pts=[];for(let i=0;i<=n;i++){const s=R.total*i/Math.max(1,n),ll=routeLL(s);pts.push({s,lat:ll[1],lon:ll[0]})}
   try{const u=`https://api.open-meteo.com/v1/forecast?latitude=${pts.map(p=>p.lat.toFixed(3)).join(',')}&longitude=${pts.map(p=>p.lon.toFixed(3)).join(',')}&hourly=precipitation,snowfall,visibility&forecast_days=2&timezone=UTC`;
    let j=await (await fetch(u)).json();if(!Array.isArray(j))j=[j];const t0=G.simTime;
    pts.forEach((p,i)=>{const h=j[i]&&j[i].hourly;if(!h)return;const eta=t0+p.s/25,idx=Math.max(0,h.time.findIndex(t=>Date.parse(t+'Z')/1000>=eta)),pr=h.precipitation[idx]||0,sn=h.snowfall[idx]||0,vis=h.visibility?h.visibility[idx]:99999;
@@ -4792,6 +4792,48 @@ function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userDa
    if(m.userData.cab)m.userData.cab.visible=true;if(m.userData.body)m.userData.body.visible=true;if(m.userData.interior)m.userData.interior.visible=true}});
 })();
 </script>
+<script>/* mods/28-osmx.js */
+/* OSM extras loader: fetches features the base map tiles don't carry – schools, railway lines & level crossings,
+   toll booths, movable bridges, stadiums, bus & tram stops, tram lines, parking garages, drive-throughs,
+   marketplaces and named attractions – in ~3 km cells around the car (Overpass API, cached in IndexedDB-free
+   session memory + localStorage index). Features are stored in lat/lon and converted to local x/z on demand
+   (so floating-origin rebases don't break them). Other packs query OSMX.near(kind, radius). */
+(function(){
+ const CELL=0.03,X={cells:new Map(),feat:[],pending:0,byId:new Set()};window.OSMX=X;
+ const Q=bb=>`[out:json][timeout:25];(
+nwr["amenity"~"^(school|kindergarten)$"](${bb});
+node["railway"="level_crossing"](${bb});node["railway"="crossing"](${bb});
+way["railway"~"^(rail|tram|light_rail)$"](${bb});
+node["barrier"="toll_booth"](${bb});
+way["bridge"="movable"](${bb});way["bridge:movable"](${bb});
+nwr["leisure"="stadium"](${bb});
+node["highway"="bus_stop"](${bb});node["railway"="tram_stop"](${bb});
+nwr["amenity"="parking"]["parking"~"multi-storey|underground"](${bb});
+nwr["drive_through"="yes"](${bb});
+nwr["amenity"="marketplace"](${bb});
+nwr["tourism"~"^(attraction|viewpoint|museum)$"]["name"](${bb});
+nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
+);out tags geom qt;`;
+ function kindOf(t){if(!t)return null;if(/^(school|kindergarten)$/.test(t.amenity))return 'school';if(t.railway==='level_crossing'||t.railway==='crossing')return 'levelx';if(/^(rail|tram|light_rail)$/.test(t.railway))return t.railway==='rail'?'rail':'tram';
+  if(t.barrier==='toll_booth')return 'toll';if(t.bridge==='movable'||t['bridge:movable'])return 'drawbridge';if(t.leisure==='stadium')return 'stadium';if(t.highway==='bus_stop')return 'busstop';if(t.railway==='tram_stop')return 'tramstop';
+  if(t.amenity==='parking')return 'garage';if(t.drive_through==='yes')return 'drivethru';if(t.amenity==='marketplace')return 'market';if(t.tourism||t.man_made)return 'landmark';return null}
+ function ingest(j){for(const el of j.elements||[]){const id=el.type[0]+el.id;if(X.byId.has(id))continue;const k=kindOf(el.tags);if(!k)continue;X.byId.add(id);
+  let lat=el.lat,lon=el.lon,geom=null;if(el.geometry){geom=el.geometry.map(g=>[g.lat,g.lon]);if(lat==null){let a=0,b=0;for(const g of geom){a+=g[0];b+=g[1]}lat=a/geom.length;lon=b/geom.length}}else if(el.center){lat=el.center.lat;lon=el.center.lon}
+  if(lat==null)continue;X.feat.push({id,kind:k,lat,lon,geom,tags:el.tags,name:(el.tags||{}).name||''})}}
+ async function fetchCell(ci,cj){const key=ci+'_'+cj;if(X.cells.has(key))return;X.cells.set(key,'loading');X.pending++;const s=ci*CELL,w=cj*CELL,bb=`${s},${w},${s+CELL},${w+CELL}`;
+  try{const body='data='+encodeURIComponent(Q(bb));let j=null;for(const u of OVERPASS.slice(0,4)){try{const r=await fetchT(u,{method:'POST',body,headers:{'Content-Type':'application/x-www-form-urlencoded'}},25000);if(r.ok){j=await r.json();break}}catch(e){}}
+   if(j){ingest(j);X.cells.set(key,'ok')}else X.cells.set(key,'fail')}finally{X.pending--}}
+ X.ensure=(lat,lon,r=1)=>{const ci=Math.floor(lat/CELL),cj=Math.floor(lon/CELL);for(let i=-r;i<=r;i++)for(let j=-r;j<=r;j++){const k=(ci+i)+'_'+(cj+j),st=X.cells.get(k);if(!st||(st==='fail'&&Math.random()<0.01))fetchCell(ci+i,cj+j)}};
+ X.xz=f=>[toX(f.lon),toZ(f.lat)];
+ X.near=(kind,R)=>{const G=game;if(!G||!G.ego)return [];const e=G.ego,out=[];for(const f of X.feat){if(kind&&f.kind!==kind&&!(Array.isArray(kind)&&kind.includes(f.kind)))continue;const x=toX(f.lon),z=toZ(f.lat),d=Math.hypot(x-e.x,z-e.z);if(d<R)out.push(Object.assign(f,{x,z,d}))}return out.sort((a,b)=>a.d-b.d)};
+ X.onRoute=(f,tol=12)=>{const G=game;if(f._r!==G.route){f._r=G.route;const p=projectOnRoute(G.route,f.lat,f.lon);f._rs=p.s;f._ro=p.off}return f._ro<tol?f._rs:null}; /* cached per route */
+ let chk=0;
+ MODS.push({id:'osmx',
+  start(){chk=0},
+  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;chk-=1/60;if(chk>0)return;chk=4;const e=G.ego;X.ensure(toLat(e.z),toLon(e.x),1);
+   const ah=routeLL(Math.min(G.route.total,e.s+Math.max(1500,e.v*90)));X.ensure(ah[1],ah[0],0)}});
+})();
+</script>
 <script>/* mods/29-actors.js */
 /* Road actors shared by the feature packs: things placed along the route (cyclists, jaywalkers, school buses,
    cones, trains…) with their own update, auto-removal, and a hazard check that makes YOUR car slow or stop for
@@ -4818,77 +4860,86 @@ function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userDa
   preRender(){if(A.why&&game&&game.route)game.status=A.why}});
 })();
 </script>
-<script>/* mods/30-driving.js */
-/* Driving & AI pack (ideas 1–15): early exit lane changes, merge courtesy, 4-way-stop turn-taking, unprotected
-   left-turn gap acceptance, school zones & school buses, roundabout yield, construction zones, cyclists,
-   lane-splitting motorcycles, jaywalkers, aggressive & drunk human drivers, blowout / brake fade / sensor
-   failure events, a driving-style selector and manual take-over (H, then arrow keys). */
+<script>/* mods/30-isect.js */
+/* (3) Four-way stop negotiation. Every stop-controlled node keeps an arrival queue shared by your car, route
+   traffic and cross-street traffic. After the legal full stop a vehicle may only go when it is first in the
+   queue (first come, first go; ties broken by the car on the right) and the previous car has had time to clear
+   the box. Anything waiting > 8 s gets waved through by the others (courtesy wave) so nothing deadlocks.
+   Cross-street cars at stop / give-way signs also hold for your car when it's approaching with right of way. */
 (function(){
- Object.assign(DRIVE_P,{Grandma:{acc:0.5,spd:0.88,gap:1.8},Sporty:{acc:1.45,spd:1.1,gap:0.7}});
- const stSel=UIX.section('Driving style',`<select id="styleSel" style="width:100%;${UIX.sel}"><option value="Grandma">👵 Grandma – slow, huge gaps</option><option value="Chill">Chill</option><option value="Standard">Normal</option><option value="Assertive">Assertive</option><option value="Sporty">🏁 Sporty – quick, tight gaps</option><option value="Express">⚡ Express – chase-style driving</option></select>`,/Graphics quality/);
- const ss=document.getElementById('styleSel');ss.value=UIX.load('style','Standard');ss.onchange=()=>UIX.save('style',ss.value);
- const S={next:{},manual:false,keys:{},ev:null};window.DRV=S;
- const rnd=(a,b)=>a+Math.random()*(b-a);
- const msg=t=>{S.msg=t};
- /* ---------- helpers for spawned actors ---------- */
- function bike(){const g=new THREE.Group(),M=new THREE.MeshStandardMaterial({color:0x1b1f24,roughness:0.5}),F=new THREE.MeshStandardMaterial({color:[0xd0312d,0x2d6cdf,0x2aa84a,0xf2b705][Math.floor(Math.random()*4)],metalness:0.4,roughness:0.4});
-  for(const x of [0.55,-0.55]){const w=new THREE.Mesh(new THREE.TorusGeometry(0.33,0.03,8,24),M);w.position.set(x,0.34,0);g.add(w)}const fr=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.05,0.05),F);fr.position.set(0,0.62,0);fr.rotation.z=0.25;g.add(fr);
-  const r=ACT.person('drive',0x2b3444);r.position.set(-0.1,-0.2,0);r.userData.fig.rotation.z=-0.35;g.add(r);const helm=new THREE.Mesh(new THREE.SphereGeometry(0.13,12,8,0,Math.PI*2,0,Math.PI/2),F);helm.position.set(0.05,1.5,0);g.add(helm);return g}
- function bus(){const spec={style:'van',L:11,W:2.5,H:3.1,wb:6,wr:0.5};const g=buildCar(spec,'#f2b705');const P=(profCache[spec.style+spec.L+spec.W+spec.H]||{}).P,half=P?P.half(0.5):1.25;
-  const c=document.createElement('canvas');c.width=512;c.height=96;const x=c.getContext('2d');x.fillStyle='#f2b705';x.fillRect(0,0,512,96);x.fillStyle='#111';x.font='900 64px Arial';x.textAlign='center';x.fillText('SCHOOL BUS',256,70);const t=new THREE.CanvasTexture(c);
-  for(const s of [1,-1]){const d=new THREE.Mesh(new THREE.PlaneGeometry(6,1.1),new THREE.MeshStandardMaterial({map:t}));d.position.set(0,2.2,s*(half+0.02));d.rotation.y=s>0?0:Math.PI;g.add(d)}
-  const arm=new THREE.Group();arm.position.set(3.2,1.6,-(half+0.05));const oct=new THREE.Mesh(new THREE.CircleGeometry(0.28,8),new THREE.MeshStandardMaterial({color:0xd0102a,side:THREE.DoubleSide,emissive:0x550000}));oct.rotation.x=Math.PI/2;oct.position.z=-0.35;arm.add(oct);arm.rotation.x=-Math.PI/2;g.add(arm);g.userData.arm=arm;return {g,spec}}
- function cone(){const g=new THREE.Group(),o=new THREE.MeshStandardMaterial({color:0xff6a00,roughness:0.6}),w=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.6});const c=new THREE.Mesh(new THREE.ConeGeometry(0.17,0.7,14),o);c.position.y=0.35;g.add(c);const b=new THREE.Mesh(new THREE.CylinderGeometry(0.105,0.12,0.1,14),w);b.position.y=0.38;g.add(b);const base=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.04,0.45),o);base.position.y=0.02;g.add(base);return g}
- /* ---------- spawners ---------- */
- const SP={
-  cyclist(){const G=game,e=G.ego,s0=e.s+rnd(90,200),m=bike();return ACT.add({kind:'cyclist',mesh:m,s:s0,v:rnd(4,7),r:0.5,why:'🚲 Giving a cyclist 1 m of room',update(o,dt){o.s+=o.v*dt;const lane=ACT.lane(o.s),p=ACT.pose(o.s,lane+1.5);o.mesh.position.set(p.x,p.y,p.z);o.mesh.rotation.y=p.h;
-    const gap=o.s-G.ego.s;if(gap>0&&gap<35){S.passBias=-1.9;o.hazard=Math.abs((CHASE.evade||0)+1.9)>0.9}else o.hazard=true;ACT.walk(o.mesh.children[o.mesh.children.length-2],o.t*1.6)}})},
-  jaywalker(){const G=game,e=G.ego,s0=e.s+rnd(45,90),lane=ACT.lane(s0),side=Math.random()<0.5?1:-1,phone=Math.random()<0.5,m=ACT.person(phone?'phone':'rider');const w=lane+side*7;return ACT.add({kind:'jaywalker',mesh:m,s:s0,off:w,dir:-side,v:rnd(1.1,1.6)*(phone?0.7:1),r:0.4,gap:5,why:phone?'🚶 Stopping for a distracted pedestrian on their phone':'🚶 Stopping for a jaywalker',
-    update(o,dt){o.off+=o.dir*o.v*dt;const p=ACT.pose(o.s,o.off);o.mesh.position.set(p.x,p.y,p.z);o.mesh.rotation.y=p.h+o.dir*Math.PI/2;ACT.walk(o.mesh,o.t);if(Math.abs(o.off-lane)>9)o.dead=true}})},
-  moto(){const G=game,e=G.ego;if(typeof buildHarley!=='function')return;const m=buildHarley(),s0=e.s-rnd(40,70),side=Math.random()<0.5?-1:1;return ACT.add({kind:'moto',mesh:m,s:s0,v:e.v+rnd(5,9),hazard:false,keepBehind:400,update(o,dt){o.v=Math.max(o.v,G.ego.v+4);o.s+=o.v*dt;const lane=ACT.lane(o.s),p=ACT.pose(o.s,lane+side*((G.spec.W||1.9)/2+0.9));o.mesh.position.set(p.x,p.y,p.z);o.mesh.rotation.y=p.h;if(o.s>G.ego.s+300)o.dead=true}})},
-  bus(){const G=game,e=G.ego,s0=e.s+rnd(150,260),{g,spec}=bus();let stopT=rnd(8,20);return ACT.add({kind:'bus',mesh:g,s:s0,v:9,r:1.3,gap:8,hazard:true,why:'🚌 Stopped behind a school bus – stop arm out',update(o,dt){stopT-=dt;const stopped=stopT<0&&stopT>-14;if(stopT<-14)stopT=rnd(20,40);o.v=stopped?0:Math.min(11,o.v+1.5*dt);o.s+=o.v*dt;
-    const lane=ACT.lane(o.s),p=ACT.pose(o.s,lane);o.mesh.position.set(p.x,p.y,p.z);o.mesh.rotation.y=p.h;o.mesh.userData.arm.rotation.x=stopped?0:-Math.PI/2;o.hazard=true;if(stopped&&o.s-G.ego.s<70&&o.s>G.ego.s)G.overtakeT=0;if(o.s>G.route.total-20)o.dead=true}})},
-  construction(){const G=game,e=G.ego,s0=e.s+rnd(250,450),len=rnd(120,220),cones=[],lane=ACT.lane(s0);const sign=ACT.sign('ROAD\nWORK\nAHEAD','#ff8c00','#111',1.1,1.1),ps=ACT.pose(s0-120,lane+4.5);sign.position.set(ps.x,ps.y,ps.z);sign.rotation.y=ps.h-Math.PI/2;scene.add(sign);cones.push(sign);
-   for(let d=0;d<len;d+=9){const c=cone(),p=ACT.pose(s0+d,ACT.lane(s0+d)+2.1);c.position.set(p.x,p.y,p.z);scene.add(c);cones.push(c)}
-   const fl=ACT.person('rider',0xff6a00),pf=ACT.pose(s0-6,lane+3.2);fl.position.set(pf.x,pf.y,pf.z);fl.rotation.y=pf.h+Math.PI;const pad=ACT.sign('STOP','#c8102e','#fff',0.5,0.5);pad.scale.setScalar(0.55);pad.position.set(0.3,0,0.35);fl.add(pad);scene.add(fl);cones.push(fl);
-   let holdT=Math.random()<0.6?rnd(6,12):0;return ACT.add({kind:'construction',mesh:null,extra:cones,s:s0+len,hazard:false,update(o,dt){const gap=s0-G.ego.s,inZone=gap<40&&gap>-len;if(gap<60&&gap>0&&holdT>0){capSet('work',Math.max(0,(gap-8)/3));S.msg='👷 Flagger holding traffic – road work';holdT-=dt;pad.children[1].material.map.needsUpdate=false}else if(inZone){capSet('work',25/MPH/1.0*1);S.msg='🚧 Construction zone · 25 mph';pad.visible=false}else capSet('work',null)},onRemove(){capSet('work',null)}})}};
- /* ---------- behaviours on existing traffic ---------- */
- function personalise(a){if(a._pers)return;a._pers=1;const night=game.dark,r=Math.random();if(r<0.1)a.aggro=true;else if(night&&r<0.16)a.drunk=true;a.ph=Math.random()*9}
- addEventListener('keydown',ev=>{if(/^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName)||!game||!game.route)return;if(ev.key==='h'||ev.key==='H'){S.manual=!S.manual;UIX.banner('manBan','top:92px;left:50%;transform:translateX(-50%);background:#1b6ef3e6;color:#fff;padding:6px 14px;border-radius:9px').textContent='🕹 MANUAL · ↑ throttle · ↓ brake · ← → move over · H to hand back';document.getElementById('manBan').style.display=S.manual?'block':'none'}
-  if(S.manual&&/^Arrow/.test(ev.key)){S.keys[ev.key]=true;ev.preventDefault()}});
- addEventListener('keyup',ev=>{delete S.keys[ev.key]});
- MODS.push({id:'driving',
-  start(){S.next={cyclist:rnd(40,120),jaywalker:rnd(60,160),moto:rnd(30,90),bus:rnd(120,300),construction:rnd(120,360),event:rnd(600,1200)};S.manual=false;S.ev=null;capSet('ev2',null);capSet('work',null);const st=ss.value;if(st==='Express'){DRIVE.profile='Assertive';if(!EXPRESS.on)expressToggle()}else{DRIVE.profile=st;if(EXPRESS.on)expressToggle()}},
-  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;S.msg=null;S.passBias=null;const busy=typeof CHASE!=='undefined'&&(CHASE.on);
-   const hw=(NODEINFO.get(G.route.nodes[routeLLnh(e.s)[2]])||{}).hw||'',fwy=/motorway|trunk/.test(hw),city=!fwy&&G.limitMph<=35;
-   for(const k in S.next){S.next[k]-=dt;if(S.next[k]<0&&!busy){const ok={cyclist:city,jaywalker:city&&!G.dark,moto:fwy&&e.v<14,bus:city&&!G.dark,construction:true,event:true}[k];S.next[k]={cyclist:rnd(90,240),jaywalker:rnd(120,300),moto:rnd(40,120),bus:rnd(300,700),construction:rnd(400,900),event:rnd(900,1800)}[k];if(ok){if(k==='event')randomEvent();else SP[k]()}}}
-   /* 1 early exit positioning */
-   const ns=G.nextStep;if(ns&&fwy&&ns.d<1500&&ns.d>80&&/off ramp|fork|exit/.test(ns.type||'')&&/right/.test(ns.mod||'')){S.passBias=S.passBias??1.7;S.msg=S.msg||`↘️ Moving right early for the exit (${fmtDist(ns.d)})`}
-   /* 3 four-way stop & 6 roundabout & 4 unprotected left */
-   let hold=null;const ways=G.agents.filter(a=>a.kind==='way'&&Math.hypot(a.x-e.x,a.z-e.z)<24&&a.v>0.5);
-   if(/stop sign/i.test(G.status||'')&&e.v<0.5&&ways.length){hold=0;S.msg='✋ 4-way stop: waiting for the car that arrived first'}
-   if(ns&&/roundabout|rotary/.test(ns.type||'')&&ns.d<45){hold=Math.min(hold??99,ways.length?(ns.d>12?3:0):15/MPH/1);S.msg=ways.length?'🔄 Yielding to traffic in the roundabout':'🔄 Entering roundabout'}
-   if(ns&&ns.type!=='arrive'&&/left/.test(ns.mod||'')&&!/slight/.test(ns.mod||'')&&ns.d<35&&!routeOnewayAt(e.s)){const onc=G.agents.filter(a=>a.kind==='oncoming'&&a.s>e.s&&a.s-e.s<90&&a.v>2);if(onc.length){hold=Math.min(hold??99,Math.max(0,(ns.d-6)/4));S.msg=`⏳ Waiting for a gap to turn left (${onc.length} oncoming)`}}
-   /* 2 merge courtesy */
-   const fx=Math.cos(e.head),fz=-Math.sin(e.head);for(const a of G.agents){if(a.kind!=='way')continue;const dx=a.x-e.x,dz=a.z-e.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;let dh=(a.head||0)-e.head;dh=Math.atan2(Math.sin(dh),Math.cos(dh));if(f>6&&f<30&&Math.abs(l)<5&&Math.abs(l)>1.8&&Math.abs(dh)<0.6&&a.v>2){hold=Math.min(hold??99,Math.max(a.v-2,e.v-1.5));S.msg='🤝 Easing off to let a car merge in';break}}
-   /* 5 school zones: weekday school hours on 25–35 mph streets */
-   try{const h=tzHour(new Date(G.simTime*1000)),wd=new Date(G.simTime*1000).getUTCDay();if(wd>0&&wd<6&&((h>=7&&h<8.75)||(h>=14&&h<16))&&G.limitMph<=35&&G.limitMph>=25&&(Math.floor(e.s/1500)%4===0)){hold=Math.min(hold??99,20/MPH/1);S.msg=S.msg||'🏫 School zone · 20 mph when children are present'}}catch(err){}
-   /* 13 events */
-   if(S.ev){S.ev.t-=dt;hold=Math.min(hold??99,S.ev.cap);S.msg=S.ev.msg;if(S.ev.kind==='blowout'){S.passBias=2.3;if(S.ev.t<S.ev.T-18){S.ev.cap=0;S.ev.msg='🛞 Tyre blowout – stopped on the shoulder, fitting the spare'}if(S.ev.t<S.ev.T-45){S.ev.cap=45/MPH;S.ev.msg='🛞 Spare fitted – limited to 45 mph'}}if(S.ev.t<0){S.ev=null;window.CAMQ_FAULT=1}}
-   capSet('ev2',hold);
-   /* 11 & 12 human drivers */
-   for(const a of G.agents){if(a.kind!=='route'||a.loose)continue;personalise(a);a.ph+=dt;
-    if(a.drunk){a.off=ACT.lane(a.s)+Math.sin(a.ph*0.7)*1.1}
-    if(a.aggro){const gap=a.s-e.s;if(gap<0&&gap>-25)a.v=Math.max(a.v,e.v+1);if(gap>0&&gap<35&&Math.random()<dt*0.05&&a.v>8){a.v*=0.35;S.msg='⚠️ Car ahead brake-checked us'}a.off=ACT.lane(a.s)+Math.sin(a.ph*0.9)*0.5}}
-   /* 14 style */
-   if(S.passBias!=null&&!S.manual){CHASE.evade=lerp(CHASE.evade||0,S.passBias,Math.min(1,dt*1.5));G.dodgeT=Math.max(G.dodgeT||0,0.25)}},
-  postPlan(dt){const G=game,e=G.ego;if(!S.manual)return;const K=S.keys,acc=K.ArrowUp?4.5:K.ArrowDown?-8:-0.4;e.v=clamp(e.v+acc*dt,0,90);e.acc=acc;if(K.ArrowLeft)CHASE.evade=(CHASE.evade||0)-2.2*dt;if(K.ArrowRight)CHASE.evade=(CHASE.evade||0)+2.2*dt;CHASE.evade=clamp(CHASE.evade||0,-4.5,3);G.dodgeT=0.3;G.status='🕹 Manual control'},
-  preRender(){if(S.msg&&game&&game.route&&!S.manual)game.status=S.msg}});
- function randomEvent(k){const G=game;k=k||['blowout','fade','sensor'][Math.floor(Math.random()*3)];const S2=sensorsOf();
-  if(k==='blowout'){S.ev={kind:k,T:80,t:80,cap:25/MPH,msg:'🛞 Tyre blowout! Slowing and pulling onto the shoulder'};CRASH.shake=0.6}
-  if(k==='fade'){S.ev={kind:k,T:90,t:90,cap:Math.max(20,G.limitMph*0.7)/MPH,msg:'🔥 Brakes fading – driving gently, longer gaps'}}
-  if(k==='sensor'){S.ev={kind:k,T:70,t:70,cap:35/MPH,msg:S2.lidar?'📡 Lidar fault – limping on cameras at 35 mph':'📷 Camera fault – slowing to 35 mph'};window.CAMQ_FAULT=0.4}}
- S.event=randomEvent;S.spawn=SP;
+ const I={nodes:new Map()};window.ISECT=I;
+ const now=()=>game.simTime,pos=a=>a===game.ego?[a.x,a.z]:[a.x??a.mesh.position.x,a.z??a.mesh.position.z],hd=a=>a.head||0;
+ function node(c){let n=I.nodes.get(c.id);if(!n){n={c,q:[],last:-1e9,lastWho:null};I.nodes.set(c.id,n)}return n}
+ function purge(n){const t=now();n.q=n.q.filter(r=>{const a=r.a;if(a.loose||(a!==game.ego&&!game.agents.includes(a)))return false;const [x,z]=pos(a);return Math.hypot(x-n.c.x,z-n.c.z)<30&&t-r.t<90})}
+ I.arrive=(c,a)=>{const n=node(c);if(!n.q.some(r=>r.a===a))n.q.push({a,t:now()});};
+ function rightOf(a,b,c){const [ax,az]=pos(a),[bx,bz]=pos(b);const ha=Math.atan2(-(c.z-az),c.x-ax),hb=Math.atan2(-(c.z-bz),c.x-bx);let d=hb-ha;d=Math.atan2(Math.sin(d),Math.cos(d));return d<-0.4} /* b approaches from a's right */
+ I.mayGo=(c,a)=>{const n=node(c);purge(n);const t=now();if(t-n.last<2.2&&n.lastWho!==a)return false;const me=n.q.find(r=>r.a===a);if(!me)return true;
+  for(const r of n.q){if(r===me)continue;const earlier=r.t<me.t-0.4,tie=Math.abs(r.t-me.t)<=0.4&&rightOf(a,r.a,c);if((earlier||tie)&&!(t-r.t>8&&t-me.t>8&&r.a!==game.ego&&a===game.ego))return false}return true};
+ I.go=(c,a)=>{const n=node(c);n.q=n.q.filter(r=>r.a!==a);n.last=now();n.lastWho=a};
+ I.why=(c,a)=>{const n=node(c);purge(n);const me=n.q.find(r=>r.a===a),ahead=me?n.q.filter(r=>r!==me&&r.t<me.t).length:0;return ahead?`✋ 4-way stop: ${ahead} car${ahead>1?'s':''} arrived first – waiting our turn`:'✋ 4-way stop: letting the car in the box clear'};
+ /* cross-street cars give way to the ride approaching a two-way stop / yield on the main road */
+ let rset=null,rref=null;const routeHas=id=>{if(rref!==game.route){rref=game.route;rset=new Set(game.route.nodes)}return rset.has(id)}; /* ride also faces this control → it's a multi-way stop, the queue decides */
+ const _wh=window.WAY_HOOK;
+ window.WAY_HOOK=(a,p,fx,fz,dt)=>{let v=_wh?_wh(a,p,fx,fz,dt):null;const G=game,e=G.ego,w=a.way;
+  for(let i=0;i<w.nodes.length;i++){const c=CONTROLS.get(w.nodes[i]);if(!c||(c.type!=='stop'&&c.type!=='give_way'))continue;const ds=(w.len[i]-a.s)*a.dir;if(ds<0||ds>30)continue;
+   const dx=c.x-e.x,dz=c.z-e.z,de=Math.hypot(dx,dz),ahead=dx*Math.cos(e.head)-dz*Math.sin(e.head)>0,eta=de/Math.max(1,e.v);if(ahead&&de<Math.max(25,e.v*5)&&eta<5&&!routeHas(c.id)){const hold=Math.max(0,(ds-6)*0.6);v=v==null?hold:Math.min(v,hold)}}
+  return v};
+ MODS.push({id:'isect',start(){I.nodes.clear()}});
+})();
+</script>
+<script>/* mods/31-lanes.js */
+/* (1) Lane choice & early lane changes, (2) merge etiquette. On multi-lane roads the ride now picks a lane:
+   keeps right except to pass, cruises in a middle lane on 3+ lane freeways, passes slower traffic on the left,
+   moves over for tailgaters, and gets into the correct lane well before exits and turns (2 km on freeways,
+   ~350 m in town). Every change is signalled and waits for a safe gap. Route traffic spreads across lanes and
+   changes lanes too. At freeway on-ramps, merging cars appear on the ramp and zipper in; the ride makes room by
+   easing off or moving left. Other packs can block lanes (LANES.block) – construction closures, cyclists. */
+(function(){
+ const L={k:0,tk:0,why:'',chg:0,cool:0,blocks:[],laneW:3.6};window.LANES=L;
+ const ni=s=>NODEINFO.get(game.route.nodes[routeLLnh(clamp(s,0,game.route.total))[2]])||{};
+ L.count=s=>{const n=ni(s);if(n.oneway)return Math.max(1,n.lanes||2);return (n.lanes||2)>=4?Math.floor((n.lanes||4)/2):1};
+ L.block=(s0,s1,k,why)=>{const b={s0,s1,k,why};L.blocks.push(b);return b};L.unblock=b=>{const i=L.blocks.indexOf(b);if(i>=0)L.blocks.splice(i,1)};
+ const blocked=(k,s0,s1)=>L.blocks.find(b=>b.k===k&&b.s1>s0&&b.s0<s1);
+ const latOf=a=>(a.off??1.85)+(a.offAdd||0),egoLat=()=>laneOffsetAt(routeLLnh(game.ego.s)[2])+(window.LANEBIAS||0);
+ function laneOfLat(s,lat){const base=laneOffsetAt(routeLLnh(clamp(s,0,game.route.total))[2]);return Math.round((base-lat)/L.laneW)}
+ function gapOK(k,dir){const G=game,e=G.ego;for(const a of G.agents){if(a.kind!=='route'||a.loose)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;const d=a.s-e.s,need=d>0?8+Math.max(0,e.v-a.v)*1.5:10+Math.max(0,a.v-e.v)*3;if(Math.abs(d)<need)return false}
+  if(window.ACT)for(const o of ACT.list)if(o.kind==='moto'&&Math.abs(o.s-e.s)<25)return false;return true}
+ function upcomingTurn(prep){const G=game,e=G.ego;for(const st of G.route.steps){const d=st.s-e.s;if(d<0)continue;if(d>prep)break;if(st.type==='arrive'||st.type==='depart')continue;const m=st.mod||'';if(/left/.test(m)&&!/slight/.test(m))return {side:-1,d,st};if(/right/.test(m)&&!/slight/.test(m))return {side:1,d,st};if(/off ramp|fork/.test(st.type)&&/slight left/.test(m))return {side:-1,d,st};if(/off ramp|fork/.test(st.type)&&/slight right/.test(m))return {side:1,d,st}}return null}
+ function leadIn(k,range){const G=game,e=G.ego;let best=null;for(const a of G.agents){if(a.kind!=='route'||a.loose||a.s<=e.s||a.s-e.s>range)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;if(!best||a.s<best.s)best=a}return best}
+ /* ---------- merge points: on-ramp links joining the route ---------- */
+ let mergeSeen=new Set(),nodeWays=null,nwT=0;
+ function linkEnds(){if(nodeWays&&performance.now()-nwT<5000)return nodeWays;nwT=performance.now();nodeWays=new Map();for(const w of allWays()){if(!/_link$/.test(w.hw||''))continue;const end=w.nodes[w.nodes.length-1];if(!nodeWays.has(end))nodeWays.set(end,w)}return nodeWays}
+ function spawnMerger(sM){const G=game,e=G.ego;const sp=pickSpec();const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],Math.max(e.s+5,sM-120-Math.random()*60),Math.max(15,e.v*0.9),1);a.off=laneOffsetAt(routeLLnh(a.s)[2]);a.merge={sM,state:'ramp'};a.laneK=-1;G.agents.push(a);return a}
+ MODS.push({id:'lanes',
+  start(){L.k=0;L.tk=0;L.blocks=[];mergeSeen=new Set();window.LANEBIAS=0;window.SIGOVR=0},
+  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;const n=L.count(e.s);L.cool-=dt;
+   /* traffic lanes: spread new route cars across lanes; they pass slower cars; keep offsets inside the road */
+   for(const a of G.agents){if(a.kind==='route'&&!a.loose){const na=L.count(a.s);if(a.laneK==null)a.laneK=Math.floor(Math.random()*na);
+     if(a.merge){const m=a.merge,d=m.sM-a.s;if(m.state==='ramp'){a.laneK=-1;if(d<70){const ok=!G.agents.some(b=>b!==a&&b.kind==='route'&&(b.laneK||0)===0&&Math.abs(b.s-a.s)<9)&&!(L.k===0&&Math.abs(e.s-a.s)<9);if(ok){m.state='in';a.laneK=0}else if(d<15)a.v=Math.max(0,a.v-4*dt)}}}
+     else if(a.laneK>na-1)a.laneK=na-1;
+     if(!a.merge&&na>1&&Math.random()<dt*0.03){const lead=G.agents.find(b=>b!==a&&b.kind==='route'&&b.laneK===a.laneK&&b.s>a.s&&b.s-a.s<40&&b.v<a.v-2);if(lead){const tk=a.laneK+1<na?a.laneK+1:a.laneK-1;if(tk>=0&&!G.agents.some(b=>b!==a&&b.kind==='route'&&b.laneK===tk&&Math.abs(b.s-a.s)<14)&&!(L.k===tk&&Math.abs(e.s-a.s)<14))a.laneK=tk}}
+     const tgt=-a.laneK*L.laneW+(a.wobble||0);a.offAdd=a.offAdd==null?tgt:lerp(a.offAdd,tgt,Math.min(1,dt*0.9))}
+    else if(a.kind==='oncoming')a.offAdd=(a.wobble||0)}
+   /* merge points ahead on freeways */
+   const hw=(ni(e.s).hw||'');if(/motorway|trunk/.test(hw)){const ends=linkEnds(),R=G.route,i0=routeLLnh(e.s)[2];for(let i=i0;i<R.nodes.length&&R.cum[i]-e.s<600;i++){const id=R.nodes[i];if(R.cum[i]-e.s<200||mergeSeen.has(id))continue;const w=ends.get(id);if(w&&!R.nodes.includes(w.nodes[0])){mergeSeen.add(id);if(Math.random()<0.8)spawnMerger(R.cum[i])}}}
+   /* ride lane choice */
+   if(n<=1){L.tk=0;L.k=0;L.why='';window.LANEBIAS=lerp(window.LANEBIAS||0,0,Math.min(1,dt*0.8));window.SIGOVR=0;return}
+   const fwy=/motorway|trunk/.test(hw),turn=upcomingTurn(fwy?2000:350);let want=fwy&&n>=3?1:0,why='';
+   const cur=L.k,lead=leadIn(cur,90),myV=Math.min(speedLimitAt(routeLLnh(e.s)[2])/MPH,e.v+10);
+   if(lead&&lead.v<myV-4&&lead.s-e.s<70&&cur+1<n&&!(turn&&turn.side>0&&turn.d<600)){want=cur+1;why=`Passing slower traffic (${Math.round(lead.v*MPH)} mph)`}
+   else if(cur>want&&!leadIn(cur-1,60)){why='Keeping right except to pass'}else if(cur>want)want=cur;
+   const tg=G.agents.find(a=>a.kind==='route'&&a.aggro&&a.s<e.s&&e.s-a.s<12&&laneOfLat(a.s,latOf(a))===cur);if(tg){L.tailT=(L.tailT||0)+dt;if(L.tailT>3&&cur>0){want=cur-1;why='Moving over to let a tailgater past'}}else L.tailT=0;
+   if(window.ACT)for(const o of ACT.list)if(o.kind==='merge-room'){}
+   const mg=G.agents.find(a=>a.merge&&a.merge.state==='ramp'&&Math.abs(a.s-e.s)<45&&a.merge.sM-e.s>-20);if(mg&&cur===0){if(n>1&&gapOK(1)){want=Math.max(want,1);why='Moving left to make room for merging traffic'}else L.letIn=mg}else L.letIn=null;
+   if(turn){want=turn.side>0?0:n-1;why=`Getting into the ${turn.side>0?'right':'left'} lane for the ${turn.st.type==='off ramp'?'exit':'turn'} in ${fmtDist(turn.d)}`}
+   const ahead=L.count(e.s+Math.max(120,e.v*8));if(want>ahead-1){want=ahead-1;why='Lane ends ahead – merging right'}
+   for(let k=want,step=0;step<n;step++){if(!blocked(k,e.s-10,e.s+250))break;const b=blocked(k,e.s-10,e.s+250);why=b.why||'Lane closed ahead';k=k>0?k-1:k+1;if(k<0||k>=n)break;want=k}
+   L.tk=clamp(want,0,n-1);L.why=why;
+   if(L.tk!==L.k&&L.cool<=0&&!(window.DRV&&DRV.manual)){const nk=L.k+Math.sign(L.tk-L.k);if(gapOK(nk)){L.k=nk;L.cool=4;L.chg=3}else if(why)L.why=why+' · waiting for a gap'}
+   const tgt=-L.k*L.laneW;window.LANEBIAS=lerp(window.LANEBIAS||0,tgt,Math.min(1,dt*0.7));L.chg-=dt;window.SIGOVR=L.chg>0||L.tk!==L.k?(L.tk>L.k||L.chg>0&&tgt<(window.LANEBIAS||0)-0.3?-1:1):0;if(Math.abs(tgt-window.LANEBIAS)<0.3&&L.tk===L.k)window.SIGOVR=0},
+  preRender(){if(L.why&&game&&game.route&&(L.tk!==L.k||Math.abs(-L.k*L.laneW-(window.LANEBIAS||0))>0.4)&&!/🛡|✋|🚸|🚌|👷/.test(game.status||''))game.status='↔️ '+L.why}});
+ /* courtesy for mergers + stay out of the ramp car's way */
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!isEgo||!L.letIn)return null;const m=L.letIn,gap=m.s-a.s-(m.spec.L+a.spec.L)/2-6;if(gap>-6)return {v:allow(Math.max(0,m.v-1),Math.max(0,gap)),reason:'🤝 Easing off to let a car merge in'};return null});
 })();
 </script>
 <script>/* mods/90-selftest.js */
