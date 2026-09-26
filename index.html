@@ -4300,6 +4300,20 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  setTimeout(()=>apply(cur),0);
 })();
 </script>
+<script>/* mods/04-scores.js */
+/* Driving-skill scores on the start-screen car cards: at-fault crashes per 100 km in normal mode, measured by
+   the headless benchmark (random traffic, 45 s episodes on the default trip). Lower is better. */
+(function(){
+ const SCORES={}; /* filled from the benchmark run */
+ const grade=v=>v==null?null:v<=1?['A+','#3fd18a']:v<=4?['A','#7bd88f']:v<=10?['B','#c9e265']:v<=25?['C','#ffd166']:v<=60?['D','#ff9f43']:['F','#ff5a5a'];
+ const _rc=window.renderCars;
+ window.renderCars=function(){_rc.apply(this,arguments);const S=Object.assign({},SCORES,UIX.load('carScores',{}));
+  [...document.querySelectorAll('#cars .car')].forEach((d,i)=>{const c=CARS[i],s=c&&S[c.id];if(!s||s.per100==null)return;const g=grade(s.per100);const b=document.createElement('span');
+   b.textContent=`${g[0]} · ${s.per100}/100 km`;b.title=`Benchmark: ${s.primary} at-fault crashes in ${s.km} km of random traffic (normal mode). Lower is better.`;b.style.cssText=`display:inline-block;margin-top:3px;font:700 10px system-ui;color:#0b0f14;background:${g[1]};border-radius:6px;padding:1px 5px`;d.appendChild(b)})};
+ setTimeout(()=>{try{renderCars()}catch(e){}},0);
+ MODS.push({id:'scores'});
+})();
+</script>
 <script>/* mods/05-replay.js */
 /* Crash replay: keeps the last 15 s of every nearby vehicle's pose; after a crash involving your car the ride
    pauses and replays it in slow motion from a trackside camera, perception overlay still up. Esc / Skip ends it. */
