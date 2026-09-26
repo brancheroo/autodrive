@@ -4470,7 +4470,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  MODS.push({id:'night',
   start(){L=null},
   frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;if(!L||L[0].parent!==G.ego.mesh)make();const on=G.dark||WX.vis<300;for(const s of L)s.intensity+=((on?(G.dark?3.2:1.6):0)-s.intensity)*0.1;
-   flick-=1/60;if(G.dark&&flick<0){flick=4+Math.random()*6;for(const k in FACMAT){const t=FACMAT[k].emissiveMap;if(t){t.offset.x=Math.floor(Math.random()*4)/4*0.0;FACMAT[k].emissiveIntensity=(k==='store'?1.1:0.85)*(0.8+Math.random()*0.35)}}}}});
+   flick-=1/60;if(G.dark&&flick<0){flick=4+Math.random()*6;for(const k in FACMAT){FACMAT[k].emissiveIntensity=(k==='store'?1.1:0.85)*(0.8+Math.random()*0.35)}}}});
 })();
 </script>
 <script>/* mods/12-parked.js */
@@ -4489,7 +4489,87 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
    for(const q of PARKQ){if(q.used||q.bad)continue;if(Math.abs(q.x-e.x)>R||Math.abs(q.z-e.z)>R)continue;
     if(q.r==null)q.r=Math.random();if(q.r>0.55){q.bad=1;continue}if((typeof bAt==='function'&&bAt(q.x,q.z))||nearRoute(q.x,q.z)){q.bad=1;continue}
     let p=free.pop();if(!p){if(POOL.length>=MAX)break;const t=T[POOL.length%T.length];p={m:t.m.clone(),sp:t.sp};scene.add(p.m);POOL.push(p)}
-    p.q=q;q.used=true;p.m.visible=true;const y=typeof groundY==='function'?groundY(q.x,q.z):q.y;p.m.position.set(q.x,(isFinite(y)?y:q.y)+0.0,q.z);p.m.rotation.set(0,Math.atan2(-q.fz,q.fx)+(q.r<0.1?Math.PI:0),0)}}});
+    p.q=q;q.used=true;p.m.visible=true;p.m.position.set(q.x,q.y-0.025,q.z);p.m.rotation.set(0,Math.atan2(-q.fz,q.fx)+(q.r<0.1?Math.PI:0),0)}}});
+})();
+</script>
+<script>/* mods/15-ghost.js */
+/* Time trial + ghost car: every run is recorded (distance along the route vs time). Next time you drive the
+   same trip, a translucent ghost of your best run – or the best run of any car you pick – drives alongside,
+   with a live ± seconds split. Race the Predictacar's ghost in the Yugone, or vice versa. */
+(function(){
+ const GH={rec:[],ghost:null,mesh:null,split:null,lastT:0};window.GHOST=GH;
+ const key=()=>{const G=game;return 'ghost:'+[G.A.lat,G.A.lon,G.B.lat,G.B.lon].map(v=>(+v).toFixed(3)).join(',')};
+ const all=()=>UIX.load(key(),{});
+ const better=(a,b)=>!b||(a.done&&!b.done)||(a.done===b.done&&(a.done?a.T<b.T:a.S>b.S));
+ function save(){const G=game;if(!G||!G.route||GH.rec.length<5)return;const last=GH.rec[GH.rec.length-1],run={car:G.spec.id,name:G.spec.name,color:G.color,T:last[0],S:last[1],done:!!G.arrived,at:Date.now(),tr:GH.rec};
+  const A=all();if(better(run,A[run.car])){A[run.car]=run;if(better(run,A._best))A._best=run;try{localStorage.setItem(key(),JSON.stringify(A))}catch(e){for(const k in A)if(k!=='_best'&&k!==run.car)delete A[k];try{localStorage.setItem(key(),JSON.stringify(A))}catch(_){}}}}
+ const at=(tr,t)=>{let lo=0,hi=tr.length-1;if(t<=tr[0][0])return tr[0][1];if(t>=tr[hi][0])return null;while(hi-lo>1){const m=(lo+hi)>>1;if(tr[m][0]<t)lo=m;else hi=m}const a=tr[lo],b=tr[hi];return a[1]+(b[1]-a[1])*(t-a[0])/((b[0]-a[0])||1)};
+ const tAt=(tr,s)=>{let lo=0,hi=tr.length-1;if(s>tr[hi][1])return null;while(hi-lo>1){const m=(lo+hi)>>1;if(tr[m][1]<s)lo=m;else hi=m}const a=tr[lo],b=tr[hi];return a[0]+(b[0]-a[0])*(s-a[1])/((b[1]-a[1])||1)};
+ const sel=UIX.section('Time trial',`<select id="ghostSel" style="width:100%;${UIX.sel}"><option value="best">Race my best run on this trip (ghost car)</option><option value="off">No ghost</option>${CARS.map(c=>`<option value="${c.id}">Race the best ${c.name} run</option>`).join('')}</select><div id="ghostInfo" style="font-size:11px;color:var(--dim);margin-top:3px">Each run is recorded; a ghost appears once you have driven this trip before.</div>`);
+ {const s=document.getElementById('ghostSel');s.value=UIX.load('ghostPick','best');s.onchange=()=>UIX.save('ghostPick',s.value)}
+ const box=UIX.banner('ghostBox','right:8px;top:48px;font:11px ui-monospace,monospace;color:#d8c8ff;background:#0008;padding:2px 6px;border-radius:6px;display:none');
+ function ghostMesh(run){const spec=CARS.find(c=>c.id===run.car)||game.spec,g=buildCar(spec,run.color||'#88aaff');g.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=0.28;o.material.depthWrite=false;o.castShadow=false;o.receiveShadow=false}if(o.isLight)o.visible=false});g.userData.spec=spec;return g}
+ MODS.push({id:'ghost',
+  start(){GH.rec=[];GH.lastT=0;if(GH.mesh){scene.remove(GH.mesh);GH.mesh=null}const pick=document.getElementById('ghostSel').value,A=all();GH.ghost=pick==='off'?null:pick==='best'?A._best||null:A[pick]||null;
+   if(GH.ghost){GH.mesh=ghostMesh(GH.ghost);scene.add(GH.mesh)}box.style.display='block';box.textContent=GH.ghost?`👻 vs ${GH.ghost.name} ${GH.ghost.done?'best '+fmtT(GH.ghost.T):'(partial run)'}`:'👻 recording your first run on this trip'},
+  sim(dt){const G=game,t=G.simTime-G.t0;if(t-GH.lastT>=1){GH.lastT=t;GH.rec.push([+t.toFixed(1),Math.round(G.ego.s)]);if(GH.rec.length%60===0)save()}},
+  frame(){const G=game;if(!G||!G.route||!G.ego||!GH.mesh)return;const t=G.simTime-G.t0,s=at(GH.ghost.tr,t);if(s==null){GH.mesh.visible=false}else{GH.mesh.visible=true;const lane=laneOffsetAt(routeLLnh(s)[2])+(Math.abs(s-G.ego.s)<12?-2.2:0),p=routeXZ(s,lane);GH.mesh.position.set(p[0],routeY(s,lane),p[1]);GH.mesh.rotation.set(0,Math.atan2(-p[3],p[2]),0)}
+   const gt=tAt(GH.ghost.tr,G.ego.s);if(gt!=null){const d=t-gt;box.textContent=`👻 ${GH.ghost.name}: ${d>0?'+':'−'}${Math.abs(d).toFixed(1)} s ${d>0?'behind':'ahead'}`;box.style.color=d>0?'#ffb3b3':'#b9f5c6'}},
+  arrive(){save();const gt=GH.ghost&&GH.ghost.done?GH.ghost.T:null,t=game.simTime-game.t0,a=document.getElementById('arrTxt');setTimeout(()=>{if(a)a.textContent+=` Trip time ${fmtT(t)}${gt?` (${t<gt?'new best by ':'best still '}${fmtT(Math.abs(t-gt))}${t<gt?'':' faster'})`:''}.`},0)}});
+ function fmtT(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')}
+ addEventListener('beforeunload',()=>{try{save()}catch(e){}});
+})();
+</script>
+<script>/* mods/16-delivery.js */
+/* Delivery mode: list stops (one address per line, optional "by 3:30pm"). The route chains them in the order
+   given, the car pulls up and waits 25 s at each drop-off, and each stop is scored on time or late. */
+(function(){
+ const D={stops:[],text:''};window.DELIV=D;
+ UIX.section('Delivery run (optional)',`<textarea id="delivTxt" rows="3" placeholder="One stop per line, e.g.&#10;Ferry Building, San Francisco by 2:30pm&#10;Union Square, San Francisco" style="width:100%;box-sizing:border-box;${UIX.sel};resize:vertical;font:12px system-ui"></textarea><div id="delivMsg" style="font-size:11px;color:var(--dim)">Stops are visited in the order listed before the destination.</div>`);
+ const ta=document.getElementById('delivTxt');ta.value=UIX.load('delivTxt','');ta.onchange=()=>UIX.save('delivTxt',ta.value);
+ const parse=l=>{const m=l.match(/^(.*?)(?:\s+by\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?\s*$/i);let h=m[2]!=null?+m[2]:null;if(h!=null&&m[4]){h=h%12+(m[4].toLowerCase()==='pm'?12:0)}return {q:m[1].trim(),h,mi:m[3]?+m[3]:0}};
+ const _get=window.getRoute;
+ window.getRoute=async function(a,b,via=[],pick=0,opt={}){const lines=(ta.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  if(!lines.length||opt.noDeliv||a!==addrA||b!==addrB){return _get(a,b,via,pick,opt)}
+  if(D.text!==ta.value||!D.stops.length){D.stops=[];const msg=document.getElementById('loadTxt');for(const l of lines){const p=parse(l);if(msg)msg.textContent=`Finding delivery stop “${p.q}”…`;const r=(await geocode(p.q))[0];if(!r)throw new Error(`Delivery stop not found: ${p.q}`);D.stops.push({...r,name:p.q,h:p.h,mi:p.mi})}D.text=ta.value}
+  let v=[...D.stops];if(via&&via.length){const base=await _get(a,b,D.stops,0,opt);const pos=o=>projectOnRoute(base,o.lat,o.lon).s;v=[...D.stops,...via].sort((x,y)=>pos(x)-pos(y))}
+  return _get(a,b,v,pick,opt)};
+ const panel=UIX.banner('delivBox','left:8px;top:120px;font:12px system-ui;color:#e8eef5;background:#0e141dd9;border:1px solid #2a3a52;padding:6px 9px;border-radius:9px;display:none;max-width:260px;line-height:1.45');
+ const clock=t=>{const G=game;try{return new Intl.DateTimeFormat('en-US',{timeZone:G.tz,hour:'numeric',minute:'2-digit'}).format(new Date(t*1000))}catch(e){return ''}};
+ function deadline(st){const G=game;if(st.h==null)return null;const day=new Intl.DateTimeFormat('en-CA',{timeZone:G.tz}).format(new Date(G.t0*1000));let t=zonedToUtc(`${day}T${String(st.h).padStart(2,'0')}:${String(st.mi).padStart(2,'0')}`,G.tz)/1000;if(t<G.t0-3600)t+=86400;return t}
+ function draw(){const G=game;panel.innerHTML='<b>📦 Deliveries</b><br>'+D.run.map(s=>`${s.done?(s.late>0?'🔴':'🟢'):s===D.cur?'🚚':'⬜'} ${s.name.slice(0,28)}${s.dl?` <span style="opacity:.7">by ${clock(s.dl)}</span>`:''}${s.done?` <span style="opacity:.8">${s.late>0?Math.round(s.late/60)+' min late':'on time'}</span>`:''}`).join('<br>')}
+ MODS.push({id:'delivery',
+  start(){const G=game;D.run=[];panel.style.display='none';if(!D.stops.length||!(ta.value||'').trim())return;for(const st of D.stops){D.run.push({...st,rs:projectOnRoute(G.route,st.lat,st.lon).s,dl:deadline(st),done:false})}D.run.sort((a,b)=>a.rs-b.rs);D.cur=D.run[0];panel.style.display='block';draw()},
+  sim(dt){const G=game,e=G.ego,c=D.cur;if(!c){capSet('deliv',null);return}const gap=c.rs-e.s;
+   if(c.hold!=null){c.hold-=dt;capSet('deliv',0);if(c.hold<=0){c.done=true;c.hold=null;const i=D.run.indexOf(c);D.cur=D.run[i+1]||null;capSet('deliv',null);draw()}return}
+   if(gap<90)capSet('deliv',Math.max(0,Math.sqrt(Math.max(0,gap-2)*2.5)));else capSet('deliv',null);
+   if(gap<4&&e.v<0.6||gap<-8){c.hold=25;c.late=c.dl?G.simTime-c.dl:0;D.msg=`📦 Delivering to ${c.name}${c.dl?(c.late>0?` · ${Math.round(c.late/60)} min late`:' · on time'):''}`;draw()}},
+  preRender(){if(D.cur&&D.cur.hold!=null&&game&&game.route)game.status=D.msg},
+  arrive(){if(!D.run||!D.run.length)return;const ok=D.run.filter(s=>s.done&&!(s.late>0)).length,a=document.getElementById('arrTxt');setTimeout(()=>{if(a)a.textContent+=` Deliveries: ${D.run.filter(s=>s.done).length}/${D.run.length} made, ${ok} on time.`},0)}});
+})();
+</script>
+<script>/* mods/17-share.js */
+/* Shareable trips: 🔗 copies a link that encodes start, destination, car, paint, outfit, weather, delivery stops
+   and ghost choice. Opening the link pre-fills the start screen. */
+(function(){
+ const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+ const dec=s=>JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
+ const pick=o=>o&&{label:o.label,short:o.short,lat:+(+o.lat).toFixed(5),lon:+(+o.lon).toFixed(5)};
+ function link(){const g=id=>{const e=document.getElementById(id);return e?e.value:undefined};
+  return location.origin+location.pathname+'#trip='+enc({v:1,a:pick(addrA),b:pick(addrB),car:selCar.id,col:selColor,rider:window.RIDER,rx:window.RIDERX,wx:g('wxSel'),deliv:g('delivTxt'),ghost:g('ghostSel')})}
+ async function share(btn){const u=link();let ok=false;try{await navigator.clipboard.writeText(u);ok=true}catch(e){}if(!ok)prompt('Copy this link:',u);if(btn){const t=btn.textContent;btn.textContent='✓ Link copied';setTimeout(()=>btn.textContent=t,1800)}}
+ const b=document.createElement('button');b.textContent='🔗 Copy shareable trip link';b.style.cssText='width:100%;margin:6px 0;padding:8px;border-radius:8px;border:1px solid var(--line);background:#0e141d;color:var(--text);cursor:pointer';b.onclick=()=>share(b);document.getElementById('go').after(b);
+ function load(){const m=location.hash.match(/#trip=([\w-]+)/);if(!m)return;let T;try{T=dec(m[1])}catch(e){return}
+  const set=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null){e.value=v;e.dispatchEvent(new Event('change'))}};
+  if(T.a&&T.b){addrA=T.a;addrB=T.b;$('aStart').value=T.a.label;$('aEnd').value=T.b.label;$('aStart').classList.add('ok');$('aEnd').classList.add('ok')}
+  const c=CARS.find(c=>c.id===T.car);if(c){selCar=c;selColor=T.col||c.colors[0][1]}
+  if(T.rider&&window.RIDER){Object.assign(RIDER,T.rider);try{localStorage.setItem('rider',JSON.stringify(RIDER))}catch(e){}if(typeof riderInit==='function')riderInit()}
+  if(T.rx&&window.RIDERX){Object.assign(RIDERX,T.rx);UIX.save('riderX',RIDERX);set('rdGlass',T.rx.glasses);set('rdHair',T.rx.hair);set('rdHairCol',T.rx.hairCol);set('rdBeard',T.rx.beard)}
+  set('wxSel',T.wx);set('delivTxt',T.deliv);set('ghostSel',T.ghost);
+  try{renderCars();renderInfo();refreshShowcar();socPreview()}catch(e){}checkGo();
+  const n=document.createElement('div');n.textContent=`Trip loaded from a shared link: ${T.a&&T.a.short} → ${T.b&&T.b.short} in the ${c?c.name:'car'}`;n.style.cssText='margin:6px 0;padding:7px;border-radius:8px;background:#12304a;color:#cfe3ff;font-size:12px';document.getElementById('go').before(n)}
+ setTimeout(load,50);
+ MODS.push({id:'share',start(){UIX.btn('shareBtn','🔗','Copy a link to this trip',function(){share(this)})}});
 })();
 </script>
 <script>/* mods/20-rider.js */
@@ -4598,6 +4678,25 @@ function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userDa
    for(const o of r.userData.hideIn||[])o.visible=!o.userData.keepHidden;
    const h=game.ego.head+PH.a;camera.position.set(p.x+Math.cos(h)*PH.d*Math.cos(PH.el),p.y+Math.sin(PH.el)*PH.d+0.1,p.z-Math.sin(h)*PH.d*Math.cos(PH.el));camera.lookAt(p.x,p.y-0.15,p.z);camera.fov=40;camera.updateProjectionMatrix();
    if(m.userData.cab)m.userData.cab.visible=true;if(m.userData.body)m.userData.body.visible=true;if(m.userData.interior)m.userData.interior.visible=true}});
+})();
+</script>
+<script>/* mods/90-selftest.js */
+/* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
+   a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
+   stored in localStorage 'selftest' and shown in an overlay. The first car in the queue is chosen after reload. */
+(function(){
+ const K='selftestQ',errs=[];addEventListener('error',e=>errs.push(String(e.message)));
+ const wait=ms=>new Promise(r=>setTimeout(r,ms));
+ async function one(id){const c=CARS.find(c=>c.id===id);[...document.querySelectorAll('#cars .car')].find(d=>d.querySelector('b').textContent===c.name).click();await wait(300);document.getElementById('go').click();
+  const t0=performance.now();let st='timeout';while(performance.now()-t0<120000){await wait(1000);if(game&&game.route&&game.ego&&game.ego.mesh){const a=lastT,s=game.simTime;await wait(6000);const alive=lastT!==a&&game.simTime>s;st=alive?(game.status||game.ego.v>0.3?'pass':'no-status'):'loop-stopped';break}}
+  return {car:c.name,result:st,sec:Math.round((performance.now()-t0)/1000),errors:[...errs,...Object.keys(MODERR)].slice(0,4)}}
+ async function next(){const Q=UIX.load(K,null);if(!Q||!Q.todo.length)return;const id=Q.todo.shift();UIX.save(K,Q);const r=await one(id);Q.res.push(r);if(!Q.todo.length){UIX.save('selftest',{at:Date.now(),res:Q.res});localStorage.removeItem(K);show(Q.res)}else UIX.save(K,Q);if(Q.todo.length)location.reload()}
+ function show(res){const d=UIX.banner('stBox','inset:40px;overflow:auto;background:#0e141df2;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:16px;pointer-events:auto;font:13px system-ui');const bad=res.filter(r=>r.result!=='pass').length;
+  d.innerHTML=`<b style="font-size:16px">Self-test: ${res.length-bad}/${res.length} cars pass</b> <button onclick="this.parentElement.remove()" style="float:right">Close</button><table style="margin-top:10px;border-collapse:collapse;width:100%">${res.map(r=>`<tr style="border-top:1px solid #2a3a52"><td style="padding:4px">${r.result==='pass'?'✅':'❌'} ${r.car}</td><td>${r.result}</td><td>${r.sec} s</td><td style="color:#ff9a9a">${r.errors.join(' | ')}</td></tr>`).join('')}</table>`}
+ window.SELFTEST={run(ids){UIX.save(K,{todo:ids||CARS.map(c=>c.id),res:[]});location.reload()},last:()=>UIX.load('selftest',null),show};
+ if(/[?&]selftest/.test(location.search)&&!UIX.load(K,null))SELFTEST.run();
+ else if(UIX.load(K,null))setTimeout(next,1500);
+ MODS.push({id:'selftest'});
 })();
 </script>
 <!--/mods-->
