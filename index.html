@@ -1429,8 +1429,8 @@ function buildCar(spec,colorHex,opts={}){
   const md0=MODEL[spec.id]||{},ic=(md0.int||{}),trimM=new THREE.MeshStandardMaterial({color:ic.dash||0x1c1d20,roughness:0.85,side:THREE.DoubleSide}),seatM=new THREE.MeshStandardMaterial({color:ic.seat||0x2a2a2d,roughness:0.9}),flM=new THREE.MeshStandardMaterial({color:0x151518,roughness:1,side:THREE.DoubleSide});
   const uA=P.sh.roofR+0.015,uB=P.sh.cowl-0.01,xr=P.xOf(uA),xf=P.xOf(uB),um=(uA+uB)/2,bl=P.belt(um),fl=P.bottom(um)+0.3,hw=P.half(um)*0.9,len=Math.abs(xf-xr),cx=(xf+xr)/2,T=new THREE.Group();g.add(T);g.userData.tub=T;
   const bx=(w,h,d,m,x,y,z)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);T.add(o);return o};
-  bx(len,0.03,hw*2,flM,cx,fl,0);for(const sd of [1,-1])bx(len,bl-fl,0.03,trimM,cx,(bl+fl)/2,sd*hw);bx(0.03,bl-fl,hw*2,trimM,Math.min(xr,xf)+0.02,(bl+fl)/2,0);
-  const front=Math.max(xr,xf);bx(0.5,0.22,hw*2,trimM,front-0.25,bl-0.1,0);
+  bx(len,0.03,hw*2,flM,cx,fl,0);for(const sd of [1,-1])bx(len,bl-fl,0.03,trimM,cx,(bl+fl)/2,sd*hw);if(!opts.interior)bx(0.03,bl-fl,hw*2,trimM,Math.min(xr,xf)+0.02,(bl+fl)/2,0);
+  const front=Math.max(xr,xf);if(!opts.interior)bx(0.5,0.22,hw*2,trimM,front-0.25,bl-0.1,0); /* the full interior brings its own dash */
   if(!opts.interior&&spec.style!=='pod'){const e0=eyePos(spec),dz=spec.W*0.2,sx=e0.x+0.38-0.28,rx2=e0.x-0.6-0.28;
    for(const z of [dz,-dz]){bx(0.5,0.1,0.5,seatM,sx+0.18,fl+0.28,z);const bk=bx(0.1,0.62,0.48,seatM,sx-0.06,fl+0.62,z);bk.rotation.z=0.22;bx(0.1,0.16,0.26,seatM,sx-0.14,fl+1.0,z)}
    if(rx2-0.3>Math.min(xr,xf)){bx(0.5,0.1,hw*1.8,seatM,rx2+0.18,fl+0.28,0);const rb=bx(0.1,0.6,hw*1.8,seatM,rx2-0.06,fl+0.6,0);rb.rotation.z=0.2}
