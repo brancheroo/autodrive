@@ -599,9 +599,13 @@ function markRoad(t,hw,pts,w,lanes,oneway,y,bY,bW){
  if(cL==='lane')every(80,q=>decal('BIKE',q.x+q.fz*(w/2-0.85),q.z-q.fx*(w/2-0.85),-q.fx,-q.fz,1.8,1.1,0.03));
  if(/shared_lane/.test(cyc+(t['cycleway:right']||'')+(t['cycleway:both']||'')))every(60,q=>decal('SHARROW',q.x-q.fz*(w/2-1.5),q.z+q.fx*(w/2-1.5),q.fx,q.fz,2.4,1.2,0.03));
  // red bus-only lanes (SF-style) with BUS ONLY every ~120 m
- const bus=/lane/.test((t.busway||'')+(t['busway:right']||'')+(t['busway:both']||''))||/designated/.test(t['bus:lanes']||t['bus:lanes:forward']||t['psv:lanes']||t['psv:lanes:forward']||'');
- if(bus&&MK.red){const busL=(t['bus:lanes']||t['bus:lanes:forward']||t['psv:lanes']||t['psv:lanes:forward']||'').split('|');let idx=busL.lastIndexOf('designated');if(idx<0)idx=nF-1;const off=c0+(idx+0.5)*3.6;
-  ribbon(MK.red,pts,3.2,my-0.005,off);every(120,q=>{decal('BUS ONLY',q.x-q.fz*off,q.z+q.fx*off,q.fx,q.fz,4.6,2.6,0.03)})}
+ // red bus-only lanes (SF-style) + BUS ONLY every ~120 m: busway=*, bus:lanes / psv:lanes, lanes:bus / lanes:psv counts (rightmost lanes), bus=designated
+ if(MK.red){const nBusF=+(t['lanes:bus:forward']||t['lanes:psv:forward']||0)||(oneway||!t['lanes:bus:backward']?+(t['lanes:bus']||t['lanes:psv']||0):0)||(/lane/.test((t.busway||'')+(t['busway:right']||'')+(t['busway:both']||''))||t.bus==='designated'&&+t.lanes>=2?1:0),
+   nBusB=oneway?0:(+(t['lanes:bus:backward']||t['lanes:psv:backward']||0)||(/lane/.test((t['busway:left']||'')+(t['busway:both']||''))?1:0));
+  const busL=(t['bus:lanes']||t['bus:lanes:forward']||t['psv:lanes']||t['psv:lanes:forward']||'').split('|');const idxs=[];busL.forEach((v,k)=>{if(v==='designated')idxs.push(k)});
+  const paint=(off,dir)=>{ribbon(MK.red,pts,3.2,my-0.005,off);every(120,q=>{const fx=dir*q.fx,fz=dir*q.fz;decal('BUS ONLY',q.x-q.fz*off,q.z+q.fx*off,fx,fz,4.6,2.6,0.03)})};
+  if(idxs.length)for(const k of idxs)paint(c0+(k+0.5)*3.6,1);else for(let k=0;k<Math.min(nBusF,nF);k++)paint(c0+(nF-k-0.5)*3.6,1);
+  for(let k=0;k<Math.min(nBusB,nB);k++)paint(-(c0+(nB-k-0.5)*3.6),-1)}
  // parallel parking lanes: T-marks every 6.1 m along the stall line
  for(const [side,sg] of [['right',1],['left',-1]]){const pk=t['parking:'+side]||t['parking:both']||t['parking:lane:'+side]||t['parking:lane:both']||'';if(!/lane|parallel|on_street/.test(pk)||(oneway&&sg<0&&!t['parking:left']&&!t['parking:lane:left']))continue;
   const off=sg*(w/2-2.3);ribbon(bW,pts,0.1,my,off);every(6.1,q=>{const ox=q.x-q.fz*off,oz=q.z+q.fx*off;ribbon(bW,[[ox+q.fz*sg*0.5,oz-q.fx*sg*0.5],[ox-q.fz*sg*0.5,oz+q.fx*sg*0.5]],0.1,0.028)})}
