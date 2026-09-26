@@ -256,10 +256,10 @@ const canvas=$('view');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,logarithmicDepthBuffer:true});
 // quality tier from device capability; dynamic resolution keeps frame rate ≥ ~50 fps
 const HIGH=(navigator.deviceMemory||8)>=8&&(navigator.hardwareConcurrency||8)>=8&&renderer.capabilities.maxTextureSize>=8192;
-const Q={maxPR:Math.min(devicePixelRatio,HIGH?2:1.5),pr:Math.min(devicePixelRatio,HIGH?2:1.5),fps:60,t:0};
+const Q={maxPR:Math.min(devicePixelRatio,HIGH?2:1.5),minPR:Math.min(devicePixelRatio,1),pr:Math.min(devicePixelRatio,HIGH?2:1.5),fps:60,t:0};
 renderer.setPixelRatio(Q.pr);
 function adaptQuality(rdt){Q.fps=lerp(Q.fps,1/Math.max(rdt,1e-3),0.05);Q.t+=rdt;if(Q.t<1.5)return;Q.t=0;
- if(Q.fps<48&&Q.pr>0.75){Q.pr=Math.max(0.75,Q.pr-0.25);renderer.setPixelRatio(Q.pr);resize()}
+ if(Q.fps<48&&Q.pr>Q.minPR){Q.pr=Math.max(Q.minPR,Q.pr-0.25); /* never below native 1:1 pixels */renderer.setPixelRatio(Q.pr);resize()}
  else if(Q.fps>58&&Q.pr<Q.maxPR){Q.pr=Math.min(Q.maxPR,Q.pr+0.125);renderer.setPixelRatio(Q.pr);resize()}}
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputEncoding=THREE.sRGBEncoding;
@@ -361,7 +361,28 @@ const MAT={
  lampOn:new THREE.MeshBasicMaterial({color:0xfff2c4}),
  lampOff:new THREE.MeshLambertMaterial({color:0x888888}),
 };
-MAT.road.polygonOffset=true;ENVMATS.push(MAT.road,MAT.road2,MAT.path,MAT.bld,MAT.roof);MAT.road.polygonOffsetFactor=-1;
+/* ---- DETAIL LAYER: a tiling multi-octave grain texture sampled in WORLD space (no UVs needed) and blended into the surface colour,
+   so satellite ground, paint, grass, paths and roofs get fine lifelike grit instead of looking like enlarged pixels */
+let DETAILTEX=null;
+function detailTex(){if(DETAILTEX)return DETAILTEX;const N=512,c=document.createElement('canvas');c.width=c.height=N;const x=c.getContext('2d'),img=x.createImageData(N,N),r=rng(1234);
+ const grid=(s)=>{const g=[];for(let i=0;i<s*s;i++)g.push(r());return(u,v)=>{const X=u*s,Y=v*s,i=Math.floor(X),j=Math.floor(Y),fx=X-i,fy=Y-j,a=g[(i%s)+(j%s)*s],b=g[((i+1)%s)+(j%s)*s],c2=g[(i%s)+((j+1)%s)*s],d=g[((i+1)%s)+((j+1)%s)*s],sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);return a+(b-a)*sx+(c2-a)*sy+(a-b-c2+d)*sx*sy}};
+ const o=[grid(8),grid(32),grid(128)];for(let j=0;j<N;j++)for(let i=0;i<N;i++){const u=i/N,v=j/N,n=o[0](u,v)*0.5+o[1](u,v)*0.3+o[2](u,v)*0.2+ (r()-0.5)*0.12,k=(j*N+i)*4,val=Math.max(0,Math.min(255,n*255));img.data[k]=img.data[k+1]=img.data[k+2]=val;img.data[k+3]=255}
+ x.putImageData(img,0,0);const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=ANISO;return DETAILTEX=t}
+function addDetail(m,scale=3,strength=0.25){if(m.userData.detail)return;m.userData.detail=1;const tx=detailTex(),prev=m.onBeforeCompile;
+ m.onBeforeCompile=(sh,r)=>{if(prev)prev(sh,r);sh.uniforms.dTex={value:tx};sh.uniforms.dScale={value:scale};sh.uniforms.dStr={value:strength};
+  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vDW;').replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvDW=(modelMatrix*vec4(transformed,1.0)).xyz;');
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vDW;uniform sampler2D dTex;uniform float dScale,dStr;')
+   .replace('#include <map_fragment>','#include <map_fragment>\n{float d1=texture2D(dTex,vDW.xz/dScale).r,d2=texture2D(dTex,vDW.xz/(dScale*7.3)+0.37).r;diffuseColor.rgb*=1.0+dStr*((d1-0.5)*1.2+(d2-0.5)*0.8);}')};
+ m.customProgramCacheKey=()=>'detail'+scale+'_'+strength;m.needsUpdate=true}
+/* lit, slightly worn road paint instead of flat unlit colour; glossy water; metal street hardware */
+MAT.yellow=new THREE.MeshStandardMaterial({color:0xd6a91e,roughness:0.55,metalness:0,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+MAT.white=new THREE.MeshStandardMaterial({color:0xe2e2de,roughness:0.5,metalness:0,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+addDetail(MAT.yellow,0.9,0.35);addDetail(MAT.white,0.9,0.35);addDetail(MAT.path,1.6,0.25);addDetail(MAT.roof,2.5,0.3);addDetail(MAT.road,1.3,0.18);addDetail(MAT.road2,1.3,0.18);
+MAT.grass=new THREE.MeshStandardMaterial({color:0x557f38,roughness:0.95});addDetail(MAT.grass,1.2,0.5);
+MAT.water=new THREE.MeshStandardMaterial({color:0x234e66,roughness:0.08,metalness:0.35,envMapIntensity:1.2});addDetail(MAT.water,6,0.15);
+MAT.pole=new THREE.MeshStandardMaterial({color:0x6d7176,roughness:0.45,metalness:0.7});MAT.dark=new THREE.MeshStandardMaterial({color:0x1d1f23,roughness:0.5,metalness:0.4});
+MAT.crown=new THREE.MeshStandardMaterial({color:0x2f5a2a,roughness:0.9});addDetail(MAT.crown,0.6,0.4);
+MAT.road.polygonOffset=true;ENVMATS.push(MAT.water,MAT.road,MAT.road2,MAT.path,MAT.bld,MAT.roof);MAT.road.polygonOffsetFactor=-1;
 function stopSignTex(){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#c4161c';x.beginPath();for(let i=0;i<8;i++){const a=(i+.5)/8*2*Math.PI;x.lineTo(64+60*Math.cos(a),64+60*Math.sin(a))}x.fill();x.strokeStyle='#fff';x.lineWidth=5;x.stroke();x.fillStyle='#fff';x.font='bold 38px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('STOP',64,66);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t}
 function limitTex(mph){const c=document.createElement('canvas');c.width=96;c.height=128;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,96,128);x.strokeStyle='#000';x.lineWidth=5;x.strokeRect(6,6,84,116);x.fillStyle='#000';x.textAlign='center';x.font='bold 17px Arial';x.fillText('SPEED',48,34);x.fillText('LIMIT',48,54);x.font='bold 50px Arial';x.fillText(mph,48,106);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t}
 const STOPMAT=new THREE.MeshLambertMaterial({map:stopSignTex(),transparent:true});
@@ -738,7 +759,7 @@ function bridgeStruct(t,pts,w,bufs){const L=[0];for(let i=1;i<pts.length;i++)L.p
 // ============================================================ BUILDINGS: facades, roofs, parts, storefront signs (OSM Simple 3D Buildings)
 // Facade textures = Poly Haven photo material + procedurally painted windows for the style; 1 texture tile = 2 bays (8 m) × 2 floors (6.6 m)
 const FAC={},FACMAT={},ROOFMAT={};
-const FS=HIGH?1024:512;
+const FS=HIGH?2048:1024;
 function facadeCanvas(style,night){const c=document.createElement('canvas');c.width=c.height=FS;const x=c.getContext('2d'),R=rng(style.length*7+(night?3:1));x.scale(FS/512,FS/512);
  const bg={siding:'#e6e2da',brick:'#9b4a38',stucco:'#e9e1d2',concrete:'#b9b6ae',glass:'#2b3a48',metal:'#9aa1a6',store:'#3a3d42'}[style];x.fillStyle=night?'#000':bg;x.fillRect(0,0,512,512);
  const win=(X,Y,W,H,frame)=>{if(night){x.fillStyle=R()<0.42?(R()<0.5?'#ffd99a':'#cfe3ff'):'#000';x.fillRect(X,Y,W,H);return}x.fillStyle=frame||'#f2f2ee';x.fillRect(X-5,Y-5,W+10,H+10);const g=x.createLinearGradient(X,Y,X+W,Y+H);g.addColorStop(0,'#27313b');g.addColorStop(0.6,'#4f6275');g.addColorStop(1,'#1f272f');x.fillStyle=g;x.fillRect(X,Y,W,H);x.fillStyle=frame||'#f2f2ee';x.fillRect(X+W/2-2,Y,4,H);x.fillRect(X,Y+H*0.45,W,4)};
@@ -3330,7 +3351,7 @@ function applyWeatherMaterials(){const road=[MAT.road,MAT.road2,...Object.values
  if(!WXBASE.has(ground.material))WXBASE.set(ground.material,{c:ground.material.color.clone()});ground.material.color.copy(WXBASE.get(ground.material).c);if(WX.snowCover)ground.material.color.lerp(new THREE.Color(0xeef2f5),0.85);
  for(const m of [MAT.crown,MAT.roof]){if(!WXBASE.has(m))WXBASE.set(m,{c:m.color.clone()});m.color.copy(WXBASE.get(m).c);if(WX.snowCover)m.color.lerp(new THREE.Color(0xf2f5f7),0.6)}
  for(const k in ROOFMAT){const m=ROOFMAT[k];if(!WXBASE.has(m))WXBASE.set(m,{c:m.color.clone()});m.color.copy(WXBASE.get(m).c);if(WX.snowCover)m.color.lerp(new THREE.Color(0xffffff),0.8)}}
-function wxSat(m){m.emissive=m.emissive||new THREE.Color();m.emissive.setScalar(WX.snowCover?0.55:0);m.color.setScalar(WX.snowCover?0.55:WX.wet?0.8:1)}
+function wxSat(m){m.emissive=m.emissive||new THREE.Color();m.emissive.setScalar(WX.snowCover?0.55:0);m.color.setScalar(WX.snowCover?0.55:WX.wet?0.64:0.8);addDetail(m,2.2,0.28)}
 function updateWeather(rdt,sdt){const G=game;if(!G)return;const t=performance.now()/1000,cam=camera.position,W=WX;
  W.gust=lerp(W.gust,(Math.sin(t*0.7)*0.5+Math.sin(t*2.3+1)*0.3)*W.wind*0.3,0.05);const wv=W.wind+W.gust,wx=Math.cos(W.windDir)*wv,wz=-Math.sin(W.windDir)*wv;
  RAIN.visible=W.rain>0;SNOW.visible=W.snow>0;DEBRIS.visible=W.debris>0;
