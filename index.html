@@ -256,7 +256,7 @@ const canvas=$('view');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,logarithmicDepthBuffer:true});
 // quality tier from device capability; dynamic resolution keeps frame rate ≥ ~50 fps
 const HIGH=(navigator.deviceMemory||8)>=8&&(navigator.hardwareConcurrency||8)>=8&&renderer.capabilities.maxTextureSize>=8192;
-const Q={maxPR:Math.min(devicePixelRatio,HIGH?2:1.5),minPR:Math.min(devicePixelRatio,1),pr:Math.min(devicePixelRatio,HIGH?2:1.5),fps:60,t:0};
+const Q={maxPR:Math.min(devicePixelRatio*(HIGH?1.25:1),HIGH?2.5:1.5),minPR:Math.min(devicePixelRatio,HIGH?1.5:1.25),pr:Math.min(devicePixelRatio,HIGH?2:1.5),fps:60,t:0};
 renderer.setPixelRatio(Q.pr);
 function adaptQuality(rdt){Q.fps=lerp(Q.fps,1/Math.max(rdt,1e-3),0.05);Q.t+=rdt;if(Q.t<1.5)return;Q.t=0;
  if(Q.fps<48&&Q.pr>Q.minPR){Q.pr=Math.max(Q.minPR,Q.pr-0.25); /* never below native 1:1 pixels */renderer.setPixelRatio(Q.pr);resize()}
@@ -587,7 +587,7 @@ function decalMat(){if(DECAL_MAT)return DECAL_MAT;const c=document.createElement
    if(n==='SHARROW'){x.lineWidth=12;for(const dy of [-58,-36]){x.beginPath();x.moveTo(cx-60,cy+dy+26);x.lineTo(cx,cy+dy);x.lineTo(cx+60,cy+dy+26);x.stroke()}}}
   else if(n==='RXR'){x.lineWidth=10;x.beginPath();x.moveTo(40,y0+8);x.lineTo(472,y0+120);x.moveTo(472,y0+8);x.lineTo(40,y0+120);x.stroke();x.font='bold 70px Arial Narrow,Arial';x.fillText('R',130,y0+66);x.fillText('R',382,y0+66)}
   else{x.font=`bold ${n.length>5?78:112}px "Arial Narrow",Arial`;x.fillText(n,256,y0+68)}x.restore()});
- const t=new THREE.CanvasTexture(c);t.anisotropy=8;DECAL_MAT=new THREE.MeshBasicMaterial({map:t,transparent:true,alphaTest:0.35,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3,color:0xe8e8e8});return DECAL_MAT}
+ const t=new THREE.CanvasTexture(c);t.anisotropy=ANISO;DECAL_MAT=new THREE.MeshBasicMaterial({map:t,transparent:true,alphaTest:0.35,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3,color:0xe8e8e8});return DECAL_MAT}
 /* decal: name centred at (x,z), reading toward a driver travelling along (fx,fz); len along the road, wid across */
 function decal(name,x,z,fx,fz,len,wid,y){const b=MK.dec;if(!b)return;const i=DECALS.indexOf(name),v0=1-(i+1)/DECALS.length,v1=1-i/DECALS.length,rx=-fz,rz=fx;
  const P=(a,c)=>{const px=x+fx*a*len/2+rx*c*wid/2,pz=z+fz*a*len/2+rz*c*wid/2;return[px,groundY(px,pz)+y,pz]};const nl=P(-1,-1),nr=P(-1,1),fr=P(1,1),fl=P(1,-1);
@@ -934,7 +934,7 @@ function adTex(i){if(ADTEX.has(i))return ADTEX.get(i);const [name,tag,fine,bg,ic
  g.textAlign='left';g.fillStyle=fg;let fs=150;g.font='900 '+fs+'px Impact, "Arial Black", sans-serif';while(g.measureText(name).width>1000&&fs>60){fs-=6;g.font='900 '+fs+'px Impact, "Arial Black", sans-serif'}
  g.fillText(name,60,170);g.font='italic 600 64px Georgia, serif';let t=tag;while(g.measureText(t).width>1020)t=t.slice(0,-2);g.fillText(t,64,320);
  g.globalAlpha=0.75;g.font='34px Helvetica, Arial, sans-serif';g.fillText('*'+fine,66,440);g.globalAlpha=1;g.strokeStyle=fg;g.lineWidth=10;g.strokeRect(18,18,1500,476);
- const tx=new THREE.CanvasTexture(c);tx.anisotropy=8;tx.encoding=THREE.sRGBEncoding;ADTEX.set(i,tx);return tx}
+ const tx=new THREE.CanvasTexture(c);tx.anisotropy=ANISO;tx.encoding=THREE.sRGBEncoding;ADTEX.set(i,tx);return tx}
 function shade(hex,k){const n=parseInt(hex.slice(1),16),f=v=>Math.max(0,Math.min(255,Math.round(v*(1+k))));return '#'+[f(n>>16),f(n>>8&255),f(n&255)].map(v=>v.toString(16).padStart(2,'0')).join('')}
 const BBGEO={post:new THREE.CylinderGeometry(0.28,0.32,1,10),panel:new THREE.BoxGeometry(12.2,4.2,0.35),face:new THREE.PlaneGeometry(11.8,3.9),walk:new THREE.BoxGeometry(12,0.1,0.9),lamp:new THREE.BoxGeometry(0.5,0.2,0.4)};
 // 0–2 billboards per tile beside the larger roads, set back behind the kerb, facing oncoming traffic; never in a lane or a building
@@ -963,7 +963,7 @@ const CARTS=[['HOT DOGS','🌭','#d62828','#f1c40f'],['TACOS','🌮','#2a9d8f','
 const CARTTEX=new Map();
 function cartTex(i){if(CARTTEX.has(i))return CARTTEX.get(i);const [n,e,bg,fg]=CARTS[i],c=document.createElement('canvas');c.width=512;c.height=256;const g=c.getContext('2d');g.fillStyle=bg;g.fillRect(0,0,512,256);
  g.fillStyle=fg;g.fillRect(0,210,512,46);g.font='150px serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,105,110);let fs=78;g.font='900 '+fs+'px "Arial Black",Impact,sans-serif';while(g.measureText(n).width>300&&fs>30){fs-=4;g.font='900 '+fs+'px "Arial Black",Impact,sans-serif'}
- g.fillStyle=fg;g.fillText(n,355,110);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;CARTTEX.set(i,t);return t}
+ g.fillStyle=fg;g.fillText(n,355,110);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=ANISO;CARTTEX.set(i,t);return t}
 const CGEO={body:new THREE.BoxGeometry(1.8,0.9,0.95),top:new THREE.BoxGeometry(1.9,0.05,1.05),wheel:new THREE.CylinderGeometry(0.28,0.28,0.08,16),pole:new THREE.CylinderGeometry(0.025,0.025,2.2,6),umb:new THREE.ConeGeometry(1.35,0.55,12,1,true),
  sign:new THREE.PlaneGeometry(1.7,0.85),emo:new THREE.PlaneGeometry(0.9,0.9),leg:new THREE.CylinderGeometry(0.07,0.06,0.85,8),torso:new THREE.CylinderGeometry(0.17,0.19,0.6,10),head:new THREE.SphereGeometry(0.12,12,10)};
 function emoTex(e){const k='e'+e;if(CARTTEX.has(k))return CARTTEX.get(k);const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.font='110px serif';g.textAlign='center';g.textBaseline='middle';g.fillText(e,64,70);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;CARTTEX.set(k,t);return t}
@@ -1243,7 +1243,7 @@ function signCanvas(code,val){const key=code+'|'+(val||'');if(TSIGN_TEX.has(key)
  else if(/W1-/.test(code)){shape='diamond';poly(diamond,'#f7d117','#111',8);x.strokeStyle='#111';x.lineWidth=18;x.beginPath();x.moveTo(110,200);x.quadraticCurveTo(110,110,160,80);x.stroke();arrow(-Math.PI/4,'#111',70,90)}
  else if(/city_limit/i.test(code)){x.fillStyle='#1b6a3a';x.fillRect(4,50,248,156);x.strokeStyle='#fff';x.lineWidth=6;x.strokeRect(12,58,232,140);let nm=String(val||'CITY LIMIT').toUpperCase(),fs=46;x.font=`900 ${fs}px Arial`;while(x.measureText(nm).width>220&&fs>18){fs-=3;x.font=`900 ${fs}px Arial`}T(nm,110,fs,'#fff');T('CITY LIMIT',165,30,'#fff','700')}
  else{x.fillStyle='#fff';x.fillRect(24,24,208,208);x.lineWidth=8;x.strokeStyle='#111';x.strokeRect(32,32,192,192);let t=String(code).replace(/^US:/,'').split(/[;,]/)[0].replace(/_/g,' ').toUpperCase(),fs=44;x.font=`900 ${fs}px Arial`;while(x.measureText(t).width>180&&fs>14){fs-=3;x.font=`900 ${fs}px Arial`}T(t,128,fs)}
- const tx=new THREE.CanvasTexture(c);tx.encoding=THREE.sRGBEncoding;tx.anisotropy=8;const out={tx,shape,size:/R6-1|R6-2|oneway/i.test(code)?[0.9,0.9]:/city_limit/i.test(code)?[1.4,1.4]:/W|S1-1|crossing|pedestrian|school/i.test(code)?[0.9,0.9]:/R2-1|maxspeed|R7-|no_parking/i.test(code)?[0.6,0.76]:[0.76,0.76]};TSIGN_TEX.set(key,out);return out}
+ const tx=new THREE.CanvasTexture(c);tx.encoding=THREE.sRGBEncoding;tx.anisotropy=ANISO;const out={tx,shape,size:/R6-1|R6-2|oneway/i.test(code)?[0.9,0.9]:/city_limit/i.test(code)?[1.4,1.4]:/W|S1-1|crossing|pedestrian|school/i.test(code)?[0.9,0.9]:/R2-1|maxspeed|R7-|no_parking/i.test(code)?[0.6,0.76]:[0.76,0.76]};TSIGN_TEX.set(key,out);return out}
 function placeTrafficSign(g,x,z,t,id,ways,RQ){const raw=String(t.traffic_sign);const codes=raw.split(/[;,]/).slice(0,2);
  // direction of the road it belongs to: its own way if the node is on one, else the nearest carriageway
  let dx=1,dz=0,w=7;if(ways&&ways.length){const {el,k}=ways[0],gm=el.geometry,a=gm[Math.max(0,k-1)],b=gm[Math.min(gm.length-1,k+1)];dx=toX(b.lon)-toX(a.lon);dz=toZ(b.lat)-toZ(a.lat);w=roadWidthOf(el.tags||{})}
