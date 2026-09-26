@@ -2201,7 +2201,7 @@ function updateGrass(dt){const G=game;if(!G||!G.ego)return;GRASS.uni.time.value+
  const urban=(()=>{const T=TILES.get(Math.floor(toLat(cz)/TS)+'_'+Math.floor(toLon(cx)/TS));return T&&T.group&&T.group.children.length>60})();const hBase=urban?0.1:0.36,hVar=urban?0.05:0.18,snow=WX.snow>0.3;
  let n=0;const MAX=60000,R1=25,R2=75;
  /* route corridor near the camera: grass never grows on the carriageway even where only the route ribbon is drawn (rural, no OSM tile yet) */
- const segs=[];for(const c of routeRoads()){if(!c.bb||c.bb[1]<cx-R2-20||c.bb[0]>cx+R2+20||c.bb[3]<cz-R2-20||c.bb[2]>cz+R2+20)continue;for(let k=0;k<c.pts.length-1;k++)segs.push([c.pts[k],c.pts[k+1],(c.w/2)+0.9])}
+ const segs=[];for(const c of routeRoads()){if(!c.bb||c.bb[1]<cx-R2-20||c.bb[0]>cx+R2+20||c.bb[3]<cz-R2-20||c.bb[2]>cz+R2+20)continue;for(let k=0;k<c.pts.length-1;k++){const a=c.pts[k],b=c.pts[k+1];if(Math.min(Math.hypot(a[0]-cx,a[1]-cz),Math.hypot(b[0]-cx,b[1]-cz))<R2+30)segs.push([a,b,(c.w/2)+0.9])}}
  const onRoute=(x,z)=>{for(const [a,b,h] of segs){const dx=b[0]-a[0],dz=b[1]-a[1],L2=dx*dx+dz*dz||1,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/L2,0,1);if(Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t)<h)return true}return false};
  for(const [R0,Rr,step,big] of [[0,R1,0.34,1],[R1,R2,0.75,1.9]]){for(let gx=Math.floor((cx-Rr)/step);gx<=Math.ceil((cx+Rr)/step)&&n<MAX;gx++)for(let gz=Math.floor((cz-Rr)/step);gz<=Math.ceil((cz+Rr)/step)&&n<MAX;gz++){
    const x=gx*step+(rnd()-0.5)*step,z=gz*step+(rnd()-0.5)*step,d=Math.hypot(x-cx,z-cz);if(d<R0||d>Rr)continue;
