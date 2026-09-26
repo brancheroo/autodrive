@@ -2976,7 +2976,7 @@ function step(){
  G.nextStep=ns?{d:Math.max(0,ns.s-e.s),mod:ns.mod,name:ns.name,type:ns.type}:null;
  let want=0;if(ns&&ns.type!=='arrive'&&ns.type!=='depart'&&ns.mod&&ns.mod!=='straight'&&!(ns.type==='new name'||ns.type==='continue'&&!ns.mod.includes('slight')&&false)){const d=ns.s-e.s;if(d<Math.max(45,e.v*4.5)&&d>-10)want=ns.mod.includes('left')?-1:ns.mod.includes('right')?1:0;if(ns.type==='new name')want=0}
  if(!want&&G.nextStep&&G.nextStep.type==='arrive'&&G.nextStep.d<40)want=1; // pull over
- if(G.charging)want=0;G.sig=want;if(WX.key==='hurricane'&&!want)G.sig=2;if(G.tow&&G.tow.phase!=='towing')G.sig=2;G.blinkOn=want!==0&&(Math.floor(G.simTime*1.5)%2===0);
+ if(G.charging)want=0;if(G.uturn)want=-1;G.sig=want;if(WX.key==='hurricane'&&!want)G.sig=2;if(G.tow&&G.tow.phase!=='towing')G.sig=2;G.blinkOn=want!==0&&(Math.floor(G.simTime*1.5)%2===0);
  // lighting / sun
  const dt2=new Date(G.simTime*1000),lat=toLat(e.z),lon=toLon(e.x),sp=sunPos(dt2,lat,lon);
  const el=sp.el*180/Math.PI;G.dark=el<3;G.lightsOn=el<3;
