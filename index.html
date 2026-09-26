@@ -3302,9 +3302,9 @@ function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.pause
   if(W.n>=3){e.s=Math.min(G.route.total-5,e.s+35);e.v=4;W.n=0;G.status='⏱️ Still blocked · easing past the obstruction'} // last resort: squeeze past whatever it is
   else if(/Queued|Following|vehicle/i.test(G.status||'')||W.n===1&&!W.cd){G.overtakeT=9;G.status='⏱️ No progress for 10 s · overtaking'}
   else if(W.cd<=0){W.cd=20;G.status='⏱️ No progress for 10 s · detouring';rerouteNow()}else{G.overtakeT=9}}}
-/* points no new route may pass (within 30 m): an active protest and any police roadblocks */
+/* points no new route may pass through (within 14 m): an active protest and any police roadblocks */
 function blockedPts(){const G=game,o=[];if(G.protest&&G.protest.state!=='dispersing')o.push([toLon(G.protest.x),toLat(G.protest.z)]);if(CHASE.on)for(const B of CHASE.blocks)o.push([toLon(B.x),toLat(B.z)]);return o}
-function routeHitsBlock(r,bl){if(!bl.length)return false;for(let k=0;k<r.pts.length;k++){if(r.cum[k]<30)continue;for(const b of bl)if(hav(r.pts[k],b)<30)return true}return false}
+function routeHitsBlock(r,bl){if(!bl.length)return false;for(let k=0;k<r.pts.length;k++){if(r.cum[k]<30)continue;for(const b of bl)if(hav(r.pts[k],b)<14)return true}return false} /* passes through the crowd/roadblock itself (not just a parallel carriageway nearby) */
 async function rerouteNow(){const G=game;if(!G||!G.route||G.rerouting)return;if(G.tow||G.charging){G.status='Can\'t reroute right now';return}G.rerouting=true;const e=G.ego,prev=G.status;G.status='Finding a different route…';
  const here={lat:toLat(e.z),lon:toLon(e.x)},rem=[];for(let s0=e.s;s0<Math.min(G.route.total,e.s+20000);s0+=150){const p=routeLLnh(s0);rem.push([p[0],p[1]])}
  const overlap=r=>{let near=0,n=0;for(let k=0;k<r.pts.length;k+=Math.max(1,Math.floor(r.pts.length/120))){if(r.cum[k]<60)continue;n++;if(rem.some(q=>hav(q,r.pts[k])<35))near++}return n?near/n:1};
