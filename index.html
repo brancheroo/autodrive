@@ -187,9 +187,9 @@ const CARS=[
 {id:'r1s',name:'Ravion R1S',sub:'Autonomyish+',style:'suv',L:5.10,W:2.08,H:1.96,wb:3.08,wr:0.41,hp:665,z60:3.5,top:110,range:'410 mi (EPA, Max pack)',weight:'7,000 lb',drive:'Tri-motor AWD EV',level:'SAE Level 2 · hands-free highway',
  tech:'Gen-2 platform with 11 cameras and 5 radars, running on Ravion\'s in-house autonomy computer. It has hands-free highway driving, and the "stadium" headlights double as DRLs.',
  colors:[['Ravion Blue','#27497a'],['Forest Green','#223a2c'],['Limestone','#d6d0c3'],['El Cap Granite','#56595b'],['Launch Green','#4a5b3d']],dash:'rivian',wheel:'round',sensors:'rivian',sound:'ev',driver:true},
-{id:'yugo',name:'Yugone GV',sub:'1987 · "Good Value"',style:'sedan',L:3.49,W:1.55,H:1.39,wb:2.15,wr:0.28,hp:54,z60:14.0,top:86,range:'~235 mi (28 mpg × 8.4 gal)',weight:'1,832 lb',drive:'1.1L carbureted I4 · 4-speed manual · FWD',level:'SAE Level 0 · no driver assistance (Autodrive drives it anyway)',
- tech:'No sensors, no computer and no power steering: the only electronics are a points ignition and the cassette radio. Built by Zasnava in Kragujevac from the Fiatto 127. Somehow Autodrive still drives it. Don’t ask how. Expect it to work hard on hills.',
- colors:[['Yugone Yellow','#f2c318'],['Rosso Red','#b3161b'],['Alpine White','#efeee8'],['Adriatic Blue','#1f4c8f'],['Silver Metallic','#a9adb2']],dash:'yugo',wheel:'round',sensors:'none',sound:'i4',driver:true,plim:true},
+{id:'yugo',name:'Yugone GV',sub:'1987 · "Good Value"',style:'sedan',L:3.49,W:1.55,H:1.39,wb:2.15,wr:0.28,hp:54,z60:14.0,top:86,range:'~235 mi (28 mpg × 8.4 gal)',weight:'1,832 lb',drive:'1.1L carbureted I4 · 4-speed manual · FWD',level:'SAE Level 1-ish · two dashcams + a hobby computer',
+ tech:'Very basic self-driving: two cheap aftermarket dashcams (one narrow 60 m, one wide 25 m) feed a hobby computer taped to the dash. No lidar, no radar. It only reacts to what the cameras can see, reacts slowly, keeps a long gap, never overtakes and tops out at 55 mph. Built by Zasnava in Kragujevac from the Fiatto 127.',
+ colors:[['Yugone Yellow','#f2c318'],['Rosso Red','#b3161b'],['Alpine White','#efeee8'],['Adriatic Blue','#1f4c8f'],['Silver Metallic','#a9adb2']],dash:'yugo',wheel:'round',sensors:'yugocam',sound:'i4',driver:true,plim:true,basicAD:true},
 {id:'ezpt',name:'MKAY e-ZPT',sub:'Electric armored carrier',style:'suv',L:6.10,W:2.55,H:2.45,wb:3.60,wr:0.58,hp:470,z60:11.5,top:68,range:'~185 mi (est.)',weight:'~33,000 lb (combat)',drive:'Twin motor 4×4 EV · central tire inflation',level:'SAE Level 4 · convoy autonomy (fictional)',
  tech:'Parody of a Turkish electric 4×4 APC. Monocoque V-hull with STANAG-level armor, run-flat tires and a roof weapon station (unarmed in Autodrive). At 15 tonnes it shrugs off PITs, and in chase mode it rams roadblocks instead of detouring.',
  colors:[['Olive Drab','#4b5320'],['Desert Tan','#b59a6a'],['Urban Grey','#5d6266'],['Gendarmerie Blue','#27364f']],dash:'rivian',wheel:'round',sensors:'none',sound:'ev',driver:true,apc:true},
@@ -1537,6 +1537,10 @@ function buildCar(spec,colorHex,opts={}){
   onEnd(true,0,sh.clr+0.3,0.28,0.1,sens,0.06);
   const rack=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.06,W*0.62),sens);rack.position.set(rx,H+0.02,0);g.add(rack);
   for(const s of [1,-1]){const fu=0.86,fp=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.16,0.16),white);fp.position.set(P.xOf(fu),P.top(fu)+0.06,s*(P.half(fu)-0.12));g.add(fp);const lens=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.1,0.12),sens);lens.position.set(P.xOf(fu)+0.15,P.top(fu)+0.06,s*(P.half(fu)-0.12));g.add(lens)}
+ }else if(spec.sensors==='yugocam'){ /* suction-mount dashcam on the windscreen + a dash-top cam and a hobby computer box */
+  const bk=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.5}),ln=new THREE.MeshStandardMaterial({color:0x05070a,metalness:0.9,roughness:0.05});const wx=P.xOf(sh.roofF)-0.05,wy=P.top(sh.roofF)-0.12;
+  const c1=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.045,0.08),bk);c1.position.set(wx,wy,0);g.add(c1);const l1=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.01,12),ln);l1.rotation.z=Math.PI/2;l1.position.set(wx+0.03,wy,0);g.add(l1);
+  const c2=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.035,0.05),bk);c2.position.set(P.xOf(sh.cowl)-0.15,P.belt(sh.cowl)+0.06,0.2);g.add(c2);const box2=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.03,0.07),new THREE.MeshStandardMaterial({color:0x2a7a3a,roughness:0.6}));box2.position.set(P.xOf(sh.cowl)-0.2,P.belt(sh.cowl)+0.03,-0.15);g.add(box2)
  }else if(spec.sensors==='hyper'){ /* every sensor type: spinning roof lidar, 4 corner lidars, 6 imaging radars, 12-camera ring, thermal, 12 ultrasonics, GNSS/IMU fin, mic array */
   const glow=new THREE.MeshBasicMaterial({color:0x00e5ff}),red=new THREE.MeshBasicMaterial({color:0xff2a2a}),lens=new THREE.MeshStandardMaterial({color:0x05070a,roughness:0.05,metalness:0.8});const rds=!!spec.roadster,rx=rds?P.xOf(0.3):P.xOf(0.47),ry=rds?P.belt(0.3)+0.42:P.top(0.47);if(rds){const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.05,0.42,10),sens);mast.position.set(rx,ry-0.21,0);g.add(mast)} /* roadster: dome on a mast behind the cockpit */
   const base=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.24,0.08,24),sens);base.position.set(rx,ry+0.04,0);g.add(base);const dome=new THREE.Group();dome.position.set(rx,ry+0.16,0);g.add(dome);
@@ -2643,6 +2647,7 @@ function plan(a,dt,lead,isEgo){
  // traffic stops for the protest crowd too (both directions)
  if(!isEgo&&game.protest&&game.protest.state!=='dispersing'&&a.kind!=='way'){const P=game.protest,d=a.dir>0?P.s-6-a.s:a.s-(P.s+6);if(d>-3&&d<70){const v=allow(0,Math.max(0,d));if(v<target)target=v}}
 // acceleration
+ if(isEgo&&a.spec.basicAD&&!smartOn()){target=Math.min(target,55/MPH)} /* dashcam autopilot: 55 mph max */
  const top=(isEgo&&a.spec.hyper&&chase?1000:(typeof a.spec.top==='number'?a.spec.top:85))/MPH;target=Math.min(target,top);
  const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){if(!chase)target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
  const fanG=isEgo&&a.spec.hyper?1+2*((game.fans||[0,0,0,0]).reduce((q,v)=>q+v,0)/4):1;
@@ -3078,6 +3083,8 @@ function step(){
     continue}
    if(!G.tow&&G.energy<=0){const E0=ES();e.acc=-1.2;e.v=Math.max(0,e.v-1.2*dt);e.s+=e.v*dt;G.soc=0;G.status=(E0.ice?'Out of fuel':'Battery depleted')+' · coasting to the shoulder';if(e.v<0.05){e.v=0;startTow()}continue}
    if(G.route!==G._rt){const had=!!G._rt;G._rt=G.route;if(had)uturnCheck()}if(G.uturn){updateUturn(dt);continue}
+   if(spec.basicAD&&!smartOn()){ /* camera-only basic self-driving: obstacles outside the 60 m / 50° camera cone don't exist for it; ~0.7 s reaction lag */
+    if(obst){const d=obst.s-e.s;const inCam=d<60;if(!inCam)obst=null}G.camLag=G.camLag||[];G.camLag.push({t:G.simTime,o:obst&&{s:obst.s,v:obst.v,spec:obst.spec}});while(G.camLag.length>1&&G.simTime-G.camLag[0].t>0.7)G.camLag.shift();const old=G.camLag[0].o;obst=old&&obst?{s:Math.min(old.s,obst.s+0),v:old.v,spec:obst.spec}:old||null;G.overtakeT=0}
    const sPrev=e.s,routeRef=G.route;if(!e.loose)G.status=plan(e,dt,obst,true);else{e.v=0;e.acc=0}
    if(!G.tow){const E=ES(),P=powerW(E,e.v,e.acc||0,e.grade||0);G.energy=Math.max(0,G.energy-P*dt);G.usedJ+=P*dt;if(routeRef===G.route&&e.s>sPrev)G.expJ=(G.expJ||0)+energyBetween0(G.route,sPrev,e.s);G.odo+=e.v*dt;G.soc=G.energy/capJ(E);
     if(G.energy<=0){e.v=Math.max(0,e.v-3*dt);G.status=E.ice?'Out of fuel · coasting to a stop':'Battery depleted · coasting to a stop';if(e.v<0.1){e.v=0;startTow()}}}
@@ -3814,6 +3821,7 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
 // ============================================================ PERCEPTION VIEW (camera detections + sensor range)
 // Published sensor suites: max detection ranges in metres and field-of-view wedges
 const SENSORS={
+ yugocam:{label:'2 aftermarket dashcams (60 m / 25 m)',cam:60,wedges:[[0,50,60,'cam'],[0,110,25,'cam']],h:1.25},
  hyper:{label:'Predictacar OmniSense (1 km see-through lidar ×5 · radar ×6 · cam ×12 · thermal · ultrasonic ×12)',lidar:1000,cam:600,radar:350,wedges:[[0,360,1000,'lidar'],[0,30,600,'cam'],[0,120,250,'cam'],[0,20,350,'radar'],[90,120,160,'radar'],[-90,120,160,'radar'],[180,60,250,'radar'],[0,24,300,'thermal'],[0,360,6,'sonic']],h:1.35},
  waymo5:{label:'5th-gen Wayfro Driver',lidar:300,cam:500,radar:300,wedges:[[0,360,300,'lidar']],h:2.0},
  waymo6:{label:'6th-gen Wayfro Driver',lidar:300,cam:500,radar:300,wedges:[[0,360,300,'lidar']],h:2.1},
