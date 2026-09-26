@@ -2624,7 +2624,7 @@ function plan(a,dt,lead,isEgo){
  if(isEgo)game.upcoming=up;
  // lead (in a chase the car overtakes while swerving away from a cruiser)
  if(chase&&lead&&lead.s-a.s<90&&lead.s-a.s>0&&lead.v<a.v+3){CHASE.pass=2.5;reason=(CHASE.on?'CHASE':'EXPRESS')+(CHASE.passSide>0?' · passing on the right':CHASE.passSide<0?' · passing on the left':' · boxed in, waiting for a gap')}
- if(lead&&!(isEgo&&smartOn())&&(!chase||(EXPRESS.on&&!CHASE.on&&!smartOn()&&CHASE.passSide===0))&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
+ if(lead&&!(isEgo&&smartOn())&&(!chase||(EXPRESS.on&&!CHASE.on&&!smartOn()&&CHASE.passSide===0))&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1)*(isEgo&&a.spec.basicAD&&!smartOn()?1.6:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
  // planned charging / fuel stop
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
