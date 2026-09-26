@@ -2589,7 +2589,7 @@ function startGame(spec,color,A,B,route){
  const p=routeXZ(0,0);game.ego.head=Math.atan2(-p[3],p[2]);
  buildHorizon(A.lat,A.lon,game.bio);
  $('start').style.display='none';$('hud').style.display='block';
- audio.start(spec);
+ audio.start(spec);modCall('start');
 }
 function applyBiome(){const b=game.bio;ground.material.color.set(b.g);MAT.crown.color.set(b.tree);MAT.grass.color.set(b.g);WXBASE.delete(MAT.crown);WXBASE.delete(ground.material);applyWeatherMaterials()}
 function rebase(){XWG.clear(); // floating origin: keep numbers small over long trips
@@ -3089,16 +3089,21 @@ function spawnPed(){const ps=[];for(const T of TILES.values())ps.push(...T.peds)
   P.v=0.9+R()*0.4;P.dog={mesh:dm,leash,hand,B,lead:1.3+R()*0.6,side:(R()-0.5)*0.8,sniffT:0,sniffing:false,s:P.s,lat:0,ph:0,x:0,z:0}}
  game.peds.push(P)}
 
+/* ---- module bus: feature modules (autodrive/mods/*.js, inlined by build.py) register hooks here; every call is isolated */
+const MODS=[];const MODERR={};function modCall(h,a,b){for(const m of MODS){const f=m[h];if(!f)continue;try{f(a,b)}catch(e){modFail(m.id+'.'+h,e)}}}
+function modFail(where,e){const k=where+':'+String(e&&e.message);if(MODERR[k])return;MODERR[k]=1;console.error('[Autodrive] '+where+' failed:',e);try{const t=document.getElementById('errToast')||(()=>{const d=document.createElement('div');d.id='errToast';d.style.cssText='position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:9999;background:#3a1418;color:#ffd7d7;border:1px solid #a3343c;border-radius:10px;padding:8px 14px;font:13px system-ui;max-width:80vw;cursor:pointer;box-shadow:0 6px 20px #0008';d.onclick=()=>d.remove();document.body.appendChild(d);return d})();t.textContent='⚠️ Something went wrong in '+where.split('.')[0]+' — that part is switched off, the ride keeps going. (tap to dismiss)';clearTimeout(t._h);t._h=setTimeout(()=>t.remove(),9000)}catch(_){}}
+/* cosmetic per-frame systems: a failure disables just that system instead of freezing the loop */
+for(const n of ['renderPerception','drawScreen','updateGrass','updateSmoke','wdogUpdate','animateBobble','drawMini','damageSmoke','aifmTick','protestSoundUpdate','manageSat','updateHUD','drawBEV','riderView','slobber','updateWeather','updateLeash','animDog','techTick','updateHyperDrone','hyperOverlay','satIcon','updateEnergyHUD','sirenUpdate','flashBar','updateClock']){const f=window[n];if(typeof f!=='function')continue;let dead=false;window[n]=function(){if(dead)return;try{return f.apply(this,arguments)}catch(e){dead=true;modFail(n,e)}}}
 let lastT=performance.now(),uiT=0,scrT=0,tileT=0,spawnT=0;
 function step(){
- requestAnimationFrame(step);try{riderView()}catch(e){}
+ requestAnimationFrame(step);modCall('frame');try{riderView()}catch(e){}
  const now=performance.now();const rawDt=Math.min(0.5,(now-lastT)/1000);let rdt=Math.min(0.1,rawDt);lastT=now;
  if(!game||!game.route){if(!game)showroom(rdt);renderer.render(scene,camera);return}
  const G=game,e=G.ego,spec=G.spec;
  if(!G.paused&&!G.arrived){
   const ff=G.charging||(G.tow&&G.tow.phase==='waiting');G.ffActive=ff&&G.scale<60;const urgent=G.soc<=0.3||((G.soc-RESERVE)*capJ(ES())/(jPerM(ES(),20)*consRatio())<80000);const busy=((G.guarding||G.replanning)&&urgent)||(G.tow&&G.tow.phase==='calling');G.slowed=busy&&G.scale>3;
   let sdt=rawDt*(busy?Math.min(G.scale,G.soc<0.2?1:3):ff?Math.max(G.scale,60):G.scale);const n=Math.min(2500,Math.ceil(sdt/0.05));const dt=sdt/n;
-  for(let k=0;k<n;k++){G.simTime+=dt;
+  for(let k=0;k<n;k++){G.simTime+=dt;modCall('sim',dt);
    // lead vehicle on route
    const routeAg=G.agents.filter(a=>a.kind==='route'&&a.s>e.s).sort((a,b)=>a.s-b.s);
    // ambient cars crossing directly in front of ego act as obstacles
@@ -4035,7 +4040,7 @@ const audio={ctx:null,muted:false,
   else{G.rpm=v*400;const f=60+v*38;for(const {o,h} of this.oscs)o.frequency.setTargetAtTime(f*h,t,0.05);this.engBP.frequency.setTargetAtTime(f*2.2,t,0.05);this.eng.gain.setTargetAtTime(v>0.3?(0.02+Math.abs(a)*0.035)*damp:0,t,0.1)}
   if(G.blinkOn!==this.lastBlink){this.lastBlink=G.blinkOn;if(G.sig!==0)this.tick()}}};
 
-function arrive(){game.arrived=true;game.ego.v=0;audio.chime();$('arrTxt').textContent=`${game.spec.name} arrived at ${game.B.label}. Distance ${fmtDist(game.route.total)}.`;$('arrive').style.display='flex'}
+function arrive(){modCall('arrive');game.arrived=true;game.ego.v=0;audio.chime();$('arrTxt').textContent=`${game.spec.name} arrived at ${game.B.label}. Distance ${fmtDist(game.route.total)}.`;$('arrive').style.display='flex'}
 
 // ============================================================ START SCREEN
 let selCar=CARS[0],selColor=CARS[0].colors[0][1],showCar=null,addrA=null,addrB=null;
@@ -4260,5 +4265,6 @@ renderCars();renderInfo();refreshShowcar();socPreview();
 {const n=new Date(Date.now()-new Date().getTimezoneOffset()*60000);$('depAt').value=n.toISOString().slice(0,16);$('depAt').oninput=()=>{document.querySelector('input[name=dep][value=custom]').checked=true}}
 requestAnimationFrame(step);
 </script>
+<!--mods--><!--/mods-->
 </body>
 </html>
