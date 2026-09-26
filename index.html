@@ -4021,7 +4021,8 @@ function checkGo(){$('go').disabled=!(addrA&&addrB)}
 setupAddr($('aStart'),r=>{addrA=r;checkGo()});setupAddr($('aEnd'),r=>{addrB=r;checkGo()});
 // default trip: The Embarcadero, San Francisco → Getty Center, Los Angeles
 {const defA={label:'The Embarcadero, San Francisco, California, 94111',short:'Embarcadero, SF',lat:37.795460,lon:-122.393570},defB={label:'Getty Center, 1200 Getty Center Drive, Los Angeles, California, 90049',short:'Getty Center, LA',lat:34.078036,lon:-118.474095};
- addrA=defA;addrB=defB;$('aStart').value=defA.label;$('aEnd').value=defB.label;$('aStart').classList.add('ok');$('aEnd').classList.add('ok');checkGo()}
+ let A=defA,B=defB;try{const L=JSON.parse(localStorage.getItem('lastTrip')||'null');if(L&&L.a&&L.b&&isFinite(L.a.lat)&&isFinite(L.b.lat)){A=L.a;B=L.b}}catch(e){} /* last trip used; built-in defaults on first run */
+ addrA=A;addrB=B;$('aStart').value=A.label;$('aEnd').value=B.label;$('aStart').classList.add('ok');$('aEnd').classList.add('ok');checkGo()}
 $('go').onclick=async()=>{
  $('msg').textContent='';$('load').style.display='flex';$('loadTxt').textContent='Planning route…';
  try{const route=await getRoute(addrA,addrB);if(route.total<50)throw new Error('Start and destination are too close');
