@@ -592,6 +592,8 @@ const MK_SF=[{cat:'hump',kind:'socrata',url:'https://data.sf.gov/resource/abhw-f
  {cat:'crosswalk',kind:'socrata',url:'https://data.sf.gov/resource/g9zy-srvv.json',geo:'shape',name:'SFMTA continental crosswalks',ext:[-122.52,37.70,-122.35,37.84]},
  {cat:'school',kind:'socrata',url:'https://data.sf.gov/resource/3t7b-gebn.json',geo:'shape',where:"schoolzone_limit='15'",name:'SFMTA school-zone speed limits',ext:[-122.52,37.70,-122.35,37.84]},
  {cat:'bus',kind:'socrata',url:'https://data.sf.gov/resource/tzh6-6j82.json',geo:'shape',name:'SFMTA transit-only lanes',ext:[-122.52,37.70,-122.35,37.84]}];
+/* extent as [minLon,minLat,maxLon,maxLat] from either [[x,y],[x,y]] or a GeoJSON polygon */
+function mkExt(e){if(!e)return null;const P=Array.isArray(e)?e:(e.coordinates&&e.coordinates[0]);if(!P||!P.length||!Array.isArray(P[0]))return null;let a=1e9,b=1e9,c=-1e9,d=-1e9;for(const q of P){a=Math.min(a,q[0]);b=Math.min(b,q[1]);c=Math.max(c,q[0]);d=Math.max(d,q[1])}return[a,b,c,d]}
 function mkBoxAround(lat,lon,km){const dl=km/111,dn=km/(111*Math.cos(lat*Math.PI/180));return[lon-dn,lat-dl,lon+dn,lat+dl]}
 const mkHit=(a,b)=>a&&b&&a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
 async function mkDiscover(){const G=game;if(!G||!G.ego||MKSRC.busy)return;const lat=toLat(G.ego.z),lon=toLon(G.ego.x);if(MKSRC.center&&hav([lon,lat],[MKSRC.center[1],MKSRC.center[0]])<25000)return;
@@ -599,7 +601,7 @@ async function mkDiscover(){const G=game;if(!G||!G.ego||MKSRC.busy)return;const 
  for(const s of MK_SF)if(mkHit(s.ext,box))found.set(s.url,{...s});
  const junk=/survey|_form|_results|proposal|request|application|test|collector|feedback|pilot|condition/i;
  try{for(const C of MK_CATS)for(const q of C.qs){try{const r=await fetch(`https://hub.arcgis.com/api/search/v1/collections/dataset/items?q=${encodeURIComponent(q)}&limit=100`).then(r=>r.json());
-    for(const f of (r.features||[])){const p=f.properties||{},u=p.url||'',n=p.title||'';if(!/FeatureServer/.test(u)||!C.re.test(n)||junk.test(n+' '+u))continue;const e=p.extent;if(!e||!e[0])continue;const ext=[e[0][0],e[0][1],e[1][0],e[1][1]];
+    for(const f of (r.features||[])){const p=f.properties||{},u=p.url||'',n=p.title||'';if(!/FeatureServer/.test(u)||!C.re.test(n)||junk.test(n+' '+u))continue;const ext=mkExt(p.extent);if(!ext)continue;
      if(ext[2]-ext[0]>3||!mkHit(ext,box))continue;const url=/FeatureServer\/\d+$/.test(u)?u:u.replace(/\/?$/,'/0');if(!found.has(url))found.set(url,{cat:C.cat,kind:'arcgis',url,name:n+' · '+(p.owner||''),ext})}}catch(err){}}
   for(const C of MK_CATS)for(const q of C.qs){try{const r=await fetch(`https://hub.arcgis.com/api/v3/search?q=${encodeURIComponent(q)}&bbox=${box.map(v=>v.toFixed(3)).join(',')}`).then(r=>r.json());
     for(const d of (r.data||[])){const a=d.attributes||{},u=a.url||'';if(!/FeatureServer/.test(u)||!C.re.test(a.name||'')||junk.test((a.name||'')+' '+u))continue;const e=a.extent&&a.extent.coordinates;if(!e)continue;const ext=[e[0][0],e[0][1],e[1][0],e[1][1]];
