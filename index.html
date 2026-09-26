@@ -4241,22 +4241,24 @@ window.UIX={
 };
 </script>
 <script>/* mods/01-net.js */
-/* Network resilience: retry rate-limited / flaky requests with growing back-off, cap parallel requests per
-   host so we stop tripping 429s, and cache successful GET responses for the session. */
+/* Network resilience for every request the game makes: retry rate-limited / flaky responses (429, 5xx, network
+   errors) with growing back-off honouring Retry-After, cap parallel requests per host so we stop tripping
+   rate limits, and cache successful GET responses for the session. */
 (function(){
- const raw=fetchT,CACHE=new Map(),HOST={},MAXPAR=4,sleepMs=ms=>new Promise(r=>setTimeout(r,ms));
- const hostOf=u=>{try{return new URL(u,location.href).host}catch(e){return ''}};
- async function slot(h){const H=HOST[h]||(HOST[h]={n:0,q:[],coolUntil:0});while(H.n>=MAXPAR)await new Promise(r=>H.q.push(r));H.n++;const w=H.coolUntil-Date.now();if(w>0)await sleepMs(w);return H}
+ const raw=window.fetch.bind(window),CACHE=new Map(),HOST={},MAXPAR=4,wait=ms=>new Promise(r=>setTimeout(r,ms));
+ const hostOf=u=>{try{return new URL(String(u&&u.url||u),location.href).host}catch(e){return ''}};
+ async function slot(h){const H=HOST[h]||(HOST[h]={n:0,q:[],coolUntil:0});while(H.n>=MAXPAR)await new Promise(r=>H.q.push(r));H.n++;const w=H.coolUntil-Date.now();if(w>0)await wait(w);return H}
  function free(H){H.n--;const r=H.q.shift();if(r)r()}
- window.fetchT=async function(u,opt={},ms=15000){
-  const get=!opt.method||opt.method==='GET',key=get?String(u):null;
-  if(key&&CACHE.has(key))return CACHE.get(key).clone();
+ window.NET={stats:{retries:0,cached:0,limited:0}};
+ window.fetch=async function(u,opt){opt=opt||{};const same=hostOf(u)===location.host;if(same)return raw(u,opt);
+  const get=(!opt.method||opt.method==='GET')&&typeof u==='string',key=get?u:null;
+  if(key&&CACHE.has(key)){NET.stats.cached++;return CACHE.get(key).clone()}
   const h=hostOf(u);let last;
-  for(let tries=0;tries<4;tries++){const H=await slot(h);let r;
-   try{r=await raw(u,opt,ms)}catch(e){last=e;free(H);if(e&&e.name==='AbortError'&&tries>0)throw e;await sleepMs(600*2**tries);continue}
+  for(let tries=0;tries<4;tries++){if(opt.signal&&opt.signal.aborted)throw new DOMException('Aborted','AbortError');const H=await slot(h);let r;
+   try{r=await raw(u,opt)}catch(e){free(H);last=e;if(e&&e.name==='AbortError')throw e;NET.stats.retries++;await wait(600*2**tries);continue}
    free(H);
-   if(r.status===429||r.status===502||r.status===503||r.status===504){const ra=+r.headers.get('retry-after');const wait=isFinite(ra)&&ra>0?Math.min(ra*1000,8000):700*2**tries+Math.random()*400;H.coolUntil=Date.now()+wait;last=r;await sleepMs(wait);continue}
-   if(key&&r.ok&&CACHE.size<400)CACHE.set(key,r.clone());
+   if(r.status===429||r.status===502||r.status===503||r.status===504){NET.stats.limited++;const ra=+r.headers.get('retry-after');const w=isFinite(ra)&&ra>0?Math.min(ra*1000,8000):700*2**tries+Math.random()*400;H.coolUntil=Date.now()+w;last=r;if(tries<3){NET.stats.retries++;await wait(w);continue}}
+   if(key&&r.ok&&CACHE.size<300)CACHE.set(key,r.clone());
    return r}
   if(last instanceof Response)return last;throw last||new Error('network')};
  MODS.push({id:'net'});
@@ -4398,13 +4400,14 @@ window.UIX={
  MODS.push({id:'emergency',
   start(){for(const o of EV.list.slice())remove(o);EV.next=240+Math.random()*360;UIX.btn('evBtn','🚑','Call an emergency vehicle up behind you (V)',()=>spawn())},
   sim(dt){const G=game,e=G.ego;if(!G.route)return;EV.next-=dt;if(EV.next<0){EV.next=300+Math.random()*480;if(!(typeof CHASE!=='undefined'&&CHASE.on)&&!(window.BENCH&&BENCH.on))spawn()}
-   let cap=null;
+   let cap=null;EV.msg=null;
    for(const o of EV.list.slice()){o.t+=dt;const gap=e.s-o.s;o.v=Math.min(o.v+3*dt,Math.max(26,e.v+14));o.s+=o.v*dt;
     const pass=gap<70&&gap>-40;o.off+=((pass?-3.6:0)-o.off)*Math.min(1,dt*1.5);
-    if(gap>0&&gap<220){cap=Math.min(cap??99,Math.max(2,gap/30));CHASE.evade=lerp(CHASE.evade||0,2.3,Math.min(1,dt*1.2));G.dodgeT=Math.max(G.dodgeT||0,0.3);G.status=`${o.kind==='fire'?'🚒 Pulling over for a fire engine':'🚑 Pulling over for an ambulance'}`}
+    if(gap>0&&gap<220){cap=Math.min(cap??99,Math.max(2,gap/30));CHASE.evade=lerp(CHASE.evade||0,2.3,Math.min(1,dt*1.2));G.dodgeT=Math.max(G.dodgeT||0,0.3);EV.msg=o.kind==='fire'?'🚒 Pulling over for a fire engine':'🚑 Pulling over for an ambulance'}
     for(const a of G.agents)if(a.kind==='route'&&a.s>o.s&&a.s-o.s<180)a.v=Math.min(a.v,4);
     if(o.s>e.s+500||o.s>G.route.total-5||o.t>240)remove(o)}
    window.EGO_CAP=cap},
+  preRender(){if(EV.msg&&game&&game.route)game.status=EV.msg},
   frame(){const G=game;if(!G||!G.route||!G.ego)return;const t=performance.now()/1000,e=G.ego;
    for(const o of EV.list){const lane=laneOffsetAt(routeLLnh(o.s)[2]),p=routeXZ(o.s,lane+o.off),h=Math.atan2(-p[3],p[2]);o.mesh.position.set(p[0],routeY(o.s,lane+o.off),p[1]);o.mesh.rotation.set(0,h,0);flashBar(o.mesh,t,0);
     const d=Math.hypot(p[0]-e.x,p[1]-e.z);try{sirenUpdate(o,d,t)}catch(err){}}}});
@@ -4446,7 +4449,77 @@ function riderAttach(){const G=game;if(!G||!G.ego)return;const car=G.ego.mesh,sp
  if(RIDER.shirt==='hoodie'){const h=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.04,8,20,Math.PI*1.3),sm);h.position.set(-0.09,-0.2,0);h.rotation.set(0,Math.PI/2,Math.PI*1.35);d.add(h)}
  if(RIDER.hat!=='none'){const h=riderHat(RIDER.hat,RIDER.col);h.position.y=0.03;h.scale.set(1,1/1.12,1/0.95);d.userData.head.add(h);if(RIDER.hat==='helmet'||RIDER.hat==='beanie'||RIDER.hat==='tophat'||RIDER.hat==='cowboy'){}}
  d.userData.hideIn=hideIn;car.add(d);car.userData.rider=d}
-function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userData.rider;if(!r||!r.userData.hideIn)return;const v=game.cam!=='in';for(const o of r.userData.hideIn)o.visible=v}
+function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userData.rider;if(!r||!r.userData.hideIn)return;const v=game.cam!=='in';for(const o of r.userData.hideIn)o.visible=v&&!o.userData.keepHidden}
+</script>
+<script>/* mods/21-rider-anim.js */
+/* Rider animation: looks toward whatever the car is reacting to, arms fly up under hard acceleration,
+   body lurches forward on hard braking and gets thrown in a crash (spring-damped). */
+(function(){
+ let lastV=null,lean=0,leanV=0,arms=0,yaw=0,lastLog=0;
+ const parts=r=>{if(r.userData.anim)return r.userData.anim;const arm=r.children.filter(c=>c.isGroup&&Math.abs(c.position.y+0.26)<0.02);return r.userData.anim={arm,base:arm.map(a=>({z:a.rotation.z,x:a.rotation.x})),x0:r.position.x,y0:r.position.y}};
+ MODS.push({id:'rideranim',
+  start(){lastV=null;lean=leanV=arms=yaw=0;lastLog=CRASH.log.length},
+  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;const r=G.ego.mesh.userData.rider;if(!r)return;const P=parts(r),e=G.ego,dt=1/60;
+   const a=lastV==null?0:(e.v-lastV)/Math.max(1e-3,dt*Math.max(1,G.scale||1));lastV=e.v;const ac=G.paused?0:clamp(a,-30,30);
+   let kick=0;if(CRASH.log.length>lastLog){const n=CRASH.log.slice(lastLog);lastLog=CRASH.log.length;const c=n.find(c=>c.a==='ego'||c.b==='ego');if(c)kick=Math.min(3,c.mph/12)}
+   leanV+=(-ac*0.012-lean)*dt*60*0.25+kick;leanV*=0.82;lean=clamp(lean+leanV*dt*6,-0.35,0.6);
+   r.rotation.z=-lean*0.6;r.position.x=P.x0+lean*0.08;
+   const want=ac>5.5?1:0;arms+=(want-arms)*Math.min(1,dt*(want?8:2));P.arm.forEach((g,i)=>{g.rotation.z=P.base[i].z-arms*2.2;g.rotation.x=P.base[i].x+(i?-1:1)*arms*0.35});
+   let ty=0;const pr=G.pred&&G.pred.length?G.pred.filter(p=>p.d<40).sort((p,q)=>p.d-q.d)[0]:null;
+   if(pr){const dx=pr.x-e.x,dz=pr.z-e.z,f=dx*Math.cos(e.head)-dz*Math.sin(e.head),l=dx*Math.sin(e.head)+dz*Math.cos(e.head);if(f>0)ty=clamp(Math.atan2(l,f),-1.1,1.1)}
+   else ty=clamp(-(G.steerVis||e.steer||0)*1.5,-0.6,0.6);
+   yaw+=(ty-yaw)*Math.min(1,dt*3);const h=r.userData.head;if(h){h.rotation.y=-yaw;for(const o of r.userData.hideIn||[])if(o!==h)o.rotation.y=-yaw}}});
+})();
+</script>
+<script>/* mods/22-rider-style.js */
+/* More rider customisation (glasses, hair style & colour, beard) + photo mode (📸 / F): hides the HUD, frames the
+   rider through the windscreen, orbit with the mouse, "Save photo" downloads a PNG. */
+(function(){
+ const S=Object.assign({glasses:'none',hair:'short',hairCol:'#3b2a1e',beard:'none'},UIX.load('riderX',{}));
+ const opt=(v,t)=>`<option value="${v}">${t}</option>`,st=UIX.sel;
+ const box=document.getElementById('rdShirt')&&document.getElementById('rdShirt').parentElement;
+ if(box){box.insertAdjacentHTML('beforeend',`<select id="rdGlass" style="${st}">${opt('none','No glasses')+opt('sun','Sunglasses')+opt('aviator','Aviators')+opt('round','Round specs')+opt('visor','Cyber visor')}</select>
+  <select id="rdHair" style="${st}">${opt('short','Short hair')+opt('long','Long hair')+opt('bun','Top bun')+opt('mohawk','Mohawk')+opt('curly','Curly')+opt('bald','Bald')}</select>
+  <label style="display:flex;align-items:center;gap:6px">Hair <input type="color" id="rdHairCol" style="width:44px;height:28px;border:0;background:none"></label>
+  <select id="rdBeard" style="${st}">${opt('none','Clean shaven')+opt('stubble','Stubble')+opt('full','Full beard')+opt('goatee','Goatee')+opt('moustache','Moustache')}</select>`);
+  const g=id=>document.getElementById(id);g('rdGlass').value=S.glasses;g('rdHair').value=S.hair;g('rdHairCol').value=S.hairCol;g('rdBeard').value=S.beard;
+  for(const id of ['rdGlass','rdHair','rdHairCol','rdBeard'])g(id).addEventListener('change',()=>{S.glasses=g('rdGlass').value;S.hair=g('rdHair').value;S.hairCol=g('rdHairCol').value;S.beard=g('rdBeard').value;UIX.save('riderX',S)})}
+ window.RIDERX=S;
+ function dress(){const G=game;if(!G||!G.ego||!G.ego.mesh)return;const r=G.ego.mesh.userData.rider;if(!r||r.userData.dressed)return;r.userData.dressed=1;const head=r.userData.head;if(!head)return;
+  const M=(c,ro=0.8,me=0)=>new THREE.MeshStandardMaterial({color:c,roughness:ro,metalness:me}),hairM=M(S.hairCol,0.9),hide=r.userData.hideIn||(r.userData.hideIn=[]);
+  const hat=RIDER.hat&&RIDER.hat!=='none'&&RIDER.hat!=='headphones';
+  const old=hide.find(o=>o!==head);if(old){old.material=hairM;old.visible=S.hair!=='bald'&&S.hair!=='mohawk';old.userData.keepHidden=!old.visible}
+  const add=(geo,mat,x,y,z,parent)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);(parent||head).add(m);return m};
+  if(S.hair==='long'){const b=add(new THREE.CylinderGeometry(0.1,0.12,0.24,14,1,true,Math.PI*0.5,Math.PI),hairM,-0.03,-0.1,0);b.material=hairM.clone();b.material.side=THREE.DoubleSide}
+  if(S.hair==='bun'&&!hat)add(new THREE.SphereGeometry(0.05,12,8),hairM,-0.04,0.12,0);
+  if(S.hair==='mohawk'&&!hat)for(let i=0;i<6;i++){const s=add(new THREE.ConeGeometry(0.018,0.09,6),hairM,0.07-i*0.03,0.1+Math.sin(i/5*Math.PI)*0.02,0);s.rotation.z=-0.3+i*0.12}
+  if(S.hair==='curly'&&!hat)for(let i=0;i<22;i++){const a=Math.random()*Math.PI*2,b=Math.random()*1.1;add(new THREE.SphereGeometry(0.03,8,6),hairM,Math.cos(a)*Math.sin(b)*0.1-0.01,Math.cos(b)*0.1+0.02,Math.sin(a)*Math.sin(b)*0.1)}
+  if(S.beard!=='none'){const bm=M(S.hairCol,0.95);if(S.beard==='full'||S.beard==='stubble'){const m=add(new THREE.SphereGeometry(0.108,16,10,-Math.PI*0.45,Math.PI*0.9,Math.PI*0.55,Math.PI*0.4),bm,0.004,0,0);if(S.beard==='stubble'){m.material=bm.clone();m.material.transparent=true;m.material.opacity=0.45}}
+   if(S.beard==='goatee')add(new THREE.SphereGeometry(0.03,10,8),bm,0.09,-0.085,0).scale.set(0.6,1.2,1);
+   if(S.beard==='moustache'||S.beard==='goatee')add(new THREE.CapsuleGeometry?new THREE.CapsuleGeometry(0.012,0.06,4,8):new THREE.CylinderGeometry(0.012,0.012,0.08),bm,0.1,-0.035,0).rotation.x=Math.PI/2}
+  if(S.glasses!=='none'){const fr=M(S.glasses==='aviator'?0xc9a64a:0x111111,0.3,S.glasses==='aviator'?0.9:0.1),lens=new THREE.MeshStandardMaterial({color:S.glasses==='round'?0xdde8ff:S.glasses==='visor'?0x19e3ff:0x0a0a0a,roughness:0.05,metalness:0.6,transparent:S.glasses==='round',opacity:0.35,emissive:S.glasses==='visor'?0x0a8fa0:0});
+   if(S.glasses==='visor'){const v=add(new THREE.SphereGeometry(0.112,20,8,-0.9,1.8,Math.PI*0.4,Math.PI*0.14),lens,0,0.012,0)}
+   else for(const z of [0.038,-0.038]){const l=add(S.glasses==='round'?new THREE.CylinderGeometry(0.026,0.026,0.006,16):new THREE.CylinderGeometry(0.03,0.026,0.006,16),lens,0.1,0.02,z);l.rotation.z=Math.PI/2;const f=add(new THREE.TorusGeometry(0.028,0.004,6,16),fr,0.101,0.02,z);f.rotation.y=Math.PI/2}
+   if(S.glasses!=='visor')for(const z of [0.075,-0.075])add(new THREE.BoxGeometry(0.1,0.006,0.006),fr,0.05,0.022,z)}}
+ const PH={on:false,a:0.25,el:0.15,d:3.2};window.PHOTO=PH;
+ const ui=UIX.banner('photoUi','bottom:22px;left:50%;transform:translateX(-50%);pointer-events:auto;display:none;gap:8px');
+ ui.innerHTML='<button id="phSave" style="padding:9px 16px;border-radius:10px;border:0;background:#fff;color:#111;font-weight:700;cursor:pointer">📸 Save photo</button> <button id="phExit" style="padding:9px 16px;border-radius:10px;border:1px solid #fff5;background:#0008;color:#fff;cursor:pointer">Exit photo mode</button> <span style="color:#fff;font:12px system-ui;text-shadow:0 1px 3px #000">drag to orbit · wheel to zoom</span>';
+ const hudIds=['hud','cvWrap','fpsBox','cvWhy','errToast'];
+ function toggle(on){PH.on=on??!PH.on;ui.style.display=PH.on?'flex':'none';for(const id of hudIds){const d=document.getElementById(id);if(d)d.style.visibility=PH.on?'hidden':''}if(PH.on){PH.wasPaused=game.paused;game.paused=true}else game.paused=PH.wasPaused}
+ function save(){const G=game;renderer.render(scene,camera);const url=renderer.domElement.toDataURL('image/png');const a=document.createElement('a');a.href=url;a.download=`autodrive-${(G.spec.name||'ride').replace(/\W+/g,'-')}-${Date.now()}.png`;document.body.appendChild(a);a.click();a.remove()}
+ document.getElementById('phSave').onclick=save;document.getElementById('phExit').onclick=()=>toggle(false);
+ let drag=null;addEventListener('pointerdown',e=>{if(PH.on&&e.target.tagName==='CANVAS')drag=[e.clientX,e.clientY]});addEventListener('pointerup',()=>drag=null);
+ addEventListener('pointermove',e=>{if(!drag)return;PH.a-=(e.clientX-drag[0])*0.006;PH.el=clamp(PH.el+(e.clientY-drag[1])*0.004,-0.2,1.2);drag=[e.clientX,e.clientY]});
+ addEventListener('wheel',e=>{if(PH.on)PH.d=clamp(PH.d*(e.deltaY>0?1.1:0.9),1.2,20)},{passive:true});
+ addEventListener('keydown',ev=>{if(/^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName))return;if((ev.key==='f'||ev.key==='F')&&game&&game.route)toggle();if(ev.key==='Escape'&&PH.on)toggle(false)});
+ MODS.push({id:'riderstyle',
+  start(){PH.on=false;UIX.btn('photoBtn','📸','Photo mode (F)',()=>toggle())},
+  frame(){dress()},
+  preRender(){if(!PH.on)return;const r=game.ego.mesh.userData.rider,m=game.ego.mesh;if(!r)return;const p=new THREE.Vector3();(r.userData.head||r).getWorldPosition(p);
+   for(const o of r.userData.hideIn||[])o.visible=!o.userData.keepHidden;
+   const h=game.ego.head+PH.a;camera.position.set(p.x+Math.cos(h)*PH.d*Math.cos(PH.el),p.y+Math.sin(PH.el)*PH.d+0.1,p.z-Math.sin(h)*PH.d*Math.cos(PH.el));camera.lookAt(p.x,p.y-0.15,p.z);camera.fov=40;camera.updateProjectionMatrix();
+   if(m.userData.cab)m.userData.cab.visible=true;if(m.userData.body)m.userData.body.visible=true;if(m.userData.interior)m.userData.interior.visible=true}});
+})();
 </script>
 <!--/mods-->
 </body>
