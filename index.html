@@ -2347,7 +2347,7 @@ async function getRoute(a,b,via=[],pick=0,opt={}){
   let best=from,bd=1e18;for(let i=from;i<pts.length;i++){const d=(pts[i][0]-loc[0])**2+(pts[i][1]-loc[1])**2;if(d<bd){bd=d;best=i}if(bd<1e-12)break}
   from=best;if(st.maneuver.type==='arrive'&&li<rt.legs.length-1){legEnds.push(cum[best]);continue}
   if(st.maneuver.type==='depart'&&li>0)continue;
-  steps.push({ref:st.ref||'',idx:best,s:cum[best],type:st.maneuver.type,mod:st.maneuver.modifier,name:st.name||st.ref||'',exit:st.maneuver.exit})}});
+  steps.push({ref:st.ref||'',idx:best,s:cum[best],type:st.maneuver.type,mod:st.maneuver.modifier,name:st.name||st.ref||'',exit:st.maneuver.exit,mw:/^(I|Interstate)[\s-]?\d/i.test(st.ref||'')||((st.intersections||[])[0]||{}).classes&&st.intersections[0].classes.includes('motorway')})}});
  return{pts,cum,total:cum[cum.length-1],nodes,speed,steps,legEnds,duration:rt.duration,hint:0}}
 
 // ============================================================ ENERGY, RANGE & CHARGING
@@ -2594,6 +2594,8 @@ function trafficFactor0(){const hr=tzHour(new Date(game.simTime*1000));const f=[
    roundabouts are one-way by definition unless explicitly tagged otherwise. */
 function owDir(t){const o=String(t.oneway||'').toLowerCase();if(o==='-1'||o==='reverse')return -1;if(o==='yes'||o==='true'||o==='1')return 1;if(o==='no'||o==='false'||o==='0'||o==='alternating'||o==='reversible')return 0;
  const hw=t.highway||'';if(hw==='motorway'||t.junction==='roundabout'||t.junction==='circular'||hw.endsWith('_link')&&/motorway|trunk/.test(hw))return 1;return 0}
+/* is the route one-way (divided carriageway) at s? OSM node data when loaded, else the router's own steps (Interstates / motorway class) */
+function routeOnewayAt(s){const R=game.route,ni=NODEINFO.get(R.nodes[routeLLnh(clamp(s,0,R.total))[2]]);if(ni&&ni.oneway!==undefined)return !!ni.oneway;let st=null;for(const x of R.steps||[]){if(x.s>s)break;st=x}return !!(st&&st.mw)}
 function spawnWayCar(ways){const cand=ways.filter(w=>w.hw!=='service');if(!cand.length)return;const w=cand[Math.floor(Math.random()*cand.length)];
  const sp=pickSpec();const dir=w.oneway?(w.owDir||1):(Math.random()<0.5?1:-1); /* one-way roads: only in the legal direction */
  const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],Math.random()*w.total,w.spd*0.8,dir);a.kind='way';a.way=w;a.mesh.position.y=0;
@@ -2980,7 +2982,7 @@ function step(){
    {const allR=G.agents.filter(a=>a.kind==='route'&&!a.loose).sort((a,b)=>a.s-b.s),egoLead={s:e.s,v:e.v,spec:G.spec};
     allR.forEach((a,i)=>{const nx=allR[i+1]||null;plan(a,dt,a.s<e.s&&(!nx||nx.s>e.s)?egoLead:nx,false)})} /* cars behind the ride follow it too */
    for(const a of G.agents)if(a.kind==='oncoming'&&!a.loose){a.s-=a.v*dt}
-   for(let i=G.agents.length-1;i>=0;i--){const a=G.agents[i];if(a.kind==='oncoming'&&!a.loose&&(NODEINFO.get(G.route.nodes[routeLLnh(Math.max(0,a.s))[2]])||{}).oneway){scene.remove(a.mesh);G.agents.splice(i,1)}} /* divided highway: the other carriageway isn't ours to drive on */
+   for(let i=G.agents.length-1;i>=0;i--){const a=G.agents[i];if(a.kind==='oncoming'&&!a.loose&&routeOnewayAt(Math.max(0,a.s))){scene.remove(a.mesh);G.agents.splice(i,1)}} /* divided highway: the other carriageway isn't ours to drive on */
    for(let i=G.agents.length-1;i>=0;i--){const a=G.agents[i];if(a.kind==='way'&&!updateWayCar(a,dt)){scene.remove(a.mesh);G.agents.splice(i,1)}}
    for(const p of G.peds){p.s+=p.v*dt*p.dir;if(p.s<0||p.s>p.w.total){p.dir*=-1;p.s=clamp(p.s,0,p.w.total)}}
    if(!G.tow&&e.s>=G.route.total-1.5&&e.v<0.1&&G.stopIdx>=G.stops.length){arrive();break}
@@ -3118,7 +3120,7 @@ function manageTraffic(){if(game.fast){for(const a of game.agents)scene.remove(a
  const lead=G.agents.filter(a=>a.kind==='route'&&a.s>e.s).sort((a,b)=>a.s-b.s);
  if(nRoute<Math.round((big?5:3)*f+0.4)&&Math.random()<0.5){const s0=e.s+180+Math.random()*250;const between=lead.length&&lead[0].s<s0;if(!between&&s0<G.route.total-100){const sp=pickSpec();const idx=routeLLnh(s0)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],s0,speedLimitAt(idx)/MPH*0.85,1);a.off=laneOffsetAt(idx);G.agents.push(a)}}
  const oneway=(NODEINFO.get(G.route.nodes[routeLLnh(e.s)[2]])||{}).oneway;
- if(!oneway&&nOn<Math.round(4*f+0.3)&&Math.random()<0.5&&!(NODEINFO.get(G.route.nodes[routeLLnh(Math.min(G.route.total,e.s+290))[2]])||{}).oneway){const sp=pickSpec(); /* never spawn oncoming onto a one-way carriageway */const idx=routeLLnh(e.s+300)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],e.s+250+Math.random()*80,speedLimitAt(idx)/MPH*0.9,-1);a.kind='oncoming';G.agents.push(a)}
+ if(!oneway&&nOn<Math.round(4*f+0.3)&&Math.random()<0.5&&!routeOnewayAt(e.s)&&!routeOnewayAt(e.s+290)){const sp=pickSpec(); /* never spawn oncoming onto a one-way carriageway */const idx=routeLLnh(e.s+300)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],e.s+250+Math.random()*80,speedLimitAt(idx)/MPH*0.9,-1);a.kind='oncoming';G.agents.push(a)}
  const ways=allWays();if(nWay<Math.round(26*f)&&ways.length)spawnWayCar(ways);
  // pedestrians: more in daytime & dense areas
  const pedTarget=Math.round((G.dark?6:22)*Math.min(1,f+0.3));
@@ -3651,7 +3653,7 @@ async function protestReroute(){const G=game,P=G.protest,e=G.ego;P.state='rerout
    P.state='bypassed';G.status='Re-routed around the protest ('+fmtDist(best.total)+')';return}
   P.state='waiting';G.status='No way around – waiting for the protest to clear'}catch(err){P.state='waiting';G.status='Waiting for the protest to clear'}}
 function getRouteFromOSRM(rt,pts){const cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+hav(pts[i-1],pts[i]));const nodes=[],speed=[],steps=[];rt.legs.forEach((lg,li)=>{const n=lg.annotation.nodes;nodes.push(...(li?n.slice(1):n));speed.push(...lg.annotation.speed)});while(nodes.length<pts.length)nodes.push(0);
- let from=0;for(const lg of rt.legs)for(const st of lg.steps){const loc=st.maneuver.location;let best=from,bd=1e18;for(let i=from;i<pts.length;i++){const d=(pts[i][0]-loc[0])**2+(pts[i][1]-loc[1])**2;if(d<bd){bd=d;best=i}if(bd<1e-12)break}from=best;steps.push({ref:st.ref||'',idx:best,s:cum[best],type:st.maneuver.type,mod:st.maneuver.modifier,name:st.name||st.ref||''})}
+ let from=0;for(const lg of rt.legs)for(const st of lg.steps){const loc=st.maneuver.location;let best=from,bd=1e18;for(let i=from;i<pts.length;i++){const d=(pts[i][0]-loc[0])**2+(pts[i][1]-loc[1])**2;if(d<bd){bd=d;best=i}if(bd<1e-12)break}from=best;steps.push({ref:st.ref||'',idx:best,s:cum[best],type:st.maneuver.type,mod:st.maneuver.modifier,name:st.name||st.ref||'',mw:/^(I|Interstate)[\s-]?\d/i.test(st.ref||'')||((st.intersections||[])[0]||{}).classes&&st.intersections[0].classes.includes('motorway')})}
  return{pts,cum,total:cum[cum.length-1],nodes,speed,steps,legEnds:[],duration:rt.duration,hint:0}}
 function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=performance.now()/1000;
  // chant rhythm "JUST · STOP · OIL · (rest)": 4 beats of 0.6 s; everyone moves on the beat, a little out of sync like a real crowd
