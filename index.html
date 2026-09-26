@@ -2415,7 +2415,7 @@ function startGame(spec,color,A,B,route){
  audio.start(spec);
 }
 function applyBiome(){const b=game.bio;ground.material.color.set(b.g);MAT.crown.color.set(b.tree);MAT.grass.color.set(b.g);WXBASE.delete(MAT.crown);WXBASE.delete(ground.material);applyWeatherMaterials()}
-function rebase(){ // floating origin: keep numbers small over long trips
+function rebase(){XWG.clear(); // floating origin: keep numbers small over long trips
  const e=game.ego,lat=toLat(e.z),lon=toLon(e.x);
  const agentsLL=game.agents.map(a=>[toLat(a.z),toLon(a.x)]);
  for(const k of [...TILES.keys()])unloadTile(k);
