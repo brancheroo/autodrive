@@ -2133,7 +2133,7 @@ function satTile(z,x,y,yLevel){const k=z+'/'+x+'/'+y;if(SAT.tiles.has(k))return 
  const N=z>=19?(HIGH?16:8):(HIGH?64:32),W=toX(e)-toX(w),H=toZ(s)-toZ(n),x0=toX(w),z0=toZ(n);
  const g=new THREE.PlaneGeometry(1,1,N,N).rotateX(-Math.PI/2).translate(0.5,0,0.5),pa=g.attributes.position;
  for(let i=0;i<pa.count;i++){const lx=pa.getX(i)*W,lz=pa.getZ(i)*H;pa.setXYZ(i,lx,groundY(x0+lx,z0+lz)+yLevel,lz)}g.computeVertexNormals();
- const mat=new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false});
+ const mat=new THREE.MeshLambertMaterial({color:0xc4c4c4,transparent:true,opacity:0,depthWrite:false}) /* satellite photos are pre-lit: tone down so they don't glare */;
  const m=new THREE.Mesh(g,mat);m.receiveShadow=true;m.renderOrder=z<16?-3:z<18?-2:-1;m.position.set(x0,0,z0);scene.add(m);
  SAT.busy++;const remoteSat=`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,regS=regionAt((n+s)/2,(w+e)/2),satUrl=regS&&regS.m.sat_zooms&&regS.m.sat_zooms.includes(z)?`${regS.path}sat/${z}/${x}/${y}.jpg`:remoteSat;
  const onSatErr=()=>{if(satUrl!==remoteSat){texLoader.load(remoteSat,onSat,undefined,()=>{SAT.fail++;SAT.busy--;scene.remove(m)})}else{SAT.fail++;SAT.busy--;scene.remove(m)}};const onSat=t=>{t.encoding=THREE.sRGBEncoding;t.anisotropy=ANISO;mat.map=t;wxSat(mat);mat.opacity=1;mat.transparent=false;mat.depthWrite=true;mat.needsUpdate=true;SAT.ok=true;SAT.busy--};texLoader.load(satUrl,onSat,undefined,onSatErr);
@@ -2996,7 +2996,7 @@ function step(){
  const el=sp.el*180/Math.PI;G.dark=el<3;G.lightsOn=el<3;
  const sd=new THREE.Vector3(Math.cos(sp.el)*Math.sin(sp.az),Math.sin(sp.el),-Math.cos(sp.el)*Math.cos(sp.az));
  const day=clamp((el+6)/18,0,1),dusk=clamp(1-Math.abs(el-2)/10,0,1);
- const hz=new THREE.Color(G.bio.haze).multiplyScalar(0.12+0.88*day).lerp(new THREE.Color(0xff9a5a),dusk*0.45*day);
+ const hz=new THREE.Color(G.bio.haze).multiplyScalar((0.12+0.88*day)*0.85).lerp(new THREE.Color(0xff9a5a),dusk*0.45*day);
  const top=new THREE.Color(0x0a1224).lerp(new THREE.Color(0x3d7fd6),day);
  skyMat.uniforms.top.value.copy(top);skyMat.uniforms.hor.value.copy(hz);skyMat.uniforms.sunDir.value.copy(sd);
  scene.fog.color.copy(hz);sky.position.copy(camera.position);
