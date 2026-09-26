@@ -3733,7 +3733,7 @@ function updateUturn(dt){const G=game,e=G.ego,U=G.uturn;G.sig=-1;
  if(G.spec.hyper&&U.phase==='turn'){ /* 360° wheels: spin on the spot to face the new way, then crab straight across */
   if(!U.pivot){U.pivot=1;U.h0=e.mesh.rotation.y;U.h1=Math.atan2(-U.T1[1],U.T1[0]);U.k=0}const P=e.mesh.position;
   if(U.pivot===1){let d=U.h1-U.h0;d=Math.atan2(Math.sin(d),Math.cos(d));U.k=Math.min(1,U.k+dt/1.6);const hh=U.h0+d*(0.5-0.5*Math.cos(Math.PI*U.k));e.mesh.rotation.y=hh;e.head=hh;U.wheel=0.78;spinWheels(e,dt,0);G.status='↩️ Pivoting on the spot (360° wheels)';if(U.k>=1){U.pivot=2;U.k=0}}
-  else{const dx=U.P1[0]-P.x,dz=U.P1[1]-P.z,L=Math.hypot(dx,dz),stp=Math.min(L,5*dt);if(L>0.05){P.x+=dx/L*stp;P.z+=dz/L*stp;P.y=Math.max(groundY(P.x,P.z),(roadSurfaceY(P.x,P.z,groundY(P.x,P.z))??-1e9))+0.03;e.x=P.x;e.z=P.z;const f=Math.cos(U.h1)*dx-Math.sin(U.h1)*dz;U.wheel=clamp(-Math.atan2(-Math.sin(U.h1)*dx*0-(Math.sin(U.h1)*dx+Math.cos(U.h1)*dz),f),-Math.PI/2,Math.PI/2);spinWheels(e,dt,0);G.status='↔️ Crabbing into the new lane'}
+  else{const dx=U.P1[0]-P.x,dz=U.P1[1]-P.z,L=Math.hypot(dx,dz),stp=Math.min(L,5*dt);if(L>0.05){P.x+=dx/L*stp;P.z+=dz/L*stp;P.y=Math.max(groundY(P.x,P.z),(roadSurfaceY(P.x,P.z,groundY(P.x,P.z))??-1e9))+0.03;e.x=P.x;e.z=P.z;const f=Math.cos(U.h1)*dx-Math.sin(U.h1)*dz;const rr=Math.sin(U.h1)*dx+Math.cos(U.h1)*dz;U.wheel=clamp(-Math.atan2(rr,f),-Math.PI/2,Math.PI/2);spinWheels(e,dt,0);G.status='↔️ Crabbing into the new lane'}
    else{G.uturn=null;e.s=12;e.off=laneOffsetAt(0);G.sig=0;G.status='U-turn complete (pivot + crab)'}}
   return}
  if(U.phase==='stop'){e.v=Math.max(0,e.v-6*dt);G.status='↩️ Preparing to U-turn';if(e.v<0.3){e.v=0;U.phase='wait'}return}
