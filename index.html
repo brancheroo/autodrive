@@ -3540,7 +3540,7 @@ let FANSND=null;function fanSound(p){if(!audio.ctx||!audio.master)return;const C
 /* hypercar braking the planner may rely on: discs+tyres (×fan grip, capped) plus airbrake drag that grows with v² */
 function hyperBrakeCap(v){const fg=1+2*Math.min(4,0.5+((game&&game.fans)||[0,0,0,0]).reduce((q,x)=>q+x,0)/4);return Math.min(38,(v>60?11:7)*Math.pow(fg,0.6))+22*Math.pow(Math.min(v,450)/450,2)}
 /* how far along the ROUTE is sensed: own lidar only with line of sight (buildings block it), plus anything under the drone's footprint */
-function senseHorizon(){const G=game,e=G.ego,R=G.route;let edge=0;const ex=e.mesh.position.x,ez=e.mesh.position.z,lid=(G.spec.hyper?1000:45)*WX.perc,sat=SATL.on?3000:0,dr=HDRONE.mesh?HDRONE:null;
+function senseHorizon(){const G=game,e=G.ego,R=G.route;let edge=0;const ex=e.mesh.position.x,ez=e.mesh.position.z,lid=(G.spec.hyper?1000:45)*WX.perc,sat=satActive()?3000:0,dr=HDRONE.mesh?HDRONE:null;
  for(let d=10;d<7000;d+=d<3000?20:40){const s2=e.s+d;if(s2>R.total){edge=d;break}const p=routeXZ(s2,0);let ok=false;const dd=Math.hypot(p[0]-ex,p[1]-ez);
   if(dd<lid)ok=true; /* hypercar lidar: 1 km, sees through buildings and objects */
   if(!ok&&dd<sat)ok=true; /* satellite: complete open-sky view of the route within 3 km */
@@ -3552,12 +3552,14 @@ function senseHorizon(){const G=game,e=G.ego,R=G.route;let edge=0;const ex=e.mes
 /* TRACKING SATELLITE: overhead, tracks and predicts every road user within 3 km (no line-of-sight limits), 1 Hz downlink into the hypercar's computer */
 const SATL={n:0,down:0,useT:0,flash:0,on:(()=>{try{const v=localStorage.getItem('satOn');return v===null?true:v==='1'}catch(e){return true}})()};
 /* the hypercar's driving brain (prediction planner + safety envelope) runs for the hypercar always, and for ANY car while the satellite is on */
-function smartOn(){const G=game;return !!(G&&G.spec&&(G.spec.hyper||SATL.on))}
+function satActive(){const G=game;return !!(G&&G.spec&&(G.spec.hyper||SATL.on))} /* hypercar: satellite is built in, always on */
+function smartOn(){return satActive()}
+setInterval(()=>{const b=document.getElementById('satBtn');if(b)b.style.display=game&&game.spec&&game.spec.hyper?'none':''},400); /* no toggle while driving the hypercar */
 function egoBrake(v){const G=game;return G&&G.spec&&G.spec.hyper?hyperBrakeCap(v):6.5} /* each car keeps its own braking */
-function satToggle(){SATL.on=!SATL.on;try{localStorage.setItem('satOn',SATL.on?'1':'0')}catch(e){}const b=document.getElementById('satBtn');if(b)b.textContent='🛰 '+(SATL.on?'On':'Off');if(game&&!smartOn()){game.hp=null;game.pred=null;game.threat=null;CHASE.evade=0}}
+function satToggle(){if(game&&game.spec&&game.spec.hyper)return;SATL.on=!SATL.on;try{localStorage.setItem('satOn',SATL.on?'1':'0')}catch(e){}const b=document.getElementById('satBtn');if(b)b.textContent='🛰 '+(SATL.on?'On':'Off');if(game&&!smartOn()){game.hp=null;game.pred=null;game.threat=null;CHASE.evade=0}}
 setTimeout(()=>{const b=document.getElementById('satBtn');if(b)b.textContent='🛰 '+(SATL.on?'On':'Off')},0);
 function hyperPredict(dt){const G=game;if(!G||!G.ego||!smartOn()||dt<=0)return;const e=G.ego,objs=[];G.dodgeT=Math.max(0,(G.dodgeT||0)-dt);
- const drone=HDRONE.mesh?HDRONE:null;let dOnly=0;SATL.n=0;SATL.down-=dt;if(SATL.down<=0){SATL.down=1;SATL.flash=0.25}SATL.flash=Math.max(0,SATL.flash-dt);SATL.useT=Math.max(0,SATL.useT-dt);const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z),dd=drone?Math.hypot(x-drone.x,z-drone.z):1e9;if(d>Math.max(G.spec.hyper?1000:0,SATL.on?3000:0)&&!(dd<=(drone?drone.range:0)))return; /* lidar 1 km (hypercar) + satellite 3 km complete vision + anything the drone sees */const byDrone=d>120&&dd<(drone?drone.range:0);if(byDrone)dOnly++;o._drone=byDrone;o._sat=SATL.on&&d>(G.spec.hyper?1000:45)&&!byDrone;if(o._sat)SATL.n++;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
+ const drone=HDRONE.mesh?HDRONE:null;let dOnly=0;SATL.n=0;SATL.down-=dt;if(SATL.down<=0){SATL.down=1;SATL.flash=0.25}SATL.flash=Math.max(0,SATL.flash-dt);SATL.useT=Math.max(0,SATL.useT-dt);const track=(o,x,z,h,kind)=>{const d=Math.hypot(x-e.x,z-e.z),dd=drone?Math.hypot(x-drone.x,z-drone.z):1e9;if(d>Math.max(G.spec.hyper?1000:0,satActive()?3000:0)&&!(dd<=(drone?drone.range:0)))return; /* lidar 1 km (hypercar) + satellite 3 km complete vision + anything the drone sees */const byDrone=d>120&&dd<(drone?drone.range:0);if(byDrone)dOnly++;o._drone=byDrone;o._sat=satActive()&&d>(G.spec.hyper?1000:45)&&!byDrone;if(o._sat)SATL.n++;const vx=o._hx===undefined?0:(x-o._hx)/dt,vz=o._hz===undefined?0:(z-o._hz)/dt,w=o._hh===undefined?0:Math.atan2(Math.sin(h-o._hh),Math.cos(h-o._hh))/dt;o._hx=x;o._hz=z;o._hh=h;
   if(Math.hypot(vx,vz)>90)return;const f=x=>isFinite(x)?x:0;o._vx=lerp(o._vx||0,f(vx),0.65);o._vz=lerp(o._vz||0,f(vz),0.65);o._w=lerp(o._w||0,clamp(f(w),-1.2,1.2),0.35);const sp=Math.hypot(o._vx,o._vz);o._acc=o._sp===undefined?0:lerp(o._acc||0,clamp(f((sp-o._sp)/dt),-10,6),0.25);o._sp=sp; /* longitudinal acceleration (braking < 0) */
   objs.push({o,x,z,h,kind,vx:o._vx,vz:o._vz,w:o._w,acc:o._acc,d,m:kind==='ped'?80:o.spec?massOf(o.spec,kind):kind==='cop'?2000:1500,id:o._id||(o._id=++G._pid||(G._pid=1))})};
  for(const a of G.agents)if(a.mesh)track(a,a.mesh.position.x,a.mesh.position.z,a.mesh.rotation.y,a.spec.style==='harley'?'moto':'car');
@@ -3577,7 +3579,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!smartOn()||dt<=0)return;c
    cost = collision (earlier = worse) + proximity + off-road + speed loss + lane deviation + jerk; lowest cost wins */
 function hyperPlan(objs){const G=game,e=G.ego,R=G.route,base=laneOffsetAt(routeLLnh(e.s)[2]),cur=(e.off===undefined?base:e.off)-base,v0=e.v,fast=fastOn(); /* base = lane centre; cur = where the car really is now relative to it */
  const vWant=fast?Math.max(e.v,30):(G.limitMph||30)/MPH;const rq=roadQAt(e.x,e.z);
- const near=objs.filter(b=>b.d<200&&b.path);if(SATL.on&&(objs.some(b=>b.o._sat)||(game.senseEdge||0)>(G.spec.hyper?1000:45)))SATL.useT=0.4; /* recalculating with satellite data */const circ=(x,z,h,kind,sp)=>{if(kind==='ped')return[[x,z,0.45]];const L=sp&&sp.L||(kind==='moto'?2.3:4.8),W=sp&&sp.W||(kind==='moto'?0.9:1.9),r=W/2+0.05,k=Math.max(0,L/2-r),c=Math.cos(h),sn=-Math.sin(h);return[[x+c*k,z+sn*k,r],[x+c*k/2,z+sn*k/2,r],[x,z,r],[x-c*k/2,z-sn*k/2,r],[x-c*k,z-sn*k,r]]}; /* 5 circles spanning the real length */
+ const near=objs.filter(b=>b.d<200&&b.path);if(satActive()&&(objs.some(b=>b.o._sat)||(game.senseEdge||0)>(G.spec.hyper?1000:45)))SATL.useT=0.4; /* recalculating with satellite data */const circ=(x,z,h,kind,sp)=>{if(kind==='ped')return[[x,z,0.45]];const L=sp&&sp.L||(kind==='moto'?2.3:4.8),W=sp&&sp.W||(kind==='moto'?0.9:1.9),r=W/2+0.05,k=Math.max(0,L/2-r),c=Math.cos(h),sn=-Math.sin(h);return[[x+c*k,z+sn*k,r],[x+c*k/2,z+sn*k/2,r],[x,z,r],[x-c*k/2,z-sn*k/2,r],[x-c*k,z-sn*k,r]]}; /* 5 circles spanning the real length */
  let best=null;const fx0=Math.cos(e.head),fz0=-Math.sin(e.head);
  /* oncoming lane is only usable when clear for 6 s of closing distance (+30 m); every oncoming road user counts */
  const ni0=NODEINFO.get(R.nodes[routeLLnh(e.s)[2]]),oneway=!!(ni0&&ni0.oneway); /* one-way: left of the centreline is just another lane */
@@ -3726,7 +3728,7 @@ function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cv
   if(pts.length<4)continue;let x0=Math.min(...pts.map(p=>p[0])),x1=Math.max(...pts.map(p=>p[0])),y0=Math.min(...pts.map(p=>p[1])),y1=Math.max(...pts.map(p=>p[1]));if(x1<0||x0>W||y1<0||y0>H)continue;
   const col=d.cls==='light'?({RED:'#ff4d4d',YELLOW:'#ffb020',GREEN:'#35d07f'})[d.extra]:CVCOL[d.cls];x.strokeStyle=col;x.lineWidth=1.5*dpr;x.strokeRect(x0,y0,x1-x0,y1-y0);
   const lab=`${d.cls==='animal'?d.extra:d.cls==='light'?'light '+d.extra:d.cls==='stop'?'stop sign':d.cls==='ped'?'pedestrian':'vehicle'} ${d.conf.toFixed(2)} · ${Math.round(d.d)}m`;x.font=`${9*dpr}px system-ui`;const tw=x.measureText(lab).width+4*dpr;x.fillStyle=col;x.fillRect(x0,y0-11*dpr,tw,11*dpr);x.fillStyle='#000';x.fillText(lab,x0+2*dpr,y0-2.5*dpr)}
- if(G.spec.hyper)hyperOverlay(x,W,H,dpr,proj,dets);else if(SATL.on)satIcon(x,W,H,dpr);
+ if(G.spec.hyper)hyperOverlay(x,W,H,dpr,proj,dets);else if(satActive())satIcon(x,W,H,dpr);
  {const G=game,e=G.ego,mph=Math.round(e.v*MPH),acc=e.acc||0,verb=G.charging?'':acc>0.3?'accelerating':acc<-0.8?'braking':acc<-0.2?'easing off':'holding speed';const sig=G.sig<0?' · signalling left':G.sig>0?' · signalling right':'';
   $('cvExp').style.display=EXPRESS.on?'block':'none';$('cvAct').textContent=`▶ ${G.status||'Cruising'}${verb&&mph>0?' · '+verb:''} · ${mph} mph${sig}`}
  game.seen={...counts};$('cvStats').textContent=`${counts.car} veh · ${counts.ped} ped${counts.animal?` · ${counts.animal} animal`:''} · ${counts.light} lights · ${counts.stop} stop`;$('cvTitle').textContent='PERCEPTION';
@@ -3748,7 +3750,7 @@ function hyperOverlay(x,W,H,dpr,proj,dets){const G=game,e=G.ego,t=performance.no
  col(W-86*dpr,[`TRACKS ${n}`,`FUSION ${(0.9+Math.sin(t)*0.05).toFixed(3)}`,`PRED 4.0s ×${n*16}`,`PLAN ${G.threat?'EVADE':'NOMINAL'}`,`LAT ${(7.8+Math.sin(t*7)*0.9).toFixed(1)}ms`,HDRONE.mesh?`DRONE ${HDRONE.mode||''} ${Math.round(HDRONE.y-groundY(HDRONE.x,HDRONE.z))}m · +${HDRONE.seen}`:'DRONE —',`SEEN ${Math.round(G.senseEdge||0)}m ahead`,G.fans?`FANS ${G.fans.map(v=>Math.round(v*100)).join('/')}`:'FANS —',`NPU ${(1840+Math.sin(t*2)*120).toFixed(0)} TOPS`,`v ${(e.v*MPH).toFixed(1)} mph`],G.threat?'#ff2a2a':'#9dff00');
  /* occupancy mini grid */
  const gx=W-60*dpr,gy=H-60*dpr,cs=3*dpr;for(let i=0;i<18;i++)for(let j=0;j<18;j++){const wx=e.x+fx*(18-j)*4-fz*(i-9)*2,wz=e.z+fz*(18-j)*4+fx*(i-9)*2;let occ=0;for(const b of G.pred||[])if(Math.abs(b.x-wx)<2.5&&Math.abs(b.z-wz)<2.5)occ=1;x.fillStyle=occ?'#ff1fb4':'rgba(0,229,255,.12)';x.fillRect(gx+i*cs,gy+j*cs,cs-dpr*0.5,cs-dpr*0.5)}
- if(SATL.on)satIcon(x,W,H,dpr);}
+ satIcon(x,W,H,dpr);}
 /* satellite status icon: bright while the planner is recalculating with satellite tracks, brief blink on each downlink, dim otherwise */
 function satIcon(x,W,H,dpr){const on=SATL.useT>0,bl=SATL.flash>0,cx=W-16*dpr,cy=H-16*dpr;x.save();x.globalAlpha=on?1:bl?0.75:0.28;x.fillStyle=on?'#ffd23a':bl?'#8fe8ff':'#9aa6b2';x.strokeStyle=x.fillStyle;x.lineWidth=1.3*dpr;
   x.translate(cx,cy);x.rotate(-0.6);x.fillRect(-2.5*dpr,-2.5*dpr,5*dpr,5*dpr);for(const s2 of [-1,1]){x.fillRect(s2>0?3.5*dpr:-9.5*dpr,-2*dpr,6*dpr,4*dpr);x.beginPath();x.moveTo(s2*2.5*dpr,0);x.lineTo(s2*3.5*dpr,0);x.stroke()}
