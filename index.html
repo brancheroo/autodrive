@@ -1295,7 +1295,7 @@ function buildCar(spec,colorHex,opts={}){
   const scr=new THREE.Mesh(new THREE.CylinderGeometry(hw*1.6,hw*1.6,0.24,28,1,true,-0.55,1.1),new THREE.MeshPhysicalMaterial({color:0x2a3a44,transparent:true,opacity:0.35,roughness:0.03,metalness:0,side:THREE.DoubleSide,depthWrite:false}));
   scr.rotation.z=0.95;scr.position.set(xc-hw*1.45,yb+0.1,0);g.add(scr);g.userData.screen=scr;
   const rim=new THREE.Mesh(new THREE.TorusGeometry(hw*1.6,0.018,6,28,1.1),cf);rim.rotation.set(Math.PI/2,0,0.95-Math.PI/2);rim.rotation.order='YXZ';rim.position.set(xc-hw*1.45+Math.sin(0.95)*0.12,yb+0.1+Math.cos(0.95)*0.12,0);g.add(rim);
-  const xs=P0.xOf((sh0.roofR+sh0.roofF)/2),yt=P0.belt(0.5);const well=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(xc-xs)*1.7+0.4,0.1,P0.half(0.5)*1.75),tub);well.position.set((xc+xs)/2-0.15,yt-0.03,0);g.add(well);
+  const xs=P0.xOf((sh0.roofR+sh0.roofF)/2),yt=P0.belt(0.5);const well=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(xc-xs)*1.7+0.4,0.1,P0.half(0.5)*1.75),tub);well.position.set((xc+xs)/2-0.15,yt-0.5,0); /* cockpit floor, sunk well below the sills */g.add(well);
   for(const z of [-1,1]){const hx=xs-0.35,hz=z*W*0.22;const hoop=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.035,8,20,Math.PI),cf);hoop.position.set(hx,yt+0.02,hz);hoop.rotation.y=Math.PI/2;g.add(hoop);
    const pad=new THREE.Mesh(new THREE.CapsuleGeometry(0.06,0.14,4,8),tub);pad.rotation.x=Math.PI/2;pad.position.set(hx+0.04,yt+0.2,hz);g.add(pad);
    const hump=new THREE.Mesh(new THREE.SphereGeometry(1,16,10,0,Math.PI*2,0,Math.PI/2),paint);hump.scale.set(0.75,0.16,0.19);hump.position.set(hx-0.62,yt-0.02,hz);g.add(hump)}
@@ -1450,11 +1450,11 @@ function buildInterior(g,spec){
   box(0.12,0.012,0.08,new THREE.MeshStandardMaterial({color:0x111111,roughness:0.3}),eye.x+0.35,eye.y-0.515,mid+eye.z-0.06); // phone pad
   for(const s of [1,-1]){box(spec.L*0.55,0.46,0.05,dashMat,eye.x-0.1,dTop-0.3,s*W*0.46).userData.inOnly=1;box(spec.L*0.5,0.02,0.02,new THREE.MeshBasicMaterial({color:AMB}),eye.x-0.05,dTop-0.08,s*W*0.455).userData.inOnly=1}
   // rear-view mirror
-  if(!/cybercab|zoox/.test(spec.id)){const mm=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.07,0.24),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.4}));rel(mm,0.55,-0.16,mid);const glassM=new THREE.Mesh(new THREE.PlaneGeometry(0.22,0.06),new THREE.MeshStandardMaterial({color:0x8fa0b0,metalness:1,roughness:0.05}));rel(glassM,0.535,-0.16,mid)}
+  if(!/cybercab|zoox/.test(spec.id)&&!spec.roadster){const mm=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.07,0.24),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.4}));rel(mm,0.55,-0.16,mid);const glassM=new THREE.Mesh(new THREE.PlaneGeometry(0.22,0.06),new THREE.MeshStandardMaterial({color:0x8fa0b0,metalness:1,roughness:0.05}));rel(glassM,0.535,-0.16,mid)}
  }
  const pil=new THREE.MeshStandardMaterial({color:0x2c2c2e,roughness:0.9});
- if(spec.style!=='pod')for(const s of [1,-1]){const p=box(0.045,0.8,0.06,pil,fFront+0.14,dTop+0.38,s*W*0.45);p.rotation.z=0.7;p.userData.inOnly=1}
- box(spec.L*0.55,0.02,W*0.86,new THREE.MeshStandardMaterial({color:0x8a857d,...INT.suede,side:THREE.DoubleSide,roughness:1}),eye.x-0.3,spec.H-0.05,0).userData.inOnly=1;
+ if(spec.style!=='pod'&&!spec.roadster)for(const s of [1,-1]){const p=box(0.045,0.8,0.06,pil,fFront+0.14,dTop+0.38,s*W*0.45);p.rotation.z=0.7;p.userData.inOnly=1}
+ if(!spec.roadster)box(spec.L*0.55,0.02,W*0.86,new THREE.MeshStandardMaterial({color:0x8a857d,...INT.suede,side:THREE.DoubleSide,roughness:1}),eye.x-0.3,spec.H-0.05,0).userData.inOnly=1;
  // seats with bolsters + headrests
  const seatM=new THREE.MeshStandardMaterial({color:IM.seat,...(IM.mat==='cloth'?INT.cloth:INT.leather)});
  for(const s of spec.style==='pod'?[0.45,-0.45]:[0.37,-0.37]){const z=s*W/1.9;box(0.52,0.12,0.5,seatM,eye.x+0.12,eye.y-0.72,z);for(const b of [-1,1])box(0.5,0.07,0.07,seatM,eye.x+0.12,eye.y-0.64,z+b*0.22);box(0.12,0.62,0.5,seatM,eye.x-0.22,eye.y-0.38,z);box(0.1,0.18,0.28,seatM,eye.x-0.25,eye.y+0.02,z)}
