@@ -1593,6 +1593,32 @@ function buildCar(spec,colorHex,opts={}){
 const SCREENS=[];let wheelMesh=null;
 function screenMesh(w,h,px,kind){px=Math.round(px*(HIGH?1.5:1));const c=document.createElement('canvas');c.width=Math.round(px*w/h);c.height=px;const tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,toneMapped:false}));SCREENS.push({c,ctx:c.getContext('2d'),tex,kind,mesh:m});return m}
 function eyePos(spec){const P=(profCache[spec.id]||{}).P||mkProfile(spec),sh=P.sh;if(spec.style==='pod')return new THREE.Vector3(-0.45,Math.min(spec.H-0.2,P.belt(0.5)+0.45),0);const x=P.xOf(sh.roofF)-0.6;const y=Math.min(spec.H-0.14,P.belt(0.5)+0.36);return new THREE.Vector3(x,y,(spec.driver?-1:1)*spec.W*0.2)}
+/* ---- interior realism helpers ---- */
+let PERFTEX=null;function perfTex(){if(PERFTEX)return PERFTEX;const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,256,256);x.fillStyle='rgba(0,0,0,.55)';for(let i=0;i<16;i++)for(let j=0;j<16;j++){x.beginPath();x.arc(8+i*16+(j%2)*8,8+j*16,2.2,0,7);x.fill()}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(3,3);t.anisotropy=ANISO;return PERFTEX=t}
+let GRILLTEX=null;function grillTex(){if(GRILLTEX)return GRILLTEX;const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#1a1a1c';x.fillRect(0,0,128,128);x.fillStyle='#050506';for(let i=0;i<22;i++)for(let j=0;j<22;j++){const dx=i*6+3-64,dy=j*6+3-64;if(dx*dx+dy*dy<60*60){x.beginPath();x.arc(i*6+3,j*6+3,1.6,0,7);x.fill()}}
+ const t=new THREE.CanvasTexture(c);t.anisotropy=ANISO;return GRILLTEX=t}
+/* door cards, dash vents & controls, footwell, headliner fittings, belts — everything a real cabin has that a box model doesn't */
+function interiorDetails(I,spec,eye,mid,dTop,fFront,dashMat,seatM,trim,AMB,box){const W=spec.W,pod=spec.style==='pod',rds=!!spec.roadster;
+ const chrome=new THREE.MeshStandardMaterial({color:0xd8dce2,metalness:1,roughness:0.18}),blk=new THREE.MeshStandardMaterial({color:0x121214,roughness:0.55}),soft=new THREE.MeshStandardMaterial({color:new THREE.Color(dashMat.color).multiplyScalar(1.15),roughness:0.85,normalMap:INT.soft.normalMap}),
+  carpet=new THREE.MeshStandardMaterial({color:0x1a1a1b,roughness:1}),mat=new THREE.MeshStandardMaterial({color:0x0e0e0f,roughness:0.95}),belt=new THREE.MeshStandardMaterial({color:0x1d1d20,roughness:0.9}),grill=new THREE.MeshStandardMaterial({map:grillTex(),roughness:0.6});
+ addDetail(carpet,0.25,0.5);addDetail(soft,0.4,0.18);addDetail(dashMat,0.5,0.15);
+ const fl=eye.y-0.95;
+ /* floor carpet + mats */box(spec.L*0.5,0.02,W*0.86,carpet,eye.x+0.1,fl,0);for(const z of [W*0.2,-W*0.2]){box(0.55,0.012,0.45,mat,eye.x+0.42,fl+0.015,z)}
+ if(!pod){
+  /* door cards: armrest, pull handle, switch pack, speaker grille, pocket */for(const sd of [1,-1]){const dz=sd*(W*0.455-0.03),xa=eye.x+0.1;
+   box(0.55,0.06,0.09,soft,xa,eye.y-0.5,dz-sd*0.04);box(0.18,0.03,0.04,chrome,xa+0.18,eye.y-0.38,dz-sd*0.03);box(0.16,0.015,0.07,blk,xa+0.05,eye.y-0.465,dz-sd*0.05);
+   for(let k=0;k<4;k++)box(0.022,0.008,0.028,new THREE.MeshStandardMaterial({color:0x2a2a2e,roughness:0.4}),xa+0.0+k*0.035,eye.y-0.455,dz-sd*0.05);
+   const gr=new THREE.Mesh(new THREE.CircleGeometry(0.075,24),grill);gr.position.set(xa+0.2,eye.y-0.75,dz-sd*0.005);gr.rotation.y=sd>0?Math.PI:0;I.add(gr);box(0.4,0.1,0.03,blk,xa+0.15,eye.y-0.85,dz-sd*0.03)}
+  /* dash: vents with louvres, HVAC knobs, glovebox & airbag seams */for(const vz of [-W*0.36,-W*0.12,W*0.12,W*0.36]){const vx=fFront+0.02,vy=dTop-0.16;box(0.04,0.07,0.16,blk,vx,vy,vz);for(let k=0;k<4;k++)box(0.045,0.004,0.15,chrome,vx-0.005,vy-0.025+k*0.017,vz)}
+  for(const k of [-1,0,1]){const kn=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.02,20),chrome);kn.rotation.z=Math.PI/2;kn.position.set(fFront-0.01,dTop-0.3,mid+eye.z+k*0.06);I.add(kn)}
+  box(0.004,0.13,0.3,new THREE.MeshStandardMaterial({color:0x080809}),fFront-0.065,dTop-0.33,W*0.25+(eye.z<0?0:-W*0.5));box(0.003,0.003,0.22,new THREE.MeshStandardMaterial({color:0x080809}),fFront+0.2,dTop+0.003,-eye.z*0.9);
+  /* pedals (cars with a wheel) */if(spec.wheel!=='none'){for(const [pz,w] of [[0.1,0.06],[-0.05,0.1]]){const p=box(0.02,0.1,w,blk,eye.x+0.72,fl+0.12,eye.z+pz);p.rotation.z=0.5}}
+  if(!rds){/* sun visors, dome light, grab handles */for(const vz of [eye.z,-eye.z]){const v=box(0.18,0.015,0.32,soft,fFront-0.05,spec.H-0.12,vz);v.rotation.z=-0.15;v.userData.inOnly=1}
+   box(0.12,0.015,0.2,new THREE.MeshStandardMaterial({color:0xe8e4d8,emissive:0x221f18,roughness:0.5}),eye.x-0.1,spec.H-0.075,0).userData.inOnly=1;for(const sd of [1,-1]){const gh=box(0.14,0.02,0.02,blk,eye.x-0.2,spec.H-0.2,sd*W*0.43);gh.userData.inOnly=1}}
+  /* seatbelts: pillar top → across the seat to the buckle */for(const s of [0.37,-0.37]){const z=s*W/1.9,from=new THREE.Vector3(eye.x-0.3,eye.y+0.12,z+Math.sign(z)*0.25),to=new THREE.Vector3(eye.x+0.05,eye.y-0.62,z-Math.sign(z)*0.2),d=to.clone().sub(from),L=d.length();
+   const bt=new THREE.Mesh(new THREE.BoxGeometry(0.004,L,0.045),belt);bt.position.copy(from).add(to).multiplyScalar(0.5);bt.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());I.add(bt);box(0.03,0.05,0.035,chrome,to.x,to.y,to.z)}}
+ /* shadows: sun through the glass paints pillar/roof shadows across the cabin */I.traverse(o=>{if(o.isMesh&&!(o.material&&o.material.isMeshBasicMaterial)){o.receiveShadow=true;if(o.geometry&&o.geometry.boundingSphere===null)o.geometry.computeBoundingSphere();o.castShadow=true}})}
 function buildInterior(g,spec){
  SCREENS.length=0;wheelMesh=null;
  const I=new THREE.Group();g.add(I);g.userData.interior=I;
@@ -1623,7 +1649,14 @@ function buildInterior(g,spec){
  if(!spec.roadster)box(spec.L*0.55,0.02,W*0.86,new THREE.MeshStandardMaterial({color:0x8a857d,...INT.suede,side:THREE.DoubleSide,roughness:1}),eye.x-0.3,spec.H-0.05,0).userData.inOnly=1;
  // seats with bolsters + headrests
  const seatM=new THREE.MeshStandardMaterial({color:IM.seat,...(IM.mat==='cloth'?INT.cloth:INT.leather)});
- for(const s of spec.style==='pod'?[0.45,-0.45]:[0.37,-0.37]){const z=s*W/1.9;box(0.52,0.12,0.5,seatM,eye.x+0.12,eye.y-0.72,z);for(const b of [-1,1])box(0.5,0.07,0.07,seatM,eye.x+0.12,eye.y-0.64,z+b*0.22);box(0.12,0.62,0.5,seatM,eye.x-0.22,eye.y-0.38,z);box(0.1,0.18,0.28,seatM,eye.x-0.25,eye.y+0.02,z)}
+ /* SCULPTED SEATS: wedge cushion, reclined backrest, curved side bolsters, perforated inserts with contrast stitching, rounded headrest */
+ const insM=new THREE.MeshStandardMaterial({color:new THREE.Color(IM.seat).multiplyScalar(0.92),map:perfTex(),roughness:0.7,...(IM.mat==='cloth'?{}:{normalMap:INT.leather.normalMap})}),stitchM=new THREE.MeshStandardMaterial({color:IM.mat==='cloth'?0x6a6a6a:new THREE.Color(IM.seat).getHSL({}).l>0.5?0x7a5a3a:0xbfae90,roughness:0.8});
+ for(const s of spec.style==='pod'?[0.45,-0.45]:[0.37,-0.37]){const z=s*W/1.9,sx=eye.x+0.12,sy=eye.y-0.72,S=new THREE.Group();S.position.set(sx,sy,z);I.add(S);const b2=(w,h,d,m,x,y,zz,rz=0,rx=0)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,zz);o.rotation.set(rx,0,rz);S.add(o);return o};
+  b2(0.54,0.1,0.52,seatM,0,0,0,-0.08);b2(0.48,0.02,0.3,insM,0.01,0.055,0,-0.08);for(const k of [-1,1]){b2(0.52,0.13,0.1,seatM,0,0.04,k*0.23,-0.08,k*0.28);b2(0.46,0.006,0.006,stitchM,0.01,0.066,k*0.155,-0.08)}
+  const B=new THREE.Group();B.position.set(-0.3,0.05,0);B.rotation.z=0.26;S.add(B);const b3=(w,h,d,m,x,y,zz,ry=0)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,zz);o.rotation.y=ry;B.add(o);return o};
+  b3(0.12,0.66,0.5,seatM,0,0.36,0);b3(0.02,0.46,0.28,insM,0.065,0.38,0);for(const k of [-1,1]){b3(0.16,0.58,0.1,seatM,0.03,0.33,k*0.23,-k*0.35);b3(0.006,0.46,0.006,stitchM,0.078,0.38,k*0.145)}
+  b3(0.1,0.2,0.28,seatM,-0.01,0.82,0);for(const k of [-1,1]){const pst=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.1,8),new THREE.MeshStandardMaterial({color:0xc0c4c8,metalness:0.9,roughness:0.2}));pst.position.set(-0.01,0.7,k*0.07);B.add(pst)}}
+ interiorDetails(I,spec,eye,mid,dTop,fFront,dashMat,seatM,trim,AMB,box);
  // wipers
  {const wm=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.6});g.userData.wipers=[];for(const zz of [-W*0.22,W*0.12]){const pv=new THREE.Group();pv.position.set(fFront+0.3,dTop+0.04,zz);pv.rotation.z=-0.62;const arm=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.012,0.62),wm);arm.position.z=-0.31;pv.add(arm);I.add(pv);g.userData.wipers.push(pv)}}
  // steering wheel / yoke facing the driver
