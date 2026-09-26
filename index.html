@@ -2584,7 +2584,7 @@ function startGame(spec,color,A,B,route){
   limitMph:25,rpm:800,soc:startSoc(),status:'',statusShort:'',clockStr:'',etaStr:'',destShort:B.short||B.label,arrived:false,bio:biome(A.lat,A.lon,date),nextStep:null,lastRebase:0,cam:'in',yaw:0,pitch:0,zoom:1,fov:70};
  const ego=buildCar(spec,color,{interior:true});scene.add(ego);
  game.energy=capJ(ENERGY[spec.id])*game.soc;game.whLog=[];game.stops=route.stops||[];game.stopIdx=0;game.charging=null;game.lastPlanCheck=0;game.odo=0;game.usedJ=0;
- game.ego={mesh:ego,spec,s:0,v:0,dir:1,x:0,z:0,head:0,wheelA:0,steer:0,stopT:0,handled:new Set(),acc:0};wdogSettings();riderSettings();setTimeout(wdogAttach,0);setTimeout(riderAttach,0);
+ game.ego={mesh:ego,spec,s:0,v:0,dir:1,x:0,z:0,head:0,wheelA:0,steer:0,stopT:0,handled:new Set(),acc:0};wdogSettings();riderSettings();try{document.activeElement&&document.activeElement.blur()}catch(e){}setTimeout(wdogAttach,0);setTimeout(riderAttach,0);
  applyBiome();
  const p=routeXZ(0,0);game.ego.head=Math.atan2(-p[3],p[2]);
  buildHorizon(A.lat,A.lon,game.bio);
