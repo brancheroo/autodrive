@@ -4293,7 +4293,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  const sel=`<select id="gfxSel" style="width:100%;padding:8px;border-radius:8px;background:#0e141d;color:var(--text);border:1px solid var(--line)"><option value="low">Low – smoothest frame rate</option><option value="high">High – balanced</option><option value="ultra">Ultra – sharpest (fast computers)</option></select>`;
  const anchor=[...document.querySelectorAll('#start h2')].find(h=>/Weather/.test(h.textContent));
  if(anchor){const d=document.createElement('div');d.innerHTML='<h2>Graphics quality</h2>'+sel;anchor.parentElement.after(d);document.getElementById('gfxSel').onchange=e=>apply(e.target.value)}
- const fps=document.createElement('div');fps.id='fpsBox';fps.style.cssText='position:fixed;right:8px;top:8px;z-index:55;font:11px ui-monospace,monospace;color:#9fb3c8;background:#0008;padding:2px 6px;border-radius:6px;display:none;cursor:pointer';fps.title='Click to change graphics quality';document.body.appendChild(fps);
+ const fps=document.createElement('div');fps.id='fpsBox';fps.style.cssText='position:fixed;right:8px;top:172px;z-index:55;font:11px ui-monospace,monospace;color:#9fb3c8;background:#0008;padding:2px 6px;border-radius:6px;display:none;cursor:pointer';fps.title='Click to change graphics quality';document.body.appendChild(fps);
  fps.onclick=()=>apply(cur==='low'?'high':cur==='high'?'ultra':'low');
  let n=0,t=performance.now();
  MODS.push({id:'quality',start(){apply(cur);fps.style.display='block'},frame(){n++;const now=performance.now();if(now-t>1000){fps.textContent=`${Math.round(n*1000/(now-t))} fps · ${cur} · ${Q.pr.toFixed(2)}×`;n=0;t=now}}});
@@ -4457,7 +4457,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
 /* Passenger comfort score: longitudinal & lateral g and jerk (ISO 2631-style thresholds) folded into a 0–100
    score shown live in the HUD and on the arrival card. Express/chase trade comfort for time. */
 (function(){
- const C={};window.COMFORT=C;const box=UIX.banner('comfortBox','right:8px;top:28px;font:11px ui-monospace,monospace;color:#bfe8c8;background:#0008;padding:2px 6px;border-radius:6px;display:none');
+ const C={};window.COMFORT=C;const box=UIX.banner('comfortBox','right:8px;top:192px;font:11px ui-monospace,monospace;color:#bfe8c8;background:#0008;padding:2px 6px;border-radius:6px;display:none');
  function reset(){Object.assign(C,{t:0,pen:0,lastV:null,lastH:null,lastA:0,worst:'',peakG:0,score:100})}
  reset();
  MODS.push({id:'comfort',
@@ -4537,7 +4537,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
 (function(){
  UIX.section('Live AI rival',`<select id="rivalSel" style="width:100%;${UIX.sel}"><option value="off">No rival</option>${CARS.map(c=>`<option value="${c.id}">Race a live ${c.name}</option>`).join('')}</select>`,/Time trial/);
  const sel=document.getElementById('rivalSel');sel.value=UIX.load('rivalPick','off');sel.onchange=()=>UIX.save('rivalPick',sel.value);
- const box=UIX.banner('rivalBox','right:8px;top:68px;font:11px ui-monospace,monospace;color:#ffd6a8;background:#0008;padding:2px 6px;border-radius:6px;display:none');
+ const box=UIX.banner('rivalBox','right:8px;top:232px;font:11px ui-monospace,monospace;color:#ffd6a8;background:#0008;padding:2px 6px;border-radius:6px;display:none');
  let R=null,shift=0;window.RIVAL=()=>R;
  function drop(){if(R){scene.remove(R.mesh);R=null}box.style.display='none'}
  MODS.push({id:'rival',disable:drop,
@@ -4557,7 +4557,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
    panel around your car (🌧 button / M); forecast precipitation is sampled every ~15 km ahead along the route
    (Open-Meteo) and the in-game weather switches between clear / rain / snow / fog as you drive through it. */
 (function(){
- const box=UIX.banner('radarBox','left:8px;bottom:140px;width:220px;height:220px;border-radius:12px;overflow:hidden;border:1px solid #2a3a52;background:#0b1118;display:none;pointer-events:auto;cursor:pointer');
+ const box=UIX.banner('radarBox','right:8px;bottom:170px;width:200px;height:200px;border-radius:12px;overflow:hidden;border:1px solid #2a3a52;background:#0b1118;display:none;pointer-events:auto;cursor:pointer');
  const cv=document.createElement('canvas');cv.width=cv.height=440;cv.style.cssText='width:100%;height:100%';box.appendChild(cv);box.title='Live precipitation radar (RainViewer) · click to close';box.onclick=()=>{on=false;box.style.display='none'};
  let on=UIX.load('radarOn',false),host=null,path=null,lastDraw=0,imgs={},wxPts=[],lastKey='',manual=false;
  const Z=7,T=256;const tx=lon=>(lon+180)/360*2**Z,ty=lat=>{const r=lat*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*2**Z};
@@ -4597,7 +4597,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  const tAt=(tr,s)=>{let lo=0,hi=tr.length-1;if(s>tr[hi][1])return null;while(hi-lo>1){const m=(lo+hi)>>1;if(tr[m][1]<s)lo=m;else hi=m}const a=tr[lo],b=tr[hi];return a[0]+(b[0]-a[0])*(s-a[1])/((b[1]-a[1])||1)};
  const sel=UIX.section('Time trial',`<select id="ghostSel" style="width:100%;${UIX.sel}"><option value="best">Race my best run on this trip (ghost car)</option><option value="off">No ghost</option>${CARS.map(c=>`<option value="${c.id}">Race the best ${c.name} run</option>`).join('')}</select><div id="ghostInfo" style="font-size:11px;color:var(--dim);margin-top:3px">Each run is recorded; a ghost appears once you have driven this trip before.</div>`);
  {const s=document.getElementById('ghostSel');s.value=UIX.load('ghostPick','best');s.onchange=()=>UIX.save('ghostPick',s.value)}
- const box=UIX.banner('ghostBox','right:8px;top:48px;font:11px ui-monospace,monospace;color:#d8c8ff;background:#0008;padding:2px 6px;border-radius:6px;display:none');
+ const box=UIX.banner('ghostBox','right:8px;top:212px;font:11px ui-monospace,monospace;color:#d8c8ff;background:#0008;padding:2px 6px;border-radius:6px;display:none');
  function ghostMesh(run){const spec=CARS.find(c=>c.id===run.car)||game.spec,g=buildCar(spec,run.color||'#88aaff');g.traverse(o=>{if(o.isMesh||o.isSprite){const f=m=>{m=m.clone();m.transparent=true;m.opacity=0.28;m.depthWrite=false;return m};o.material=Array.isArray(o.material)?o.material.map(f):f(o.material);o.castShadow=false;o.receiveShadow=false}if(o.isLight)o.visible=false});g.userData.spec=spec;return g}
  MODS.push({id:'ghost',disable(){if(GH.mesh)GH.mesh.visible=false},
   start(){GH.rec=[];GH.lastT=0;if(GH.mesh){scene.remove(GH.mesh);GH.mesh=null}const pick=document.getElementById('ghostSel').value,A=all();GH.ghost=pick==='off'?null:pick==='best'?A._best||null:A[pick]||null;
