@@ -559,7 +559,7 @@ function glyphTris(name){if(GLYPH[name])return GLYPH[name];const S={
 function glyph(buf,name,x,z,fx,fz,yoff){const {poly,tr}=glyphTris(name);const P=poly.map(([u,v])=>{const wx=x+fx*v-fz*u,wz=z+fz*v+fx*u;return[wx,groundY(wx,wz)+yoff,wz]});for(const t of tr)buf.tri(P[t[0]],P[t[1]],P[t[2]],UP)}
 function laneGlyph(v){v=(v||'').split(';').filter(Boolean);const h=k=>v.some(x=>x.includes(k));if(!v.length||v[0]==='none')return null;if(h('merge'))return 'merge';const L=h('left')||h('reverse'),T=h('through'),Rr=h('right');return L&&T?'through_left':Rr&&T?'through_right':L?'left':Rr?'right':T?'through':null}
 /* ---- painted road words & symbols (MUTCD style, elongated for drivers): one canvas atlas, drawn as flat decals on the pavement */
-const MK={red:null,dec:null};let DECAL_MAT=null;const DECALS=['STOP','BUS ONLY','SLOW','RXR','BIKE','SHARROW','XING','ONLY'];
+const MK={red:null,dec:null};let DECAL_MAT=null;const DECALS=['STOP','BUS ONLY','SLOW','RXR','BIKE','SHARROW','XING','ONLY','SCHOOL','KEEP CLEAR'];
 function decalMat(){if(DECAL_MAT)return DECAL_MAT;const c=document.createElement('canvas');c.width=512;c.height=128*DECALS.length;const x=c.getContext('2d');x.fillStyle='#fff';x.strokeStyle='#fff';x.textAlign='center';x.textBaseline='middle';
  DECALS.forEach((n,i)=>{const y0=i*128;x.save();x.beginPath();x.rect(0,y0,512,128);x.clip();
   if(n==='BIKE'||n==='SHARROW'){const cx=256,cy=y0+(n==='SHARROW'?80:64);x.lineWidth=9;for(const wx of [-46,46]){x.beginPath();x.arc(cx+wx,cy+14,30,0,7);x.stroke()}x.beginPath();x.moveTo(cx-46,cy+14);x.lineTo(cx-10,cy-24);x.lineTo(cx+30,cy-24);x.lineTo(cx+46,cy+14);x.moveTo(cx-10,cy-24);x.lineTo(cx+2,cy+14);x.lineTo(cx+30,cy-24);x.moveTo(cx-16,cy-34);x.lineTo(cx-2,cy-34);x.stroke();x.beginPath();x.arc(cx+34,cy-40,9,0,7);x.fill();
@@ -571,6 +571,71 @@ function decalMat(){if(DECAL_MAT)return DECAL_MAT;const c=document.createElement
 function decal(name,x,z,fx,fz,len,wid,y){const b=MK.dec;if(!b)return;const i=DECALS.indexOf(name),v0=1-(i+1)/DECALS.length,v1=1-i/DECALS.length,rx=-fz,rz=fx;
  const P=(a,c)=>{const px=x+fx*a*len/2+rx*c*wid/2,pz=z+fz*a*len/2+rz*c*wid/2;return[px,groundY(px,pz)+y,pz]};const nl=P(-1,-1),nr=P(-1,1),fr=P(1,1),fl=P(1,-1);
  b.tri(nl,nr,fr,UP,[0,v0],[1,v0],[1,v1]);b.tri(nl,fr,fl,UP,[0,v0],[1,v1],[0,v1])} /* word's top edge is the far edge: reads bottom-up to an approaching driver */
+/* ============================================================ LIVE OPEN-DATA ROAD MARKINGS
+   Every ~25 km the car searches public open-data catalogs (ArcGIS Hub by map extent, Socrata by nearest city) for road-marking datasets
+   within ~50 miles: speed humps/cushions/tables, crosswalks, school zones, bus/transit-only lanes, KEEP CLEAR, pavement-marking inventories.
+   Each tile then pulls just its own features from every source (cached) and paints them, snapped to the nearest road. OSM-drawn items win ties. */
+const MKSRC={sources:[],center:null,busy:false,tileFeats:new Map(),stats:{}};
+const MK_CATS=[
+ {cat:'hump',qs:['speed hump','traffic calming','speed cushion'],re:/hump|cushion|traffic.?calming|speed.?table/i},
+ {cat:'crosswalk',qs:['crosswalks'],re:/crosswalk|crossing/i},
+ {cat:'school',qs:['school zone'],re:/school.?(zone|speed|area)/i},
+ {cat:'bus',qs:['bus lane','transit only lane'],re:/bus.?(only.?)?lane|transit.?(only.?)?lane|red.?lane/i},
+ {cat:'keepclear',qs:['keep clear'],re:/keep.?clear/i},
+ {cat:'marking',qs:['pavement markings','striping'],re:/pavement.?mark|road.?mark|striping|legend/i}];
+/* curated, verified San Francisco (DataSF/SFMTA) sources — CORS-open Socrata with geometry */
+const MK_SF=[{cat:'hump',kind:'socrata',url:'https://data.sf.gov/resource/abhw-ffzx.json',geo:'shape',name:'SFMTA traffic calming (mid-block)',ext:[-122.52,37.70,-122.35,37.84]},
+ {cat:'hump',kind:'socrata',url:'https://data.sf.gov/resource/bp3t-bd4t.json',geo:'shape',name:'SFMTA traffic calming (intersection)',ext:[-122.52,37.70,-122.35,37.84]},
+ {cat:'crosswalk',kind:'socrata',url:'https://data.sf.gov/resource/g9zy-srvv.json',geo:'shape',name:'SFMTA continental crosswalks',ext:[-122.52,37.70,-122.35,37.84]},
+ {cat:'school',kind:'socrata',url:'https://data.sf.gov/resource/3t7b-gebn.json',geo:'shape',where:"schoolzone_limit='15'",name:'SFMTA school-zone speed limits',ext:[-122.52,37.70,-122.35,37.84]},
+ {cat:'bus',kind:'socrata',url:'https://data.sf.gov/resource/tzh6-6j82.json',geo:'shape',name:'SFMTA transit-only lanes',ext:[-122.52,37.70,-122.35,37.84]}];
+function mkBoxAround(lat,lon,km){const dl=km/111,dn=km/(111*Math.cos(lat*Math.PI/180));return[lon-dn,lat-dl,lon+dn,lat+dl]}
+const mkHit=(a,b)=>a&&b&&a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
+async function mkDiscover(){const G=game;if(!G||!G.ego||MKSRC.busy)return;const lat=toLat(G.ego.z),lon=toLon(G.ego.x);if(MKSRC.center&&hav([lon,lat],[MKSRC.center[1],MKSRC.center[0]])<25000)return;
+ MKSRC.busy=true;MKSRC.center=[lat,lon];const box=mkBoxAround(lat,lon,80),found=new Map();
+ for(const s of MK_SF)if(mkHit(s.ext,box))found.set(s.url,{...s});
+ try{for(const C of MK_CATS)for(const q of C.qs){try{const r=await fetch(`https://hub.arcgis.com/api/v3/search?q=${encodeURIComponent(q)}&bbox=${box.map(v=>v.toFixed(3)).join(',')}`).then(r=>r.json());
+    for(const d of (r.data||[])){const a=d.attributes||{},u=a.url||'';if(!/FeatureServer/.test(u)||!C.re.test(a.name||''))continue;const e=a.extent&&a.extent.coordinates;if(!e)continue;const ext=[e[0][0],e[0][1],e[1][0],e[1][1]];
+     if(ext[2]-ext[0]>3||!mkHit(ext,box))continue; /* city/county-scale layers only */const url=/FeatureServer\/\d+$/.test(u)?u:u.replace(/\/?$/,'/0');if(!found.has(url))found.set(url,{cat:C.cat,kind:'arcgis',url,name:(a.name||'')+' · '+(a.source||a.owner||''),ext})}}catch(err){}}
+   const city=(G.city||'').split(',')[0].trim();if(city){for(const C of MK_CATS){try{const r=await fetch(`https://api.us.socrata.com/api/catalog/v1?q=${encodeURIComponent(C.qs[0]+' '+city)}&only=dataset&limit=10`).then(r=>r.json());
+     for(const it of (r.results||[])){const res=it.resource||{},dom=(it.metadata||{}).domain||'';if(!C.re.test(res.name||''))continue;const cols=res.columns_field_name||[],types=res.columns_datatype||[];const gi=types.findIndex(t=>/Point|Line|Polygon|MultiLine|Location/i.test(t));if(gi<0)continue;
+      if(!new RegExp(city.replace(/\s+/g,'.?'),'i').test(dom+' '+(res.attribution||'')))continue;const url=`https://${dom}/resource/${res.id}.json`;if(!found.has(url))found.set(url,{cat:C.cat,kind:'socrata',url,geo:cols[gi],name:res.name+' · '+(res.attribution||dom)})}}catch(err){}}}}
+ finally{MKSRC.sources=[...found.values()];MKSRC.busy=false;MKSRC.tileFeats.clear();for(const k of TILES.keys())mkTile(k)}}
+/* fetch one tile's features from every source (GeoJSON-ish: {cat,g:{type,coordinates},p}) */
+async function mkTile(key){if(!MKSRC.sources.length||!TILES.has(key))return;const [i,j]=key.split('_').map(Number),bb=[j*TS,i*TS,(j+1)*TS,(i+1)*TS],feats=[];
+ await Promise.all(MKSRC.sources.map(async S=>{if(S.ext&&!mkHit(S.ext,bb))return;try{
+   if(S.kind==='arcgis'){const u=`${S.url}/query?where=1%3D1&geometry=${bb.join(',')}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&outSR=4326&resultRecordCount=1500&f=geojson`;
+    const r=await fetch(u).then(r=>r.json());for(const f of (r.features||[]))if(f.geometry)feats.push({cat:S.cat,g:f.geometry,p:f.properties||{},src:S.name})}
+   else{const w=`within_box(${S.geo},${bb[3]},${bb[0]},${bb[1]},${bb[2]})`+(S.where?` AND ${S.where}`:'');const r=await fetch(`${S.url}?$where=${encodeURIComponent(w)}&$limit=1500`).then(r=>r.json());
+    if(Array.isArray(r))for(const f of r){const g=f[S.geo];if(g&&g.type)feats.push({cat:S.cat,g,p:f,src:S.name})}}
+   S.hits=(S.hits||0)}catch(err){}}));
+ MKSRC.tileFeats.set(key,feats);mkRender(key)}
+/* nearest drivable road segment: point on it, unit direction, road width */
+function mkNearRoad(key,x,z,maxD){let best=null;for(const w of tileRoads(key)){if(w.route)continue;const P=w.pts;for(let k=0;k<P.length-1;k++){const a=P[k],b=P[k+1],dx=b[0]-a[0],dz=b[1]-a[1],L2=dx*dx+dz*dz||1,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/L2,0,1),qx=a[0]+dx*t,qz=a[1]+dz*t,d=Math.hypot(x-qx,z-qz);if(d<maxD&&(!best||d<best.d)){const l=Math.sqrt(L2);best={d,x:qx,z:qz,fx:dx/l,fz:dz/l,w:w.w}}}}return best}
+function mkRender(key){const T=TILES.get(key),F=MKSRC.tileFeats.get(key);if(!T||!F)return;if(T.ext){T.group.remove(T.ext);T.ext.traverse(o=>{if(o.geometry)o.geometry.dispose()})}
+ const bW=new Buf(),bRed=new Buf(),bDec=new Buf();const sv={dec:MK.dec,red:MK.red};MK.dec=bDec;MK.red=bRed;const cnt={};const osmNear=(x,z,r)=>{for(const c of CONTROLS.values())if(Math.hypot(c.x-x,c.z-z)<r)return true;return false};
+ const P=c=>[toX(c[0]),toZ(c[1])];const lines=g=>g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:g.type==='Polygon'?[g.coordinates[0]]:g.type==='MultiPolygon'?g.coordinates.map(p=>p[0]):[];
+ const pts=g=>g.type==='Point'?[g.coordinates]:g.type==='MultiPoint'?g.coordinates:lines(g).map(l=>l[Math.floor(l.length/2)]);
+ const across=(r,fn)=>{const rx=-r.fz,rz=r.fx;fn(rx,rz)};
+ for(const f of F){const txt=Object.values(f.p).filter(v=>typeof v==='string').join(' ');
+  if(f.cat==='hump'){if(/radar|island|circle|chicane|median|channel|edgeline/i.test(txt))continue;const n=Math.max(1,Math.min(4,+f.p.units||1));const L=lines(f.g);
+   const spots=L.length&&f.g.type!=='Polygon'?L.flatMap(l=>{const o=[];for(let k=1;k<=n;k++){const t=k/(n+1),m=Math.floor(t*(l.length-1));o.push(l[m])}return o}):pts(f.g);
+   for(const c of spots){const [x,z]=P(c),r=mkNearRoad(key,x,z,15);if(!r)continue;const hw=r.w/2;across(r,(rx,rz)=>{const isX=/raised.?cross/i.test(txt);
+     for(let o=-hw+0.5;o<hw-1;o+=1.8){const cx=r.x+rx*(o+0.9),cz=r.z+rz*(o+0.9);for(const sg of [1,-1]){const l1=[cx-rx*0.8-sg*r.fx*0.6,cz-rz*0.8-sg*r.fz*0.6],l2=[cx+rx*0.8-sg*r.fx*0.6,cz+rz*0.8-sg*r.fz*0.6];ribbon(bW,[l1,[cx,cz]],0.2,0.13);ribbon(bW,[[cx,cz],l2],0.2,0.13)}}
+     if(isX)for(let o=-hw+0.35;o<hw-0.2;o+=1.22){const bx=r.x+rx*o,bz=r.z+rz*o;ribbon(bW,[[bx-r.fx*1.5,bz-r.fz*1.5],[bx+r.fx*1.5,bz+r.fz*1.5]],0.6,0.115)}
+     for(const sg of [1,-1])decal('SLOW',r.x-sg*r.fx*12+rx*sg*hw/2,r.z-sg*r.fz*12+rz*sg*hw/2,sg*r.fx,sg*r.fz,2.6,Math.min(3.2,hw-0.4),0.12)});cnt.hump=(cnt.hump||0)+1}}
+  else if(f.cat==='crosswalk'){if(/no|false|unmarked/i.test(String(f.p.continental??'yes'))&&'continental' in f.p)continue;for(const c of pts(f.g)){const [x,z]=P(c),r=mkNearRoad(key,x,z,20);if(!r)continue;const hw=r.w/2;
+    let dup=false;for(const T2 of [T])if(false)dup=true;if(dup)continue;across(r,(rx,rz)=>{for(let o=-hw+0.35;o<hw-0.2;o+=1.22){const bx=r.x+rx*o,bz=r.z+rz*o;ribbon(bW,[[bx-r.fx*1.52,bz-r.fz*1.52],[bx+r.fx*1.52,bz+r.fz*1.52]],0.6,0.115)}});cnt.crosswalk=(cnt.crosswalk||0)+1}}
+  else if(f.cat==='school'){for(const l of lines(f.g).concat(f.g.type==='Point'?[[f.g.coordinates]]:[])){for(const c of [l[0],l[l.length-1]]){const [x,z]=P(c),r=mkNearRoad(key,x,z,15);if(!r)continue;const hw=r.w/2;
+     for(const sg of [1,-1]){const ox=-r.fz*sg*hw/2,oz=r.fx*sg*hw/2;decal('SCHOOL',r.x+ox-sg*r.fx*8,r.z+oz-sg*r.fz*8,sg*r.fx,sg*r.fz,3.4,Math.min(3.2,hw-0.4),0.12);decal('SLOW',r.x+ox-sg*r.fx*14,r.z+oz-sg*r.fz*14,sg*r.fx,sg*r.fz,2.6,Math.min(3.2,hw-0.4),0.12)}}}cnt.school=(cnt.school||0)+1}
+  else if(f.cat==='bus'){for(const l of lines(f.g)){const P2=l.map(P);if(P2.length<2)continue;const r=mkNearRoad(key,P2[0][0],P2[0][1],25),w=r?r.w:12,off=w/2-1.8;
+    for(const sg of [1,-1])ribbon(bRed,P2,3.2,0.105,sg*off);const Ls=[0];for(let k=1;k<P2.length;k++)Ls.push(Ls[k-1]+Math.hypot(P2[k][0]-P2[k-1][0],P2[k][1]-P2[k-1][1]));
+    for(let d=20;d<Ls[Ls.length-1]-5;d+=120){const q=poseAt(P2,Ls,d);for(const sg of [1,-1])decal('BUS ONLY',q.x-q.fz*sg*off,q.z+q.fx*sg*off,sg*q.fx,sg*q.fz,4.6,2.6,0.12)}cnt.bus=(cnt.bus||0)+1}}
+  else if(f.cat==='keepclear'||f.cat==='marking'){const word=/keep.?clear/i.test(txt)||f.cat==='keepclear'?'KEEP CLEAR':/\bstop\b/i.test(txt)?'STOP':/\bslow\b/i.test(txt)?'SLOW':/\bxing|crossing/i.test(txt)?'XING':/school/i.test(txt)?'SCHOOL':/\bbus\b/i.test(txt)?'BUS ONLY':/\bonly\b/i.test(txt)?'ONLY':/bike|bicycle/i.test(txt)?'BIKE':/rxr|rail/i.test(txt)?'RXR':null;
+   if(!word)continue;for(const c of pts(f.g)){const [x,z]=P(c),r=mkNearRoad(key,x,z,15);if(!r)continue;decal(word,r.x-r.fz*r.w/4,r.z+r.fx*r.w/4,r.fx,r.fz,word==='KEEP CLEAR'?6:2.8,Math.min(3.2,r.w/2-0.4),0.12);cnt[word]=(cnt[word]||0)+1}}}
+ MK.dec=sv.dec;MK.red=sv.red;const g=new THREE.Group();g.userData.merged=true;const add=(b,m)=>{const geo=b.geo();if(geo){const me=new THREE.Mesh(geo,m);me.userData.merged=true;me.receiveShadow=true;g.add(me)}};
+ add(bW,MAT.white);add(bRed,MAT.busRed||(MAT.busRed=new THREE.MeshLambertMaterial({color:0xa3262a,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})));add(bDec,decalMat());T.ext=g;T.group.add(g);T.extCnt=cnt;
+ const tot={};for(const T2 of TILES.values())for(const k in (T2.extCnt||{}))tot[k]=(tot[k]||0)+T2.extCnt[k];MKSRC.stats=tot}
 function markRoad(t,hw,pts,w,lanes,oneway,y,bY,bW){
  if(t.lane_markings==='no')return;const L=[0];for(let i=1;i<pts.length;i++)L.push(L[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const tot=L[L.length-1];
  const fwy=hw==='motorway'||hw==='trunk',lw=fwy?0.15:0.10,my=y+0.025,major=/primary|secondary|tertiary|trunk/.test(hw)&&!hw.endsWith('_link');
@@ -1086,7 +1151,7 @@ placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
    L.forEach((t,i)=>{const r=rng(t[2]),sc=Math.min((sp==='conifer'?0.75:0.7)+r()*0.6,t[3]||9);q.setFromAxisAngle(UPV,r()*6.283);s.set(sc,sc*(0.85+r()*0.35),sc);p.set(t[0],groundY(t[0],t[1])-0.1,t[1]);m.compose(p,q,s);wood.setMatrixAt(i,m);leaf.setMatrixAt(i,m);
     col.setHSL((sp==='palm'?0.23:0.26)+(r()-0.5)*0.05,0.9,0.95-r()*0.25);if(WX.snow>0.3&&sp!=='palm')col.lerp(new THREE.Color(0xffffff),0.35);leaf.setColorAt(i,col)});
    wood.castShadow=true;leaf.castShadow=true;leaf.receiveShadow=true;wood.frustumCulled=leaf.frustumCulled=false;T.group.add(wood,leaf)}}
- T.swept=roadSweep(T.group,RQ);scene.add(T.group);TILES.set(key,T);
+ T.swept=roadSweep(T.group,RQ);scene.add(T.group);TILES.set(key,T);setTimeout(()=>mkTile(key),0);
 
 }
 const UPV=new THREE.Vector3(0,1,0);
@@ -2892,7 +2957,7 @@ function step(){
  for(const T of TILES.values()){for(const l of T.lamps)l.material=G.dark?MAT.lampOn:MAT.lampOff;if(T.adFaces)for(const m of T.adFaces)m.emissiveIntensity=G.dark?0.55:0;
   if(T.sigInst){for(const s of T.signals)for(const h of s.heads){const st=signalState(s.id,h.axis,G.simTime);h.idx.forEach((ix,i)=>T.sigInst.setColorAt(ix,_sigC.set('RYG'[i]===st?[0xff2a1a,0xffb300,0x22ff66][i]:0x222222)))}T.sigInst.instanceColor.needsUpdate=true}}
  // streaming tiles, spawning
- tileT-=rdt;if(tileT<=0){tileT=0.5;manageTerrain();manageTiles();manageSat();manageFF();if((G._rcc=(G._rcc||0)+1)%4===0)roadClearCheck()}
+ tileT-=rdt;if(tileT<=0){tileT=0.5;manageTerrain();manageTiles();manageSat();manageFF();mkDiscover();if((G._rcc=(G._rcc||0)+1)%4===0)roadClearCheck()}
  spawnT-=rdt;if(spawnT<=0){spawnT=0.4;manageTraffic()}
  // camera
  updateCamera(rdt);if(CRASH.shake>0){const k=CRASH.shake;camera.position.x+=(Math.random()-0.5)*k*0.35;camera.position.y+=(Math.random()-0.5)*k*0.25;camera.rotation.z+=(Math.random()-0.5)*k*0.03} // impact shake
@@ -3049,7 +3114,7 @@ function updateHUD(){
  G.etaStr=localTime(new Date((G.simTime+remT)*1000));updateClock();
  $('clock').textContent=G.clockStr+' local · '+(G.dark?'🌙 night':'☀ day')+' · '+G.bio.n+` · ${({clear:'☀',rain:'🌧',blizzard:'❄',hurricane:'🌀'})[WX.key]} ${WX.label}${WX.live&&WX.live.tempC!=null?' '+Math.round(WX.live.tempC*9/5+32)+'°F':''} · wind ${Math.round((WX.wind+WX.gust)*2.237)} mph`;
  $('remain').textContent=fmtDist(rem)+' remaining';$('eta').textContent='ETA '+G.etaStr+(G.scale>1?' (sim time)':'');
- $('tiles').textContent=`OSM tiles ${TILES.size}${netBusy?' · streaming…':''}${OFM_USED?' · backup map: OpenFreeMap×'+OFM_USED:''}${LOCAL_USED?' · offline pack×'+LOCAL_USED:''} · textures ${TEXSTAT.ok}/${TEXSTAT.n} · sat ${SAT.tiles.size-SAT.busy}/${SAT.tiles.size} · traffic ${Math.round(trafficFactor()*100)}% · ${G.agents.length} cars · ${G.peds.length} peds`;
+ $('tiles').textContent=`${MKSRC.sources.length?'Marking data: '+MKSRC.sources.length+' open-data sources · ':''}OSM tiles ${TILES.size}${netBusy?' · streaming…':''}${OFM_USED?' · backup map: OpenFreeMap×'+OFM_USED:''}${LOCAL_USED?' · offline pack×'+LOCAL_USED:''} · textures ${TEXSTAT.ok}/${TEXSTAT.n} · sat ${SAT.tiles.size-SAT.busy}/${SAT.tiles.size} · traffic ${Math.round(trafficFactor()*100)}% · ${G.agents.length} cars · ${G.peds.length} peds`;
  updateEnergyHUD();maybeReplan();batteryGuard();
  if(PHOTOS.length){const la=toLat(G.ego.z),lo=toLon(G.ego.x);if(!G.photo||performance.now()-G.photo.t>12000){$('photoCard').style.display='none';const ph=PHOTOS.find(p=>!p.seen&&hav([lo,la],[p.lon,p.lat])<250);if(ph){ph.seen=1;G.photo={t:performance.now()};$('pcImg').src=ph.url;$('pcTitle').textContent='📷 '+ph.title;$('pcCred').innerHTML=(ph.author.replace(/<[^>]*>/g,'')||'Wikimedia Commons')+' · '+ph.license;$('photoCard').style.display='block'}}}
  {const G2=game;G2.eHist=G2.eHist||[];const mi=G2.odo/1609.34;if(!G2._eLast){G2._eLast={mi,J:G2.usedJ}}if(mi-G2._eLast.mi>=0.5){const whmi=(G2.usedJ-G2._eLast.J)/3600/(mi-G2._eLast.mi);G2.eHist.push(Math.max(0,whmi));if(G2.eHist.length>60)G2.eHist.shift();G2._eLast={mi,J:G2.usedJ}}}
