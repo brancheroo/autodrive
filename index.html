@@ -524,14 +524,14 @@ async function fetchTileLocal(key){const [i,j]=key.split('_').map(Number),lat=(i
 async function fetchTile(key){
  if(RAW.has(key)||PENDING.has(key))return;PENDING.add(key);netBusy++;
  {const L=await fetchTileLocal(key);if(L&&L.data){if(L.sfb)L.data.sfb=L.sfb;RAW.set(key,L.data);roadsArrived(key);PENDING.delete(key);netBusy--;LOCAL_USED++;if(game&&game.route)buildTile(key);return}if(L&&L.sfb)SFB.set(key,L.sfb)}
- const cached=await IDB.get('v4_'+key);if(cached&&Date.now()-cached.t<30*86400000){RAW.set(key,cached.v);roadsArrived(key);PENDING.delete(key);netBusy--;if(game&&game.route)buildTile(key);return}
+ const cached=await IDB.get('v5_'+key);if(cached&&Date.now()-cached.t<30*86400000){RAW.set(key,cached.v);roadsArrived(key);PENDING.delete(key);netBusy--;if(game&&game.route)buildTile(key);return}
  if(Date.now()<opBackoff)await sleep(opBackoff-Date.now());
  const [i,j]=key.split('_').map(Number),s=i*TS,w=j*TS,n=s+TS,e=w+TS,bb=`${s},${w},${n},${e}`;
- const q=`[out:json][timeout:25];(way["highway"](${bb});way["building"](${bb});way["building:part"](${bb});way["amenity"="fuel"](${bb});node["name"]["shop"](${bb});node["name"]["amenity"~"^(restaurant|cafe|fast_food|bank|pharmacy|bar|pub|fuel|cinema|ice_cream|post_office|library|clinic|dentist)$"](${bb});node["name"]["tourism"~"hotel|motel"](${bb});way["leisure"~"park|garden|pitch|golf_course|playground"](${bb});way["landuse"~"grass|forest|meadow|village_green|recreation_ground|cemetery"](${bb});way["natural"~"wood|water|scrub|tree_row"](${bb});way["barrier"~"^(wall|fence|hedge|retaining_wall|guard_rail|jersey_barrier|city_wall)$"](${bb});node["natural"="tree"](${bb});node["traffic_sign"](${bb});node["highway"~"traffic_signals|stop|give_way|street_lamp|crossing"](${bb}););out geom qt;`;
+ const q=`[out:json][timeout:25];(way["highway"](${bb});way["building"](${bb});way["building:part"](${bb});way["amenity"="fuel"](${bb});node["name"]["shop"](${bb});node["name"]["amenity"~"^(restaurant|cafe|fast_food|bank|pharmacy|bar|pub|fuel|cinema|ice_cream|post_office|library|clinic|dentist)$"](${bb});node["name"]["tourism"~"hotel|motel"](${bb});way["leisure"~"park|garden|pitch|golf_course|playground"](${bb});way["landuse"~"grass|forest|meadow|village_green|recreation_ground|cemetery"](${bb});way["natural"~"wood|water|scrub|tree_row"](${bb});way["barrier"~"^(wall|fence|hedge|retaining_wall|guard_rail|jersey_barrier|city_wall)$"](${bb});node["natural"="tree"](${bb});node["traffic_sign"](${bb});node["highway"~"traffic_signals|stop|give_way|street_lamp|crossing"](${bb});node["railway"="level_crossing"](${bb});node["traffic_calming"](${bb}););out geom qt;`;
  for(let attempt=0;attempt<3;attempt++){
   try{const ctl=[];const one=async u=>{const ac=new AbortController();ctl.push(ac);const tm=setTimeout(()=>ac.abort(),14000);try{const r=await fetch(u,{method:'POST',body:'data='+encodeURIComponent(q),signal:ac.signal});if(r.status===429)opBackoff=Date.now()+8000;if(!r.ok)throw new Error(r.status);return await r.json()}finally{clearTimeout(tm)}};
    // race two mirrors; keep whichever answers first
-   const j=await Promise.any([one(OVERPASS[opIdx%OVERPASS.length]),one(OVERPASS[(opIdx+1)%OVERPASS.length])]);ctl.forEach(c=>c.abort());if(!j||!j.elements)throw new Error('bad');RAW.set(key,j);roadsArrived(key);IDB.put('v4_'+key,j);break}
+   const j=await Promise.any([one(OVERPASS[opIdx%OVERPASS.length]),one(OVERPASS[(opIdx+1)%OVERPASS.length])]);ctl.forEach(c=>c.abort());if(!j||!j.elements)throw new Error('bad');RAW.set(key,j);roadsArrived(key);IDB.put('v5_'+key,j);break}
   catch(err){opIdx++;
    if(attempt>=0){try{const j=await fetchTileOFM(key);if(j.elements.length){RAW.set(key,j);roadsArrived(key);OFM_USED++;break}}catch(e2){}}
    await sleep(1000+attempt*1500)}}
@@ -558,6 +558,19 @@ function glyphTris(name){if(GLYPH[name])return GLYPH[name];const S={
  const tr=THREE.ShapeUtils.triangulateShape(poly.map(p=>new THREE.Vector2(p[0],p[1])),[]);return GLYPH[name]={poly,tr}}
 function glyph(buf,name,x,z,fx,fz,yoff){const {poly,tr}=glyphTris(name);const P=poly.map(([u,v])=>{const wx=x+fx*v-fz*u,wz=z+fz*v+fx*u;return[wx,groundY(wx,wz)+yoff,wz]});for(const t of tr)buf.tri(P[t[0]],P[t[1]],P[t[2]],UP)}
 function laneGlyph(v){v=(v||'').split(';').filter(Boolean);const h=k=>v.some(x=>x.includes(k));if(!v.length||v[0]==='none')return null;if(h('merge'))return 'merge';const L=h('left')||h('reverse'),T=h('through'),Rr=h('right');return L&&T?'through_left':Rr&&T?'through_right':L?'left':Rr?'right':T?'through':null}
+/* ---- painted road words & symbols (MUTCD style, elongated for drivers): one canvas atlas, drawn as flat decals on the pavement */
+const MK={red:null,dec:null};let DECAL_MAT=null;const DECALS=['STOP','BUS ONLY','SLOW','RXR','BIKE','SHARROW','XING','ONLY'];
+function decalMat(){if(DECAL_MAT)return DECAL_MAT;const c=document.createElement('canvas');c.width=512;c.height=128*DECALS.length;const x=c.getContext('2d');x.fillStyle='#fff';x.strokeStyle='#fff';x.textAlign='center';x.textBaseline='middle';
+ DECALS.forEach((n,i)=>{const y0=i*128;x.save();x.beginPath();x.rect(0,y0,512,128);x.clip();
+  if(n==='BIKE'||n==='SHARROW'){const cx=256,cy=y0+(n==='SHARROW'?80:64);x.lineWidth=9;for(const wx of [-46,46]){x.beginPath();x.arc(cx+wx,cy+14,30,0,7);x.stroke()}x.beginPath();x.moveTo(cx-46,cy+14);x.lineTo(cx-10,cy-24);x.lineTo(cx+30,cy-24);x.lineTo(cx+46,cy+14);x.moveTo(cx-10,cy-24);x.lineTo(cx+2,cy+14);x.lineTo(cx+30,cy-24);x.moveTo(cx-16,cy-34);x.lineTo(cx-2,cy-34);x.stroke();x.beginPath();x.arc(cx+34,cy-40,9,0,7);x.fill();
+   if(n==='SHARROW'){x.lineWidth=12;for(const dy of [-58,-36]){x.beginPath();x.moveTo(cx-60,cy+dy+26);x.lineTo(cx,cy+dy);x.lineTo(cx+60,cy+dy+26);x.stroke()}}}
+  else if(n==='RXR'){x.lineWidth=10;x.beginPath();x.moveTo(40,y0+8);x.lineTo(472,y0+120);x.moveTo(472,y0+8);x.lineTo(40,y0+120);x.stroke();x.font='bold 70px Arial Narrow,Arial';x.fillText('R',130,y0+66);x.fillText('R',382,y0+66)}
+  else{x.font=`bold ${n.length>5?78:112}px "Arial Narrow",Arial`;x.fillText(n,256,y0+68)}x.restore()});
+ const t=new THREE.CanvasTexture(c);t.anisotropy=8;DECAL_MAT=new THREE.MeshBasicMaterial({map:t,transparent:true,alphaTest:0.35,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3,color:0xe8e8e8});return DECAL_MAT}
+/* decal: name centred at (x,z), reading toward a driver travelling along (fx,fz); len along the road, wid across */
+function decal(name,x,z,fx,fz,len,wid,y){const b=MK.dec;if(!b)return;const i=DECALS.indexOf(name),v0=1-(i+1)/DECALS.length,v1=1-i/DECALS.length,rx=-fz,rz=fx;
+ const P=(a,c)=>{const px=x+fx*a*len/2+rx*c*wid/2,pz=z+fz*a*len/2+rz*c*wid/2;return[px,groundY(px,pz)+y,pz]};const nl=P(-1,-1),nr=P(-1,1),fr=P(1,1),fl=P(1,-1);
+ b.tri(nl,nr,fr,UP,[0,v0],[1,v0],[1,v1]);b.tri(nl,fr,fl,UP,[0,v0],[1,v1],[0,v1])}
 function markRoad(t,hw,pts,w,lanes,oneway,y,bY,bW){
  if(t.lane_markings==='no')return;const L=[0];for(let i=1;i<pts.length;i++)L.push(L[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const tot=L[L.length-1];
  const fwy=hw==='motorway'||hw==='trunk',lw=fwy?0.15:0.10,my=y+0.025,major=/primary|secondary|tertiary|trunk/.test(hw)&&!hw.endsWith('_link');
@@ -580,6 +593,18 @@ function markRoad(t,hw,pts,w,lanes,oneway,y,bY,bW){
  // --- bike lanes (cycleway=lane): solid white line 1.5 m in from the edge
  const cyc=t.cycleway||'',cR=t['cycleway:right']||t['cycleway:both']||(cyc==='lane'?'lane':''),cL=t['cycleway:left']||t['cycleway:both']||(cyc==='lane'&&!oneway?'lane':'');
  if(cR==='lane')ribbon(bW,pts,0.15,my,w/2-1.7);if(cL==='lane')ribbon(bW,pts,0.15,my,-w/2+1.7);
+ const every=(step,fn)=>{for(let d=step*0.5;d<tot-8;d+=step){const pz=poseAt(pts,L,d);fn(pz)}};
+ // bike symbols in bike lanes, sharrows in shared lanes
+ if(cR==='lane')every(80,q=>decal('BIKE',q.x-q.fz*(w/2-0.85),q.z+q.fx*(w/2-0.85),q.fx,q.fz,1.8,1.1,0.03));
+ if(cL==='lane')every(80,q=>decal('BIKE',q.x+q.fz*(w/2-0.85),q.z-q.fx*(w/2-0.85),-q.fx,-q.fz,1.8,1.1,0.03));
+ if(/shared_lane/.test(cyc+(t['cycleway:right']||'')+(t['cycleway:both']||'')))every(60,q=>decal('SHARROW',q.x-q.fz*(w/2-1.5),q.z+q.fx*(w/2-1.5),q.fx,q.fz,2.4,1.2,0.03));
+ // red bus-only lanes (SF-style) with BUS ONLY every ~120 m
+ const bus=/lane/.test((t.busway||'')+(t['busway:right']||'')+(t['busway:both']||''))||/designated/.test(t['bus:lanes']||t['bus:lanes:forward']||t['psv:lanes']||t['psv:lanes:forward']||'');
+ if(bus&&MK.red){const busL=(t['bus:lanes']||t['bus:lanes:forward']||t['psv:lanes']||t['psv:lanes:forward']||'').split('|');let idx=busL.lastIndexOf('designated');if(idx<0)idx=nF-1;const off=c0+(idx+0.5)*3.6;
+  ribbon(MK.red,pts,3.2,my-0.005,off);every(120,q=>{decal('BUS ONLY',q.x-q.fz*off,q.z+q.fx*off,q.fx,q.fz,4.6,2.6,0.03)})}
+ // parallel parking lanes: T-marks every 6.1 m along the stall line
+ for(const [side,sg] of [['right',1],['left',-1]]){const pk=t['parking:'+side]||t['parking:both']||t['parking:lane:'+side]||t['parking:lane:both']||'';if(!/lane|parallel|on_street/.test(pk)||(oneway&&sg<0&&!t['parking:left']&&!t['parking:lane:left']))continue;
+  const off=sg*(w/2-2.3);ribbon(bW,pts,0.1,my,off);every(6.1,q=>{const ox=q.x-q.fz*off,oz=q.z+q.fx*off;ribbon(bW,[[ox+q.fz*sg*0.5,oz-q.fx*sg*0.5],[ox-q.fz*sg*0.5,oz+q.fx*sg*0.5]],0.1,0.028)})}
  // --- lane-use arrows (turn:lanes) ~12 m and ~40 m before the end of each approach
  if(tot>50){const place=(turn,forward)=>{turn.forEach((v,i)=>{const g=laneGlyph(v);if(!g)return;const n=turn.length,off=(oneway?-w/2+0.3:c0)+ (i+0.5)*3.6;for(const back of [12,40]){const d=forward?tot-back-7.3:back+7.3;if(d<3||d>tot-3)continue;const pz=poseAt(pts,L,d);const fx=forward?pz.fx:-pz.fx,fz=forward?pz.fz:-pz.fz;const ox=pz.x-fz*off,oz=pz.z+fx*off;glyph(bW,g,ox,oz,fx,fz,my+0.002)}})};
   if(turnF.length&&turnF[0]!=='')place(turnF,true);if(!oneway&&turnB.length&&turnB[0]!=='')place(turnB,false)}}
@@ -595,9 +620,18 @@ function markNode(buf,x,z,ws,kind){const drive=ws.filter(o=>DRIVABLE.has((o.el.t
    if(kind==='crossing'||kind==='signal'){ // ladder ("continental") crosswalk: 24 in bars, 24 in gaps, 10 ft long
     const cw=kind==='signal'?cx+fx*2.4:cx,czz=kind==='signal'?cz+fz*2.4:cz,half=(oneway||kind==='crossing')?w/2:w/2;
     if(!(kind==='crossing'&&side===1)){for(let o=-half+0.35;o<half-0.2;o+=1.22){const bx=cw+rx*o,bz=czz+rz*o;ribbon(buf,[[bx-fx*1.52,bz-fz*1.52],[bx+fx*1.52,bz+fz*1.52]],0.6,0.115)}}}
-   if(kind==='stop'||kind==='signal'){ // 18 in stop bar across the approach lanes
-    const from=oneway?-w/2+0.2:0.25,to=w/2-0.2;const sx=cx-(kind==='signal'?fx*0.6:0),sz=cz-(kind==='signal'?fz*0.6:0);
-    ribbon(buf,[[sx+rx*from,sz+rz*from],[sx+rx*to,sz+rz*to]],0.45,0.115)}}}}
+   if(kind==='stop'||kind==='signal'||kind==='rail'){ // 18 in stop bar across the approach lanes
+    const from=oneway?-w/2+0.2:0.25,to=w/2-0.2,bk=kind==='rail'?4.6:0;const sx=cx-(kind==='signal'?fx*0.6:fx*bk),sz=cz-(kind==='signal'?fz*0.6:fz*bk);
+    ribbon(buf,[[sx+rx*from,sz+rz*from],[sx+rx*to,sz+rz*to]],0.45,0.115);
+    const mid=(from+to)/2,lw2=Math.min(3.2,to-from);
+    if(kind==='stop')decal('STOP',sx-fx*3.6+rx*mid,sz-fz*3.6+rz*mid,fx,fz,2.6,lw2,0.12); /* STOP painted ahead of the bar */
+    if(kind==='rail')decal('RXR',sx-fx*14+rx*mid,sz-fz*14+rz*mid,fx,fz,6,Math.min(3.4,lw2),0.12)}
+   if(kind==='yield'){ /* yield line: row of "shark's teeth" triangles pointing at approaching traffic */
+    const from=oneway?-w/2+0.3:0.3,to=w/2-0.3,sx=cx,sz=cz;for(let o=from;o<to-0.4;o+=0.9){const a=[sx+rx*o,sz+rz*o],b=[sx+rx*(o+0.6),sz+rz*(o+0.6)],tip=[sx+rx*(o+0.3)-fx*0.9,sz+rz*(o+0.3)-fz*0.9];
+     buf.tri([a[0],groundY(a[0],a[1])+0.115,a[1]],[b[0],groundY(b[0],b[1])+0.115,b[1]],[tip[0],groundY(tip[0],tip[1])+0.115,tip[1]],UP)}}
+   if(kind==='hump'){ /* speed hump: white chevrons on the hump + SLOW before it */
+    const from=oneway?-w/2+0.4:0.4,to=w/2-0.4;for(let o=from;o<to-1;o+=1.8){const c=[cx+rx*(o+0.9),cz+rz*(o+0.9)];const l1=[c[0]-rx*0.8-fx*0.6,c[1]-rz*0.8-fz*0.6],l2=[c[0]+rx*0.8-fx*0.6,c[1]+rz*0.8-fz*0.6];ribbon(buf,[l1,c],0.2,0.13);ribbon(buf,[c,l2],0.2,0.13)}
+    decal('SLOW',cx-fx*12+rx*(from+to)/2,cz-fz*12+rz*(from+to)/2,fx,fz,2.6,Math.min(3.2,to-from),0.12)}}}}
 // ============================================================ BRIDGE STRUCTURES (OSM bridge:structure)
 function bridgeStruct(t,pts,w,bufs){const L=[0];for(let i=1;i<pts.length;i++)L.push(L[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const tot=L[L.length-1];if(tot<8)return;
  const st=(t['bridge:structure']||'').toLowerCase(),name=(t.name||'')+(t['bridge:name']||'');const gg=/golden gate/i.test(name);
@@ -918,7 +952,7 @@ function bNormal(b,x,z){let bd=1e9,n=[1,0],d0=0;const r=b.r;for(let i=0;i<r.leng
 function buildTile(key){
  if(TILES.has(key)||!RAW.has(key)||TERR.ref===null||!tileTerrReady(key))return;
  const data=RAW.get(key),T={key,group:new THREE.Group(),ways:[],peds:[],ids:[],lamps:[],signals:[]};
- const bRoad=new Buf(),bRoad2=new Buf(),bPath=new Buf(),bY=new Buf(),bW=new Buf(),bB=new Buf(),bR=new Buf(),bG=new Buf(),bWa=new Buf();
+ const bRoad=new Buf(),bRoad2=new Buf(),bPath=new Buf(),bY=new Buf(),bW=new Buf(),bB=new Buf(),bR=new Buf(),bG=new Buf(),bWa=new Buf();MK.red=new Buf();MK.dec=new Buf();
  const trees=[];const bio=game.bio;const nodeWays=new Map();
  const BC={bio,walls:new Map(),roofs:new Map(),parapet:new Buf(),canopy:new Buf(),storeIds:new Set(),group:T.group},bRecs=[],partRings=[],pois=[];const SFBT=data.sfb||SFB.get(key)||null;const BROADS=tileRoads(key),RQ=roadIndex(BROADS);CUR_RQ=RQ;T.missing=neighbourKeys(key).filter(k=>!RAW.has(k));
  for(const el of data.elements){const t=el.tags||{};if(el.type==='way'&&el.geometry&&t['building:part']&&t['building:part']!=='no')partRings.push(el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]));if(el.type==='node'&&t.name&&(t.shop||t.amenity||t.tourism))pois.push({x:toX(el.lon),z:toZ(el.lat),name:t.brand||t.name,shop:!!t.shop||/restaurant|cafe|fast_food|bank|pharmacy|bar|pub|ice_cream/.test(t.amenity||'')})}
@@ -999,6 +1033,8 @@ placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
   if(t.natural==='tree')trees.push([x,z,el.id]);
   else if(t.highway==='crossing'&&t.crossing!=='unmarked'&&t.crossing!=='no'&&t['crossing:markings']!=='no')markNode(bW,x,z,nodeWays.get(el.id)||[],'crossing');
   else if(t.highway==='street_lamp')addLamp(T,x,z);
+  else if(t.railway==='level_crossing')markNode(bW,x,z,nodeWays.get(el.id)||[],'rail');
+  else if(/hump|bump|table|cushion/.test(t.traffic_calming||''))markNode(bW,x,z,nodeWays.get(el.id)||[],'hump');
   else if(t.highway==='traffic_signals'||t.highway==='stop'||t.highway==='give_way'){
    const ws=nodeWays.get(el.id)||[];let dir=[1,0],roadW=8;
    if(ws.length){const {el:w,k}=ws[0],g=w.geometry,a=g[Math.max(0,k-1)],b=g[Math.min(g.length-1,k+1)];const dx=toX(b.lon)-toX(a.lon),dz=toZ(b.lat)-toZ(a.lat),l=Math.hypot(dx,dz)||1;dir=[dx/l,dz/l];const tg=w.tags||{};roadW=(+tg.lanes?+tg.lanes*3.6:DEF_W[tg.highway]||8)}
@@ -1037,7 +1073,7 @@ placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
   for(const o of [...T.group.children])if(o.isGroup&&!o.children.length)T.group.remove(o)}
  const add=(b,m,sh)=>{const g=b.geo();if(g){const mesh=new THREE.Mesh(g,m);mesh.userData.merged=true;mesh.receiveShadow=true;if(sh)mesh.castShadow=true;T.group.add(mesh)}};
  for(const [k,b] of roadBufs)add(b,surfMat(k));for(const [k,b] of BC.walls)add(b,facadeMat(k),true);for(const [k,b] of BC.roofs)add(b,roofMat(k),true);add(BC.parapet,MAT.wall,true);add(BC.canopy,MAT.wall,true);add(bWall,MAT.wall,true);add(bPier,MAT.pier,true);add(bCurb,MAT.path);
- add(bG,new THREE.MeshLambertMaterial({vertexColors:true}));add(bWa,MAT.water);add(bPath,MAT.path);add(bRoad,MAT.road);add(bRoad2,MAT.road2);add(bY,MAT.yellow);add(bW,MAT.white);add(bB,MAT.bld,true);add(bR,MAT.roof,true);
+ add(bG,new THREE.MeshLambertMaterial({vertexColors:true}));add(bWa,MAT.water);add(bPath,MAT.path);add(bRoad,MAT.road);add(bRoad2,MAT.road2);add(bY,MAT.yellow);add(bW,MAT.white);add(MK.red,MAT.busRed||(MAT.busRed=new THREE.MeshLambertMaterial({color:0xa3262a,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})));add(MK.dec,decalMat());MK.red=MK.dec=null;add(bB,MAT.bld,true);add(bR,MAT.roof,true);
  // trunk ≥1 m behind the kerb; canopy (radius 2.6·scale) may not reach over a lane → trees beside the road are scaled to fit, or dropped
  for(let i=trees.length-1;i>=0;i--){const c=RQ.clear(trees[i][0],trees[i][1]);if(c<1.0){trees.splice(i,1);continue}if(c<4)trees[i].push((c+0.1)/2.6)}
  if(trees.length){const by={broad:[],conifer:[],palm:[]};for(const t of trees)by[treeSpecies(t,bio)].push(t);
