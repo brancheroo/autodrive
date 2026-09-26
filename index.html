@@ -193,9 +193,9 @@ const CARS=[
 {id:'ezpt',name:'MKAY e-ZPT',sub:'Electric armored carrier',style:'suv',L:6.10,W:2.55,H:2.45,wb:3.60,wr:0.58,hp:470,z60:11.5,top:68,range:'~185 mi (est.)',weight:'~33,000 lb (combat)',drive:'Twin motor 4×4 EV · central tire inflation',level:'SAE Level 4 · convoy autonomy (fictional)',
  tech:'Parody of a Turkish electric 4×4 APC. Monocoque V-hull with STANAG-level armor, run-flat tires and a roof weapon station (unarmed in Autodrive). At 15 tonnes it shrugs off PITs, and in chase mode it rams roadblocks instead of detouring.',
  colors:[['Olive Drab','#4b5320'],['Desert Tan','#b59a6a'],['Urban Grey','#5d6266'],['Gendarmerie Blue','#27364f']],dash:'rivian',wheel:'round',sensors:'none',sound:'ev',driver:true,apc:true},
-{id:'hyper',name:'Voltanza Fulmine XR',sub:'All-electric hypercar',style:'coupe',L:4.78,W:2.06,H:1.12,wb:2.75,wr:0.36,hp:2100,z60:1.7,top:300,range:'~310 mi (est.)',weight:'4,300 lb',drive:'Quad motor torque-vectoring AWD · 1,000 V',level:'SAE Level 4 · track-capable autonomy (fictional)',
+{id:'hyper',name:'Voltanza Fulmine XR',sub:'Open-air electric hyper-roadster',style:'coupe',L:4.78,W:2.06,H:1.12,wb:2.75,wr:0.36,hp:2100,z60:1.7,top:300,range:'~310 mi (est.)',weight:'4,300 lb',drive:'Quad motor torque-vectoring AWD · 1,000 V',level:'SAE Level 4 · track-capable autonomy (fictional)',
  tech:'An invented 2,100 hp quad-motor hypercar. There is no steering wheel. Instead, a wall of active screens shows telemetry, a g-meter, battery temps, mirror cams and the route. An active rear wing flattens for top speed, tilts up in corners and flips vertical as an airbrake. In Express or Chase mode it runs flat out to 300 mph where the road allows. Its planner forecasts every moving thing ahead 4 s and tests 35 escape plans ten times a second. If a crash is unavoidable, it protects pedestrians first, then steers away from the heaviest vehicles.',
- colors:[['Toxic Lime','#9dff00'],['Hyper Magenta','#ff1fb4'],['Volt Orange','#ff6a00'],['Ultraviolet','#6b2cff'],['Cyber Teal','#00e5d4'],['Acid Yellow','#f4ff2e']],dash:'hyper',wheel:'none',sensors:'hyper',sound:'ev',driver:true,hyper:true},
+ colors:[['Toxic Lime','#9dff00'],['Hyper Magenta','#ff1fb4'],['Volt Orange','#ff6a00'],['Ultraviolet','#6b2cff'],['Cyber Teal','#00e5d4'],['Acid Yellow','#f4ff2e']],dash:'hyper',wheel:'none',sensors:'hyper',sound:'ev',driver:true,hyper:true,roadster:true},
 ];
 
 // ============================================================ UTIL
@@ -1288,7 +1288,18 @@ function buildCar(spec,colorHex,opts={}){
  const matte=new THREE.MeshStandardMaterial({color:0x151617,roughness:0.75});
  const body=new THREE.Mesh(lo,paint);body.castShadow=true;g.add(body);g.userData.body=body;g.userData.paint=paint;
  if(!opts.interior){glass.opacity=0.26;glass.envMapIntensity=0.45;glass.clearcoat=0.25;glass.reflectivity=0.3;glass.color.set(0x1c252e)} // outside cars: see the people inside
- const cab=new THREE.Mesh(gh,[paint,glass,gloss]);cab.castShadow=true;g.add(cab);g.userData.cab=cab;
+ const cab=new THREE.Mesh(gh,[paint,glass,gloss]);cab.castShadow=true;if(!spec.roadster)g.add(cab);g.userData.cab=cab;
+ if(spec.roadster){ /* open-air roadster: no roof or side glass — low wraparound screen, twin roll hoops with speed humps, open cockpit tub */
+  const P0=profCache[pk].P,sh0=P0.sh,cf=new THREE.MeshStandardMaterial({color:0x111114,roughness:0.3,metalness:0.4}),tub=new THREE.MeshStandardMaterial({color:0x0c0c0e,roughness:0.9});
+  const xc=P0.xOf(sh0.cowl-0.01),yb=P0.belt(sh0.cowl)+0.02,hw=P0.half(sh0.cowl)*0.92;
+  const scr=new THREE.Mesh(new THREE.CylinderGeometry(hw*1.6,hw*1.6,0.24,28,1,true,-0.55,1.1),new THREE.MeshPhysicalMaterial({color:0x2a3a44,transparent:true,opacity:0.35,roughness:0.03,metalness:0,side:THREE.DoubleSide,depthWrite:false}));
+  scr.rotation.z=0.95;scr.position.set(xc-hw*1.45,yb+0.1,0);g.add(scr);g.userData.screen=scr;
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(hw*1.6,0.018,6,28,1.1),cf);rim.rotation.set(Math.PI/2,0,0.95-Math.PI/2);rim.rotation.order='YXZ';rim.position.set(xc-hw*1.45+Math.sin(0.95)*0.12,yb+0.1+Math.cos(0.95)*0.12,0);g.add(rim);
+  const xs=P0.xOf((sh0.roofR+sh0.roofF)/2),yt=P0.belt(0.5);const well=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(xc-xs)*1.7+0.4,0.1,P0.half(0.5)*1.75),tub);well.position.set((xc+xs)/2-0.15,yt-0.03,0);g.add(well);
+  for(const z of [-1,1]){const hx=xs-0.35,hz=z*W*0.22;const hoop=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.035,8,20,Math.PI),cf);hoop.position.set(hx,yt+0.02,hz);hoop.rotation.y=Math.PI/2;g.add(hoop);
+   const pad=new THREE.Mesh(new THREE.CapsuleGeometry(0.06,0.14,4,8),tub);pad.rotation.x=Math.PI/2;pad.position.set(hx+0.04,yt+0.2,hz);g.add(pad);
+   const hump=new THREE.Mesh(new THREE.SphereGeometry(1,16,10,0,Math.PI*2,0,Math.PI/2),paint);hump.scale.set(0.75,0.16,0.19);hump.position.set(hx-0.62,yt-0.02,hz);g.add(hump)}
+  if(!opts.interior)for(const z of [-1,1]){const seat=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.45,0.42),tub);seat.position.set(xs-0.25,yt+0.05,z*W*0.22);seat.rotation.z=0.25;g.add(seat)}}
  if(opts.interior){const hood=new THREE.Mesh(profCache[pk].hood,paint);hood.visible=false;g.add(hood);g.userData.hood=hood}
  // wheels
  const rim=md.rim||{n:5,style:'split',col:0xaaaaaa},WS=wheelSet(spec,rim,md.cal),wheels=[];
