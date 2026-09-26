@@ -575,6 +575,9 @@ function decal(name,x,z,fx,fz,len,wid,y){const b=MK.dec;if(!b)return;const i=DEC
    Every ~25 km the car searches public open-data catalogs (ArcGIS Hub by map extent, Socrata by nearest city) for road-marking datasets
    within ~50 miles: speed humps/cushions/tables, crosswalks, school zones, bus/transit-only lanes, KEEP CLEAR, pavement-marking inventories.
    Each tile then pulls just its own features from every source (cached) and paints them, snapped to the nearest road. OSM-drawn items win ties. */
+/* spatial hash of crosswalks already painted from OSM (so open-data ones aren't doubled) */
+const XWG=new Map();function xwAdd(x,z){const k=Math.floor(x/20)+','+Math.floor(z/20);(XWG.get(k)||XWG.set(k,[]).get(k)).push([x,z])}
+function xwNear(x,z,r){const i=Math.floor(x/20),j=Math.floor(z/20);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(const p of XWG.get((i+a)+','+(j+b))||[])if(Math.hypot(p[0]-x,p[1]-z)<r)return true;return false}
 const MKSRC={sources:[],center:null,busy:false,tileFeats:new Map(),stats:{}};
 const MK_CATS=[
  {cat:'hump',qs:['speed hump','traffic calming','speed cushion'],re:/hump|cushion|traffic.?calming|speed.?table/i},
@@ -625,7 +628,7 @@ function mkRender(key){const T=TILES.get(key),F=MKSRC.tileFeats.get(key);if(!T||
      if(isX)for(let o=-hw+0.35;o<hw-0.2;o+=1.22){const bx=r.x+rx*o,bz=r.z+rz*o;ribbon(bW,[[bx-r.fx*1.5,bz-r.fz*1.5],[bx+r.fx*1.5,bz+r.fz*1.5]],0.6,0.115)}
      for(const sg of [1,-1])decal('SLOW',r.x-sg*r.fx*12+rx*sg*hw/2,r.z-sg*r.fz*12+rz*sg*hw/2,sg*r.fx,sg*r.fz,2.6,Math.min(3.2,hw-0.4),0.12)});cnt.hump=(cnt.hump||0)+1}}
   else if(f.cat==='crosswalk'){if(/no|false|unmarked/i.test(String(f.p.continental??'yes'))&&'continental' in f.p)continue;for(const c of pts(f.g)){const [x,z]=P(c),r=mkNearRoad(key,x,z,20);if(!r)continue;const hw=r.w/2;
-    let dup=false;for(const T2 of [T])if(false)dup=true;if(dup)continue;across(r,(rx,rz)=>{for(let o=-hw+0.35;o<hw-0.2;o+=1.22){const bx=r.x+rx*o,bz=r.z+rz*o;ribbon(bW,[[bx-r.fx*1.52,bz-r.fz*1.52],[bx+r.fx*1.52,bz+r.fz*1.52]],0.6,0.115)}});cnt.crosswalk=(cnt.crosswalk||0)+1}}
+    if(xwNear(r.x,r.z,12))continue;xwAdd(r.x,r.z);across(r,(rx,rz)=>{for(let o=-hw+0.35;o<hw-0.2;o+=1.22){const bx=r.x+rx*o,bz=r.z+rz*o;ribbon(bW,[[bx-r.fx*1.52,bz-r.fz*1.52],[bx+r.fx*1.52,bz+r.fz*1.52]],0.6,0.115)}});cnt.crosswalk=(cnt.crosswalk||0)+1}}
   else if(f.cat==='school'){for(const l of lines(f.g).concat(f.g.type==='Point'?[[f.g.coordinates]]:[])){for(const c of [l[0],l[l.length-1]]){const [x,z]=P(c),r=mkNearRoad(key,x,z,15);if(!r)continue;const hw=r.w/2;
      for(const sg of [1,-1]){const ox=-r.fz*sg*hw/2,oz=r.fx*sg*hw/2;decal('SCHOOL',r.x+ox-sg*r.fx*8,r.z+oz-sg*r.fz*8,sg*r.fx,sg*r.fz,3.4,Math.min(3.2,hw-0.4),0.12);decal('SLOW',r.x+ox-sg*r.fx*14,r.z+oz-sg*r.fz*14,sg*r.fx,sg*r.fz,2.6,Math.min(3.2,hw-0.4),0.12)}}}cnt.school=(cnt.school||0)+1}
   else if(f.cat==='bus'){for(const l of lines(f.g)){const P2=l.map(P);if(P2.length<2)continue;const r=mkNearRoad(key,P2[0][0],P2[0][1],25),w=r?r.w:12,off=w/2-1.8;
@@ -687,6 +690,7 @@ function markNode(buf,x,z,ws,kind){const drive=ws.filter(o=>DRIVABLE.has((o.el.t
    const back=kind==='crossing'?0:junction?maxW/2+(kind==='signal'?4.2:1.2):0.6;
    const cx=x-fx*back,cz=z-fz*back;
    if(kind==='crossing'||kind==='signal'){ // ladder ("continental") crosswalk: 24 in bars, 24 in gaps, 10 ft long
+    xwAdd(kind==='signal'?cx+fx*2.4:cx,kind==='signal'?cz+fz*2.4:cz);
     const cw=kind==='signal'?cx+fx*2.4:cx,czz=kind==='signal'?cz+fz*2.4:cz,half=(oneway||kind==='crossing')?w/2:w/2;
     if(!(kind==='crossing'&&side===1)){for(let o=-half+0.35;o<half-0.2;o+=1.22){const bx=cw+rx*o,bz=czz+rz*o;ribbon(buf,[[bx-fx*1.52,bz-fz*1.52],[bx+fx*1.52,bz+fz*1.52]],0.6,0.115)}}}
    if(kind==='stop'||kind==='signal'||kind==='rail'){ // 18 in stop bar across the approach lanes
