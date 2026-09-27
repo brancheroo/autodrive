@@ -4850,15 +4850,18 @@ function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userDa
 /* More rider customisation (glasses, hair style & colour, beard) + photo mode (📸 / F): hides the HUD, frames the
    rider through the windscreen, orbit with the mouse, "Save photo" downloads a PNG. */
 (function(){
- const S=Object.assign({glasses:'none',hair:'short',hairCol:'#3b2a1e',beard:'none'},UIX.load('riderX',{}));
+ const S=Object.assign({glasses:'none',hair:'short',hairCol:'#3b2a1e',beard:'none',freckles:false,tattoo:'none',makeup:'none'},UIX.load('riderX',{}));
  const opt=(v,t)=>`<option value="${v}">${t}</option>`,st=UIX.sel;
  const box=document.getElementById('rdShirt')&&document.getElementById('rdShirt').parentElement;
  if(box){box.insertAdjacentHTML('beforeend',`<select id="rdGlass" style="${st}">${opt('none','No glasses')+opt('sun','Sunglasses')+opt('aviator','Aviators')+opt('round','Round specs')+opt('visor','Cyber visor')}</select>
   <select id="rdHair" style="${st}">${opt('short','Short hair')+opt('long','Long hair')+opt('bun','Top bun')+opt('mohawk','Mohawk')+opt('curly','Curly')+opt('bald','Bald')}</select>
   <label style="display:flex;align-items:center;gap:6px">Hair <input type="color" id="rdHairCol" style="width:44px;height:28px;border:0;background:none"></label>
-  <select id="rdBeard" style="${st}">${opt('none','Clean shaven')+opt('stubble','Stubble')+opt('full','Full beard')+opt('goatee','Goatee')+opt('moustache','Moustache')}</select>`);
-  const g=id=>document.getElementById(id);g('rdGlass').value=S.glasses;g('rdHair').value=S.hair;g('rdHairCol').value=S.hairCol;g('rdBeard').value=S.beard;
-  for(const id of ['rdGlass','rdHair','rdHairCol','rdBeard'])g(id).addEventListener('change',()=>{S.glasses=g('rdGlass').value;S.hair=g('rdHair').value;S.hairCol=g('rdHairCol').value;S.beard=g('rdBeard').value;UIX.save('riderX',S)})}
+  <select id="rdBeard" style="${st}">${opt('none','Clean shaven')+opt('stubble','Stubble')+opt('full','Full beard')+opt('goatee','Goatee')+opt('moustache','Moustache')}</select>
+  <select id="rdTat" style="${st}">${opt('none','No tattoos')+opt('sleeve','Tattoo sleeves')+opt('tribal','Tribal bands')+opt('roses','Roses & swallows')}</select>
+  <select id="rdMake" style="${st}">${opt('none','No makeup')+opt('lips','Red lipstick')+opt('liner','Eyeliner')+opt('glam','Full glam')}</select>
+  <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="rdFreck"> Freckles</label>`);
+  const g=id=>document.getElementById(id);g('rdGlass').value=S.glasses;g('rdHair').value=S.hair;g('rdHairCol').value=S.hairCol;g('rdBeard').value=S.beard;g('rdTat').value=S.tattoo;g('rdMake').value=S.makeup;g('rdFreck').checked=S.freckles;
+  for(const id of ['rdGlass','rdHair','rdHairCol','rdBeard','rdTat','rdMake','rdFreck'])g(id).addEventListener('change',()=>{S.glasses=g('rdGlass').value;S.hair=g('rdHair').value;S.hairCol=g('rdHairCol').value;S.beard=g('rdBeard').value;S.tattoo=g('rdTat').value;S.makeup=g('rdMake').value;S.freckles=g('rdFreck').checked;UIX.save('riderX',S)})}
  window.RIDERX=S;
  function dress(){const G=game;if(!G||!G.ego||!G.ego.mesh)return;const r=G.ego.mesh.userData.rider;if(!r||r.userData.dressed)return;r.userData.dressed=1;const head=r.userData.head;if(!head)return;
   const M=(c,ro=0.8,me=0)=>new THREE.MeshStandardMaterial({color:c,roughness:ro,metalness:me}),hairM=M(S.hairCol,0.9),hide=r.userData.hideIn||(r.userData.hideIn=[]);
@@ -4875,7 +4878,15 @@ function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userDa
   if(S.glasses!=='none'){const fr=M(S.glasses==='aviator'?0xc9a64a:0x111111,0.3,S.glasses==='aviator'?0.9:0.1),lens=new THREE.MeshStandardMaterial({color:S.glasses==='round'?0xdde8ff:S.glasses==='visor'?0x19e3ff:0x0a0a0a,roughness:0.05,metalness:0.6,transparent:S.glasses==='round',opacity:0.35,emissive:S.glasses==='visor'?0x0a8fa0:0});
    if(S.glasses==='visor'){const v=add(new THREE.SphereGeometry(0.112,20,8,-0.9,1.8,Math.PI*0.4,Math.PI*0.14),lens,0,0.012,0)}
    else for(const z of [0.038,-0.038]){const l=add(S.glasses==='round'?new THREE.CylinderGeometry(0.026,0.026,0.006,16):new THREE.CylinderGeometry(0.03,0.026,0.006,16),lens,0.1,0.02,z);l.rotation.z=Math.PI/2;const f=add(new THREE.TorusGeometry(0.028,0.004,6,16),fr,0.101,0.02,z);f.rotation.y=Math.PI/2}
-   if(S.glasses!=='visor')for(const z of [0.075,-0.075])add(new THREE.BoxGeometry(0.1,0.006,0.006),fr,0.05,0.022,z)}}
+   if(S.glasses!=='visor')for(const z of [0.075,-0.075])add(new THREE.BoxGeometry(0.1,0.006,0.006),fr,0.05,0.022,z)}
+  /* (60) face details: eyes for everyone; freckles, makeup, tattoos */
+  const skinC=head.material.color.clone(),eyeW=M(0xf4f4f0,0.3),iris=M([0x3a2a1a,0x2a5a8a,0x3a6a3a,0x5a4a2a][Math.floor(Math.random()*4)],0.2);
+  for(const z of [0.036,-0.036]){add(new THREE.SphereGeometry(0.016,10,8),eyeW,0.093,0.022,z);add(new THREE.SphereGeometry(0.009,8,6),iris,0.106,0.022,z);if(S.makeup==='liner'||S.makeup==='glam'){const l=add(new THREE.TorusGeometry(0.017,0.003,6,14,Math.PI),M(0x111111,0.4),0.097,0.026,z);l.rotation.y=Math.PI/2}if(S.makeup==='glam'){const sh=add(new THREE.SphereGeometry(0.02,10,6,0,Math.PI*2,0,Math.PI/2),M(0x8a4aa0,0.5),0.088,0.03,z);sh.scale.set(0.5,0.6,1)}}
+  if(S.makeup==='lips'||S.makeup==='glam'){const lip=add(new THREE.CapsuleGeometry?new THREE.CapsuleGeometry(0.008,0.028,4,8):new THREE.CylinderGeometry(0.008,0.008,0.04),M(0xb0122a,0.25),0.104,-0.042,0);lip.rotation.x=Math.PI/2}
+  if(S.freckles){const c=document.createElement('canvas');c.width=256;c.height=128;const x=c.getContext('2d');x.fillStyle='#'+skinC.getHexString();x.fillRect(0,0,256,128);x.fillStyle='rgba(120,60,30,.55)';for(let i=0;i<70;i++){const u=0.5+(Math.random()-0.5)*0.16,v=0.52+(Math.random()-0.5)*0.1;x.beginPath();x.arc(u*256,v*128,1+Math.random()*1.4,0,7);x.fill()}const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;head.material=head.material.clone();head.material.color.set(0xffffff);head.material.map=t;head.material.needsUpdate=true}
+  if(S.tattoo!=='none'){const c=document.createElement('canvas');c.width=128;c.height=256;const x=c.getContext('2d');x.fillStyle='#'+skinC.getHexString();x.fillRect(0,0,128,256);x.strokeStyle='rgba(20,30,60,.8)';x.fillStyle='rgba(20,30,60,.75)';
+   if(S.tattoo==='tribal'){x.lineWidth=10;for(const y of [60,140,200]){x.beginPath();for(let k=0;k<=128;k+=8)x.lineTo(k,y+Math.sin(k/10)*10);x.stroke()}}else if(S.tattoo==='roses'){for(let i=0;i<4;i++){x.fillStyle='rgba(170,20,40,.8)';x.beginPath();x.arc(30+i*25,40+i*55,14,0,7);x.fill();x.fillStyle='rgba(20,90,40,.8)';x.fillRect(20+i*25,56+i*55,26,6)}}else{for(let i=0;i<40;i++){x.lineWidth=2+Math.random()*4;x.beginPath();x.moveTo(Math.random()*128,Math.random()*256);x.bezierCurveTo(Math.random()*128,Math.random()*256,Math.random()*128,Math.random()*256,Math.random()*128,Math.random()*256);x.stroke()}}
+   const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;const tm=new THREE.MeshStandardMaterial({map:t,roughness:0.65});r.traverse(o=>{if(o.isMesh&&o.geometry.type==='CylinderGeometry'&&o.geometry.parameters.height>0.25&&o.geometry.parameters.height<0.3&&o.geometry.parameters.radiusTop<0.04)o.material=tm})}}
  const PH={on:false,a:0.25,el:0.15,d:3.2};window.PHOTO=PH;
  const ui=UIX.banner('photoUi','bottom:22px;left:50%;transform:translateX(-50%);pointer-events:auto;display:none;gap:8px');
  ui.innerHTML='<button id="phSave" style="padding:9px 16px;border-radius:10px;border:0;background:#fff;color:#111;font-weight:700;cursor:pointer">📸 Save photo</button> <button id="phExit" style="padding:9px 16px;border-radius:10px;border:1px solid #fff5;background:#0008;color:#fff;cursor:pointer">Exit photo mode</button> <span style="color:#fff;font:12px system-ui;text-shadow:0 1px 3px #000">drag to orbit · wheel to zoom</span>';
