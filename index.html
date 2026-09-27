@@ -4564,7 +4564,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
   start(){wip=null;for(const p of pud)scene.remove(p.m);pud.length=0;const mat=new THREE.MeshStandardMaterial({color:0x2a3038,roughness:0.03,metalness:0.9,transparent:true,opacity:0.75,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2});try{ENVMATS.push(mat)}catch(e){}
    for(let i=0;i<14;i++){const m=new THREE.Mesh(new THREE.CircleGeometry(0.6,20),mat);m.rotation.x=-Math.PI/2;m.visible=false;scene.add(m);pud.push({m,s:-1e9})}},
   frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;const wet=Math.min(1,(WX.rain||0)+(WX.snow||0)*0.6+(WX.wet||0)*0.3),dt=1/60;
-   const w=wet>0.05?wipers():wip;if(w){w.visible=wet>0.05;if(w.visible){ph+=dt*(WX.rain>0.5?2.2:1.1)*(G.paused?0:1);const k=(1-Math.cos(ph*Math.PI))/2;for(const a of w.userData.arms)a.rotation.x=-(1.45-k*1.3)}}
+   const w=wet>0.05?wipers():wip;if(w){w.visible=wet>0.05;if(w.visible){ph+=dt*(WX.rain>0.5?2.2:1.1)*(G.paused?0:1);const k=(1-Math.cos(ph*Math.PI))/2;for(const a of w.userData.arms)a.rotation.x=(1.45-k*1.3) /* rest pointing toward the passenger side, sweep up across the glass */}}
    for(const p of pud)p.m.visible=p.m.visible&&(WX.wet||0)>0.3;if((WX.wet||0)>0.3&&!G.paused)puddles();
    if(wet>0.1&&!G.paused){const src=[G.ego,...G.agents.filter(a=>a.mesh&&Math.abs(a.x-G.ego.x)+Math.abs(a.z-G.ego.z)<90)];
     for(const a of src){if((a.v||0)<7)continue;if(Math.random()>0.5*wet)continue;let s=spray.find(q=>q.life<=0);if(!s){if(spray.length>160)continue;s={sp:new THREE.Sprite(sprayMat.clone()),life:0};scene.add(s.sp);spray.push(s)}
