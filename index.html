@@ -1096,7 +1096,8 @@ function buildTile(key){
    const hw=t.highway;
    if(t.area==='yes')continue;
    const isBridge=t.bridge&&t.bridge!=='no',isTunnel=t.tunnel&&t.tunnel!=='no'&&t.tunnel!=='building_passage',layer=+t.layer||(isBridge?1:isTunnel?-1:0);
-   if((isBridge||isTunnel)&&DRIVABLE.has(hw)){ // deck / bore heights: straight between the ends, bridges keep clearance over what they cross
+   if((isBridge||isTunnel)&&DRIVABLE.has(hw)){
+    const kIdx=pts.map((_,k)=>k);if(isBridge){const D=[],M=[];for(let i=0;i<pts.length;i++){if(i){const a0=pts[i-1],b0=pts[i],l=Math.hypot(b0[0]-a0[0],b0[1]-a0[1]),n=Math.floor(l/4);for(let q=1;q<n;q++)D.push([lerp(a0[0],b0[0],q/n),lerp(a0[1],b0[1],q/n)])}M.push(D.length);D.push(pts[i])}pts.length=0;pts.push(...D);M.forEach((v,k)=>kIdx[k]=v)} /* OSM spans are often just two end nodes: densify so the deck can rise between them */ // deck / bore heights: straight between the ends, bridges keep clearance over what they cross
     const L=[0];for(let i=1;i<pts.length;i++)L.push(L[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const tot=L[L.length-1]||1,h0=groundY(pts[0][0],pts[0][1]),h1=groundY(pts[pts.length-1][0],pts[pts.length-1][1]);
     /* overpass over a road or railway: full vehicle clearance (deck underside ≥ ~5.2 m above the road below), reached quickly
        even on short spans (OSM bridge ways are usually just the span – approach embankments are separate, un-tagged ways);
@@ -1109,7 +1110,7 @@ function buildTile(key){
      overRoad=!wet} /* the road below is often in a neighbouring tile: any dry bridge is treated as an overpass */
     const clr=layer>=1?(overRoad?Math.max(6.2,5.3*layer+0.9):Math.min(3,1.8*layer)):1.5,rampLen=overRoad?Math.max(8,Math.min(30,tot*0.22)):30;
     pts.forEach((p,i)=>{const lin=lerp(h0,h1,L[i]/tot);if(isTunnel){p.push(lin)}else{const g=groundY(p[0],p[1]),ramp=clamp(Math.min(L[i],tot-L[i])/rampLen,0,1);p.push(Math.max(lin,g+clr*ramp*ramp*(3-2*ramp)))}});
-    if(el.nodes)el.nodes.forEach((nid,k)=>NODEH.set(nid,pts[k][2]))}
+    if(el.nodes)el.nodes.forEach((nid,k)=>NODEH.set(nid,pts[kIdx[k]][2]))}
    if(isTunnel&&DRIVABLE.has(hw)){const len=[0];for(let i=1;i<pts.length;i++)len.push(len[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const lanes=+t.lanes||0;
     T.ways.push({pts,len,total:len[len.length-1],oneway:owDir(t)!==0,owDir:owDir(t)||1,hw,lanes,w:lanes?lanes*3.6:(DEF_W[hw]||7),spd:(parseSpeed(t.maxspeed)||DEF_SPD[hw]||25)/MPH,nodes:el.nodes||[],hts:true,tunnel:true});continue}
    if(DRIVABLE.has(hw)){
