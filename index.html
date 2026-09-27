@@ -6207,11 +6207,11 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  function bubble(who,txt){const el=UIX.banner('paxSay','left:50%;bottom:160px;transform:translateX(-50%);background:#fffffff0;color:#111;padding:7px 12px;border-radius:14px;font:600 13px system-ui;max-width:60vw;box-shadow:0 4px 16px #0006;transition:opacity .4s');el.textContent=`${who}: ${txt}`;el.style.opacity=1;clearTimeout(el._t);el._t=setTimeout(()=>el.style.opacity=0,4200)}
  function seatPos(spec,seat){const e=_ep(spec),[row,side]=SEATS[seat];return new THREE.Vector3(e.x-(row?0.95:0),e.y-0.02-(row?0.03:0),side*spec.W*0.2)}
  function spawnCompanions(){const G=game,spec=G.spec,m=G.ego.mesh,mine=mySeat();for(const p of PASS)m.remove(p.g);PASS.length=0;const free=['front','rearL','rearR'];
-  for(let i=0;i<Math.min(C.n,free.length);i++){const kid=i<C.kids,seat=free[i],d=buildDriver(spec,'rider',seat,seatPos(spec,seat));if(kid){d.scale.setScalar(0.72);d.position.y-=0.18}m.add(d);PASS.push({g:d,kid,name:kid?pick(KIDN):pick(NAMES),seat,rating:5})}}
+  for(let i=0;i<Math.min(C.n,free.length);i++){const kid=i<C.kids,seat=free[i],d=buildDriver(spec,'rider',seat,seatPos(spec,seat));if(kid){d.scale.setScalar(0.72);d.position.y-=0.18}d.userData.noDent=true;m.add(d);PASS.push({g:d,kid,name:kid?pick(KIDN):pick(NAMES),seat,rating:5})}}
  /* pets */
  let cat=null,parrot=null;function pets(){const G=game,spec=G.spec,m=G.ego.mesh;if(cat){m.remove(cat);cat=null}if(parrot&&parrot.parent)parrot.parent.remove(parrot);parrot=null;
   if(C.cat){const seat=['rearL','rearR','front'].find(s=>s!==mySeat()&&!PASS.some(p=>p.seat===s))||'rearL',p=seatPos(spec,seat);cat=new THREE.Group();const box=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.34,0.34),new THREE.MeshStandardMaterial({color:0x9aa3ab,roughness:0.6}));cat.add(box);const grate=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.26),new THREE.MeshStandardMaterial({color:0x222222,wireframe:true}));grate.position.set(0.252,0,0);grate.rotation.y=Math.PI/2;cat.add(grate);
-   const head=new THREE.Mesh(quadruped(0.5,0.3,{ears:true,snout:0.55,tail:0}),new THREE.MeshStandardMaterial({color:0xf08c2c}));head.scale.setScalar(0.8);head.position.set(-0.05,-0.12,0);cat.add(head);cat.position.set(p.x+0.05,p.y-0.45,p.z);m.add(cat);cat.userData.head=head}
+   const head=new THREE.Mesh(quadruped(0.5,0.3,{ears:true,snout:0.55,tail:0}),new THREE.MeshStandardMaterial({color:0xf08c2c}));head.scale.setScalar(0.8);head.position.set(-0.05,-0.12,0);cat.add(head);cat.position.set(p.x+0.05,p.y-0.45,p.z);cat.userData.noDent=true;m.add(cat);cat.userData.head=head}
   if(C.parrot){const r=m.userData.rider;if(r){parrot=new THREE.Group();const body=new THREE.Mesh(bird(0.32),new THREE.MeshStandardMaterial({color:0x22b04a,roughness:0.5}));parrot.add(body);const wing=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.02,0.05),new THREE.MeshStandardMaterial({color:0xd32f2f}));wing.position.set(-0.02,0.12,0.06);parrot.add(wing);parrot.position.set(-0.05,-0.12,0.2);r.add(parrot)}}}
  /* lines */
  const L={
@@ -6691,6 +6691,42 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  /* 97 visual regression */
  window.SELFTEST=window.SELFTEST||{};SELFTEST.visual=async()=>{const base=UIX.load('visBase',{}),res=[],cam=new THREE.PerspectiveCamera(35,16/9,0.1,100),rt=new THREE.WebGLRenderTarget(160,90),px=new Uint8Array(160*90*4);for(const c of CARS){const m=buildCar(c,c.colors[0][1]);const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight(0xffffff,0x444444,1.2));const dl=new THREE.DirectionalLight(0xffffff,1);dl.position.set(5,8,4);sc.add(dl);sc.add(m);cam.position.set(c.L*0.9,c.H*1.1,c.L*0.9);cam.lookAt(0,c.H*0.45,0);renderer.setRenderTarget(rt);renderer.render(sc,cam);renderer.readRenderTargetPixels(rt,0,0,160,90,px);renderer.setRenderTarget(null);
    let sig='';for(let i=0;i<px.length;i+=4*37)sig+=String.fromCharCode(65+(px[i]>>4));if(!base[c.id]){base[c.id]=sig;res.push([c.name,'baseline stored'])}else{let d=0;for(let i=0;i<sig.length;i++)if(sig[i]!==base[c.id][i])d++;res.push([c.name,(d/sig.length*100).toFixed(1)+' % changed'])}}UIX.save('visBase',base);rt.dispose();return res};
+})();
+</script>
+<script>/* mods/83-f1wheel.js */
+/* Predictacar F1-style wheel: the centre screen shows the car's live data – speed, drive mode, power (kW) and
+   regen, battery %, range, g-forces (long / lat), vacuum-fan power on all four corners, rocket status, crab angle,
+   sensor / satellite / drone status, simulated tyre temperatures, next manoeuvre and the self-learning brain's
+   generation. The 15 shift lights across the top fill with power use (green → red → blue at the limit) and flash
+   when the rockets light. Redrawn ~12×/s. */
+(function(){
+ let t=0,lastV=0,lastH=0,gl=0,gt=0,tt=[60,60,60,60];
+ function draw(){const G=game,F=G.ego.mesh.userData.f1;if(!F)return;const x=F.ctx,W=512,H=320,e=G.ego,E=ES();
+  const P=powerW(E,e.v,e.acc||0,e.grade||0)/1000,soc=(G.soc||0)*100,fans=G.fans||[0,0,0,0],mph=Math.round(e.v*MPH),rocket=!!G.rocket;
+  x.fillStyle='#05070a';x.fillRect(0,0,W,H);x.strokeStyle='#1c2733';x.lineWidth=2;x.strokeRect(2,2,W-4,H-4);
+  /* big speed + mode */
+  x.fillStyle=rocket?'#ff6a00':'#ffffff';x.font='900 96px ui-monospace,monospace';x.textAlign='center';x.fillText(mph,W/2,108);x.font='600 18px system-ui';x.fillStyle='#8fb7c9';x.fillText('MPH',W/2,130);
+  const mode=typeof CHASE!=='undefined'&&CHASE.on?'CHASE':EXPRESS&&EXPRESS.on?'EXPRESS':DRIVE.profile==='Comfort'?'COMFORT':'NORMAL';x.fillStyle=mode==='NORMAL'?'#35d07f':mode==='COMFORT'?'#7fc8ff':'#ff3b3b';x.font='800 22px system-ui';x.fillText(mode,W/2,28);
+  /* left column: power / battery / range */
+  x.textAlign='left';x.font='700 15px ui-monospace,monospace';const L=(lab,val,col,y)=>{x.fillStyle='#6f8796';x.fillText(lab,14,y);x.fillStyle=col;x.fillText(val,14,y+18)};
+  L('POWER',(P>=0?'+':'')+Math.round(P)+' kW',P<0?'#35d0ff':P>800?'#ff3b3b':'#ffd166',40);L('BATTERY',soc.toFixed(1)+' %',soc<20?'#ff3b3b':'#35d07f',82);L('RANGE',Math.round((G.soc||0)*((ENERGY[G.spec.id]||{}).epa||300))+' mi','#e8eef5',124);
+  L('ROCKETS',rocket?'🔥 LIT':'SAFE',rocket?'#ff6a00':'#6f8796',166);
+  /* right column: g-forces + crab + brain */
+  x.textAlign='right';const Rr=(lab,val,col,y)=>{x.fillStyle='#6f8796';x.fillText(lab,W-14,y);x.fillStyle=col;x.fillText(val,W-14,y+18)};
+  Rr('G LONG',(gl>=0?'+':'')+gl.toFixed(2),'#e8eef5',40);Rr('G LAT',(gt>=0?'+':'')+gt.toFixed(2),'#e8eef5',82);Rr('CRAB',Math.round(Math.abs(G.crab||0)*57.3)+'°'+(G.crab>0.02?' R':G.crab<-0.02?' L':''),'#b48cff',124);
+  Rr('BRAIN',window.BRAIN?'GEN '+BRAIN.M.gen:'—','#35d0ff',166);
+  /* vacuum fans: four corner bars */
+  x.textAlign='center';x.font='700 12px system-ui';x.fillStyle='#6f8796';x.fillText('VACUUM FANS',W/2,158);const pos=[[W/2-60,172],[W/2+20,172],[W/2-60,212],[W/2+20,212]];fans.forEach((f,i)=>{const [px,py]=pos[i];x.fillStyle='#16202a';x.fillRect(px,py,40,30);x.fillStyle=f>3?'#ff3b3b':f>1.5?'#ffd166':'#35d07f';x.fillRect(px,py+30-Math.min(30,f/4*30),40,Math.min(30,f/4*30));x.fillStyle='#e8eef5';x.fillText(Math.round(f*100)+'%',px+20,py+20)});
+  /* tyre temps */
+  x.font='700 12px system-ui';x.fillStyle='#6f8796';x.fillText('TYRES °C',W/2,262);tt.forEach((c,i)=>{const px=W/2-78+i*40;x.fillStyle=c>110?'#ff3b3b':c>85?'#ffd166':c>65?'#35d07f':'#3a86ff';x.fillRect(px,268,34,20);x.fillStyle='#05070a';x.fillText(Math.round(c),px+17,283)});
+  /* bottom strip: sensors & next turn */
+  x.textAlign='left';x.font='600 13px system-ui';x.fillStyle='#8fb7c9';const ns=G.nextStep;x.fillText(`LIDAR 1 km · SAT ${satActive()?'ON':'OFF'} · DRONE ${window.HDRONE&&HDRONE.mesh?'UP':'—'}`,14,H-12);x.textAlign='right';x.fillText(ns?`${ns.type==='arrive'?'ARRIVE':(ns.mod||'').toUpperCase()} ${fmtDist(ns.d)}`:'',W-14,H-12);
+  F.tex.needsUpdate=true;
+  /* shift lights */
+  const frac=clamp(Math.max(0,P)/(((G.spec.hp||1000)*0.7457)||750),0,1);const n=Math.round(frac*15),blink=rocket&&((performance.now()/120|0)%2);F.leds.forEach((l,i)=>l.material.color.setHex(blink?0x2a6dff:i<n?(i<5?0x21d05a:i<10?0xff2a2a:0x2a6dff):0x111111))}
+ MODS.push({id:'f1wheel',
+  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh||!G.ego.mesh.userData.f1)return;const dt=1/60,e=G.ego;let dh=e.head-lastH;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const al=(e.v-lastV)/dt/Math.max(1,G.scale),at=e.v*dh/dt/Math.max(1,G.scale);lastV=e.v;lastH=e.head;if(Math.abs(al)<60)gl=lerp(gl,al/9.81,0.1);if(Math.abs(at)<60)gt=lerp(gt,at/9.81,0.1);
+   const heat=Math.abs(gl)+Math.abs(gt);tt=tt.map((c,i)=>lerp(c,55+e.v*0.9+heat*18+(G.fans?G.fans[i]*4:0),0.004));t+=dt;if(t>1/12){t=0;draw()}}});
 })();
 </script>
 <script>/* mods/90-selftest.js */
