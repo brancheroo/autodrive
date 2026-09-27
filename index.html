@@ -4918,7 +4918,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
 (function(){
  const L={k:0,tk:0,why:'',chg:0,cool:0,blocks:[],laneW:3.6};window.LANES=L;
  const ni=s=>NODEINFO.get(game.route.nodes[routeLLnh(clamp(s,0,game.route.total))[2]])||{};
- L.count=s=>{const n=ni(s);if(n.oneway)return Math.max(1,n.lanes||2);return (n.lanes||2)>=4?Math.floor((n.lanes||4)/2):1};
+ const count1=s=>{const n=ni(s);if(n.oneway)return Math.max(1,n.lanes||2);return (n.lanes||2)>=4?Math.floor((n.lanes||4)/2):1};
+ L.count=s=>Math.max(count1(s-25),count1(s),count1(s+25)); /* nodes often lack a lanes tag (intersections): smooth over ±25 m so the count doesn't flicker */
  L.block=(s0,s1,k,why)=>{const b={s0,s1,k,why};L.blocks.push(b);return b};L.unblock=b=>{const i=L.blocks.indexOf(b);if(i>=0)L.blocks.splice(i,1)};
  const blocked=(k,s0,s1)=>L.blocks.find(b=>b.k===k&&b.s1>s0&&b.s0<s1);
  const latOf=a=>(a.off??1.85)+(a.offAdd||0),egoLat=()=>laneOffsetAt(routeLLnh(game.ego.s)[2])+(window.LANEBIAS||0);
@@ -4946,6 +4947,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    /* merge points ahead on freeways */
    const hw=(ni(e.s).hw||'');if(/motorway|trunk/.test(hw)){const ends=linkEnds(),R=G.route,i0=routeLLnh(e.s)[2];for(let i=i0;i<R.nodes.length&&R.cum[i]-e.s<600;i++){const id=R.nodes[i];if(R.cum[i]-e.s<200||mergeSeen.has(id))continue;const w=ends.get(id);if(w&&!R.nodes.includes(w.nodes[0])){mergeSeen.add(id);if(Math.random()<0.8)spawnMerger(R.cum[i])}}}
    /* ride lane choice */
+   if(n<=1&&L.k>0){if(gapOK(L.k-1)){L.k--;L.cool=3;L.chg=3}L.tk=0;L.why='Lane ends – merging right';window.SIGOVR=1;const tgt=-L.k*L.laneW;window.LANEBIAS=lerp(window.LANEBIAS||0,tgt,Math.min(1,dt*0.7));return}
    if(n<=1){L.tk=0;L.k=0;L.why='';let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;window.LANEBIAS=lerp(window.LANEBIAS||0,xb,Math.min(1,dt*0.8));window.SIGOVR=Math.abs(xb)>0.8?(xb<0?-1:1):0;return}
    const fwy=/motorway|trunk/.test(hw),turn=upcomingTurn(fwy?2000:350);let want=fwy&&n>=3?1:0,why='';
    const cur=L.k,lead=leadIn(cur,90),myV=Math.min(speedLimitAt(routeLLnh(e.s)[2])/MPH,e.v+10);
