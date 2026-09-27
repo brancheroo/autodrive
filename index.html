@@ -4951,8 +4951,9 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    if(n<=1){L.tk=0;L.k=0;L.why='';let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;window.LANEBIAS=lerp(window.LANEBIAS||0,xb,Math.min(1,dt*0.8));window.SIGOVR=Math.abs(xb)>0.8?(xb<0?-1:1):0;return}
    const fwy=/motorway|trunk/.test(hw),turn=upcomingTurn(fwy?2000:350);let want=fwy&&n>=3?1:0,why='';
    const cur=L.k,lead=leadIn(cur,90),myV=Math.min(speedLimitAt(routeLLnh(e.s)[2])/MPH,e.v+10);
-   if(lead&&lead.v<myV-4&&lead.s-e.s<70&&cur+1<n&&!(turn&&turn.side>0&&turn.d<600)){want=cur+1;why=`Passing slower traffic (${Math.round(lead.v*MPH)} mph)`}
-   else if(cur>want&&!leadIn(cur-1,60)){why='Keeping right except to pass'}else if(cur>want)want=cur;
+   const slow=lead&&lead.v<myV-4&&lead.s-e.s<70&&cur+1<n&&!(turn&&turn.side>0&&turn.d<600);L.slowT=slow?(L.slowT||0)+dt:0;const rightClear=cur>0&&!leadIn(cur-1,90);L.clearT=rightClear?(L.clearT||0)+dt:0;
+   if(L.slowT>2){want=cur+1;why=`Passing slower traffic (${Math.round(lead.v*MPH)} mph)`}
+   else if(cur>want&&L.clearT>6){why='Keeping right except to pass'}else if(cur>want)want=cur; /* hysteresis: pass only after 2 s stuck behind, return only after 6 s of clear lane */
    const tg=G.agents.find(a=>a.kind==='route'&&a.aggro&&a.s<e.s&&e.s-a.s<12&&laneOfLat(a.s,latOf(a))===cur);if(tg){L.tailT=(L.tailT||0)+dt;if(L.tailT>3&&cur>0){want=cur-1;why='Moving over to let a tailgater past'}}else L.tailT=0;
    if(window.ACT)for(const o of ACT.list)if(o.kind==='merge-room'){}
    const mg=G.agents.find(a=>a.merge&&a.merge.state==='ramp'&&Math.abs(a.s-e.s)<45&&a.merge.sM-e.s>-20);if(mg&&cur===0){if(n>1&&gapOK(1)){want=Math.max(want,1);why='Moving left to make room for merging traffic'}else L.letIn=mg}else L.letIn=null;
@@ -4960,7 +4961,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    const ahead=L.count(e.s+Math.max(120,e.v*8));if(want>ahead-1){want=ahead-1;why='Lane ends ahead – merging right'}
    for(let k=want,step=0;step<n;step++){if(!blocked(k,e.s-10,e.s+250))break;const b=blocked(k,e.s-10,e.s+250);why=b.why||'Lane closed ahead';k=k>0?k-1:k+1;if(k<0||k>=n)break;want=k}
    L.tk=clamp(want,0,n-1);L.why=why;
-   if(L.tk!==L.k&&L.cool<=0&&!(window.DRV&&DRV.manual)){const nk=L.k+Math.sign(L.tk-L.k);if(gapOK(nk)){L.k=nk;L.cool=4;L.chg=3}else if(why)L.why=why+' · waiting for a gap'}
+   if(L.tk!==L.k&&L.cool<=0&&!(window.DRV&&DRV.manual)){const nk=L.k+Math.sign(L.tk-L.k);if(gapOK(nk)){L.k=nk;L.cool=8;L.chg=3;L.slowT=0;L.clearT=0}else if(why)L.why=why+' · waiting for a gap'}
    let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;const tgt=-L.k*L.laneW+xb;window.LANEBIAS=lerp(window.LANEBIAS||0,tgt,Math.min(1,dt*0.7));L.chg-=dt;window.SIGOVR=L.chg>0||L.tk!==L.k?(L.tk>L.k||L.chg>0&&tgt<(window.LANEBIAS||0)-0.3?-1:1):0;if(Math.abs(tgt-window.LANEBIAS)<0.3&&L.tk===L.k)window.SIGOVR=0},
   preRender(){const st=game&&game.status||'';if(L.why&&game&&game.route&&(L.tk!==L.k||Math.abs(-L.k*L.laneW-(window.LANEBIAS||0))>0.4)&&(/^(Cruising|Following vehicle)/.test(st)||!st))game.status='↔️ '+L.why}});
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(isEgo){if(L.k>0&&L.tk<L.k){for(let x=10;x<200;x+=10)if(L.count(a.s+x)<=L.k)return {v:allow(0,Math.max(0,x-8)),reason:'↔️ Our lane ends – waiting for a gap to merge'}}return null}if(!a.dropWait)return null;let d=40;for(let x=10;x<200;x+=10)if(L.count(a.s+x)<=a.laneK){d=x;break}return {v:allow(0,Math.max(0,d-8))}}); /* lane ends and no gap yet: stop short of the end rather than squeeze */
@@ -5042,7 +5043,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  /* passing plan for cyclists: room inside the lane? other lane? centre line? */
  function cyclistPass(dt){const G=game,e=G.ego;const c=ACT.list.filter(o=>o.kind==='cyclist'&&o.s>e.s-6&&o.s-e.s<45).sort((a,b)=>a.s-b.s)[0];if(!c){XB.cyc=lerp(XB.cyc||0,0,Math.min(1,dt));return null}
   const W=G.spec.W||1.9,egoBase=ACT.lane(e.s)+(window.LANEBIAS||0)-(XB.cyc||0),need=c.lat-(c.r+1.0+W/2),shift=Math.min(0,need-egoBase); /* how far left of our normal line we must be */
-  const n=window.LANES?LANES.count(e.s):1;if(n>1){if(LANES.k===0){const b=LANES.block(e.s-5,c.s+10,0,'Changing lanes to pass a cyclist');setTimeout(()=>LANES.unblock(b),2500)}XB.cyc=0;return 'lane'}
+  const n=window.LANES?LANES.count(e.s):1;if(n>1){if(!c.blk)c.blk=LANES.block(0,1e9,0,'Changing lanes to pass a cyclist');c.blk.s0=c.s-60;c.blk.s1=c.s+15;c.onRemove=()=>LANES.unblock(c.blk);XB.cyc=0;return 'lane'} /* keep the kerb lane blocked while the cyclist is around, not on a timer */
   if(shift>-0.9){XB.cyc=lerp(XB.cyc||0,shift,Math.min(1,dt*1.5));c.hazard=(c.lat-(e.off??0))<c.r+W/2+0.95;c.why='🚲 Moving over to give the cyclist 1 m';return 'inlane'}
   const oneway=routeOnewayAt(e.s),clear=oneway||!G.agents.some(a=>a.kind==='oncoming'&&a.s>e.s-5&&a.s-e.s<Math.max(160,(e.v+a.v)*9));
   if(clear&&shift>-3.2){XB.cyc=lerp(XB.cyc||0,shift,Math.min(1,dt*1.2));c.hazard=(c.lat-(e.off??0))<c.r+W/2+0.95;c.why='🚲 Crossing the centre line to give the cyclist 1 m';return 'cross'}
@@ -5235,6 +5236,61 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   postPlan(dt){const G=game,e=G.ego;if(!M.on)return;const K=M.keys,acc=K.ArrowUp?Math.min(4.5,(G.spec.hp||300)/100):K.ArrowDown?-8:-0.35;e.v=clamp(e.v+acc*dt,0,(typeof G.spec.top==='number'?G.spec.top:85)/MPH);e.acc=acc;
    const steer=(K.ArrowRight?1:0)-(K.ArrowLeft?1:0);M.lat=clamp((M.lat||0)+steer*2.4*dt,-6,4);XB.manual=M.lat;window.SIGOVR=steer?steer:0;G.status='🕹 Manual driving'},
   sim(){if(!M.on)XB.manual=lerp(XB.manual||0,0,0.02)}});
+})();
+</script>
+<script>/* mods/40-sensorviews.js */
+/* Sensor views (16) camera panel upgrade, (17) lidar point cloud, (18) radar Doppler view, (24) attention heat map.
+   16: the perception camera gets per-object labels (class, track ID, distance, speed, confidence), the new road
+       users (cyclists, jaywalkers, children, buses, cones) are fed into perception, and ⤢ expands the panel.
+   17: a simulated spinning lidar – 720 rays per sweep (120 azimuths × 6 beams) hitting the ground, building
+       footprints (2-D march), vehicles and people (ray–box tests) – drawn as a live point cloud, coloured by height.
+   18: radar returns on a polar plot, coloured by Doppler (blue = closing, red = opening), size by radar cross-section.
+   24: an attention heat map over the camera view: where the planner is "looking", weighted by risk (time to contact
+       and closeness to our path). Views are chosen with the chips under the perception header. */
+(function(){
+ const V={mode:UIX.load('sensView','cam'),big:false,heat:UIX.load('sensHeat',true),pts:[],sweepT:0};window.SV=V;
+ /* feed actors into perception */
+ const _det=window.detections;window.detections=function(){const out=_det();try{const G=game,e=G.ego,fx=Math.cos(e.head),fz=-Math.sin(e.head),S=sensorsOf(),R=Math.min(maxRange(S),250)*WX.perc*(window.SENSOR_FAULT||1);
+  for(const o of (window.ACT?ACT.list:[])){if(!o.mesh)continue;const x=o.mesh.position.x,z=o.mesh.position.z,dx=x-e.x,dz=z-e.z,d=Math.hypot(dx,dz);if(d>R||d<1)continue;const cls=o.kind==='cyclist'?'bike':/ped|kid|guard/.test(o.kind)?'ped':o.kind==='cone'?'cone':o.kind==='moto'?'moto':'obj';
+   const dims={bike:[0.6,1.8,1.8],ped:[0.6,o.kind==='kid'?1.2:1.8,0.5],cone:[0.4,0.7,0.4],moto:[0.9,1.4,2.2],obj:[1,1,1]}[cls];out.push({cls,x,y:groundY(x,z),z,w:dims[0],h:dims[1],l:dims[2],head:o.mesh.rotation.y,d,f:dx*fx+dz*fz,lat:-dx*fz+dz*fx,conf:clamp(0.98-d/R*0.4,0.4,0.98),actor:o})}}catch(err){}return out};
+ /* UI: chips + expand */
+ function ui(){const w=document.getElementById('cvWrap');if(!w||document.getElementById('svChips'))return;const bar=document.createElement('div');bar.id='svChips';bar.style.cssText='display:flex;gap:4px;padding:3px 5px;background:#0b0f16d9;font:10px system-ui;align-items:center;flex-wrap:wrap';
+  const chip=(k,t)=>`<button data-k="${k}" style="padding:1px 6px;border-radius:6px;border:1px solid #2a3a52;background:#0e141d;color:#cfe3ff;cursor:pointer;font:10px system-ui">${t}</button>`;
+  bar.innerHTML=chip('cam','📷 Camera')+chip('lidar','🟢 Lidar')+chip('radar','📡 Radar')+chip('heat','👁 Heat')+chip('big','⤢');w.insertBefore(bar,w.children[1]||null);
+  bar.onclick=ev=>{const k=ev.target.dataset&&ev.target.dataset.k;if(!k)return;if(k==='big'){V.big=!V.big;w.style.width=V.big?'min(62vw,900px)':'';document.getElementById('cvCam').style.height=V.big?'min(35vw,506px)':'';try{renderPerception()}catch(e){}}else if(k==='heat'){V.heat=!V.heat;UIX.save('sensHeat',V.heat)}else{V.mode=k;UIX.save('sensView',k)}paint()};
+  const cam=document.getElementById('cvCam');const ov=document.createElement('canvas');ov.id='svOv';ov.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none';cam.appendChild(ov);V.ov=ov;paint()}
+ function paint(){const b=document.getElementById('svChips');if(!b)return;b.querySelectorAll('button').forEach(x=>{const on=x.dataset.k===V.mode||(x.dataset.k==='heat'&&V.heat)||(x.dataset.k==='big'&&V.big);x.style.background=on?'#1f6f8b':'#0e141d'})}
+ const _v=new THREE.Vector3();
+ function proj(x,y,z,W,H){_v.set(x,y,z).project(cvCam);return _v.z<1&&_v.z>-1?[(_v.x+1)/2*W,(1-_v.y)/2*H]:null}
+ /* simulated lidar sweep */
+ function sweep(){const G=game,e=G.ego,S=sensorsOf(),R=Math.min(S.lidar||0,120)*(window.SENSOR_FAULT||1),pts=[];if(!R){V.pts=pts;return}const h0=S.h||1.8,ey=e.mesh.position.y+h0;
+  const boxes=[];for(const a of G.agents){if(!a.mesh)continue;const d=Math.hypot(a.x-e.x,a.z-e.z);if(d<R+5)boxes.push({x:a.x,z:a.z,h:a.head||0,L:a.spec.L,W:a.spec.W,H:a.spec.H||1.5,y:a.mesh.position.y})}
+  for(const p of G.peds)if(Math.hypot(p.x-e.x,p.z-e.z)<R)boxes.push({x:p.x,z:p.z,h:0,L:0.5,W:0.5,H:1.75,y:groundY(p.x,p.z)});if(window.ACT)for(const o of ACT.list)if(o.mesh&&o.kind!=='construction'){const q=o.mesh.position;if(Math.hypot(q.x-e.x,q.z-e.z)<R)boxes.push({x:q.x,z:q.z,h:o.mesh.rotation.y,L:o.kind==='cyclist'?1.8:0.5,W:0.6,H:o.kind==='kid'?1.2:o.kind==='cone'?0.7:1.8,y:q.y})}
+  const elev=[-0.26,-0.17,-0.1,-0.05,0,0.06];for(let ia=0;ia<120;ia++){const az=e.head+ia/120*Math.PI*2,cx=Math.cos(az),cz=-Math.sin(az);for(const el of elev){let t=R,hitY=null,kind=0;const dy=Math.sin(el),hr=Math.cos(el);
+    if(dy<0){const tg=h0/(-dy)*hr;if(tg<t){t=tg;kind=1}}
+    for(let s=2;s<t;s+=1.5){if(bAt(e.x+cx*s,e.z+cz*s)){if(ey+dy/hr*s<ey+14){t=s;kind=2}break}}
+    for(const b of boxes){const dx=b.x-e.x,dz=b.z-e.z,c=Math.cos(b.h),sn=Math.sin(b.h),lx=dx*c-dz*sn,lz=dx*sn+dz*c,rx=cx*c-cz*sn,rz=cx*sn+cz*c;let t0=0,t1=t;for(const [o,r,half] of [[lx,rx,b.L/2],[lz,rz,b.W/2]]){if(Math.abs(r)<1e-6){if(Math.abs(o)>half){t0=1e9;break}continue}let a1=(o-half)/r,a2=(o+half)/r;if(a1>a2)[a1,a2]=[a2,a1];t0=Math.max(t0,a1);t1=Math.min(t1,a2)}
+     if(t0<t1&&t0>0.5){const yy=ey+dy/hr*t0;if(yy>b.y&&yy<b.y+b.H){t=t0;kind=3}}}
+    if(t<R){pts.push([e.x+cx*t,ey+dy/hr*t,e.z+cz*t,kind])}}}V.pts=pts}
+ function drawLidar(x,W,H){const G=game,e=G.ego;x.fillStyle='#02060a';x.fillRect(0,0,W,H);const cam=V.lcam||(V.lcam=new THREE.PerspectiveCamera(60,W/H,0.5,400));cam.aspect=W/H;const fx=Math.cos(e.head),fz=-Math.sin(e.head),ey=e.mesh.position.y;cam.position.set(e.x-fx*14,ey+11,e.z-fz*14);cam.lookAt(e.x+fx*22,ey,e.z+fz*22);cam.updateProjectionMatrix();cam.updateMatrixWorld();
+  const v=new THREE.Vector3(),dpr=devicePixelRatio;for(const p of V.pts){v.set(p[0],p[1],p[2]).project(cam);if(v.z>1||v.z<-1)continue;const sx=(v.x+1)/2*W,sy=(1-v.y)/2*H,hh=p[1]-ey;x.fillStyle=p[3]===3?'#ffd166':p[3]===2?`hsl(${190-clamp(hh*12,0,150)},90%,60%)`:'#1f8f5f';x.fillRect(sx,sy,1.6*dpr,1.6*dpr)}
+  v.set(e.x,ey+1,e.z).project(cam);x.fillStyle='#fff';x.fillRect((v.x+1)/2*W-3*dpr,(1-v.y)/2*H-3*dpr,6*dpr,6*dpr);x.fillStyle='#9fe';x.font=`${10*dpr}px ui-monospace`;x.fillText(`LIDAR ${V.pts.length} pts/sweep · 10 Hz`,6*dpr,14*dpr)}
+ function drawRadar(x,W,H,dets){const G=game,e=G.ego,dpr=devicePixelRatio,S=sensorsOf(),R=Math.min(S.radar||S.cam||60,200);x.fillStyle='#020a06';x.fillRect(0,0,W,H);const cx=W/2,cy=H-6*dpr,sc=(H-14*dpr)/R;
+  x.strokeStyle='#1b4d33';x.lineWidth=dpr;for(const r of [0.25,0.5,0.75,1]){x.beginPath();x.arc(cx,cy,R*r*sc,Math.PI*1.15,Math.PI*1.85);x.stroke()}for(const a of [-0.35,-0.175,0,0.175,0.35]){x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+Math.sin(a*Math.PI)*R*sc,cy-Math.cos(a*Math.PI)*R*sc);x.stroke()}
+  const evx=Math.cos(e.head)*e.v,evz=-Math.sin(e.head)*e.v;for(const d of dets){if(d.cls==='light'||d.cls==='stop'||d.f<1||d.d>R)continue;const ang=Math.atan2(d.lat,d.f);if(Math.abs(ang)>0.63*Math.PI/2*1.6)continue;const o=d.actor||G.agents.find(a=>Math.abs(a.x-d.x)<0.3&&Math.abs(a.z-d.z)<0.3);
+   const ovx=o&&o.head!=null&&o.v!=null?Math.cos(o.head)*o.v:0,ovz=o&&o.head!=null&&o.v!=null?-Math.sin(o.head)*o.v:0,ux=(d.x-e.x)/d.d,uz=(d.z-e.z)/d.d,vr=(ovx-evx)*ux+(ovz-evz)*uz,px=cx+Math.sin(ang)*d.d*sc,py=cy-Math.cos(ang)*d.d*sc,rcs=clamp((d.w||1)*(d.h||1)*0.8,0.4,6);
+   x.fillStyle=vr<-0.5?`rgba(80,160,255,${clamp(0.4-vr/15,0.4,1)})`:vr>0.5?`rgba(255,90,80,${clamp(0.4+vr/15,0.4,1)})`:'rgba(220,220,220,.8)';x.beginPath();x.arc(px,py,(1.5+rcs)*dpr,0,7);x.fill();if(d.d<R*0.6){x.fillStyle='#cfe';x.font=`${8*dpr}px ui-monospace`;x.fillText(`${vr>0?'+':''}${(vr*MPH).toFixed(0)}`,px+5*dpr,py-3*dpr)}}
+  x.fillStyle='#9fe';x.font=`${10*dpr}px ui-monospace`;x.fillText(`RADAR ${R} m · Doppler (mph): blue closing, red opening`,6*dpr,14*dpr)}
+ function drawLabels(x,W,H,dets){const G=game,e=G.ego,dpr=devicePixelRatio;x.font=`600 ${9*dpr}px system-ui`;for(const d of dets){if(d.cls==='light'||d.cls==='stop'||d.f<2||d.d>90)continue;const p=proj(d.x,d.y+(d.h||1.5)+0.3,d.z,W,H);if(!p)continue;const o=d.actor||G.agents.find(a=>Math.abs(a.x-d.x)<0.3&&Math.abs(a.z-d.z)<0.3),id=o?(o._id||(o._id=++G._pid||(G._pid=1))):'',sp=o&&o.v!=null?Math.round(o.v*MPH):null;
+   const t=`${d.cls}${id?' #'+id:''} ${Math.round(d.d)}m${sp!=null?' '+sp+'mph':''} ${(d.conf*100|0)}%`,tw=x.measureText(t).width;x.fillStyle='rgba(0,0,0,.6)';x.fillRect(p[0]-tw/2-3,p[1]-11*dpr,tw+6,12*dpr);x.fillStyle=d.cls==='ped'||d.cls==='bike'?'#ffd166':'#9ff0c8';x.fillText(t,p[0]-tw/2,p[1]-2*dpr)}}
+ function drawHeat(x,W,H,dets){const G=game,e=G.ego;x.save();x.globalCompositeOperation='lighter';for(const d of dets){if(d.f<1||d.d>120||d.cls==='light'||d.cls==='stop')continue;const o=d.actor||G.agents.find(a=>Math.abs(a.x-d.x)<0.3&&Math.abs(a.z-d.z)<0.3);const vf=o&&o.v!=null?Math.cos((o.head||0)-e.head)*o.v:0,close=Math.max(0.3,e.v-vf),ttc=(d.f-4)/close,risk=clamp(1.5/Math.max(0.4,ttc),0,1)*clamp(1.4-Math.abs(d.lat)/4,0.15,1)+(d.cls==='ped'||d.cls==='bike'?0.25:0);if(risk<0.05)continue;
+  const p=proj(d.x,d.y+(d.h||1.4)/2,d.z,W,H);if(!p)continue;const r=clamp(1400/Math.max(8,d.d),18,160)*devicePixelRatio*(0.6+risk);const g=x.createRadialGradient(p[0],p[1],0,p[0],p[1],r);g.addColorStop(0,`rgba(255,${Math.round(200-150*risk)},40,${0.55*clamp(risk,0,1)})`);g.addColorStop(1,'rgba(255,60,0,0)');x.fillStyle=g;x.fillRect(p[0]-r,p[1]-r,r*2,r*2)}x.restore()}
+ MODS.push({id:'sensorviews',
+  start(){ui();V.pts=[]},
+  sim(dt){if(V.mode!=='lidar')return;V.sweepT-=dt;if(V.sweepT<0){V.sweepT=0.1;try{sweep()}catch(e){}}},
+  preRender(){const G=game;if(!G||!G.route||!G.ego||!V.ov)return;const cam=document.getElementById('cvCam'),r=cam.getBoundingClientRect(),dpr=devicePixelRatio,W=Math.round(r.width*dpr),H=Math.round(r.height*dpr);if(V.ov.width!==W||V.ov.height!==H){V.ov.width=W;V.ov.height=H}const x=V.ov.getContext('2d');
+   V.frame=(V.frame||0)+1;if(V.frame%3)return;x.clearRect(0,0,W,H);let dets=[];try{dets=detections()}catch(e){}
+   if(V.mode==='lidar'&&!(sensorsOf().lidar)){x.fillStyle='#02060a';x.fillRect(0,0,W,H);x.fillStyle='#9fe';x.font=`${11*dpr}px system-ui`;x.fillText('This car has no lidar',10*dpr,20*dpr)}else if(V.mode==='radar'&&!(sensorsOf().radar)){x.fillStyle='#020a06';x.fillRect(0,0,W,H);x.fillStyle='#9fe';x.font=`${11*dpr}px system-ui`;x.fillText('This car has no radar',10*dpr,20*dpr)}else if(V.mode==='lidar')drawLidar(x,W,H);else if(V.mode==='radar')drawRadar(x,W,H,dets);else{if(V.heat)drawHeat(x,W,H,dets);drawLabels(x,W,H,dets)}}});
 })();
 </script>
 <script>/* mods/60-hyperlearn.js */
