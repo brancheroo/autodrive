@@ -2586,6 +2586,8 @@ function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;c
  for(let i=0;i<bodies.length;i++){const A=bodies[i];for(let j=i+1;j<bodies.length;j++){const B=bodies[j];const R=(A.L+B.L)/2+0.5;if(Math.abs(A.x-B.x)>R||Math.abs(A.z-B.z)>R)continue;if(A.y!=null&&B.y!=null&&Math.abs(A.y-B.y)>3)continue; /* different levels: overpass above / road below */
    if(A.kind!=='ego'&&B.kind!=='ego'&&A.kind===B.kind&&A.kind!=='chaos'&&A.kind!=='cop')continue; // same scripted lane stream: they queue, they don't overlap by design
    if((A.ref._age??9)<1.5||(B.ref._age??9)<1.5)continue;const c=satOverlap(A,B);if(!c)continue;
+   if(G.spec.hyper&&(A.kind==='ego'||B.kind==='ego')&&!G.ego.loose){ /* Predictacar guardian: it is never in a collision – whatever touches its shield field is deflected softly, no impact, no damage */
+    const O=A.kind==='ego'?B:A,sg=A.kind==='ego'?1:-1,vo=velOf(O,dt),vn=vo.vx*c.n[0]*sg+vo.vz*c.n[1]*sg;makeLoose(O,{vx:vo.vx-Math.min(0,vn)*c.n[0]*sg+c.n[0]*sg*0.6,vz:vo.vz-Math.min(0,vn)*c.n[1]*sg+c.n[1]*sg*0.6,w:vo.w*0.3});O.ref.loose.x+=sg*c.n[0]*(c.o+0.05);O.ref.loose.z+=sg*c.n[1]*(c.o+0.05);O.ref.loose.soft=true;continue}
    const va=velOf(A,dt),vb=velOf(B,dt),n=c.n,ra=[c.p[0]-A.x,c.p[1]-A.z],rb=[c.p[0]-B.x,c.p[1]-B.z],IA=A.m*(A.L*A.L+A.W*A.W)/12,IB=B.m*(B.L*B.L+B.W*B.W)/12;
    const pa=[va.vx+va.w*ra[1],va.vz-va.w*ra[0]],pb=[vb.vx+vb.w*rb[1],vb.vz-vb.w*rb[0]],rel=[pb[0]-pa[0],pb[1]-pa[1]],vn=rel[0]*n[0]+rel[1]*n[1];
    // push apart by the penetration (heavier body moves less)
