@@ -2613,7 +2613,7 @@ function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;c
    else if(A.ref.loose||B.ref.loose){if(A.ref.loose){A.ref.loose.x-=n[0]*sa;A.ref.loose.z-=n[1]*sa}if(B.ref.loose){B.ref.loose.x+=n[0]*sb;B.ref.loose.z+=n[1]*sb}}}}
  // 1b. buildings are solid: a sliding (or chaos) car that pokes a corner into a footprint bounces off the wall and is damaged
  for(const b of bodies){const r=b.ref;if(!r.loose&&b.kind!=='chaos'&&(b.kind!=='ego'||G.spec.apc))continue;const cs=obbCorners(b);cs.push([b.x+Math.cos(b.h)*b.L/2,b.z-Math.sin(b.h)*b.L/2],[b.x-Math.cos(b.h)*b.L/2,b.z+Math.sin(b.h)*b.L/2]);
-  const elev=r.mesh&&r.mesh.position.y-groundY(b.x,b.z)>2.5;for(const c of cs){if(elev)break; /* on a bridge / elevated deck: buildings below are not in the way */const w=bAt(c[0],c[1]);if(!w)continue;const {n,d}=bNormal(w,c[0],c[1]);let v=velOf(b,dt);const rx=c[0]-b.x,rz=c[1]-b.z,pv=[v.vx+v.w*rz,v.vz-v.w*rx],vn=pv[0]*n[0]+pv[1]*n[1];
+  const elev=r.mesh&&r.mesh.position.y-groundY(b.x,b.z)>2.5;for(const c of cs){if(elev)break; /* on a bridge / elevated deck: buildings below are not in the way */const w=bAt(c[0],c[1]);if(!w)continue;const {n,d}=bNormal(w,c[0],c[1]);if(b.kind==='ego'&&!r.loose){if(d<0.3)continue;const rc=routeXZ(G.ego.s,0);if(bAt(rc[0],rc[1]))continue} /* driving normally: only a real impact counts – not map footprints overlapping the road */let v=velOf(b,dt);const rx=c[0]-b.x,rz=c[1]-b.z,pv=[v.vx+v.w*rz,v.vz-v.w*rx],vn=pv[0]*n[0]+pv[1]*n[1];
    if(!r.loose)makeLoose(b,v);const L=r.loose;L.x+=n[0]*(d+0.05);L.z+=n[1]*(d+0.05);
    if(vn<-0.3){const I=b.m*(b.L*b.L+b.W*b.W)/12,cr=rx*n[1]-rz*n[0],jn=-(1.25)*vn/(1/b.m+cr*cr/I),t=[-n[1],n[0]],vt=pv[0]*t[0]+pv[1]*t[1],jt=clamp(-vt*b.m*0.5,-0.4*jn,0.4*jn),J=[n[0]*jn+t[0]*jt,n[1]*jn+t[1]*jt];
     L.vx+=J[0]/b.m;L.vz+=J[1]/b.m;L.w+=(rx*J[1]-rz*J[0])/I;L.stopT=0;const dv=-vn,mph=Math.round(dv*MPH);
@@ -5265,7 +5265,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   F.dbg.zones=zones;F.zones=zones;
   /* 13 · speed limits read from signs: the camera picks up a new limit where a sign stands (tagged maxspeed); without a working camera, the map */
   const S=sensorsOf(),cam=(S.wedges||[]).some(w=>w[3]==='cam')&&(window.CAMQ??1)>0.3&&(window.SENSOR_FAULT??1)>0.4;const i=routeLLnh(e.s)[2],ni=NODEINFO.get(G.route.nodes[i]);
-  if(!cam||F.limSeen==null)F.limSeen=speedLimitAt(i);else if(ni&&ni.ms&&(!F.limAt||Math.abs(F.limAt-e.s)>30)){F.limSeen=speedLimitAt(i);F.limAt=e.s}
+  const rk=ni?ni.hw+'|'+ni.name:'';if(!cam||F.limSeen==null||rk!==F.roadKey){F.limSeen=speedLimitAt(i);F.roadKey=rk}else if(ni&&ni.ms&&(!F.limAt||Math.abs(F.limAt-e.s)>30)){F.limSeen=speedLimitAt(i);F.limAt=e.s} /* new road → its default limit until a sign says otherwise */
   F.limSrc=cam?'sign':'map'}
  /* ================= PREDICTION ================= */
  function hyps(o){const G=game,e=G.ego,T=D()&&D().trk.get(o.ref),a=o.ref;const H=[];
