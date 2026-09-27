@@ -4255,9 +4255,20 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  const hostOf=u=>{try{return new URL(String(u&&u.url||u),location.href).host}catch(e){return ''}};
  async function slot(h){const H=HOST[h]||(HOST[h]={n:0,q:[],coolUntil:0});while(H.n>=MAXPAR)await new Promise(r=>H.q.push(r));H.n++;const w=H.coolUntil-Date.now();if(w>0)await wait(w);return H}
  function free(H){H.n--;const r=H.q.shift();if(r)r()}
- window.NET={stats:{retries:0,cached:0,limited:0}};
+ window.NET={stats:{retries:0,cached:0,limited:0,disk:0,stored:0}};
+ /* persistent local cache for test runs: on the local dev server every successful outside response (GET, and
+    POST queries like Overpass keyed by their body) is stored in IndexedDB and reused forever, so repeated
+    test drives on the same route make almost no third-party calls. localStorage netCache='0' turns it off. */
+ const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&localStorage.getItem('netCache')!=='0';let dbp=null;
+ const db=()=>dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('autodrive-netcache',1);r.onupgradeneeded=()=>r.result.createObjectStore('r');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}));
+ async function dget(k){try{const d=await db();return await new Promise(res=>{const q=d.transaction('r').objectStore('r').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null)})}catch(e){return null}}
+ async function dput(k,v){try{const d=await db();d.transaction('r','readwrite').objectStore('r').put(v,k)}catch(e){}}
+ NET.clearDisk=async()=>{const d=await db();d.transaction('r','readwrite').objectStore('r').clear()};
+ const dkey=(u,opt)=>String(u)+'|'+(opt&&opt.method||'GET')+'|'+(opt&&typeof opt.body==='string'?opt.body:'');
  window.fetch=async function(u,opt){opt=opt||{};const same=hostOf(u)===location.host;if(same)return raw(u,opt);
   const get=(!opt.method||opt.method==='GET')&&typeof u==='string',key=get?u:null;
+  const dk=LOCAL&&typeof u==='string'&&(get||typeof opt.body==='string')?dkey(u,opt):null;
+  if(dk){const hit=await dget(dk);if(hit){NET.stats.disk++;return new Response(hit.body,{status:hit.status,headers:{'content-type':hit.type||''}})}}
   if(key&&CACHE.has(key)){NET.stats.cached++;return CACHE.get(key).clone()}
   const h=hostOf(u);let last;
   for(let tries=0;tries<4;tries++){if(opt.signal&&opt.signal.aborted)throw new DOMException('Aborted','AbortError');const H=await slot(h);let r;
@@ -4265,6 +4276,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
    free(H);
    if(r.status===429||r.status===502||r.status===503||r.status===504){NET.stats.limited++;const ra=+r.headers.get('retry-after');const w=isFinite(ra)&&ra>0?Math.min(ra*1000,8000):700*2**tries+Math.random()*400;H.coolUntil=Date.now()+w;last=r;if(tries<3){NET.stats.retries++;await wait(w);continue}}
    if(key&&r.ok&&CACHE.size<300)CACHE.set(key,r.clone());
+   if(dk&&r.ok){try{const c=r.clone(),body=await c.arrayBuffer();dput(dk,{body,status:r.status,type:r.headers.get('content-type'),t:Date.now()});NET.stats.stored++}catch(e){}}
    return r}
   if(last instanceof Response)return last;throw last||new Error('network')};
  MODS.push({id:'net'});
