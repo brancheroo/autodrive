@@ -4319,7 +4319,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  const PF={baked:0,savedCalls:0};window.PERF=PF;
  const tier=()=>window.GFX?GFX.get():'high';
  /* ---------- 1. vehicle baking ---------- */
- function keepSet(root){const S=new Set();const add=(v,d)=>{if(!v||d>3)return;if(v.isObject3D){S.add(v);return}if(Array.isArray(v)){for(const x of v)add(x,d+1);return}if(typeof v==='object'&&!(v.isMaterial||v.isTexture||v.isColor||v.isVector3))for(const k in v)add(v[k],d+1)};for(const k in root.userData)add(root.userData[k],0);return S}
+ function keepSet(root){const S=new Set();const add=(v,d)=>{if(!v||d>3)return;if(v.isObject3D){S.add(v);return}if(Array.isArray(v)){for(const x of v)add(x,d+1);return}if(typeof v==='object'&&!(v.isMaterial||v.isTexture||v.isColor||v.isVector3))for(const k in v)add(v[k],d+1)};for(const k of ['wheels','driver','pax','trailer','lidar','rider','wdogH','arm','fans','wing','rockets','bar','leaves','wipers','red','amb'])if(root.userData[k])add(root.userData[k],0);return S} /* only parts that move / animate stay separate */
  function under(o,S,root){for(let p=o;p&&p!==root;p=p.parent)if(S.has(p))return true;return false}
  function bake(root){if(!root||root.userData._baked)return root;root.userData._baked=1;root.updateMatrixWorld(true);const keep=keepSet(root),inv=new THREE.Matrix4().copy(root.matrixWorld).invert(),groups=new Map(),victims=[];
   root.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.isSkinnedMesh||Array.isArray(o.material)||!o.geometry||!o.geometry.attributes.position||o.morphTargetInfluences)return;if(under(o,keep,root)||!o.visible)return;
