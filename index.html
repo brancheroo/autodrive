@@ -4924,7 +4924,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
 (function(){
  const L={k:0,tk:0,why:'',chg:0,cool:0,blocks:[],laneW:3.6};window.LANES=L;
  const ni=s=>NODEINFO.get(game.route.nodes[routeLLnh(clamp(s,0,game.route.total))[2]])||{};
- const count1=s=>{const n=ni(s);if(n.oneway)return Math.max(1,n.lanes||2);return (n.lanes||2)>=4?Math.floor((n.lanes||4)/2):1};
+ const count1=s=>{const n=ni(s),ln=routeLanes(routeLLnh(clamp(s,0,game.route.total))[2])??n.lanes;if(n.oneway)return Math.max(1,ln||2);return (ln||2)>=4?Math.floor(ln/2):1}; /* gap-filled OSM lane counts */
  L.count=s=>Math.max(count1(s-25),count1(s),count1(s+25)); /* nodes often lack a lanes tag (intersections): smooth over ±25 m so the count doesn't flicker */
  L.block=(s0,s1,k,why)=>{const b={s0,s1,k,why};L.blocks.push(b);return b};L.unblock=b=>{const i=L.blocks.indexOf(b);if(i>=0)L.blocks.splice(i,1)};
  const blocked=(k,s0,s1)=>L.blocks.find(b=>b.k===k&&b.s1>s0&&b.s0<s1);
