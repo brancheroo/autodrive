@@ -4549,13 +4549,13 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  MODS.push({id:'emergency',disable(){for(const o of EV.list.slice())remove(o);capSet('ev',null)},
   start(){for(const o of EV.list.slice())remove(o);EV.next=240+Math.random()*360;UIX.btn('evBtn','🚑','Call an emergency vehicle up behind you (V)',()=>spawn())},
   sim(dt){const G=game,e=G.ego;if(!G.route)return;EV.next-=dt;if(EV.next<0){EV.next=300+Math.random()*480;if(!(typeof CHASE!=='undefined'&&CHASE.on)&&!(window.BENCH&&BENCH.on))spawn()}
-   let cap=null;EV.msg=null;
+   let cap=null,xbev=0;EV.msg=null;
    for(const o of EV.list.slice()){o.t+=dt;const gap=e.s-o.s;o.v=Math.min(o.v+3*dt,Math.max(26,e.v+14));o.s+=o.v*dt;
     const pass=gap<70&&gap>-40;o.off+=((pass?-3.6:0)-o.off)*Math.min(1,dt*1.5);
-    if(gap>0&&gap<220){cap=Math.min(cap??99,Math.max(2,gap/30));CHASE.evade=lerp(CHASE.evade||0,2.3,Math.min(1,dt*1.2));G.dodgeT=Math.max(G.dodgeT||0,0.3);EV.msg=o.kind==='fire'?'🚒 Pulling over for a fire engine':'🚑 Pulling over for an ambulance'}
+    if(gap>0&&gap<220){cap=Math.min(cap??99,Math.max(2,gap/30));xbev=2.3;EV.msg=o.kind==='fire'?'🚒 Pulling over for a fire engine':'🚑 Pulling over for an ambulance'}
     for(const a of G.agents)if(a.kind==='route'&&a.s>o.s&&a.s-o.s<180)a.v=Math.min(a.v,4);
     if(o.s>e.s+500||o.s>G.route.total-5||o.t>240)remove(o)}
-   capSet("ev",cap)},
+   capSet("ev",cap);XB.ev=lerp(XB.ev||0,xbev,Math.min(1,dt*1.2))},
   preRender(){if(EV.msg&&game&&game.route)game.status=EV.msg},
   frame(){const G=game;if(!G||!G.route||!G.ego)return;const t=performance.now()/1000,e=G.ego;
    for(const o of EV.list){const lane=laneOffsetAt(routeLLnh(o.s)[2]),p=routeXZ(o.s,lane+o.off),h=Math.atan2(-p[3],p[2]);o.mesh.position.set(p[0],routeY(o.s,lane+o.off),p[1]);o.mesh.rotation.set(0,h,0);flashBar(o.mesh,t,0);
@@ -4980,7 +4980,9 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  window.ONC_HOOK=(a,dt)=>{if(!A.list.length)return;const c=A.conflict(a.s-(a.spec.L||4.6)/2,a.v,-1,-1.9+(a.offAdd||0),a.spec.W||1.9);if(c){const v=Math.sqrt(Math.max(0,c.vo*c.vo+2*4*c.d));if(v<a.v)a.v=Math.max(0,a.v-Math.min(7,(a.v-v)*2)*dt)}};
  MODS.push({id:'actors',
   start(){for(const o of A.list.slice())A.remove(o);for(const k in XB)delete XB[k];A.route=null},
-  sim(dt){const G=game,e=G.ego;if(!G.route)return;if(A.route!==G.route){const first=!A.route;A.route=G.route;if(!first){for(const o of A.list.slice())A.remove(o);modCall('reroute')}} /* route changed: route-relative things are invalid – every pack rebuilds */
+  sim(dt){const G=game,e=G.ego;if(!G.route)return;if(!smartOn()&&G.dodgeT>0)G.dodgeT=Math.max(0,G.dodgeT-dt); /* only the smart planner decayed this before – a stuck timer froze the car in whatever lateral offset it had */
+   if(G.overtakeT>0&&!smartOn()&&!routeOnewayAt(e.s)){const clear=Math.max(90,(e.v+15)*7);if(G.agents.some(a=>a.kind==='oncoming'&&!a.loose&&a.s>e.s-8&&a.s-e.s<clear)){G.overtakeT=0;G.status='↩️ Oncoming traffic – abandoning the overtake'}}
+   if(A.route!==G.route){const first=!A.route;A.route=G.route;if(!first){for(const o of A.list.slice())A.remove(o);modCall('reroute')}} /* route changed: route-relative things are invalid – every pack rebuilds */
    for(const o of A.list.slice()){o.t+=dt;try{o.update&&o.update(o,dt)}catch(err){console.error(err);A.remove(o);continue}
    if(o.dead||(o.s!=null&&o.s<e.s-(o.keepBehind||200)&&!o.keep)||(o.ttl&&o.t>o.ttl)){A.remove(o)}}}});
 })();
@@ -5029,8 +5031,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  const latOf=a=>(a.off??1.85)+(a.offAdd||0),egoLat=()=>laneOffsetAt(routeLLnh(game.ego.s)[2])+(window.LANEBIAS||0);
  function laneOfLat(s,lat){const base=laneOffsetAt(routeLLnh(clamp(s,0,game.route.total))[2]);return Math.round((base-lat)/L.laneW)}
  const egoLanes=()=>{const G=game,e=G.ego,base=laneOffsetAt(routeLLnh(e.s)[2]),x=(base-(e.off??base))/L.laneW;return new Set([Math.floor(x+0.35),Math.ceil(x-0.35)])}; /* lanes the ride's body actually occupies */
- const laneFree=(a,k,d)=>!game.agents.some(b=>b!==a&&b.kind==='route'&&!b.loose&&laneOfLat(b.s,latOf(b))===k&&Math.abs(b.s-a.s)<d)&&!(egoLanes().has(k)&&Math.abs(game.ego.s-a.s)<d+2);
- function gapOK(k,dir){const G=game,e=G.ego;for(const a of G.agents){if(a.kind!=='route'||a.loose)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;const d=a.s-e.s,need=d>0?8+Math.max(0,e.v-a.v)*1.5:10+Math.max(0,a.v-e.v)*3;if(Math.abs(d)<need)return false}
+ const laneFree=(a,k,d)=>!game.agents.some(b=>b!==a&&b.kind==='route'&&!b.loose&&laneOfLat(b.s,latOf(b))===k&&Math.abs(b.s-a.s)<d+((b.spec.L||4.6)+(a.spec.L||4.6))/2)&&!(egoLanes().has(k)&&Math.abs(game.ego.s-a.s)<d+2+((game.spec.L||4.6)+(a.spec.L||4.6))/2); /* bumper-to-bumper, not centre-to-centre */
+ function gapOK(k,dir){const G=game,e=G.ego;for(const a of G.agents){if(a.kind!=='route'||a.loose)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;const d=a.s-e.s,need=(d>0?8+Math.max(0,e.v-a.v)*1.5:10+Math.max(0,a.v-e.v)*3)+((a.spec.L||4.6)+(G.spec.L||4.6))/2;if(Math.abs(d)<need)return false}
   if(window.ACT)for(const o of ACT.list)if(o.kind==='moto'&&Math.abs(o.s-e.s)<25)return false;const bsz=window.BLINDSPOT&&BLINDSPOT();if(bsz&&(k>L.k?bsz.L:bsz.R))return false;return true} /* never change into an occupied blind spot */
  function upcomingTurn(prep){const G=game,e=G.ego;for(const st of G.route.steps){const d=st.s-e.s;if(d<0)continue;if(d>prep)break;if(st.type==='arrive'||st.type==='depart')continue;const m=st.mod||'';if(/left/.test(m)&&!/slight/.test(m))return {side:-1,d,st};if(/right/.test(m)&&!/slight/.test(m))return {side:1,d,st};if(/off ramp|fork/.test(st.type)&&/slight left/.test(m))return {side:-1,d,st};if(/off ramp|fork/.test(st.type)&&/slight right/.test(m))return {side:1,d,st}}return null}
  function leadIn(k,range){const G=game,e=G.ego;let best=null;for(const a of G.agents){if(a.kind!=='route'||a.loose||a.s<=e.s||a.s-e.s>range)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;if(!best||a.s<best.s)best=a}return best}
