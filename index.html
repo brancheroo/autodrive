@@ -5822,6 +5822,48 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  AX.make=make;
 })();
 </script>
+<script>/* mods/59-hazwx.js */
+/* (40) Dust storms, wildfire smoke and flooded roads.
+   • Dust storm (weather option, and a random event on desert stretches): brown-out visibility (~60 m), strong gusts,
+     blowing grit particles, brown sky; camera-only cars lose most of their sight.
+   • Wildfire smoke (weather option, and a random event in dry western summers): orange-grey haze (~350 m), a
+     blood-red sun, drifting ash flakes.
+   • Flooded roads: in heavy rain / hurricanes, dips in the route (local low points) fill with water across the road.
+     Shallow (< 25 cm): everyone wades through at 8 mph throwing up spray. Deep: "Turn around, don't drown" –
+     the car stops short and reroutes around it (fed to the reroute system as a blocked point). */
+(function(){
+ const HW={floods:[],parts:null,kind:null};window.HAZWX=HW;const rnd=(a,b)=>a+Math.random()*(b-a);const HK=(window.PLAN_HOOKS=window.PLAN_HOOKS||[]);
+ Object.assign(WX_PRESETS,{dust:{label:'Dust storm',mu:0.7,latA:1.8,brake:1.8,cap:40,speedF:0.6,gap:2,perc:0.45,crrMul:1.1,auxKW:0.8,wind:22,vis:60,rain:0,snow:0,debris:0.3,cloud:0.6,wet:0,snowCover:0,lightning:0},
+  smoke:{label:'Wildfire smoke',mu:0.9,latA:2.1,brake:2.1,cap:999,speedF:0.9,gap:1.2,perc:0.75,crrMul:1,auxKW:0.4,wind:6,vis:350,rain:0,snow:0,debris:0,cloud:0.35,wet:0,snowCover:0,lightning:0}});
+ const ws=document.getElementById('wxSel');if(ws)for(const [k,t] of [['dust','Dust storm (brown-out)'],['smoke','Wildfire smoke']])if(!ws.querySelector(`option[value=${k}]`)){const o=document.createElement('option');o.value=k;o.textContent=t;ws.appendChild(o)}
+ if(!WX_ORDER.includes('dust'))WX_ORDER.push('dust','smoke');
+ /* particles: grit (dust) / ash (smoke) around the camera */
+ function parts(kind){if(HW.parts&&HW.kind===kind)return;if(HW.parts){scene.remove(HW.parts);HW.parts=null}HW.kind=kind;if(!kind)return;const n=kind==='dust'?2600:900,pos=new Float32Array(n*3);for(let i=0;i<n*3;i++)pos[i]=(Math.random()-0.5)*80;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  HW.parts=new THREE.Points(g,new THREE.PointsMaterial({color:kind==='dust'?0xb08a5a:0xcfcac2,size:kind==='dust'?0.09:0.14,transparent:true,opacity:kind==='dust'?0.7:0.8,depthWrite:false}));HW.parts.frustumCulled=false;scene.add(HW.parts)}
+ /* floods */
+ function findDips(){const G=game,e=G.ego,out=[];let prev=null;for(let s=e.s+150;s<Math.min(G.route.total-50,e.s+1500);s+=10){const y0=routeY(s-40,0),y=routeY(s,0),y1=routeY(s+40,0);if(y<y0-1.2&&y<y1-1.2&&(!prev||s-prev>200)){out.push(s);prev=s}}return out}
+ function makeFlood(s){const G=game,depth=Math.random()<0.35?rnd(0.3,0.6):rnd(0.08,0.22),len=rnd(25,55),half=(window.LANES?LANES.count(s):1)*3.6*(routeOnewayAt(s)?0.5:1)+(routeOnewayAt(s)?1:3.6)+3;const N=12,pos=[],idx=[];
+  for(let i=0;i<=N;i++){const ss=s-len/2+i*len/N,p=routeXZ(ss,0),y=routeY(ss,0)+depth;for(const sd of [1,-1])pos.push(p[0]+p[3]*half*sd,y,p[1]-p[2]*half*sd);if(i){const a=(i-1)*2;idx.push(a,a+2,a+1,a+1,a+2,a+3)}}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0x4a4232,roughness:0.08,metalness:0.6,transparent:true,opacity:0.85}));scene.add(m);
+  const F={s,len,depth,deep:depth>0.25,mesh:m,sign:null};if(F.deep){const sg=ACT.sign('TURN AROUND\nDON\'T\nDROWN','#fff','#c8102e',1,1);const p=ACT.pose(s-len/2-25,ACT.lane(s)+4.5);sg.position.set(p.x,p.y,p.z);sg.rotation.y=p.h-Math.PI/2;scene.add(sg);F.sign=sg;const q=routeXZ(s,0);F.pt=[toLon(q[0]),toLat(q[1])]}return F}
+ const _bp=window.blockedPts;window.blockedPts=function(){const o=_bp();for(const F of HW.floods)if(F.deep&&F.pt)o.push(F.pt);return o};
+ HK.push((a,isEgo,lead,allow)=>{for(const F of HW.floods){const d=F.s-F.len/2-a.s;if(d>250||a.s>F.s+F.len/2)continue;if(F.deep){if(isEgo&&!F.rr&&d<120){F.rr=1;setTimeout(()=>{try{rerouteNow({})}catch(e){}},500)}return {v:allow(0,Math.max(0,d-15)),reason:"🌊 Road flooded too deep – turn around, don't drown"}}return {v:d>0?allow(8/MPH*1.0/1,d):8/MPH,reason:`🌊 Wading through ${Math.round(F.depth*100)} cm of flood water`}}return null});
+ const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);for(const F of HW.floods){const d=a.s-(F.s+F.len/2);if(d>-F.len&&d<80){if(F.deep){a.v=Math.max(0,a.v-6*dt);if(d<15&&d>-2)a.v=0}else a.v=Math.min(a.v,Math.max(3.6,a.v-3*dt))}}};
+ function clearFloods(){for(const F of HW.floods){scene.remove(F.mesh);if(F.sign)scene.remove(F.sign)}HW.floods=[]}
+ let chk=0,evT=rnd(300,700),spr=0;
+ MODS.push({id:'hazwx',disable(){clearFloods();parts(null)},reroute:clearFloods,
+  start(){clearFloods();parts(null);evT=rnd(300,700)},
+  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;chk-=dt;
+   if(chk<0){chk=5;if((WX.rain||0)>=0.9||WX.key==='hurricane'){const have=HW.floods.map(f=>f.s);for(const s of findDips())if(!have.some(h=>Math.abs(h-s)<100)&&HW.floods.length<3)HW.floods.push(makeFlood(s))}
+    for(const F of HW.floods.slice())if(F.s<e.s-200){scene.remove(F.mesh);if(F.sign)scene.remove(F.sign);HW.floods.splice(HW.floods.indexOf(F),1)}}
+   evT-=dt;if(evT<0){evT=rnd(900,1800);const bio=(G.bio&&G.bio.n)||'',m=new Date(G.simTime*1000).getUTCMonth(),west=toLon(e.x)<-104;if(WX.key==='clear'&&!(typeof CHASE!=='undefined'&&CHASE.on)){if(/Desert/.test(bio)&&Math.random()<0.5)setWeather('dust');else if(west&&m>=6&&m<=9&&Math.random()<0.35)setWeather('smoke')}}},
+  preRender(){const G=game;if(!G||!G.route||!G.ego)return;const k=WX.key==='dust'||WX.key==='smoke'?WX.key:null;parts(k);
+   if(k){const tint=new THREE.Color(k==='dust'?0x9c7a4e:0xb07048),f=k==='dust'?0.85:0.6;scene.fog.color.lerp(tint,f);skyMat.uniforms.hor.value.lerp(tint,f);skyMat.uniforms.top.value.lerp(tint.clone().multiplyScalar(k==='dust'?0.8:0.6),f*0.8);if(k==='smoke'){sun.color.lerp(new THREE.Color(0xff3a10),0.7);skyMat.uniforms.sunCol.value.set(1,0.25,0.08)}
+    const P=HW.parts,c=camera.position,a=P.geometry.attributes.position,dt=1/60,wx=Math.cos(WX.windDir||0)*(k==='dust'?WX.wind*0.8:1.5),wz=Math.sin(WX.windDir||0)*(k==='dust'?WX.wind*0.8:1.5);for(let i=0;i<a.count;i++){let x=a.getX(i)+wx*dt,y=a.getY(i)+(k==='dust'?Math.sin(i+performance.now()/300)*0.02:-0.25*dt),z=a.getZ(i)+wz*dt;if(x>40)x-=80;if(x<-40)x+=80;if(z>40)z-=80;if(z<-40)z+=80;if(y<-10)y+=30;if(y>20)y-=30;a.setXYZ(i,x,y,z)}a.needsUpdate=true;P.position.set(c.x,c.y,c.z)}
+   const e=G.ego;for(const F of HW.floods)if(!F.deep&&Math.abs(e.s-F.s)<F.len/2&&e.v>1&&typeof puff==='function'&&Math.random()<0.6){try{puff(new THREE.Vector3(e.x,e.mesh.position.y+0.3,e.z),new THREE.Vector3((Math.random()-0.5)*4,2.5,(Math.random()-0.5)*4),false)}catch(err){}}}});
+ HW.flood=s=>{const F=makeFlood(s);HW.floods.push(F);return F};
+})();
+</script>
 <script>/* mods/60-hyperlearn.js */
 /* Predictacar self-learning: the car's computer rewrites its own driving rules from experience.
    Its safety envelope and trajectory planner read their constants from HB (following buffer, reaction latency,
