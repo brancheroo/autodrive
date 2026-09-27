@@ -3114,8 +3114,8 @@ function step(){
  const off=laneOffsetAt(routeLLnh(e.s)[2])+(window.LANEBIAS||0)+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);const offPrev=e.off;e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(spec.hyper?(e.v<=44.7?9:9*44.7/e.v):fastOn()||G.overtakeT>0||G.dodgeT>0?2.2:0.5))); /* hypercar: 360° wheels = fast sideways crab */
  if(spec.hyper&&rdt>0&&offPrev!==undefined){const latV=(e.off-offPrev)/(rdt*G.scale||1e-3);G.crab=lerp(G.crab||0,-Math.atan2(latV,Math.max(e.v,0.25)),Math.min(1,rdt*10))}
  const towAnim=G.tow&&G.tow.phase!=='towing'&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling';
- const prevHead=e.head;if(!towAnim&&!G.uturn){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw()}
- const yawRate=(e.head-prevHead)/(Math.max(1e-3,rdt*G.scale));const steerT=clamp(Math.atan(spec.wb*yawRate/Math.max(e.v,1)),-0.6,0.6);e.steer=lerp(e.steer,steerT,0.2);
+ const prevHead=e.head;if(!towAnim&&!G.uturn){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw();if(!spec.hyper&&rdt>0&&offPrev!==undefined){const latV=(e.off-offPrev)/(rdt*G.scale||1e-3);G.laneYaw=lerp(G.laneYaw||0,clamp(-Math.atan2(latV,Math.max(e.v,2.5)),-0.35,0.35),Math.min(1,rdt*6));e.mesh.rotation.y+=G.laneYaw}} /* ordinary cars steer into lane changes (only the 360°-wheel Predictacar moves sideways without turning) */
+ const yawRate=(e.head-prevHead)/(Math.max(1e-3,rdt*G.scale));const steerT=clamp(Math.atan(spec.wb*yawRate/Math.max(e.v,1))+(spec.hyper?0:(G.laneYaw||0)*2.2),-0.6,0.6);e.steer=lerp(e.steer,steerT,0.2);
  if(!towAnim)spinWheels(e,rdt*G.scale,e.steer);
  if(wheelMesh)wheelMesh.rotation.x=-e.steer*14/ (spec.wheel==='yoke'?1.4:1);
  if(e.mesh.userData.lidar)e.mesh.userData.lidar.rotation.y+=rdt*20;
