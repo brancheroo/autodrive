@@ -5791,6 +5791,37 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   preRender(){if(EV.msg&&game&&game.route&&/^Cruising|^Following/.test(game.status||''))game.status=EV.msg}});
 })();
 </script>
+<script>/* mods/58-accidents.js */
+/* (39) Accidents ahead. Every so often an accident scene appears 400–800 m up the road: two crumpled cars (real
+   crash dents, knocked askew, one smoking), a police cruiser with its light bar going, a fan of burning red
+   flares and cones closing the lane. Multi-lane roads: that lane is closed and everyone merges past. Two-lane
+   roads: traffic squeezes by on the remaining room. Drivers both ways rubberneck – everyone slows to ~15 mph
+   within 120 m of the scene. The wrecks are real obstacles for every driver. */
+(function(){
+ const AX={list:[],next:600};window.ACCIDENTS=AX;const rnd=(a,b)=>a+Math.random()*(b-a);const HK=(window.PLAN_HOOKS=window.PLAN_HOOKS||[]);
+ function flare(){const g=new THREE.Group(),m=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.25,6),new THREE.MeshStandardMaterial({color:0xff2200,emissive:0xff2200,emissiveIntensity:2}));m.rotation.z=Math.PI/2;m.position.y=0.03;g.add(m);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex(),color:0xff3010,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));s.scale.setScalar(1.6);s.position.y=0.15;g.add(s);g.userData.s=s;return g}
+ function cone(){const g=new THREE.Group(),o=new THREE.MeshStandardMaterial({color:0xff5a00}),c=new THREE.Mesh(new THREE.ConeGeometry(0.17,0.72,14),o);c.position.y=0.36;g.add(c);return g}
+ function make(){const G=game,e=G.ego,s0=e.s+rnd(420,800);if(s0>G.route.total-150)return;const n=window.LANES?LANES.count(s0):1,base=ACT.lane(s0),k=n>1?(Math.random()<0.6?0:n-1):0,lat=base-k*3.6,Z={s0,objs:[],acts:[],flares:[]};
+  const sp=TRAFFIC_SPECS[Math.floor(Math.random()*TRAFFIC_SPECS.length)],sp2=TRAFFIC_SPECS[Math.floor(Math.random()*TRAFFIC_SPECS.length)];
+  for(const [s,dl,yaw,spec] of [[s0,0.4,0.5,sp],[s0+6,-0.6,-0.9,sp2]]){const car=buildCar(spec,TCOLS[Math.floor(Math.random()*TCOLS.length)]);const p=ACT.pose(s,lat+dl);car.position.set(p.x,p.y,p.z);car.rotation.y=p.h+yaw;scene.add(car);car.updateMatrixWorld(true);
+   try{damageVehicle(car,p.x+Math.cos(p.h)*spec.L*0.45,p.z-Math.sin(p.h)*spec.L*0.45,-Math.cos(p.h),Math.sin(p.h),1.4);damageVehicle(car,p.x-Math.sin(p.h),p.z-Math.cos(p.h),Math.sin(p.h),Math.cos(p.h),0.8)}catch(err){}if(window.PERF)PERF.bake(car);Z.objs.push(car);
+   Z.acts.push(ACT.add({kind:'wreck',s,lat:lat+dl,r:1.3,clear:0.6,gap:5,hazard:true,keep:true,why:'🚨 Accident ahead – crawling past the wreck',update(){}}))}
+  Z.smokeAt=ACT.pose(s0,lat+0.4);
+  const cop=buildCop(),pc=ACT.pose(s0-22,lat+(n>1?0:0.3));cop.position.set(pc.x,pc.y,pc.z);cop.rotation.y=pc.h-0.25;scene.add(cop);Z.objs.push(cop);Z.cop=cop;Z.acts.push(ACT.add({kind:'wreck',s:s0-22,lat,r:1.1,clear:0.5,gap:5,hazard:true,keep:true,why:'🚨 Police at an accident – slowing',update(){}}));
+  const side=k===0?1:-1;for(let i=0;i<9;i++){const d=-70+i*7,f=flare(),l=lat+side*(1.8-i*0.2);const p=ACT.pose(s0+d,l);f.position.set(p.x,p.y,p.z);scene.add(f);Z.objs.push(f);Z.flares.push(f)}
+  for(let i=0;i<6;i++){const c=cone(),p=ACT.pose(s0-8+i*6,lat+side*1.9);c.position.set(p.x,p.y,p.z);scene.add(c);Z.objs.push(c)}
+  if(n>1&&window.LANES)Z.block=LANES.block(s0-90,s0+20,k,'Accident blocking the lane – merging');AX.list.push(Z)}
+ function rem(Z){for(const m of Z.objs)scene.remove(m);for(const a of Z.acts)ACT.remove(a);if(Z.block&&window.LANES)LANES.unblock(Z.block);AX.list.splice(AX.list.indexOf(Z),1)}
+ HK.push((a,isEgo,lead,allow)=>{for(const Z of AX.list){const d=Z.s0-120-a.s;if(a.s>Z.s0+60||d>250)continue;const v=d>0?allow(15/MPH,d):15/MPH;return {v,reason:'🚨 Accident – everyone slowing to look'}}return null});
+ const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);for(const Z of AX.list)if(Math.abs(a.s-Z.s0)<140)a.v=Math.min(a.v,Math.max(6.7,a.v-3*dt))};
+ MODS.push({id:'accidents',disable(){for(const Z of AX.list.slice())rem(Z)},reroute(){for(const Z of AX.list.slice())rem(Z)},
+  start(){for(const Z of AX.list.slice())rem(Z);AX.next=rnd(600,1500)},
+  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on)||(typeof CHASE!=='undefined'&&CHASE.on))return;AX.next-=dt;if(AX.next<0){AX.next=rnd(900,1800);if(!AX.list.length)make()}
+   for(const Z of AX.list.slice()){if(Z.s0<e.s-250){rem(Z);continue}if(Math.random()<dt*3&&typeof puff==='function')try{puff(Z.smokeAt.x,Z.smokeAt.y+1,Z.smokeAt.z)}catch(err){}}},
+  frame(){const t=performance.now()/1000;for(const Z of AX.list){if(Z.cop)try{flashBar(Z.cop,t,0)}catch(e){}for(const f of Z.flares)f.userData.s.material.opacity=0.6+Math.random()*0.4}}});
+ AX.make=make;
+})();
+</script>
 <script>/* mods/60-hyperlearn.js */
 /* Predictacar self-learning: the car's computer rewrites its own driving rules from experience.
    Its safety envelope and trajectory planner read their constants from HB (following buffer, reaction latency,
