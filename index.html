@@ -5718,6 +5718,29 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    const lx=L.built.get('luxor');if(lx&&lx.userData.beam)lx.userData.beam.visible=!!G.dark}});
 })();
 </script>
+<script>/* mods/56-localads.js */
+/* (36) Billboards for (fictional) local businesses. Names are generated from where you are – the city, the streets
+   on your route and nearby OSM place names – e.g. "Valencia Street Dental", "Round Rock Pizza Co.",
+   "Hegenberger Self Storage". About half the billboards in each area become local ads; the rest keep the house
+   joke ads. Refreshed whenever you enter a new city. */
+(function(){
+ const ORIG=ADS.slice();let lastCity=null;const R=(a)=>a[Math.floor(Math.random()*a.length)];
+ const T=[['{S} DENTAL','Smiles on {S} since {Y}.','Most insurance accepted','#1f6fb2','🦷'],['{C} PIZZA CO.','Hand-tossed in {C} daily.','Delivery within 5 miles','#b3261e','🍕'],['{S} SELF STORAGE','Your stuff. Our problem.','First month $1','#f2a900','📦'],
+  ['{C} CREDIT UNION','Banking for {C} neighbors.','Federally insured','#0b5d3b','🏦'],['{N} AUTO BODY','Dents out. Pride back.','Free estimates','#333333','🚗'],['DR. {L} – INJURY LAW','Hurt? Call {L}.','No fee unless we win','#1b1b3a','⚖️'],
+  ['{S} BREWING','Brewed on {S}.','21+ · drink responsibly','#6b3e1f','🍺'],['{C} HOME REALTY','Sold on {C}.','Call for a free valuation','#f4f1ea','🏡'],['{N} TACOS','Best tacos this side of {S}.','Open late','#e36414','🌮'],
+  ['{C} COMMUNITY COLLEGE','Enroll now for fall.','Financial aid available','#3a0ca3','🎓'],['{S} VET CLINIC','Pets are family.','Walk-ins welcome','#2a9d8f','🐾'],['{C} ROOFING & SOLAR','Your roof, powered.','Licensed · bonded · insured','#264653','☀️'],
+  ['{N} MATTRESS WORLD','Sleep like {C} depends on it.','0% APR for 24 months','#4361ee','🛏️'],['{S} COFFEE ROASTERS','Roasted fresh on {S}.','Order ahead in the app','#5a3825','☕']];
+ const SUR=['Martinez','Nguyen','Johnson','Okafor','Kowalski','Patel','Rivera','Chen','Brooks','Hernandez','Sullivan','Park'];
+ function streets(){const G=game,set=new Set();for(const st of G.route.steps){const n=(st.name||'').replace(/\b(Street|Avenue|Boulevard|Road|Drive|Lane|Way|Parkway|Highway)\b/i,'').trim();if(n&&n.length<16&&!/^[A-Z]{1,3}[- ]?\d/.test(n)&&!/\d{2,}/.test(n))set.add(n)}return [...set]}
+ function build(){const G=game,city=((G.city||G.destShort||'')+'').split(',')[0].trim()||'Hometown',S=streets(),N=[...S];if(window.OSMX)for(const f of OSMX.feat)if(f.name&&f.name.length<14&&/landmark|market/.test(f.kind))N.push(f.name.split(' ')[0]);if(!S.length)S.push(city);if(!N.length)N.push(city);
+  const loc=[];for(let i=0;i<12;i++){const t=R(T),s=R(S),n=R(N),l=R(SUR),y=1950+Math.floor(Math.random()*70),f=x=>x.replace(/\{S\}/g,s).replace(/\{C\}/g,city).replace(/\{N\}/g,n).replace(/\{L\}/g,l).replace(/\{Y\}/g,y);loc.push([f(t[0]).toUpperCase(),f(t[1]),t[2],t[3],t[4]])}
+  ADS.length=0;for(let i=0;i<Math.max(loc.length,ORIG.length);i++){if(loc[i])ADS.push(loc[i]);if(ORIG[i])ADS.push(ORIG[i])}ADTEX.clear()}
+ let chk=0;
+ MODS.push({id:'localads',disable(){ADS.length=0;ADS.push(...ORIG);ADTEX.clear()},
+  start(){lastCity=null},
+  frame(){const G=game;if(!G||!G.route||!G.ego)return;chk-=1/60;if(chk>0)return;chk=5;const c=(G.city||'')+'';if(c!==lastCity){lastCity=c;build()}}});
+})();
+</script>
 <script>/* mods/60-hyperlearn.js */
 /* Predictacar self-learning: the car's computer rewrites its own driving rules from experience.
    Its safety envelope and trajectory planner read their constants from HB (following buffer, reaction latency,
