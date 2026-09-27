@@ -2510,6 +2510,11 @@ function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego||smartOn()
    const ow=typeof routeOnewayAt==='function'&&routeOnewayAt(e.s),nl=window.LANES?LANES.count(e.s):1,sb=d=>window.ENVELOPE&&ENVELOPE.sideBlocked(d);const L=free(-1)&&!sb(-1)&&(ow?nl>1:true),Rt=free(1)&&!sb(1)&&nl>1; /* passing only where there is paved lane: another lane our way, or a clear oncoming lane – legal or not, but never onto the kerb / parked cars */CHASE.passSide=(cur>0.5&&Rt)?1:(cur<-0.5&&L)?-1:L?-1:Rt?1:0}}else{CHASE.passSide=0;CHASE.sideT=0}
  if(CHASE.pass<=0&&Math.abs(CHASE.evade)>0.5&&window.ENVELOPE&&ENVELOPE.sideBlocked(-Math.sign(CHASE.evade))){CHASE.pass=0.3;CHASE.passSide=Math.sign(CHASE.evade)} /* still alongside: hold the passing line */
  CHASE.evade=lerp(CHASE.evade,CHASE.pass>0?CHASE.passSide*3.4:0,Math.min(1,dt*(CHASE.pass>0?2.5:1.2)))}
+/* out in a passing line: whatever is ahead in THAT line is the car to follow */
+(window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!isEgo||!fastOn()||smartOn()||!a.mesh)return null;const G=game,h=a.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h);let best=null;
+ for(const b of G.agents){if(!b.mesh||b===a)continue;const dx=b.mesh.position.x-a.mesh.position.x,dz=b.mesh.position.z-a.mesh.position.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;if(f<=0||f>160||Math.abs(l)>(a.spec.W+(b.spec.W||1.9))/2+0.4)continue;
+  const bv=Math.max(0,(b.kind==='oncoming'?-1:1)*b.v*Math.cos((b.mesh.rotation.y-h))),gap=f-((b.spec.L||4.6)+a.spec.L)/2-2-a.v*0.3,v=allow(bv,gap);if(!best||v<best)best=v}
+ return best==null?null:{v:Math.max(0,best),reason:'EXPRESS · car ahead in this line'}});
 function chaseToggle(){if(!game||!game.route)return;CHASE.on?chaseStop():chaseStart()}
 function chaseStart(){const G=game,e=G.ego;CHASE.on=true;CHASE.n=+(document.getElementById('copN')||{value:3}).value||3;CHASE.trail=[];CHASE.pits=0;CHASE.blockTimer=35;
  // seed the trail behind the car from the route so cruisers can start 150–450 m back on real roads
