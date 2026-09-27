@@ -6279,6 +6279,57 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   frame(){MD.hud(`🚕 ${this.leg==='pickup'?'Heading to pickup':'Passenger aboard'} · ${this.target?this.target.short:''} · 💵 $${Math.round(RB.cash).toLocaleString()} · 🚗×${RB.fleet} · ⭐ ${RB.rating.toFixed(2)} <button id="buyCar" style="pointer-events:auto;margin-left:6px">Buy robotaxi $8,000</button>`);const b=document.getElementById('buyCar');if(b&&!b.onclick)b.onclick=()=>{if(RB.cash>=8000){RB.cash-=8000;RB.fleet++;saveR();MD.toast('🚕 Fleet grown to '+RB.fleet+' cars!')}else MD.toast('Not enough cash yet.',2500)};document.getElementById('modeHud').style.pointerEvents='auto'}});
 })();
 </script>
+<script>/* mods/72-modes-tools.js */
+/* (64) Scenario editor and (65) split-screen.
+   64: 🧪 opens the editor during any ride. Choose what to place – stopped car, jaywalker, distracted pedestrian,
+       cyclist, deer, cone line, construction zone, school bus, accident, emergency vehicle, flood – and how far
+       ahead (20–400 m) and where across the road. "Run" teleports your car back to where the scenario starts and
+       respawns everything; the result panel reports crashes, near misses, hard brakes and minimum clearance.
+       Scenarios are saved by name (on this device) and can be exported / imported as a code.
+   65: Split-screen: the left half is your car, the right half follows the live AI rival (or, if none, a second
+       chase camera) – pick a rival car in "Live AI rival" to race side by side. */
+(function(){
+ const SE={items:[],name:'My scenario',running:false};window.SCEN=SE;const SAVED=UIX.load('scenarios',{});
+ const KINDS={car:'🚗 Stopped car',jay:'🚶 Jaywalker',phone:'📱 Distracted pedestrian',bike:'🚲 Cyclist',deer:'🦌 Deer',cones:'🚧 Cone line',work:'👷 Construction zone',bus:'🚌 School bus',crash:'💥 Accident',ev:'🚑 Emergency vehicle',flood:'🌊 Flood'};
+ function place(it,s0){const G=game,s=s0+it.d,lat=ACT.lane(s)+it.lat;switch(it.k){
+  case 'car':{const sp=TRAFFIC_SPECS[0],a=newAgent(sp,'#9aa3a8',s,0,1);a.off=ACT.lane(s);a.offAdd=it.lat;a.laneK=0;a.noLaneChange=true;a.scen=true;G.agents.push(a);return a}
+  case 'jay':case 'phone':{const m=ACT.person(it.k==='phone'?'phone':'rider');const base=ACT.lane(s);return ACT.add({kind:'ped',mesh:m,s,lat:base+6,v:it.k==='phone'?0.9:1.4,r:0.35,clear:0.9,gap:5,trig:45,why:'🚶 Scenario pedestrian',update(o,dt){const E=game.ego;if(!o.go){if(o.s-E.s<o.trig)o.go=1;o.vl=0}else{o.vl=-o.v;o.lat+=o.vl*dt}ACT.place(o);ACT.walk(o.mesh,o.t,o.go);if(o.lat<base-8)o.dead=true}})}
+  case 'bike':if(window.RU){const o=RU.spawn.cyclist&&RU.spawn.cyclist();if(o)o.s=s;return o}break;
+  case 'deer':if(window.WILD){const n=ACT.list.length;WILD.spawn('deer');const o=ACT.list[n];if(o){for(const q of ACT.list.slice(n)){q.s+=s-o.s}}return o}break;
+  case 'cones':{const objs=[];for(let k=0;k<8;k++){const c=new THREE.Mesh(new THREE.ConeGeometry(0.17,0.72,12),new THREE.MeshStandardMaterial({color:0xff5a00}));const p=ACT.pose(s+k*4,lat);c.position.set(p.x,p.y+0.36,p.z);scene.add(c);objs.push(ACT.add({kind:'cone',mesh:c,s:s+k*4,lat,r:0.2,clear:0.35,gap:3,update(){}}))}return objs[0]}
+  case 'work':if(window.WORK&&WORK.make){const z=WORK.make();return z}break;
+  case 'bus':if(window.SCHOOL&&SCHOOL.spawnBus){SCHOOL.spawnBus();const b=SCHOOL.buses[SCHOOL.buses.length-1];if(b){b.s=s;b.bus.next=s+20}return b}break;
+  case 'crash':if(window.ACCIDENTS){ACCIDENTS.make();const Z=ACCIDENTS.list[ACCIDENTS.list.length-1];return Z}break;
+  case 'ev':if(window.EVS){document.getElementById('evBtn')&&document.getElementById('evBtn').click();return EVS.list[EVS.list.length-1]}break;
+  case 'flood':if(window.HAZWX)return HAZWX.flood(s);break}}
+ function run(){const G=game,e=G.ego;if(!SE.items.length){alert('Add something to the scenario first.');return}for(const a of G.agents.slice())if(a.scen){scene.remove(a.mesh);G.agents.splice(G.agents.indexOf(a),1)}
+  const s0=SE.s0??e.s;SE.s0=s0;e.s=Math.max(5,s0-40);e.v=0;e.off=undefined;if(e.loose)delete e.loose;CHASE.evade=0;G.overtakeT=0;e.mesh.userData.dmg=0;
+  for(const it of SE.items)try{place(it,s0)}catch(err){console.warn(err)}SE.res={t0:G.simTime,crash:CRASH.log.length,near:0,hard:0,minClear:99,lastRisk:0};SE.running=true;MODES.toast('🧪 Scenario running…',2000)}
+ function panel(){let d=document.getElementById('scenBox');if(d){d.remove();return}d=UIX.banner('scenBox','top:70px;right:12px;width:330px;background:#0e141df5;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:12px;pointer-events:auto;font:12px system-ui;z-index:70');
+  const list=()=>SE.items.map((it,i)=>`<div style="display:flex;gap:6px;align-items:center;margin:2px 0">${KINDS[it.k]} · ${it.d} m · ${it.lat>0?'right':it.lat<0?'left':'centre'} ${Math.abs(it.lat)?Math.abs(it.lat)+' m':''}<button data-del="${i}" style="margin-left:auto">✕</button></div>`).join('')||'<div style="opacity:.6">Nothing placed yet.</div>';
+  d.innerHTML=`<b style="font-size:14px">🧪 Scenario editor</b> <button id="seX" style="float:right">✕</button>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><select id="seK" style="${UIX.sel}">${Object.entries(KINDS).map(([k,t])=>`<option value="${k}">${t}</option>`).join('')}</select><label>Ahead <input id="seD" type="number" value="120" min="20" max="400" style="width:60px;${UIX.sel}"> m</label>
+  <label>Across <input id="seL" type="number" value="0" min="-8" max="8" step="0.5" style="width:60px;${UIX.sel}"> m</label><button id="seAdd">＋ Add</button></div>
+  <div id="seList" style="margin-top:6px;max-height:160px;overflow:auto">${list()}</div>
+  <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap"><button id="seRun" style="font-weight:700">▶ Run</button><input id="seName" value="${SE.name}" style="flex:1;${UIX.sel}"><button id="seSave">💾</button><select id="seLoad" style="${UIX.sel}"><option value="">Load…</option>${Object.keys(SAVED).map(n=>`<option>${n}</option>`).join('')}</select><button id="seExp">Export</button><button id="seImp">Import</button></div>
+  <div id="seRes" style="margin-top:6px;opacity:.9"></div>`;
+  const q=id=>d.querySelector('#'+id);q('seX').onclick=()=>d.remove();q('seAdd').onclick=()=>{SE.items.push({k:q('seK').value,d:clamp(+q('seD').value||100,20,400),lat:clamp(+q('seL').value||0,-8,8)});SE.s0=null;q('seList').innerHTML=list()};
+  q('seList').onclick=ev=>{const i=ev.target.dataset.del;if(i!=null){SE.items.splice(+i,1);q('seList').innerHTML=list()}};q('seRun').onclick=run;
+  q('seSave').onclick=()=>{SE.name=q('seName').value||'Scenario';SAVED[SE.name]=SE.items.slice();UIX.save('scenarios',SAVED);MODES.toast('Saved “'+SE.name+'”',1500)};q('seLoad').onchange=()=>{const n=q('seLoad').value;if(SAVED[n]){SE.items=SAVED[n].slice();SE.name=n;SE.s0=null;q('seList').innerHTML=list();q('seName').value=n}};
+  q('seExp').onclick=async()=>{const c=btoa(JSON.stringify({n:SE.name,i:SE.items}));try{await navigator.clipboard.writeText(c);MODES.toast('Scenario code copied',1500)}catch(e){prompt('Copy:',c)}};q('seImp').onclick=()=>{const c=prompt('Paste scenario code:');if(!c)return;try{const o=JSON.parse(atob(c.trim()));SE.items=o.i;SE.name=o.n;SE.s0=null;q('seList').innerHTML=list();q('seName').value=o.n}catch(e){alert('Could not read that code')}}}
+ /* ---------- 65 split screen ---------- */
+ const SP={on:false,cam:new THREE.PerspectiveCamera(60,1,0.3,6000)};window.SPLIT=SP;
+ function toggleSplit(){SP.on=!SP.on;const b=document.getElementById('splitBtn');if(b)b.classList.toggle('on',SP.on);if(!SP.on){renderer.setScissorTest(false);renderer.setViewport(0,0,innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}}
+ MODS.push({id:'scenario',
+  start(){SE.s0=null;SE.running=false;UIX.btn('scenBtn','🧪','Scenario editor',panel);UIX.btn('splitBtn','◧','Split-screen: you vs the live rival',toggleSplit)},
+  sim(dt){if(!SE.running)return;const G=game,e=G.ego,R=SE.res;if(G.hp&&G.hp.risk===1&&!R.lastRisk)R.near++;R.lastRisk=G.hp&&G.hp.risk===1?1:0;if((e.acc||0)<-6)R.hard++;
+   for(const o of ACT.list){if(!o.mesh)continue;const d=Math.hypot(o.mesh.position.x-e.x,o.mesh.position.z-e.z)-(G.spec.W/2);if(d<R.minClear)R.minClear=d}
+   const past=SE.items.every(it=>e.s>(SE.s0+it.d+40));if(past||G.simTime-R.t0>120){SE.running=false;const crashes=CRASH.log.slice(R.crash).filter(c=>c.a==='ego'||c.b==='ego').length;const txt=`🧪 Result: ${crashes?'💥 '+crashes+' crash'+(crashes>1?'es':''):'✅ no crashes'} · near misses ${R.near} · hard brakes ${Math.round(R.hard/20)} · min clearance ${R.minClear<50?R.minClear.toFixed(1)+' m':'—'}`;MODES.toast(txt,7000);const r=document.getElementById('seRes');if(r)r.textContent=txt}},
+  preRender(){if(!SP.on||!game||!game.route)return;const W=innerWidth,H=innerHeight;renderer.setScissorTest(true);renderer.setViewport(0,0,W/2,H);renderer.setScissor(0,0,W/2,H);camera.aspect=(W/2)/H;camera.updateProjectionMatrix()},
+  postRender(){if(!SP.on||!game||!game.route)return;const G=game,W=innerWidth,H=innerHeight,R=window.RIVAL&&RIVAL();let tx,tz,th,ty;if(R&&R.mesh){tx=R.mesh.position.x;tz=R.mesh.position.z;th=R.mesh.rotation.y;ty=R.mesh.position.y}else{tx=G.ego.x;tz=G.ego.z;th=G.ego.head+Math.PI;ty=G.ego.mesh.position.y}
+   const c=SP.cam;c.aspect=(W/2)/H;c.position.set(tx-Math.cos(th)*9,ty+3.5,tz+Math.sin(th)*9);c.lookAt(tx+Math.cos(th)*6,ty+1,tz-Math.sin(th)*6);c.updateProjectionMatrix();renderer.setViewport(W/2,0,W/2,H);renderer.setScissor(W/2,0,W/2,H);const ac=renderer.autoClear;renderer.autoClear=true;renderer.render(scene,c);renderer.autoClear=ac;renderer.setScissorTest(false);renderer.setViewport(0,0,W,H);camera.aspect=W/H;camera.updateProjectionMatrix()}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
