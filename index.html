@@ -4351,11 +4351,15 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
    pauses and replays it in slow motion from a trackside camera, perception overlay still up. Esc / Skip ends it. */
 (function(){
  const BUF=[],KEEP=15,R={on:false};let lastLog=0,rec=0,pending=0;
- const snap=()=>{const G=game,items=[];const add=m=>{if(m&&m.parent)items.push([m,m.position.x,m.position.y,m.position.z,m.quaternion.x,m.quaternion.y,m.quaternion.z,m.quaternion.w])};add(G.ego.mesh);const e=G.ego;
-  for(const a of G.agents)if(a.mesh&&Math.abs(a.mesh.position.x-e.x)+Math.abs(a.mesh.position.z-e.z)<220)add(a.mesh);if(typeof CHASE!=='undefined')for(const c of CHASE.cops||[])add(c.mesh);return {t:performance.now()/1000,items}};
+ const snap=()=>{const G=game,items=[];/* sim-time stamped so playback speed is exact regardless of frame rate */const add=m=>{if(m&&m.parent)items.push([m,m.position.x,m.position.y,m.position.z,m.quaternion.x,m.quaternion.y,m.quaternion.z,m.quaternion.w])};add(G.ego.mesh);const e=G.ego;
+  for(const a of G.agents)if(a.mesh&&Math.abs(a.mesh.position.x-e.x)+Math.abs(a.mesh.position.z-e.z)<220)add(a.mesh);if(typeof CHASE!=='undefined')for(const c of CHASE.cops||[])add(c.mesh);return {t:G.simTime,items}};
  const apply=f=>{for(const it of f.items){const m=it[0];m.position.set(it[1],it[2],it[3]);m.quaternion.set(it[4],it[5],it[6],it[7])}};
+ const _qa=new THREE.Quaternion(),_qb=new THREE.Quaternion();
+ /* smooth playback: interpolate every object's pose between the two recorded samples around time tt */
+ function blend(a,b,k){const mb=new Map(b.items.map(it=>[it[0],it]));for(const it of a.items){const m=it[0],o=mb.get(m);if(!o){m.position.set(it[1],it[2],it[3]);m.quaternion.set(it[4],it[5],it[6],it[7]);continue}
+  m.position.set(it[1]+(o[1]-it[1])*k,it[2]+(o[2]-it[2])*k,it[3]+(o[3]-it[3])*k);_qa.set(it[4],it[5],it[6],it[7]);_qb.set(o[4],o[5],o[6],o[7]);m.quaternion.copy(_qa).slerp(_qb,k)}}
  const ban=()=>UIX.banner('replayBan','top:60px;left:50%;transform:translateX(-50%);background:#b3121fdd;color:#fff;padding:8px 16px;border-radius:10px;letter-spacing:.12em;pointer-events:auto;cursor:pointer');
- function start(){const G=game;if(R.on||BUF.length<10)return;R.on=true;R.live=snap();R.wasPaused=G.paused;G.paused=true;R.frames=BUF.slice();R.t=0;R.dur=R.frames[R.frames.length-1].t-R.frames[0].t;R.t0=R.frames[0].t;
+ function start(){const G=game;if(R.on||BUF.length<10)return;R.on=true;R.live=snap();R.wasPaused=G.paused;G.paused=true;R.frames=BUF.slice();R.t=0;R.lastF=performance.now();R.dur=R.frames[R.frames.length-1].t-R.frames[0].t;R.t0=R.frames[0].t;
   const e=G.ego.mesh.position,h=G.ego.head,nx=Math.sin(h),nz=Math.cos(h);let side=1;if(typeof bAt==='function'&&bAt(e.x+nx*12,e.z+nz*12))side=-1;
   const back=Math.max(10,Math.min(40,(G.ego.v||10)*1.2));R.cam=new THREE.Vector3(e.x+nx*12*side-Math.cos(h)*back*0.3,e.y+2.2,e.z+nz*12*side+Math.sin(h)*back*0.3);
   dispatchEvent(new Event('replaystart'));const b=ban();b.style.display='block';b.textContent='⏪ CRASH REPLAY · ½ speed · click or Esc to skip';b.onclick=stop}
@@ -4365,11 +4369,11 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  MODS.push({id:'replay',
   start(){BUF.length=0;lastLog=CRASH.log.length;R.on=false},
   frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;const now=performance.now()/1000;
-   if(R.on){R.t+=1/60*0.5;const tt=R.t0+R.t;let f=R.frames[0];for(const q of R.frames){if(q.t>tt)break;f=q}R.cur=f;if(R.t>=R.dur+0.8)stop();return}
-   if(!G.paused&&now-rec>0.1){rec=now;BUF.push(snap());while(BUF.length&&now-BUF[0].t>KEEP)BUF.shift()}
+   if(R.on){const rdt=Math.min(0.1,(performance.now()-(R.lastF||performance.now()))/1000);R.lastF=performance.now();R.t+=rdt*0.5;const tt=R.t0+R.t;let i=0;while(i<R.frames.length-2&&R.frames[i+1].t<=tt)i++;const a=R.frames[i],b=R.frames[i+1]||a;R.cur={a,b,k:b===a?0:clamp((tt-a.t)/(b.t-a.t),0,1)};if(R.t>=R.dur+0.8)stop();return} /* real frame time × 0.5 */
+   if(!G.paused&&now-rec>1/30){rec=now;BUF.push(snap());while(BUF.length&&G.simTime-BUF[0].t>KEEP)BUF.shift()} /* 30 Hz samples */
    if(CRASH.log.length>lastLog){const n=CRASH.log.slice(lastLog);lastLog=CRASH.log.length;if(n.some(c=>(c.a==='ego'||c.b==='ego')&&c.mph>=8)&&!pending&&!(window.BENCH&&BENCH.on))pending=now+1.6}
    if(pending&&now>pending){pending=0;start()}},
-  preRender(){if(!R.on)return;if(R.cur)apply(R.cur);const m=game.ego.mesh.position;camera.position.copy(R.cam);camera.lookAt(m.x,m.y+0.8,m.z);const d=R.cam.distanceTo(m);camera.fov=Math.max(12,Math.min(60,2*Math.atan(8/d)*57.3));camera.updateProjectionMatrix()}});
+  preRender(){if(!R.on)return;if(R.cur)blend(R.cur.a,R.cur.b,R.cur.k);const m=game.ego.mesh.position;camera.position.copy(R.cam);camera.lookAt(m.x,m.y+0.8,m.z);const d=R.cam.distanceTo(m);camera.fov=Math.max(12,Math.min(60,2*Math.atan(8/d)*57.3));camera.updateProjectionMatrix()}});
 })();
 </script>
 <script>/* mods/06-explain.js */
