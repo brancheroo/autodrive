@@ -5190,7 +5190,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   const S=[seg(U.P0,h0,A,hA,false,6),seg(A,hA,B,hB,true,4),seg(B,hB,U.P1,Math.atan2(-U.T1[1],U.T1[0]),false,7)];
   if(S.every(x=>arcClear(x))){U.kt={S,i:0,u:0};G.status='↩️ Three-point turn (no room for a U-turn)';return}
   /* nothing fits: drive on and loop round the block */
-  G.uturn=null;e.s=Math.min(G.route.total,e.s);G.status='🔁 No room to turn – looping around the block';G.noUturnT=G.simTime;setTimeout(()=>{try{if(typeof rerouteNow==='function')rerouteNow()}catch(err){}},1500)};
+  G.uturn=null;G.noUturnT=G.simTime;if(window.FSDB&&FSDB.reverse){FSDB.reverse(25)}else{G.status='🔁 No room to turn – looping around the block';setTimeout(()=>{try{if(typeof rerouteNow==='function')rerouteNow()}catch(err){}},1500)}}; /* 21 · back out, then find another way */
  const _uu=window.updateUturn;
  window.updateUturn=function(dt){const G=game,U=G.uturn;if(!U||!U.kt||U.phase!=='turn')return _uu.apply(this,arguments);const e=G.ego,K=U.kt,S=K.S[K.i];
   const pz=uturnPose(S,K.u);e.v=Math.min(3.5,e.v+2*dt);K.u=Math.min(1,K.u+e.v*dt/Math.max(1,pz.sp));const p=uturnPose(S,K.u),h=S.rev?p.h+Math.PI:p.h;
@@ -5212,6 +5212,239 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  MODS.push({id:'drive2',
   start(){D2.trk.clear();D2.pc.clear();D2.last={};prevV=0},
   sim(dt){if(!game||!game.route||!game.ego||!game.ego.mesh)return;track(dt);if(active()){learn(dt);if(D2.last.why&&D2.last.t===game.simTime&&!/Stopping|Stop sign|red light/.test(game.status||''))game.status=D2.last.why}}});
+})();
+</script>
+<script>/* mods/29c-fsd.js */
+/* FSD stack for ordinary cars (the Predictacar keeps its own planner). Layers, bottom to top:
+   PERCEPTION (10–13)  the planner sees what this car's sensors see: per-wedge range/field of view, occlusion by other
+                       vehicles and buildings, detection probability fused across sensors, position noise, missed
+                       detections, occluded road-edge zones, and speed limits read from signs (map as fallback)
+   PREDICTION (6–9)    several weighted futures per road user (keep / drift or change lane / brake / yield to us),
+                       intent read from lane targets and brake lights, interaction (who yields to whom),
+                       and memory of road users that went out of sight
+   PLANNER (1–4)       joint lateral line × acceleration candidates over 6 s, scored for collision probability,
+                       RSS-distance violations, progress, comfort and road edges, limited by real grip / brakes;
+                       output is smoothed (feed-forward + rate/jerk limits) before it reaches the car
+   SAFETY (5, 27–29)   minimal-risk manoeuvre (pull to the kerb and stop) when perception or planning degrade;
+                       RSS safe distances; an independent, deliberately simple emergency-brake monitor that can override
+                       everything; hazard-to-brake latency measured and flagged */
+(function(){
+ const F={on:true,objs:[],ghosts:new Map(),hyps:new Map(),plan:null,mrm:null,lat:{n:0,sum:0,max:0,pending:new Map()},aeb:0,dbg:{cands:[],zones:[]},t:0};window.FSD=F;
+ const D=()=>window.DRIVE2;
+ const active=()=>F.on&&game&&game.route&&game.ego&&game.ego.mesh&&!smartOn()&&!game.uturn&&!game.ego.loose&&!(window.BENCH&&BENCH.on);
+ const rnd=(()=>{let s=1;return ()=>((s=Math.imul(s^s>>>15,2246822519)+0x9e3779b9|0)>>>0)/4294967296})();
+ const gauss=()=>{let u=0,v=0;while(!u)u=rnd();while(!v)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v)};
+ /* ================= PERCEPTION ================= */
+ function blockedLine(x0,z0,x1,z1,skip){const G=game,d=Math.hypot(x1-x0,z1-z0),n=Math.max(2,Math.ceil(d/3));
+  for(let k=1;k<n;k++){const x=x0+(x1-x0)*k/n,z=z0+(z1-z0)*k/n;if(typeof bAt==='function'&&bAt(x,z))return 'building'}
+  for(const b of G.agents){if(!b.mesh||b===skip)continue;const P=b.mesh.position,r=Math.max(1,(b.spec.W||1.9)/2+(b.spec.L>8?0.6:0));const dx=x1-x0,dz=z1-z0,t=clamp(((P.x-x0)*dx+(P.z-z0)*dz)/(d*d||1),0,1);if(t<0.04||t>0.96)continue;
+   if(Math.hypot(x0+dx*t-P.x,z0+dz*t-P.z)<r&&(b.spec.H||1.5)>1.2)return 'vehicle'}
+  return null}
+ function sensorP(rel,d,occl){const S=sensorsOf(),W=S.wedges||[[0,120,120,'cam']];const q=[];const perc=(WX.perc||1)*(window.SENSOR_FAULT??1);
+  for(const [c,w,r,type] of W){let da=Math.abs(((rel-c)%360+540)%360-180);if(da>w/2||d>r*(type==='cam'?perc*(window.CAMQ??1):type==='lidar'?Math.min(1,perc*1.1):1))continue;
+   let p=type==='lidar'?0.97:type==='radar'?0.9:type==='thermal'?0.85:type==='sonic'?0.95:0.88;p*=clamp(1-d/r*0.35,0.4,1);
+   if(occl)p*=type==='radar'?0.35:occl==='vehicle'&&type==='lidar'?0.1:0.02;q.push([type,p])}
+  return q}
+ F.blocked=blockedLine;
+ F.fuse=q=>1-q.reduce((m,[,p])=>m*(1-p),1);
+ function perceive(dt){const G=game,e=G.ego,E=e.mesh.position,h=e.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h),now=G.simTime,out=[];
+  const see=(ref,x,z,kind,L,W)=>{const dx=x-E.x,dz=z-E.z,d=Math.hypot(dx,dz);if(d>220||d<0.5)return;const f=dx*fx+dz*fz,l=-dx*fz+dz*fx,rel=Math.atan2(l,f)*180/Math.PI;
+   const occ=d>6?blockedLine(E.x,E.z,x,z,ref):null,q=sensorP(rel,d,occ),P=F.fuse(q);let T=F.ghosts.get(ref);
+   const hit=rnd()<P*(1-Math.min(0.5,dt*2))+Math.min(0.5,dt*2)*P; /* per-frame miss chance ≈ 1-P */
+   if(hit){const sig=0.05+d*(q.some(([t])=>t==='lidar')?0.003:q.some(([t])=>t==='radar')?0.006:0.012);if(!T){T={nx:0,nz:0};F.ghosts.set(ref,T)}T.nx=lerp(T.nx,gauss()*sig,0.2);T.nz=lerp(T.nz,gauss()*sig,0.2);T.last=now;T.x=x;T.z=z;T.seen=true;
+    out.push({ref,kind,x:x+T.nx,z:z+T.nz,L,W,conf:P,occ,ghost:false})}
+   else if(T&&now-T.last<(kind==='ped'||kind==='cyclist'?4:2.5)){out.push({ref,kind,x:T.x,z:T.z,L,W,conf:0.5,occ,ghost:true})} /* 9 · out of sight, not out of mind */
+  };
+  for(const a of G.agents)if(a.mesh&&a.spec&&Math.abs(a.mesh.position.y-E.y)<3)see(a,a.mesh.position.x,a.mesh.position.z,a.kind,a.spec.L||4.6,a.spec.W||1.9);
+  for(const p of G.peds)see(p,p.x,p.z,'ped',0.5,0.5);
+  if(window.ACT)for(const o of ACT.list){if(!o.mesh||o.hazard===false)continue;const q=o.mesh.position;see(o,q.x,q.z,o.kind,o.kind==='cyclist'?1.8:o.kind==='tram'?14:1,o.kind==='cyclist'?0.6:o.kind==='tram'?2.6:0.8)}
+  for(const [r,T] of F.ghosts)if(now-T.last>6)F.ghosts.delete(r);
+  F.objs=out;
+  /* 12 · occluded zones along the road edges ahead (where someone could step out unseen) */
+  const zones=[];if(D()){const [lo,hi]=D().edges(e.s);for(let f=8;f<=44;f+=6){for(const side of [lo-1.8,hi+1.8]){const q=routeXZ(Math.min(G.route.total,e.s+f),side);const ob=blockedLine(E.x,E.z,q[0],q[1],null);if(ob==='vehicle')zones.push({f,lat:side,x:q[0],z:q[1]})}}}
+  F.dbg.zones=zones;F.zones=zones;
+  /* 13 · speed limits read from signs: the camera picks up a new limit where a sign stands (tagged maxspeed); without a working camera, the map */
+  const S=sensorsOf(),cam=(S.wedges||[]).some(w=>w[3]==='cam')&&(window.CAMQ??1)>0.3&&(window.SENSOR_FAULT??1)>0.4;const i=routeLLnh(e.s)[2],ni=NODEINFO.get(G.route.nodes[i]);
+  if(!cam||F.limSeen==null)F.limSeen=speedLimitAt(i);else if(ni&&ni.ms&&(!F.limAt||Math.abs(F.limAt-e.s)>30)){F.limSeen=speedLimitAt(i);F.limAt=e.s}
+  F.limSrc=cam?'sign':'map'}
+ /* ================= PREDICTION ================= */
+ function hyps(o){const G=game,e=G.ego,T=D()&&D().trk.get(o.ref),a=o.ref;const H=[];
+  if(T&&T.onR&&a.s!=null){const acc=(T.sd-(T.psd??T.sd));T.psd=T.sd;const braking=(a.acc!=null&&a.acc<-1)||acc<-0.08; /* 7 · brake lights */
+   const tgtLat=a.offAdd!=null&&a.kind==='route'?(laneOffsetAt(routeLLnh(a.s)[2])+(-a.laneK*3.6||0)):null,chg=tgtLat!=null&&Math.abs(tgtLat-T.lat)>0.8; /* 7 · lane-change intent */
+   const behind=a.s<e.s&&T.sd>0&&Math.abs(T.lat-(e.off??0))<2.5,yields=behind&&!a.aggro; /* 8 · cars behind us in our lane yield to us – unless aggressive */
+   const drift=Math.abs(T.ld)>0.3||chg;const dl=chg?clamp((tgtLat-T.lat)/2.5,-1.4,1.4):T.ld;
+   const mk=(w,acc_,ld_)=>({w,f:t=>{const s=a.s+T.sd*t+0.5*acc_*t*t*(T.sd+acc_*t>0?1:0),l=T.lat+clamp(ld_*t,-3.6,3.6);const q=routeXZ(clamp(s,0,G.route.total),l);return [q[0]+o.x-a.mesh.position.x,q[1]+o.z-a.mesh.position.z]}});
+   H.push(mk(drift?0.35:0.65,0,0));H.push(mk(drift?0.45:(a.aggro||a.drunk?0.25:0.15),0,dl||(a.drunk?Math.sin(G.simTime)*0.8:0)));
+   H.push(mk(braking||yields?0.35:0.12,-(yields?2.5:4.5),0))}
+  else{const vx=T?T.vx:0,vz=T?T.vz:0;H.push({w:0.7,f:t=>[o.x+vx*t,o.z+vz*t]});H.push({w:0.3,f:t=>[o.x+vx*t*Math.max(0,1-t/2),o.z+vz*t*Math.max(0,1-t/2)]})} /* straight on / stopping */
+  if(o.kind==='ped'){H.length=0;const p=o.ref,vx=p.vx||0,vz=p.vz||0;H.push({w:0.6,f:t=>[o.x+vx*t,o.z+vz*t]});H.push({w:0.4,f:t=>[o.x,o.z]})}
+  const sw=H.reduce((m,x)=>m+x.w,0)||1;for(const x of H)x.w/=sw;
+  if(o.ghost)for(const x of H)x.w*=0.6;return H}
+ /* ================= PLANNER ================= */
+ const TT=[0.5,1,1.5,2,2.5,3,4,5,6];
+ F.rss=(vr,vf,rho=0.5,aAcc=2,bMin=4,bMax=8)=>Math.max(0,vr*rho+0.5*aAcc*rho*rho+(vr+rho*aAcc)**2/(2*bMin)-vf*vf/(2*bMax)); /* 27 · RSS minimum safe longitudinal distance */
+ const grip=()=>{const G=game;const mu=({clear:1,rain:0.7,blizzard:0.35,hurricane:0.5,fog:0.95,dust:0.85,smoke:0.95})[WX.key]??0.8;return mu*(window.UPG_GRIP||1)*(G.brakeFade?0.75:1)}; /* 4 · real limits */
+ function planNow(want){const G=game,e=G.ego,s=e.s,v=e.v,W=G.spec.W,L=G.spec.L,d2=D();const base=laneOffsetAt(routeLLnh(s)[2]),cur=e.off===undefined?want:e.off;
+  let [lo,hi]=d2?d2.edges(s+Math.max(4,v*0.8)):[-9,9];lo=Math.min(lo,base);hi=Math.max(hi,base);const cl=x=>clamp(x,lo,hi);
+  const bMax=9.81*grip()*0.9,aMax=Math.min(3,(G.spec.hp||300)/120);const lim=(F.limSeen||speedLimitAt(routeLLnh(s)[2]))/MPH;
+  const lats=[...new Set([want,base,cur,(want+base)/2,want-1.2,want+1.2,cur-1.8,cur+1.8].map(x=>Math.round(cl(x)*10)/10))];
+  const accs=[aMax*0.6,0,-1.5,-3.5,-bMax];
+  const objs=F.objs.filter(o=>{const dx=o.x-e.mesh.position.x,dz=o.z-e.mesh.position.z;return dx*dx+dz*dz<130*130});
+  for(const o of objs){if(!F.hyps.has(o.ref)||F.hypT!==G.simTime)F.hyps.set(o.ref,hyps(o))}F.hypT=G.simTime;
+  const P=new Map();for(const o of objs)P.set(o,F.hyps.get(o.ref).map(h=>({w:h.w,pts:TT.map(t=>h.f(t))})));
+  let best=null;const cands=[];
+  for(const Lt of lats){if(d2&&typeof bAt==='function'){const q=routeXZ(Math.min(G.route.total,s+8),Lt);if(bAt(q[0],q[1]))continue}
+   const Tl=Math.max(1.2,Math.abs(Lt-cur)/Math.max(0.6,Math.min(1.6,bMax*0.25))); /* lateral rate within grip */
+   for(const ac of accs){let cost=0,vv=v,ss=s,t0=0,col=0,rssv=0;const path=[];
+    for(let k=0;k<TT.length;k++){const t=TT[k],dt=t-t0;t0=t;const vn=Math.max(0,Math.min(Math.max(lim*1.05,v),vv+ac*dt));ss+=(vv+vn)/2*dt;vv=vn;const u=Math.min(1,t/Tl),lt=cur+(Lt-cur)*u*u*(3-2*u);const q=routeXZ(Math.min(G.route.total,ss),lt),qx=q[2],qz=q[3];path.push([q[0],q[1]]);
+     for(const [o,Hs] of P){for(const h of Hs){const p=h.pts[k],dx=p[0]-q[0],dz=p[1]-q[1],f=dx*qx+dz*qz,sd=-dx*qz+dz*qx;const mW=(W+o.W)/2+0.3+(o.ref.aggro||o.ref.drunk?0.5:0),mL=(L+o.L)/2+0.5;
+       if(Math.abs(sd)<mW&&Math.abs(f)<mL){col+=h.w*(7-t)*(o.ghost?0.6:1);break}
+       if(k<4&&f>0&&Math.abs(sd)<mW&&o.kind!=='ped'){const T=D()&&D().trk.get(o.ref);const vf=T&&T.onR?Math.max(0,T.sd):0;const need=F.rss(vv,vf,0.5,aMax,Math.min(4,bMax*0.5),bMax);const gap=f-mL;if(gap<need)rssv+=h.w*(need-gap)/Math.max(need,1)}}}}
+    cost=col*400+rssv*40-(ss-s)/Math.max(1,lim*6)*25+Math.abs(ac)*(ac<-4?2.2:0.8)+Math.abs(Lt-cur)*0.8+Math.abs(Lt-want)*2.2+(ac>0&&vv>lim*1.02&&!fastOn()?30:0);
+    cands.push({Lt,ac,cost,col,path});if(!best||cost<best.cost)best={Lt,ac,cost,col,rssv}}}
+  F.dbg.cands=cands.sort((a,b)=>a.cost-b.cost).slice(0,6);return best}
+ /* ================= SAFETY ================= */
+ /* 28 · independent emergency-brake monitor: straight-line time-to-collision on the car's real heading against ground truth – no prediction, no planner */
+ function aebMonitor(){const G=game,e=G.ego,E=e.mesh.position,h=e.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h),W=G.spec.W,L=G.spec.L;let need=0;
+  const chk=(x,z,w,l,vx,vz)=>{const dx=x-E.x,dz=z-E.z,f=dx*fx+dz*fz,s=-dx*fz+dz*fx;if(f<=0||f>80||Math.abs(s)>(W+w)/2+0.2)return;const vr=e.v-(vx*fx+vz*fz);if(vr<=0.5)return;const gap=f-(L+l)/2;const ttc=gap/vr;const dec=vr*vr/(2*Math.max(0.3,gap-0.5));if(ttc<1.6&&dec>need)need=dec};
+  for(const a of G.agents){if(!a.mesh||Math.abs(a.mesh.position.y-E.y)>3)continue;const T=D()&&D().trk.get(a);chk(a.mesh.position.x,a.mesh.position.z,a.spec.W||1.9,a.spec.L||4.6,T?T.vx:0,T?T.vz:0)}
+  for(const p of G.peds)chk(p.x,p.z,0.6,0.6,0,0);
+  return need}
+ F.status=()=>({mrm:!!F.mrm,aeb:F.aeb,lat:F.lat.n?+(F.lat.sum/F.lat.n).toFixed(2):null,latMax:+F.lat.max.toFixed(2),objs:F.objs.length,ghosts:F.objs.filter(o=>o.ghost).length,zones:(F.zones||[]).length,lim:F.limSeen,limSrc:F.limSrc});
+ /* ================= wiring ================= */
+ const smooth={v:null,r:0};
+ F.lateral=(want,e,dt)=>{if(!active())return want;const G=game;if(F.mrm)want=F.mrm.lat;
+  if(!F.plan||G.simTime-F.planT>0.1){F.plan=planNow(want);F.planT=G.simTime}
+  let tgt=F.plan?F.plan.Lt:want;
+  /* 3 · control: critically damped second-order tracking with a lateral-rate and jerk limit (no weave, no overshoot) */
+  if(smooth.v==null)smooth.v=e.off??tgt;const k=3.2,dtt=Math.min(0.1,dt*G.scale);const acc=clamp(k*k*(tgt-smooth.v)-2*k*smooth.r,-3,3);smooth.r=clamp(smooth.r+acc*dtt,-1.8,1.8);smooth.v+=smooth.r*dtt;
+  return smooth.v};
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!isEgo||!active())return null;const G=game,e=G.ego;let v=null,why='';
+  if(F.plan&&F.plan.ac<0){v=Math.max(0,e.v+F.plan.ac*0.6);why=F.plan.col>0.01?'🧠 Planner: braking for a predicted conflict':F.plan.rssv>0.05?'🧠 Planner: keeping a safe distance':''}
+  if(F.limSeen!=null&&F.limSrc==='sign'){const lv=F.limSeen/MPH*(DRIVE_P[DRIVE.profile]?.spd||1)*WX.speedF;if(!fastOn()&&(v==null||lv<v)&&lv<e.v+0.5){v=lv;why='🪧 Speed limit read from sign: '+Math.round(F.limSeen)+' mph'}}
+  if(F.zones&&F.zones.length&&!fastOn()){const z=F.zones[0];const cap=Math.sqrt(2*4*Math.max(0,z.f-3))+2.5;if(v==null||cap<v){v=cap;why='👀 Blind spot beside the road – ready to stop'}}
+  if(F.mrm){const d=Math.max(0,F.mrm.stopS-e.s);const c=allow(0,d);if(v==null||c<v){v=c;why='🛑 Minimal-risk stop: '+F.mrm.why}}
+  return v==null?null:{v,reason:why||undefined}});
+ MODS.push({id:'fsd',
+  start(){F.objs=[];F.ghosts.clear();F.hyps.clear();F.plan=null;F.mrm=null;smooth.v=null;smooth.r=0;F.aeb=0;F.limSeen=null;F.lat={n:0,sum:0,max:0,pending:new Map()};capSet('aeb',null)},
+  sim(dt){if(!game||!game.route||!game.ego||!game.ego.mesh)return;const G=game,e=G.ego;if(!active()){capSet('aeb',null);return}
+   F.t+=dt;if(F.t>0.1||!F.objs.length){perceive(F.t);F.t=0}
+   /* 28 · independent monitor overrides everything */
+   const need=aebMonitor();if(need>6){F.aeb++;capSet('aeb',Math.max(0,e.v-need*dt*1.2));G.status='🚨 Emergency brake (independent monitor)'}else capSet('aeb',null);
+   /* 29 · hazard→brake latency: a hazard is 'seen' when TTC<3 s to a perceived object; latency ends at the first braking command */
+   for(const o of F.objs){if(o.ghost)continue;const dx=o.x-e.mesh.position.x,dz=o.z-e.mesh.position.z,h=e.mesh.rotation.y,f=dx*Math.cos(h)-dz*Math.sin(h),s=dx*Math.sin(h)+dz*Math.cos(h);
+    if(f>0&&Math.abs(s)<2&&e.v>2&&f/e.v<3&&!F.lat.pending.has(o.ref))F.lat.pending.set(o.ref,G.simTime)}
+   if((e.acc??0)<-2||(F.plan&&F.plan.ac<-1)){for(const [r,t0] of F.lat.pending){const L=G.simTime-t0;F.lat.n++;F.lat.sum+=L;F.lat.max=Math.max(F.lat.max,L);if(L>0.6&&!F.slowWarn){F.slowWarn=true;console.warn('FSD: slow hazard→brake latency',L.toFixed(2),'s')}}F.lat.pending.clear()}
+   for(const [r,t0] of F.lat.pending)if(G.simTime-t0>4)F.lat.pending.delete(r);
+   /* 5 · minimal-risk manoeuvre: degraded sensors, or no collision-free plan for 2 s → pull to the kerb and stop, hazards on */
+   const deg=(window.SENSOR_FAULT??1)<0.45||(window.CAMQ??1)<0.2;F.badT=F.plan&&F.plan.col>0.5?(F.badT||0)+dt:0;
+   if(!F.mrm&&(deg||F.badT>2)&&e.v>1){const d2=D(),hi=d2?d2.edges(e.s)[1]:1.85;F.mrm={why:deg?'sensors degraded':'no safe path',lat:hi,stopS:e.s+Math.max(25,e.v*e.v/(2*3)+10),t:G.simTime};window.SIGOVR=1}
+   if(F.mrm){G.hazards=true;if(e.v<0.2&&G.simTime-F.mrm.t>8&&!deg&&F.badT===0){F.mrm=null;G.hazards=false;G.status='✅ Conditions OK – resuming'}}}});
+})();
+</script>
+<script>/* mods/29d-fsd-behave.js */
+/* FSD part 2 – map rules, behaviour, learning and tools (ordinary cars; the Predictacar keeps its own planner)
+   MAP        14 OSM turn lanes pick the lane for a turn · 15 unprotected lefts wait for oncoming gaps, right on red after a
+              full stop when clear · 16 risk-aware route choice among OSRM alternatives · (17 early lane choice: 31-lanes)
+   BEHAVIOUR  18 creep forward at blind junctions, keep the junction box and driveways clear · 19 roundabout entry yields
+              to circulating traffic · 20 pulls in to the kerb for drop-off · 21 reverses out when there is no room to turn
+              · 22 police officers directing traffic at signals (their signal beats the light)
+   LEARNING   23 fleet parameters (following gap, curve lateral-g) learned from every car's near misses · 24 every crash is
+              saved as a scenario (TK.scenario replays it) · 25 TK.fuzz randomises scenarios · 26 imitation: your manual
+              driving (speed vs limit, following gap) is blended in
+   TOOLS      30 safety dashboard (📊) · 32 planner debug view (🧠) · 31/33 nightly regression + A/B in testkit.js */
+(function(){
+ const B={};window.FSDB=B;
+ const on=()=>game&&game.route&&game.ego&&game.ego.mesh&&!smartOn()&&!game.uturn&&!game.ego.loose&&!(window.BENCH&&BENCH.on)&&(!window.FSD||FSD.on);
+ const nodeS=i=>game.route.cum[i];
+ const stepAt=(i0,i1)=>game.route.steps.find(st=>st.idx>=i0&&st.idx<=i1&&st.type!=='depart'&&st.type!=='arrive');
+ /* ---------- 14 · turn lanes ---------- */
+ window.LANE_TURN_PICK=(turn,n)=>{const G=game,R=G.route;const i=Math.max(0,turn.st.idx-3);let tl='';for(let k=i;k>=Math.max(0,i-12)&&!tl;k--){const ni=NODEINFO.get(R.nodes[k]);if(ni&&ni.tl)tl=ni.tl}
+  if(!tl)return null;const L=tl.split('|');if(L.length!==n)return null;const want=turn.side<0?/left/:/right/;const idx=[];L.forEach((x,j)=>{if(want.test(x)&&!/slight/.test(x)||want.test(x)&&L.length===1)idx.push(j)});if(!idx.length)return null;
+  const j=turn.side<0?idx[0]:idx[idx.length-1];return n-1-j}; /* OSM lists lanes left→right; our k counts from the right */
+ /* ---------- 16 · risk-aware routing ---------- */
+ window.ROUTE_RISK=routes=>{let best=0,bc=1e18;routes.forEach((rt,i)=>{let c=rt.duration;for(const lg of rt.legs)for(const st of lg.steps){const m=st.maneuver||{},mod=m.modifier||'';
+   if(m.type==='turn'||m.type==='end of road'||m.type==='fork'){if(/uturn/.test(mod))c+=90;else if(/left/.test(mod)&&!/slight/.test(mod))c+=((st.intersections||[])[0]||{}).bearings?.length>3?35:18}
+   if(/roundabout|rotary/.test(m.type))c+=8;if(m.type==='continue'&&/uturn/.test(mod))c+=90}
+   if(i>0&&c>rt.duration*1.35+120)c+=1e6; /* never trade a much longer trip for it */if(c<bc){bc=c;best=i}});B.routePick=best;return best};
+ /* ---------- officers (22) ---------- */
+ const OFF={list:[],seen:new Set()};
+ function officerMesh(){const g=new THREE.Group(),vest=new THREE.MeshStandardMaterial({color:0xd8ff3a,emissive:0x303a00}),dark=new THREE.MeshStandardMaterial({color:0x1b2233}),skin=new THREE.MeshStandardMaterial({color:0xc58c62});
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.62,0.26),vest);body.position.y=1.2;g.add(body);const legs=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.85,0.22),dark);legs.position.y=0.45;g.add(legs);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.13,10,8),skin);head.position.y=1.66;g.add(head);const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,0.08,10),dark);cap.position.y=1.78;g.add(cap);
+  const arm=k=>{const a=new THREE.Group(),m=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.6,0.1),vest);m.position.y=-0.28;a.add(m);a.position.set(0,1.46,k*0.27);g.add(a);return a};g.userData.armL=arm(1);g.userData.armR=arm(-1);return g}
+ function officers(dt){const G=game,e=G.ego,R=G.route,i0=routeLLnh(e.s)[2];
+  for(let i=i0;i<R.nodes.length&&nodeS(i)-e.s<320;i++){const id=R.nodes[i];if(nodeS(i)-e.s<150||OFF.seen.has(id))continue;const c=CONTROLS.get(id);if(!c||c.type!=='signal')continue;OFF.seen.add(id);
+   if(Math.random()<0.05){const m=officerMesh(),q=routeXZ(nodeS(i),-0.4);m.position.set(q[0],groundY(q[0],q[1]),q[1]);m.rotation.y=Math.atan2(-q[3],q[2])+Math.PI;scene.add(m);OFF.list.push({id,s:nodeS(i),mesh:m,ph:Math.random()*30})}}
+  for(const o of OFF.list.slice()){o.ph+=dt;o.state=(o.ph%34)<18?'stop':'go';const U=o.mesh.userData;
+   if(o.state==='stop'){U.armR.rotation.x=lerp(U.armR.rotation.x,-Math.PI/2,0.2);U.armL.rotation.x=lerp(U.armL.rotation.x,0,0.2)}else{U.armR.rotation.x=lerp(U.armR.rotation.x,0,0.2);U.armL.rotation.x=-Math.PI/2*(0.5+0.5*Math.sin(o.ph*5))}
+   if(e.s-o.s>40){scene.remove(o.mesh);OFF.list.splice(OFF.list.indexOf(o),1)}}}
+ /* ---------- behaviour speed rules ---------- */
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!isEgo||!on())return null;const G=game,e=G.ego,R=G.route,i0=routeLLnh(e.s)[2];let res=null;const put=(v,reason,force)=>{if(force){res={v,reason,force:true};return}if(!res||v<res.v)res={v,reason}};
+  /* 22 · officer */
+  for(const o of OFF.list){const d=o.s-e.s;if(d<-2||d>80)continue;const c=CONTROLS.get(o.id);const so=c?stopOff(c):8;if(o.state==='stop')put(allow(0,d-so),'👮 Officer signalling stop');else if(d<so+25)put(Math.min(e.v+2,11),'👮 Officer waving us through',true);return res}
+  for(let i=i0+1;i<R.nodes.length&&nodeS(i)-e.s<60;i++){const id=R.nodes[i],c=CONTROLS.get(id),d=nodeS(i)-e.s,st=stepAt(i-1,i+1),mod=st&&st.mod||'';const nw=nodeWays.get(id);
+   /* 15 · unprotected left at a green: wait for a gap in oncoming traffic */
+   if(c&&c.type==='signal'&&/left/.test(mod)&&!/slight/.test(mod)&&d<40){const tA=d/Math.max(2,e.v);const busy=G.agents.some(b=>{if(b.kind!=='oncoming'||!b.mesh)return false;const T=window.DRIVE2&&DRIVE2.trk.get(b);const vv=T?Math.abs(T.sd):b.v;const dd=b.s-nodeS(i);return dd>-3&&dd<vv*(tA+4)+8});
+    if(busy)put(allow(0,d-stopOff(c)),'↰ Unprotected left – waiting for a gap in oncoming traffic')}
+   /* 15 · right on red after a full stop, when clear */
+   if(c&&c.type==='signal'&&/right/.test(mod)&&!/slight/.test(mod)&&!fastOn()){const so=stopOff(c);if(d<so+3&&e.v<0.3){B.rorT=(B.rorT||0)+1/60;const st2=signalState(c.id,0,G.simTime);if(st2==='R'&&B.rorT>2.5){const clear=!G.agents.some(b=>b.kind==='way'&&b.mesh&&Math.hypot(b.mesh.position.x-routeXZ(nodeS(i),0)[0],b.mesh.position.z-routeXZ(nodeS(i),0)[1])<35&&b.v>0.5)&&!G.peds.some(p=>Math.hypot(p.x-routeXZ(nodeS(i),0)[0],p.z-routeXZ(nodeS(i),0)[1])<10);if(clear)put(3.5,'↱ Right on red – clear after a full stop',true)}}else if(d>so+5)B.rorT=0}
+   /* 18 · creep at a blind stop-controlled junction */
+   if(c&&c.type==='stop'&&d<12&&e.v<3&&window.FSD){const X=routeXZ(nodeS(i),0),px=-X[3],pz=X[2];let blind=0;for(const sg of [1,-1]){const tx=X[0]+px*sg*28,tz=X[1]+pz*sg*28;if(FSD.blocked&&FSD.blocked(e.mesh.position.x,e.mesh.position.z,tx,tz))blind++}if(blind&&a.handled&&a.handled.has(c.id))put(1.6,'🐢 Creeping forward for a view of the cross street')}
+   /* 19 · roundabouts: slow entry and yield to circulating traffic */
+   if(st&&/roundabout|rotary/.test(st.type)&&d<45){put(Math.max(4,Math.sqrt(2*2.5*Math.max(0,d-6))+5),'⭕ Roundabout entry');const X=routeXZ(nodeS(i),0);if(G.agents.some(b=>b!==e&&b.mesh&&b.kind==='way'&&b.v>1&&Math.hypot(b.mesh.position.x-X[0],b.mesh.position.z-X[1])<18))put(allow(0,d-4),'⭕ Yielding to traffic in the roundabout')}
+   /* 18 · keep the junction box clear when the queue ahead would leave us stuck in it */
+   if(nw&&nw.length>=3&&lead&&lead.v<1.5&&!c){const back=lead.s-(lead.spec.L||4.6)/2;if(back>nodeS(i)&&back-nodeS(i)<G.spec.L+4&&d>2)put(allow(0,d-7),'⬜ Keeping the junction clear')}}
+  /* 18 · driveways: a car waiting to pull out ahead – ease off and never stop across it */
+  for(const b of G.agents){if(b.kind!=='way'||!b.mesh||b.v>0.6)continue;const dx=b.mesh.position.x-e.mesh.position.x,dz=b.mesh.position.z-e.mesh.position.z,h=e.mesh.rotation.y,f=dx*Math.cos(h)-dz*Math.sin(h),s=dx*Math.sin(h)+dz*Math.cos(h);
+   if(f>4&&f<35&&Math.abs(s)<9&&Math.abs(s)>2.5){put(Math.max(6,e.v*0.8),'🚗 Leaving room for a car pulling out');if(lead&&lead.v<1&&lead.s-e.s>f)put(allow(0,f-G.spec.L/2-4),'🚗 Not blocking the driveway')}}
+  /* 20 · kerbside drop-off */
+  const left=R.total-e.s;if(left<60&&window.DRIVE2){const hi=DRIVE2.edges(e.s)[1],base=laneOffsetAt(routeLLnh(e.s)[2]);XB.park=lerp(XB.park||0,Math.max(0,hi-base-0.2),0.05);if(left<35)put(allow(0,left-1),'🅿️ Pulling in to the kerb for drop-off')}else if(XB.park)XB.park=lerp(XB.park,0,0.1);
+  /* 23 · learned curve speed */
+  {const s1=e.s+Math.max(15,e.v*2),p0=routeXZ(s1-6,0),p1=routeXZ(s1+6,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh>0.05){const Rr=12/dh,ay=B.curveG();const vc=Math.sqrt(ay*Rr);if(vc<e.v+3)put(allow(vc,Math.max(0,s1-e.s-6)),'🌀 Curve (learned comfort limit)')}}
+  /* 26 · imitation: your own pace on this road type caps ours */
+  const im=B.imit[B.hw()];if(im&&im.n>30&&!fastOn()){const r=clamp(im.sum/im.n,0.8,1.1);if(r<0.99){const lim=speedLimitAt(i0)/MPH*WX.speedF;put(lim*r,'')}}
+  return res&&res.v!=null?{v:Math.max(0,res.v),reason:res.reason||undefined,force:res.force}:null});
+ /* ---------- 21 · reverse out when there is no room to turn ---------- */
+ B.reverse=(m=25)=>{const G=game;G.reverse={left:m};G.status='⏪ No room to turn – reversing out'};
+ function reversing(dt){const G=game,e=G.ego,Rv=G.reverse;capSet('rev',0);e.v=0;const st=Math.min(Rv.left,2.2*dt);e.s=Math.max(2,e.s-st);Rv.left-=st;G.status='⏪ Reversing out';if(e.mesh.userData.wheels)spinWheels(e,dt,0);
+  if(Rv.left<=0||e.s<=2){G.reverse=null;capSet('rev',null);G.status='⏪ Reversed out – finding another way';try{rerouteNow()}catch(err){}}}
+ /* ---------- learning (23, 26) ---------- */
+ let LR={};try{LR=JSON.parse(localStorage.getItem('fsdFleet')||'{}')}catch(err){}LR.curve=LR.curve||{};LR.imit=LR.imit||{};B.imit=LR.imit;B.fleet=LR;
+ B.hw=()=>{const G=game,n=NODEINFO.get(G.route.nodes[routeLLnh(G.ego.s)[2]]);return (n&&n.hw||'road').replace(/_link$/,'')};
+ B.curveG=()=>{const c=LR.curve[B.hw()];const base=({Comfort:2.2,Express:4.2})[DRIVE.profile]||3.2;return c&&c.n>=3?Math.max(1.8,base-c.ev/Math.max(1,c.n)*1.2):base};
+ const saveL=()=>{try{localStorage.setItem('fsdFleet',JSON.stringify(LR))}catch(err){}};let lsT=0,prevH=null;
+ function learn(dt){const G=game,e=G.ego,hw=B.hw();lsT+=dt;
+  const h=e.mesh.rotation.y;if(prevH!=null&&dt>0){let dh=h-prevH;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const ay=Math.abs(dh/dt*e.v);const c=LR.curve[hw]||(LR.curve[hw]={n:0,ev:0});if(ay>1.5){c.n+=dt;if(ay>3.6)c.ev+=dt}}prevH=h;
+  if(window.CTRL&&CTRL.on||document.getElementById('manBtn')&&XB.manual&&Math.abs(XB.manual)>0.01||/Manual driving/.test(G.status||'')){const lim=speedLimitAt(routeLLnh(e.s)[2])/MPH;if(lim>3&&e.v>2){const r=LR.imit[hw]||(LR.imit[hw]={n:0,sum:0});r.n++;r.sum+=e.v/lim;if(r.n>2000){r.sum*=0.5;r.n*=0.5}}}
+  if(lsT>20){lsT=0;saveL()}}
+ /* ---------- 24 · every crash becomes a scenario ---------- */
+ function snap(o){const G=game;if(!(o&&(o.a==='ego'||o.b==='ego'))||!G.route||!G.A||!G.B)return;if(B.lastSnap&&G.simTime-B.lastSnap<8)return;B.lastSnap=G.simTime;const e=G.ego;
+  const sc={at:new Date().toISOString(),car:G.spec.id,A:{lat:G.A.lat,lon:G.A.lon,label:G.A.label},B:{lat:G.B.lat,lon:G.B.lon,label:G.B.label},s:Math.round(e.s),v:+e.v.toFixed(1),mph:o.mph,with:o.a==='ego'?o.b:o.a,wx:WX.key,style:DRIVE.profile,express:!!(window.EXPRESS&&EXPRESS.on),status:G.status,
+   agents:G.agents.filter(a=>a.mesh&&Math.hypot(a.mesh.position.x-e.mesh.position.x,a.mesh.position.z-e.mesh.position.z)<120).map(a=>({kind:a.kind,s:a.s!=null?+(a.s-e.s).toFixed(1):null,lat:+(a.off??0).toFixed(1),v:+a.v.toFixed(1),style:a.spec&&a.spec.style,aggro:!!a.aggro,drunk:!!a.drunk}))};
+  try{const L=JSON.parse(localStorage.getItem('fsdScenarios')||'[]');L.push(sc);localStorage.setItem('fsdScenarios',JSON.stringify(L.slice(-30)))}catch(err){}}
+ /* ---------- 30 · dashboard, 32 · debug view ---------- */
+ const S={km0:0,t0:0,inter:0,man:false};B.session=S;
+ function dash(){const G=game;let el=document.getElementById('fsdDash');if(!el){el=document.createElement('div');el.id='fsdDash';el.style.cssText='position:fixed;right:12px;top:230px;z-index:40;background:rgba(10,14,22,.92);border:1px solid #2a3a52;border-radius:10px;padding:10px 12px;color:#dfe8f3;font:12px system-ui;min-width:230px;display:none';document.body.appendChild(el)}
+  if(el.style.display==='none')return;const km=((G.odo||0)-S.km0)/1000,crashes=CRASH.log.filter(c=>(c.a==='ego'||c.b==='ego')&&c.t>=S.t0).length,st=window.FSD?FSD.status():{};const hist=(()=>{try{return JSON.parse(localStorage.getItem('tkRegress')||'[]')}catch(e){return []}})();
+  const row=(k,v)=>`<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#8fa3bb">${k}</span><b>${v}</b></div>`;
+  el.innerHTML=`<div style="font-weight:700;margin-bottom:6px">📊 Safety dashboard · v${typeof VERSION!=='undefined'?VERSION:''}</div>`+row('Distance',km.toFixed(1)+' km')+row('Crashes',crashes)+row('Crashes / 100 km',km>0.2?(crashes/km*100).toFixed(1):'–')+row('Near misses',G.nearMiss||0)+row('Interventions',S.inter)+row('AEB triggers',st.aeb||0)+row('Minimal-risk stops',S.mrm||0)+row('Comfort',window.COMFORT?Math.round(COMFORT.score):'–')+row('Progress (speed / limit)',S.limN?Math.round(S.progSum/S.limN*100)+' %':'–')+row('Hazard→brake latency',st.lat!=null?st.lat+' s (max '+st.latMax+')':'–')+row('Perceived objects',`${st.objs||0} (${st.ghosts||0} remembered)`)+row('Speed limit source',st.limSrc||'–')+(hist.length?`<div style="margin-top:6px;color:#8fa3bb">Regression history</div>`+hist.slice(-5).map(h=>row(h.at.slice(5,16).replace('T',' '),`${h.per100??'–'} /100 km · ${h.km} km`)).join(''):'')}
+ B.toggleDash=()=>{dash();const el=document.getElementById('fsdDash');el.style.display=el.style.display==='none'?'block':'none';dash()};
+ let cv=null,dbgOn=false;B.toggleDebug=()=>{dbgOn=!dbgOn;if(!cv){cv=document.createElement('canvas');cv.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:25';document.body.appendChild(cv)}cv.style.display=dbgOn?'block':'none'};
+ function drawDebug(){if(!dbgOn||!cv||!window.FSD)return;const w=innerWidth,h=innerHeight;if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}const x=cv.getContext('2d');x.clearRect(0,0,w,h);const cam=typeof camera!=='undefined'?camera:null;if(!cam)return;
+  const V=new THREE.Vector3(),pr=(X,Z,Y)=>{V.set(X,(Y??groundY(X,Z))+0.2,Z).project(cam);return V.z<1?[(V.x+1)/2*w,(1-V.y)/2*h]:null};
+  FSD.dbg.cands.forEach((c,i)=>{x.strokeStyle=i===0?'#3cff8a':'rgba(120,170,255,.45)';x.lineWidth=i===0?3:1.5;x.beginPath();let st=false;for(const p of c.path){const q=pr(p[0],p[1]);if(!q)continue;st?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]);st=true}x.stroke()});
+  for(const o of FSD.objs){const q=pr(o.x,o.z);if(!q)continue;x.strokeStyle=o.ghost?'#ffb020':'#ff4d6d';x.setLineDash(o.ghost?[4,3]:[]);x.strokeRect(q[0]-10,q[1]-10,20,20);x.setLineDash([]);const H=FSD.hyps.get(o.ref);if(H)for(const hh of H){const p=hh.f(3),r=pr(p[0],p[1]);if(r){x.strokeStyle=`rgba(255,120,160,${0.2+hh.w*0.8})`;x.beginPath();x.moveTo(q[0],q[1]);x.lineTo(r[0],r[1]);x.stroke()}}}
+  for(const z of FSD.zones||[]){const q=pr(z.x,z.z);if(q){x.fillStyle='rgba(255,200,0,.35)';x.beginPath();x.arc(q[0],q[1],9,0,7);x.fill()}}
+  const p=FSD.plan;x.fillStyle='#0009';x.fillRect(12,h-250,300,58);x.fillStyle='#dfe8f3';x.font='12px ui-monospace,monospace';x.fillText(`plan: line ${p?p.Lt.toFixed(1):'–'} m · accel ${p?p.ac.toFixed(1):'–'} m/s²`,20,h-230);x.fillText(`cost ${p?p.cost.toFixed(1):'–'} · collision ${p?p.col.toFixed(2):'–'} · rss ${p&&p.rssv!=null?p.rssv.toFixed(2):'–'}`,20,h-214);x.fillText(`why: ${(game.status||'').slice(0,38)}`,20,h-198)}
+ MODS.push({id:'fsd-behave',
+  start(){OFF.list.forEach(o=>scene.remove(o.mesh));OFF.list=[];OFF.seen=new Set();B.rorT=0;XB.park=0;const G=game;S.km0=G.odo||0;S.t0=G.simTime||0;S.inter=0;S.mrm=0;S.progSum=0;S.limN=0;G.reverse=null;capSet('rev',null);
+   if(!document.getElementById('dashBtn')){UIX.btn('dashBtn','📊','Safety dashboard',()=>B.toggleDash());UIX.btn('dbgBtn','🧠','Planner debug view',()=>B.toggleDebug())}
+   if(!B.crashHook){B.crashHook=true;const pp=CRASH.log.push;CRASH.log.push=function(o){try{snap(o)}catch(err){}return pp.apply(this,arguments)}}},
+  sim(dt){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;if(G.reverse){reversing(dt);return}if(!on())return;officers(dt);learn(dt);
+   const man=/Manual driving/.test(G.status||'');if(man&&!S.man)S.inter++;S.man=man;if(window.FSD&&FSD.mrm&&!S.mrmOn){S.mrm++;S.mrmOn=true}if(window.FSD&&!FSD.mrm)S.mrmOn=false;
+   const lim=speedLimitAt(routeLLnh(G.ego.s)[2])/MPH;if(lim>2){S.progSum+=Math.min(1.2,G.ego.v/lim)*dt;S.limN+=dt}},
+  postRender(){try{drawDebug()}catch(err){}if(Math.random()<0.1)try{dash()}catch(err){}}});
 })();
 </script>
 <script>/* mods/30-isect.js */
@@ -5283,7 +5516,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    /* ride lane choice */
    if(n<=1&&L.k>0){if(gapOK(L.k-1)){L.k--;L.cool=3;L.chg=3}L.tk=0;L.why='Lane ends – merging right';window.SIGOVR=1;const tgt=-L.k*L.laneW;window.LANEBIAS=lerp(window.LANEBIAS||0,tgt,Math.min(1,dt*0.7));return}
    if(n<=1){L.tk=0;L.k=0;L.why='';let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;window.LANEBIAS=lerp(window.LANEBIAS||0,xb,Math.min(1,dt*0.8));window.SIGOVR=Math.abs(xb)>0.8?(xb<0?-1:1):0;return}
-   const fwy=/motorway|trunk/.test(hw),turn=upcomingTurn(fwy?2000:350);let want=L.pref!=null?L.pref:fwy&&n>=3&&routeOnewayAt(e.s)?1:0,why=L.pref!=null?'Using the Express Lane':''; /* express lane preference from the infra pack */
+   const fwy=/motorway|trunk/.test(hw),turn=upcomingTurn(fwy?2000:n>1?900:350); /* 17 · choose the lane early */let want=L.pref!=null?L.pref:fwy&&n>=3&&routeOnewayAt(e.s)?1:0,why=L.pref!=null?'Using the Express Lane':''; /* express lane preference from the infra pack */
    const cur=L.k,lead=leadIn(cur,90),myV=Math.min(speedLimitAt(routeLLnh(e.s)[2])/MPH,e.v+10);
    const slow=lead&&lead.v<myV-4&&lead.s-e.s<70&&cur+1<n&&!(turn&&turn.side>0&&turn.d<600)&&routeOnewayAt(e.s); /* passing lane changes only on one-way roads / freeways */L.slowT=slow?(L.slowT||0)+dt:0;const rightClear=cur>0&&!leadIn(cur-1,90);L.clearT=rightClear?(L.clearT||0)+dt:0;
    if(L.slowT>2){want=cur+1;why=`Passing slower traffic (${Math.round(lead.v*MPH)} mph)`}
@@ -5291,7 +5524,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    const tg=G.agents.find(a=>a.kind==='route'&&a.aggro&&a.s<e.s&&e.s-a.s<12&&laneOfLat(a.s,latOf(a))===cur);if(tg){L.tailT=(L.tailT||0)+dt;if(L.tailT>3&&cur>0){want=cur-1;why='Moving over to let a tailgater past'}}else L.tailT=0;
    if(window.ACT)for(const o of ACT.list)if(o.kind==='merge-room'){}
    const mg=G.agents.find(a=>a.merge&&a.merge.state==='ramp'&&Math.abs(a.s-e.s)<45&&a.merge.sM-e.s>-20);if(mg&&cur===0){if(n>1&&gapOK(1)){want=Math.max(want,1);why='Moving left to make room for merging traffic'}else L.letIn=mg}else L.letIn=null;
-   if(turn){want=turn.side>0?0:n-1;why=`Getting into the ${turn.side>0?'right':'left'} lane for the ${turn.st.type==='off ramp'?'exit':'turn'} in ${fmtDist(turn.d)}`}
+   if(turn){want=turn.side>0?0:n-1;if(window.LANE_TURN_PICK){const k=LANE_TURN_PICK(turn,n);if(k!=null)want=k} /* 14 · OSM turn lanes */why=`Getting into the ${turn.side>0?'right':'left'} lane for the ${turn.st.type==='off ramp'?'exit':'turn'} in ${fmtDist(turn.d)}`}
    const ahead=L.count(e.s+Math.max(120,e.v*8));if(want>ahead-1){want=ahead-1;why='Lane ends ahead – merging right'}
    for(let k=want,step=0;step<n;step++){if(!blocked(k,e.s-10,e.s+250))break;const b=blocked(k,e.s-10,e.s+250);why=b.why||'Lane closed ahead';k=k>0?k-1:k+1;if(k<0||k>=n)break;want=k}
    L.tk=clamp(want,0,n-1);L.why=why;
