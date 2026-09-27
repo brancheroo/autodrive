@@ -5235,6 +5235,56 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   sim(){if(!M.on)XB.manual=lerp(XB.manual||0,0,0.02)}});
 })();
 </script>
+<script>/* mods/60-hyperlearn.js */
+/* Predictacar self-learning: the car's computer rewrites its own driving rules from experience.
+   Its safety envelope and trajectory planner read their constants from HB (following buffer, reaction latency,
+   share of braking it relies on, path-conflict window, hard-stop zone, sensor-horizon margin, fan grip used in
+   curves, lane-change costs, pedestrian reach growth, crab speed, oncoming look-ahead).
+   Every "episode" (~2.5 km or 3 min of driving) it scores itself:
+     reward = progress (speed vs limit when free to move) − crashes − near misses − harsh braking − discomfort.
+   It runs a (1+1) evolution strategy: try a small change to one or two rules, keep it if the episode scores
+   better than its running baseline, otherwise roll back. A crash immediately rolls back the trial and makes the
+   safety rules more cautious. Every accepted change is logged in plain words and shown as the rewritten rule.
+   Hard bounds stop it from ever learning something unsafe (e.g. it can never plan with more braking than the
+   car has or less pedestrian clearance than the factory setting). Memory persists across trips. */
+(function(){
+ const DEF={...HB};
+ const B={buffer:[1.2,4,'Following buffer','m'],latency:[0.25,0.8,'Reaction latency','s'],brakeUse:[0.6,0.9,'Braking it relies on','×max'],pathWin:[1.0,2.5,'Path-conflict window','s'],hardZone:[1.0,3,'Hard-stop zone','m'],horizonM:[30,120,'Sensor-horizon margin','m'],grip:[5,8.5,'Fan grip used in curves','×'],latCost:[0.6,3,'Cost of leaving lane centre',''],moveCost:[0.3,2,'Cost of moving sideways',''],tightGap:[0.8,2.5,'Tight-gap band','m'],pedGrow:[0.7,1.4,'Pedestrian reach growth','m/s'],crabTau:[0.18,0.5,'Crab time constant','s'],oncomingT:[5,10,'Oncoming look-ahead','s']};
+ const SAFETY={buffer:1,latency:1,brakeUse:-1,pathWin:1,hardZone:1,horizonM:1,grip:-1,tightGap:1,pedGrow:1,oncomingT:1}; /* direction that is "more cautious" */
+ const K='hyperBrain';let M=UIX.load(K,null);
+ function fresh(){return {th:{...DEF},gen:0,base:null,sig:Object.fromEntries(Object.keys(B).map(k=>[k,0.08])),log:[{t:Date.now(),msg:'Factory driving rules loaded'}],hist:[],trial:null}}
+ if(!M||!M.th)M=fresh();for(const k in DEF)if(M.th[k]==null)M.th[k]=DEF[k];
+ const save=()=>UIX.save(K,M);const apply=th=>{for(const k in B)HB[k]=clamp(th[k],B[k][0],B[k][1])};
+ const fmt=(k,v)=>`${(+v).toFixed(k==='horizonM'?0:2)}${B[k][3]?' '+B[k][3]:''}`;
+ const E={on:false};window.BRAIN={M,E,reset(){M=fresh();window.BRAIN.M=M;apply(M.th);save();panel(true)}};
+ function newEpisode(){const G=game,e=G.ego;E.s0=e.s;E.t0=G.simTime;E.crash=0;E.near=0;E.hard=0;E.prog=0;E.progT=0;E.disc=0;E.lastRisk=0;E.lastV=e.v;E.logN=CRASH.log.length;E.route=G.route}
+ function propose(){const keys=Object.keys(B),n=Math.random()<0.6?1:2,pick=[];while(pick.length<n){const k=keys[Math.floor(Math.random()*keys.length)];if(!pick.includes(k))pick.push(k)}
+  const cand={...M.th},ch={};for(const k of pick){const span=B[k][1]-B[k][0],d=(Math.random()<0.5?-1:1)*span*M.sig[k]*(0.5+Math.random());cand[k]=clamp(M.th[k]+d,B[k][0],B[k][1]);ch[k]=[M.th[k],cand[k]]}M.trial={cand,ch};apply(cand)}
+ function score(){const G=game,dist=Math.max(1,G.ego.s-E.s0),km=dist/1000,prog=E.progT>0?E.prog/E.progT:0.8;return {r:100*prog-400*E.crash/km-35*E.near/km-8*E.hard/km-0.4*E.disc/Math.max(1,E.progT),km,prog,crash:E.crash,near:E.near,hard:E.hard}}
+ function words(ch,why){return Object.entries(ch).map(([k,[a,b]])=>`${B[k][2]} ${fmt(k,a)} → ${fmt(k,b)}`).join('; ')+(why?` (${why})`:'')}
+ function endEpisode(){const S=score();M.hist.push(+S.r.toFixed(1));if(M.hist.length>200)M.hist.shift();const T=M.trial;
+  if(S.crash>0){const ch={};for(const k in SAFETY){const span=B[k][1]-B[k][0],to=clamp(M.th[k]+SAFETY[k]*span*0.06,B[k][0],B[k][1]);if(to!==M.th[k]){ch[k]=[M.th[k],to];M.th[k]=to}}M.gen++;M.log.push({t:Date.now(),msg:`Crash in the last ${S.km.toFixed(1)} km → rolled back the trial and rewrote safety rules: `+words(ch)});flash('crash → safer rules')}
+  else if(T&&(M.base==null||S.r>M.base+0.5)){M.th={...T.cand};M.gen++;for(const k in T.ch)M.sig[k]=Math.min(0.2,M.sig[k]*1.15);M.log.push({t:Date.now(),msg:`Gen ${M.gen}: `+words(T.ch,`score ${S.r.toFixed(1)} vs ${M.base==null?'—':M.base.toFixed(1)}; near misses ${S.near}, hard brakes ${S.hard}, progress ${Math.round(S.prog*100)} %`)});M.base=M.base==null?S.r:lerp(M.base,S.r,0.3);flash(`gen ${M.gen}`)}
+  else{if(T)for(const k in T.ch)M.sig[k]=Math.max(0.02,M.sig[k]*0.9);M.base=M.base==null?S.r:lerp(M.base,S.r,0.1)}
+  if(M.log.length>300)M.log.splice(1,M.log.length-300);M.trial=null;apply(M.th);save();propose();newEpisode();if(document.getElementById('brainBox'))panel(true)}
+ function flash(t){E.flash=performance.now();E.flashT=t}
+ function panel(refresh){let d=document.getElementById('brainBox');if(d&&!refresh){d.remove();return}if(!d)d=UIX.banner('brainBox','top:60px;right:230px;width:420px;max-height:70vh;overflow:auto;background:#0b0f16f2;color:#d8f5ff;border:1px solid #1f6f8b;border-radius:12px;padding:12px 14px;pointer-events:auto;font:12px ui-monospace,monospace;z-index:70');
+  const h=M.hist.slice(-60),mn=Math.min(...h,0),mx=Math.max(...h,1),spark=h.length>1?`<svg width="390" height="46" style="display:block;margin:6px 0"><polyline fill="none" stroke="#35d0ff" stroke-width="1.5" points="${h.map((v,i)=>`${i/(h.length-1)*388+1},${44-(v-mn)/(mx-mn||1)*42}`).join(' ')}"/></svg>`:'<div style="opacity:.6;margin:6px 0">No episodes yet – drive a few km.</div>';
+  const rules=Object.keys(B).map(k=>{const cur=HB[k],def=DEF[k],chg=Math.abs(cur-def)>1e-6;return `<div style="color:${chg?'#ffd166':'#9fb7c4'}">${k.padEnd(10,' ')} = ${fmt(k,cur).padEnd(10,' ')} <span style="opacity:.6">// ${B[k][2]}${chg?` (factory ${fmt(k,def)})`:''}</span></div>`}).join('');
+  d.innerHTML=`<b style="font:700 14px system-ui">🧠 Predictacar self-learning</b> <button id="brX" style="float:right">✕</button><div style="font:12px system-ui;opacity:.8">Generation ${M.gen} · ${M.hist.length} episodes scored${M.trial?` · trying: ${words(M.trial.ch)}`:''}</div>${spark}<div style="margin:6px 0 4px;font:700 12px system-ui">Current driving rules</div>${rules}<div style="margin:8px 0 4px;font:700 12px system-ui">What it changed and why</div>${M.log.slice(-14).reverse().map(l=>`<div style="margin:2px 0;font:11px system-ui;opacity:.9">• ${l.msg}</div>`).join('')}<button id="brR" style="margin-top:8px">Reset to factory rules</button>`;
+  d.querySelector('#brX').onclick=()=>d.remove();d.querySelector('#brR').onclick=()=>{if(confirm('Forget everything the Predictacar has learned?'))window.BRAIN.reset()}}
+ MODS.push({id:'hyperlearn',disable(){apply(DEF)},
+  start(){const G=game;E.on=!!(G.spec&&G.spec.hyper);if(!E.on){apply(DEF);return}apply(M.th);newEpisode();propose();UIX.btn('brainBtn','🧠','Predictacar self-learning: rules it has rewritten',()=>panel())},
+  sim(dt){const G=game,e=G.ego;if(!E.on||!G.route)return;if(G.route!==E.route){newEpisode();return}
+   if(CRASH.log.length>E.logN){for(const c of CRASH.log.slice(E.logN))if(c.a==='ego'||c.b==='ego')E.crash++;E.logN=CRASH.log.length}
+   const st=G.status||'',risk=G.hp&&G.hp.risk===1?1:0;if(risk&&!E.lastRisk)E.near++;if(/Holding · #/.test(st)&&!E.hold){E.near++;E.hold=1}else if(!/Holding/.test(st))E.hold=0;E.lastRisk=risk;
+   const a=(e.v-E.lastV)/dt;E.lastV=e.v;if(a<-6&&!E.hb){E.hard++;E.hb=1}else if(a>-3)E.hb=0;E.disc+=Math.max(0,Math.abs(a)-2)*dt;
+   const free=!/red|yellow|Stop|Queued|stop sign|Arriving|Pulling|charg|Waiting|⏳|✋|🚸|🚌|👷/.test(st);if(free){const lim=Math.max(5,speedLimitAt(routeLLnh(e.s)[2])/MPH);E.prog+=Math.min(1.2,e.v/lim)*dt;E.progT+=dt}
+   if(e.s-E.s0>2500||G.simTime-E.t0>180&&e.s-E.s0>300)endEpisode()},
+  frame(){if(!E.on)return;const t=document.getElementById('cvTitle');if(t&&E.flash&&performance.now()-E.flash<4000)t.textContent=`PERCEPTION · 🧠 rewriting driving logic (${E.flashT})`},
+  arrive(){if(E.on){endEpisode()}}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
