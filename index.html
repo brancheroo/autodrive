@@ -4304,6 +4304,53 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
    ban.textContent=(n?`Map ready (${n} tiles) · starting the drive…`:`Loading the map around you… ${s.toFixed(0)} s`)+(s>20&&!n?' (map servers are slow)':'')}});
 })();
 </script>
+<script>/* mods/02b-perf.js */
+/* Frame-rate work (all quality settings).
+   1. Vehicle baking: traffic, police, emergency and parked car models are built from ~100 small meshes each.
+      After building, every static part is merged into ONE mesh per material (same material objects, so light /
+      paint colour changes still work; crash dents still work – the damage code clones & deforms merged geometry).
+      Wheels, drivers, passengers, light bars, trailers and anything else a car animates stay separate.
+      ~110 draw calls per car → ~10–15.
+   2. Perception camera: rendered off-screen into a render target at reduced resolution and at a lower rate
+      (Ultra every 2nd frame, High every 3rd, Low every 4th), reusing the main shadow map instead of re-rendering
+      it, then blitted into its panel every frame (1 draw call).
+   3. Shadow map: re-rendered every frame on Ultra, every 2nd frame on High, every 3rd on Low. */
+(function(){
+ const PF={baked:0,savedCalls:0};window.PERF=PF;
+ const tier=()=>window.GFX?GFX.get():'high';
+ /* ---------- 1. vehicle baking ---------- */
+ function keepSet(root){const S=new Set();const add=(v,d)=>{if(!v||d>3)return;if(v.isObject3D){S.add(v);return}if(Array.isArray(v)){for(const x of v)add(x,d+1);return}if(typeof v==='object'&&!(v.isMaterial||v.isTexture||v.isColor||v.isVector3))for(const k in v)add(v[k],d+1)};for(const k in root.userData)add(root.userData[k],0);return S}
+ function under(o,S,root){for(let p=o;p&&p!==root;p=p.parent)if(S.has(p))return true;return false}
+ function bake(root){if(!root||root.userData._baked)return root;root.userData._baked=1;root.updateMatrixWorld(true);const keep=keepSet(root),inv=new THREE.Matrix4().copy(root.matrixWorld).invert(),groups=new Map(),victims=[];
+  root.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.isSkinnedMesh||Array.isArray(o.material)||!o.geometry||!o.geometry.attributes.position||o.morphTargetInfluences)return;if(under(o,keep,root)||!o.visible)return;
+   let k=groups.get(o.material);if(!k){k={mat:o.material,items:[],cast:false,recv:false};groups.set(o.material,k)}k.items.push(o);k.cast=k.cast||o.castShadow;k.recv=k.recv||o.receiveShadow;victims.push(o)});
+  let made=0;for(const k of groups.values()){if(k.items.length<2)continue;const m=k.mat,needUV=!!(m.map||m.normalMap||m.roughnessMap||m.metalnessMap||m.alphaMap||m.emissiveMap||m.aoMap||m.bumpMap),needC=!!m.vertexColors;const parts=[];let n=0;
+   for(const o of k.items){let g=o.geometry.clone();g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv,o.matrixWorld));if(g.index)g=g.toNonIndexed();if(!g.attributes.normal)g.computeVertexNormals();parts.push(g);n+=g.attributes.position.count}
+   const P=new Float32Array(n*3),N=new Float32Array(n*3),U=needUV?new Float32Array(n*2):null,C=needC?new Float32Array(n*3).fill(1):null;let off=0;
+   for(const g of parts){const c=g.attributes.position.count;P.set(g.attributes.position.array.subarray(0,c*3),off*3);N.set(g.attributes.normal.array.subarray(0,c*3),off*3);if(U&&g.attributes.uv)U.set(g.attributes.uv.array.subarray(0,c*2),off*2);if(C&&g.attributes.color){const ca=g.attributes.color;if(ca.itemSize===3)C.set(ca.array.subarray(0,c*3),off*3);else for(let i=0;i<c;i++){C[(off+i)*3]=ca.getX(i);C[(off+i)*3+1]=ca.getY(i);C[(off+i)*3+2]=ca.getZ(i)}}off+=c;g.dispose()}
+   const mg=new THREE.BufferGeometry();mg.setAttribute('position',new THREE.BufferAttribute(P,3));mg.setAttribute('normal',new THREE.BufferAttribute(N,3));if(U)mg.setAttribute('uv',new THREE.BufferAttribute(U,2));if(C)mg.setAttribute('color',new THREE.BufferAttribute(C,3));mg.computeBoundingSphere();
+   const mesh=new THREE.Mesh(mg,m);mesh.castShadow=k.cast;mesh.receiveShadow=k.recv;mesh.userData.bakedFrom=k.items.length;root.add(mesh);for(const o of k.items)o.parent&&o.parent.remove(o);PF.savedCalls+=k.items.length-1;made++}
+  PF.baked++;return root}
+ PF.bake=bake;
+ const _na=window.newAgent;window.newAgent=function(){const a=_na.apply(this,arguments);try{if(a&&a.mesh&&!/^(harley)$/.test(a.spec&&a.spec.style))bake(a.mesh)}catch(e){console.warn('bake',e)}return a};
+ if(typeof buildCop==='function'){const _bc=window.buildCop;window.buildCop=function(){const g=_bc.apply(this,arguments);try{bake(g)}catch(e){}return g}}
+ /* ---------- 2. perception camera via render target ---------- */
+ const _rp=window.renderPerception;let rt=null,fr=0;const bcam=new THREE.OrthographicCamera(-1,1,1,-1,0,1),bscene=new THREE.Scene(),bmat=new THREE.MeshBasicMaterial({toneMapped:true,depthTest:false,depthWrite:false});bscene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bmat));
+ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const r=area.getBoundingClientRect();if(r.width<10||r.height<10)return;
+  const t=tier(),every=t==='ultra'?2:t==='high'?3:4,scale=t==='ultra'?0.85:t==='high'?0.7:0.5,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
+  if(!rt||rt.width!==W||rt.height!==H){if(rt)rt.dispose();rt=new THREE.WebGLRenderTarget(W,H,{samples:0});bmat.map=rt.texture;bmat.needsUpdate=true;fr=0}
+  const realRender=renderer.render;fr++;
+  if(fr%every===1||every===1){const au=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;const prev=renderer.getRenderTarget();
+   renderer.render=function(sc,cam){if(cam===cvCam){renderer.setRenderTarget(rt);renderer.setScissorTest(false);renderer.setViewport(0,0,W,H);realRender.call(renderer,sc,cam);renderer.setRenderTarget(prev)}else realRender.call(renderer,sc,cam)};
+   try{_rp()}finally{renderer.render=realRender;renderer.shadowMap.autoUpdate=au}}
+  else{renderer.render=function(sc,cam){if(cam!==cvCam)realRender.call(renderer,sc,cam)};try{_rp()}finally{renderer.render=realRender}} /* overlay only */
+  const y=innerHeight-r.bottom;renderer.setScissorTest(true);renderer.setViewport(r.left,y,r.width,r.height);renderer.setScissor(r.left,y,r.width,r.height);const ac=renderer.autoClear;renderer.autoClear=false;renderer.render(bscene,bcam);renderer.autoClear=ac;renderer.setScissorTest(false);renderer.setViewport(0,0,innerWidth,innerHeight)};
+ /* ---------- 3. shadow map cadence ---------- */
+ let sf=0;
+ MODS.push({id:'perf',
+  preRender(){const t=tier(),k=t==='ultra'?1:t==='high'?2:3;sf++;renderer.shadowMap.autoUpdate=false;if(sf%k===0)renderer.shadowMap.needsUpdate=true}});
+})();
+</script>
 <script>/* mods/03-quality.js */
 /* Graphics quality setting (Low / High / Ultra) on the start screen and HUD, plus a small FPS readout. */
 (function(){
@@ -4542,17 +4589,17 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
 /* Parked cars: fills the parking lanes OpenStreetMap tags (parking:lane / parking:right|left|both) with parked
    cars near you. Never on your route, never inside a building footprint. */
 (function(){
- window.PARKQ=[];const POOL=[],MAX=36,R=180;let tpl=null,chk=0;
+ window.PARKQ=[];const POOL=[],MAX=36,R=180;let tpl=null,chk=0,scanI=0;
  const _reb=window.rebase;window.rebase=function(){PARKQ.length=0;for(const p of POOL){p.m.visible=false;p.q=null}return _reb.apply(this,arguments)};
- function templates(){if(tpl)return tpl;tpl=[];for(let i=0;i<8;i++){const sp=TRAFFIC_SPECS[i%TRAFFIC_SPECS.length];const m=buildCar(sp,TCOLS[(i*5)%TCOLS.length]);tpl.push({m,sp})}return tpl}
+ function templates(){if(tpl)return tpl;tpl=[];for(let i=0;i<8;i++){const sp=TRAFFIC_SPECS[i%TRAFFIC_SPECS.length];const m=buildCar(sp,TCOLS[(i*5)%TCOLS.length]);if(window.PERF)PERF.bake(m);tpl.push({m,sp})}return tpl}
  function nearRoute(x,z){const G=game,e=G.ego;for(let s=Math.max(0,e.s-R-40);s<Math.min(G.route.total,e.s+R+40);s+=4){const q=routeXZ(s,0);if(Math.abs(q[0]-x)<6&&Math.abs(q[1]-z)<6&&Math.hypot(q[0]-x,q[1]-z)<5.5)return true}return false}
  MODS.push({id:'parked',disable(){for(const p of POOL)p.m.visible=false},
   start(){for(const p of POOL){scene.remove(p.m)}POOL.length=0},
-  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh||G.paused)return;chk-=1/60;if(chk>0)return;chk=0.7;const e=G.ego,T=templates();
+  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh||G.paused)return;chk-=1/60;if(chk>0)return;chk=0.25;const e=G.ego,T=templates(); /* incremental: ~300 queue entries per tick */
    for(const p of POOL)if(p.q&&Math.hypot(p.q.x-e.x,p.q.z-e.z)>R+40){p.m.visible=false;p.q.used=false;p.q=null}
    let free=POOL.filter(p=>!p.q);
-   for(const q of PARKQ){if(q.used||q.bad)continue;if(Math.abs(q.x-e.x)>R||Math.abs(q.z-e.z)>R)continue;
-    if(q.r==null)q.r=Math.random();if(q.r>0.55){q.bad=1;continue}if((typeof bAt==='function'&&bAt(q.x,q.z))||nearRoute(q.x,q.z)){q.bad=1;continue}
+   let budget=300,nr=0;if(scanI>=PARKQ.length)scanI=0;for(let qi=scanI;qi<PARKQ.length&&budget>0;qi++,budget--){scanI=qi+1;const q=PARKQ[qi];if(q.used||q.bad)continue;if(Math.abs(q.x-e.x)>R||Math.abs(q.z-e.z)>R)continue;
+    if(q.r==null)q.r=Math.random();if(q.r>0.55){q.bad=1;continue}if((typeof bAt==='function'&&bAt(q.x,q.z))){q.bad=1;continue}if(nr++>6)break;if(nearRoute(q.x,q.z)){q.bad=1;continue}
     let p=free.pop();if(!p){if(POOL.length>=MAX)break;const t=T[POOL.length%T.length];p={m:t.m.clone(),sp:t.sp};scene.add(p.m);POOL.push(p)}
     p.q=q;q.used=true;p.m.visible=true;p.m.position.set(q.x,q.y-0.025,q.z);p.m.rotation.set(0,Math.atan2(-q.fz,q.fx)+(q.r<0.1?Math.PI:0),0)}}});
 })();
@@ -5299,7 +5346,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   start(){ui();V.pts=[]},
   sim(dt){if(V.mode!=='lidar')return;V.sweepT-=dt;if(V.sweepT<0){V.sweepT=0.1;try{sweep()}catch(e){}}},
   preRender(){const G=game;if(!G||!G.route||!G.ego||!V.ov)return;const cam=document.getElementById('cvCam'),r=cam.getBoundingClientRect(),dpr=devicePixelRatio,W=Math.round(r.width*dpr),H=Math.round(r.height*dpr);if(V.ov.width!==W||V.ov.height!==H){V.ov.width=W;V.ov.height=H}const x=V.ov.getContext('2d');
-   V.frame=(V.frame||0)+1;if(V.frame%3)return;x.clearRect(0,0,W,H);let dets=[];try{dets=detections()}catch(e){}
+   V.frame=(V.frame||0)+1;if(V.frame%({ultra:3,high:5,low:8}[window.GFX?GFX.get():'high']||5))return;x.clearRect(0,0,W,H);let dets=[];try{dets=detections()}catch(e){}
    if(V.mode==='lidar'&&!(sensorsOf().lidar)){x.fillStyle='#02060a';x.fillRect(0,0,W,H);x.fillStyle='#9fe';x.font=`${11*dpr}px system-ui`;x.fillText('This car has no lidar',10*dpr,20*dpr)}else if(V.mode==='radar'&&!(sensorsOf().radar)){x.fillStyle='#020a06';x.fillRect(0,0,W,H);x.fillStyle='#9fe';x.font=`${11*dpr}px system-ui`;x.fillText('This car has no radar',10*dpr,20*dpr)}else if(V.mode==='lidar')drawLidar(x,W,H);else if(V.mode==='radar')drawRadar(x,W,H,dets);else{if(V.heat)drawHeat(x,W,H,dets);drawLabels(x,W,H,dets)}}});
 })();
 </script>
