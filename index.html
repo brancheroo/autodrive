@@ -1102,7 +1102,7 @@ function buildTile(key){
        even on short spans (OSM bridge ways are usually just the span – approach embankments are separate, un-tagged ways);
        bridges over water / ditches keep a modest hump */
     let overRoad=false;if(isBridge){const segX=(a,b,c,d)=>{const d1=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]),d2=(b[0]-a[0])*(d[1]-a[1])-(b[1]-a[1])*(d[0]-a[0]),d3=(d[0]-c[0])*(a[1]-c[1])-(d[1]-c[1])*(a[0]-c[0]),d4=(d[0]-c[0])*(b[1]-c[1])-(d[1]-c[1])*(b[0]-c[0]);return d1*d2<0&&d3*d4<0};
-     for(const el2 of (d.elements||[])){if(el2===el||el2.type!=='way'||!el2.geometry)continue;const t2=el2.tags||{};if(!(DRIVABLE.has(t2.highway)||/^(rail|light_rail|subway|tram)$/.test(t2.railway||'')))continue;if(t2.bridge&&t2.bridge!=='no'&&(+t2.layer||1)>=layer)continue;const q=el2.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);
+     for(const el2 of (data.elements||[])){if(el2===el||el2.type!=='way'||!el2.geometry)continue;const t2=el2.tags||{};if(!(DRIVABLE.has(t2.highway)||/^(rail|light_rail|subway|tram)$/.test(t2.railway||'')))continue;if(t2.bridge&&t2.bridge!=='no'&&(+t2.layer||1)>=layer)continue;const q=el2.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);
       for(let i=1;i<pts.length&&!overRoad;i++)for(let j=1;j<q.length;j++)if(segX(pts[i-1],pts[i],q[j-1],q[j])){overRoad=true;break}if(overRoad)break}}
     const clr=layer>=1?(overRoad?Math.max(6.2,5.3*layer+0.9):Math.min(3,1.8*layer)):1.5,rampLen=overRoad?Math.max(8,Math.min(30,tot*0.22)):30;
     pts.forEach((p,i)=>{const lin=lerp(h0,h1,L[i]/tot);if(isTunnel){p.push(lin)}else{const g=groundY(p[0],p[1]),ramp=clamp(Math.min(L[i],tot-L[i])/rampLen,0,1);p.push(Math.max(lin,g+clr*ramp*ramp*(3-2*ramp)))}});
