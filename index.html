@@ -6219,6 +6219,66 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  setTimeout(refresh,0);
 })();
 </script>
+<script>/* mods/71-modes-trip.js */
+/* Game modes, part 1: (61) Robotaxi business, (62) Career, (63) Daily challenge, (67) Cannonball Run,
+   (73) Rush-hour commuter, (74) Fuel-economy challenge. */
+(function(){
+ const MD=MODES,rnd=(a,b)=>a+Math.random()*(b-a),pick=a=>a[Math.floor(Math.random()*a.length)];
+ const setTrip=(A,B)=>{addrA=A;addrB=B;const a=document.getElementById('aStart'),b=document.getElementById('aEnd');a.value=A.label;b.value=B.label;a.classList.add('ok');b.classList.add('ok');checkGo()};
+ const tripKey=()=>game?(game.A.short||'')+' → '+(game.B.short||''):'';
+ const fmtT=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+'h ':'')+String(m).padStart(h?2:1,'0')+'m '+String(x).padStart(2,'0')+'s'};
+ const atFault=()=>CRASH.log.filter(c=>(c.a==='ego'||c.b==='ego')&&c.mph>=5).length;
+ /* ---------- 63 daily challenge ---------- */
+ const DAILY=[['Pike Place Market, Seattle',47.6097,-122.3422,'Bellevue Square',47.6154,-122.2037],['Navy Pier, Chicago',41.8917,-87.6086,'Oak Park, IL',41.8850,-87.7845],['Union Station, Denver',39.7527,-105.0,'Red Rocks Amphitheatre',39.6654,-105.2057],['Texas Capitol, Austin',30.2747,-97.7404,'Round Rock, TX',30.5083,-97.6789],
+  ['Fenway Park, Boston',42.3467,-71.0972,'Harvard Square',42.3736,-71.119],['Chase Field, Phoenix',33.4455,-112.0667,'Old Town Scottsdale',33.4942,-111.9261],['Broadway, Nashville',36.1612,-86.7775,'Franklin, TN',35.9251,-86.8689],['Santa Monica Pier',34.0092,-118.4973,'Pasadena City Hall',34.1478,-118.1445],
+  ['Bayside Marketplace, Miami',25.7784,-80.1868,'Key Biscayne',25.6936,-80.1627],['Brooklyn Borough Hall',40.6928,-73.9903,'LaGuardia Airport',40.7769,-73.874],['Pioneer Courthouse Square, Portland',45.5189,-122.6793,'Beaverton, OR',45.4871,-122.8037],['Gateway Arch, St. Louis',38.6247,-90.1848,'Clayton, MO',38.6426,-90.3237],
+  ['French Quarter, New Orleans',29.9584,-90.0644,'Metairie, LA',29.9841,-90.1529],['Temple Square, Salt Lake City',40.7707,-111.8911,'Park City, UT',40.6461,-111.498],['Inner Harbor, Baltimore',39.2856,-76.6108,'Towson, MD',39.4015,-76.6019],['Centennial Olympic Park, Atlanta',33.7603,-84.3932,'Decatur, GA',33.7748,-84.2963]];
+ const today=()=>new Date().toISOString().slice(0,10),dayIdx=()=>{let h=0;for(const c of today())h=(h*31+c.charCodeAt(0))>>>0;return h%DAILY.length};
+ const T=r=>[{label:r[0],short:r[0],lat:r[1],lon:r[2]},{label:r[3],short:r[3],lat:r[4],lon:r[5]}];
+ MD.register({id:'daily',name:'📅 Daily challenge',desc:'Everyone gets the same route today. Score = trip time + 60 s per at-fault crash − comfort bonus. Lowest wins.',lowerIsBetter:true,fmt:fmtT,
+  setup(){const [A,B]=T(DAILY[dayIdx()]);setTrip(A,B)},start(){this.t0=game.simTime;MD.hud(`📅 Daily challenge ${today()}: ${game.A.short} → ${game.B.short}`)},
+  frame(){const t=game.simTime-this.t0;MD.hud(`📅 Daily ${today()} · ⏱ ${fmtT(t)} · 💥 ${atFault()}`)},
+  arrive(){const t=game.simTime-this.t0,sc=t+60*atFault()-(window.COMFORT?COMFORT.score:0)*0.5,rank=MD.record('daily',today(),sc);MD.toast(`📅 Daily challenge done!<br>Score ${fmtT(sc)} · rank #${rank} on this device`,9000)}});
+ /* ---------- 67 cannonball ---------- */
+ MD.register({id:'cannon',name:'🏁 Cannonball Run',desc:'Coast to coast: Red Ball Garage, Manhattan → Portofino Hotel, Redondo Beach. Score = elapsed time including charging/fuel stops; fewer stops is faster. Express style and time-lapse allowed.',lowerIsBetter:true,fmt:fmtT,
+  setup(){setTrip({label:'Red Ball Garage, 142 E 31st St, New York',short:'Red Ball Garage, NYC',lat:40.7442,lon:-73.9808},{label:'Portofino Hotel, Redondo Beach, CA',short:'Portofino, Redondo Beach',lat:33.8441,lon:-118.3964})},
+  start(){this.t0=game.simTime;this.stops=0;this.wasCh=false},sim(){const c=!!game.charging;if(c&&!this.wasCh)this.stops++;this.wasCh=c},
+  frame(){MD.hud(`🏁 Cannonball · ⏱ ${fmtT(game.simTime-this.t0)} · ${fmtDist(game.ego.s)} of ${fmtDist(game.route.total)} · stops ${this.stops}`)},
+  arrive(){const t=game.simTime-this.t0,rank=MD.record('cannon','',t,{stops:this.stops});MD.toast(`🏁 Coast to coast in ${fmtT(t)} with ${this.stops} stops!<br>Rank #${rank}`,10000)}});
+ /* ---------- 73 rush hour ---------- */
+ const COMMUTES=[['Bellevue Square',47.6154,-122.2037,'Pike Place Market, Seattle',47.6097,-122.3422],['Oak Park, IL',41.885,-87.7845,'Willis Tower, Chicago',41.8789,-87.6359],['Round Rock, TX',30.5083,-97.6789,'Texas Capitol, Austin',30.2747,-97.7404],['Pasadena City Hall',34.1478,-118.1445,'Downtown LA (Grand Park)',34.0561,-118.2468]];
+ MD.register({id:'rush',name:'🚦 Rush-hour commuter',desc:'Weekday 7:30 am departure into downtown in heavy traffic. You must badge in by the deadline shown – score is minutes early (negative = late).',fmt:v=>(v>=0?'+':'')+v.toFixed(1)+' min',
+  setup(){const r=pick(COMMUTES);const [A,B]=T(r);setTrip(A,B);const d=new Date();d.setDate(d.getDate()+((8-d.getDay())%7||1));while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);document.getElementById('depAt').value=d.toISOString().slice(0,10)+'T07:30';document.querySelector('input[name=dep][value=custom]').checked=true},
+  start(){const G=game;this.dl=G.simTime+Math.max(20,G.route.total/1000/35*60*1.35+8)*60;this.tf=window.trafficFactor;const tf=this.tf;window.trafficFactor=()=>tf()*1.8},
+  frame(){const G=game,left=(this.dl-G.simTime)/60;MD.hud(`🚦 Badge in by ${new Intl.DateTimeFormat('en-US',{timeZone:G.tz,hour:'numeric',minute:'2-digit'}).format(new Date(this.dl*1000))} · ${left>=0?Math.floor(left)+' min left':'LATE '+Math.ceil(-left)+' min'} · ETA ${G.etaStr||''}`)},
+  arrive(){const v=(this.dl-game.simTime)/60,rank=MD.record('rush',tripKey(),v);MD.toast(v>=0?`🚦 Made it with ${v.toFixed(1)} min to spare!<br>Rank #${rank}`:`🚦 ${(-v).toFixed(1)} min late… the boss noticed.<br>Rank #${rank}`,9000);if(this.tf)window.trafficFactor=this.tf}});
+ /* ---------- 74 fuel economy ---------- */
+ MD.register({id:'eco',name:'🍃 Fuel-economy challenge',desc:'Arrive using as little energy per mile as possible. Tip: Comfort style, gentle speeds. Score = miles per kWh (or mpg).',fmt:v=>v.toFixed(2),
+  start(){this.j0=game.usedJ||0;this.o0=game.odo||0},frame(){const G=game,mi=Math.max(0.01,(G.odo-this.o0)/1609),kwh=((G.usedJ||0)-this.j0)/3.6e6,E=ES();const eff=E.ice?mi/Math.max(0.001,kwh/33.7):mi/Math.max(0.001,kwh);MD.hud(`🍃 ${eff.toFixed(2)} ${E.ice?'mpg':'mi/kWh'} · ${(kwh*1000/mi).toFixed(0)} Wh/mi · ${mi.toFixed(1)} mi`);this.eff=eff},
+  arrive(){const rank=MD.record('eco',tripKey()+' · '+game.spec.name,this.eff||0);MD.toast(`🍃 Efficiency ${this.eff.toFixed(2)} ${ES().ice?'mpg':'mi/kWh'}<br>Rank #${rank}`,9000)}});
+ /* ---------- 62 career ---------- */
+ const CAREER=UIX.load('career',{trips:0,km:0,cash:0,unlocked:['yugo']});const saveC=()=>UIX.save('career',CAREER);
+ const COST=c=>c.id==='yugo'?0:c.hyper?40:Math.round(2+CARS.indexOf(c)%7*1.5+(c.av?4:0)+(typeof c.hp==='number'?c.hp/250:1));
+ MD.register({id:'career',name:'🎖 Career',desc:'Start with only the Yugone. Every trip without an at-fault crash earns career points (1 per 5 km, min 1); spend them to unlock the next car. Locked cars show 🔒 and their cost.',fmt:v=>v+' pts',
+  setup(){lockUI()},start(){this.c0=atFault();this.s0=game.ego.s;MD.hud(`🎖 Career · ${CAREER.cash} pts · ${CAREER.unlocked.length}/${CARS.length} cars`)},frame(){MD.hud(`🎖 Career · ${CAREER.cash} pts banked · this trip: ${Math.max(1,Math.floor(game.ego.s/5000))} pts${atFault()>this.c0?' (crash – no points)':''}`)},
+  arrive(){const clean=atFault()===this.c0,pts=clean?Math.max(1,Math.floor(game.route.total/5000)):0;CAREER.trips+=clean?1:0;CAREER.km+=game.route.total/1000;CAREER.cash+=pts;saveC();MD.record('career','',CAREER.cash);MD.toast(clean?`🎖 Clean trip! +${pts} career points (${CAREER.cash} banked)`:'🎖 At-fault crash – no points this trip.',8000)}});
+ function lockUI(){const on=UIX.load('mode','free')==='career';document.querySelectorAll('#cars .car').forEach((d,i)=>{const c=CARS[i];d.querySelector('.lock')?.remove();if(!on||CAREER.unlocked.includes(c.id))return;const s=document.createElement('div');s.className='lock';s.style.cssText='font:700 10px system-ui;color:#ffd166;margin-top:2px';s.textContent=`🔒 ${COST(c)} pts – click to unlock`;d.appendChild(s);d.style.opacity=0.55})}
+ const _rc=window.renderCars;window.renderCars=function(){_rc.apply(this,arguments);lockUI()};
+ document.getElementById('cars').addEventListener('click',ev=>{if(UIX.load('mode','free')!=='career')return;const d=ev.target.closest('.car');if(!d)return;const i=[...document.querySelectorAll('#cars .car')].indexOf(d),c=CARS[i];if(!c||CAREER.unlocked.includes(c.id))return;ev.stopPropagation();ev.preventDefault();const cost=COST(c);if(CAREER.cash>=cost&&confirm(`Unlock ${c.name} for ${cost} career points?`)){CAREER.cash-=cost;CAREER.unlocked.push(c.id);saveC();renderCars()}else if(CAREER.cash<cost)alert(`${c.name} needs ${cost} points – you have ${CAREER.cash}. Complete clean trips to earn more.`)},true);
+ const goBtn=document.getElementById('go');goBtn.addEventListener('click',ev=>{if(UIX.load('mode','free')==='career'&&!CAREER.unlocked.includes(selCar.id)){ev.stopImmediatePropagation();alert('That car is locked in Career mode.')}},true);
+ /* ---------- 61 robotaxi business ---------- */
+ const RB=UIX.load('robotaxi',{cash:0,fleet:1,rides:0,rating:5});const saveR=()=>UIX.save('robotaxi',RB);
+ function randomSpot(){const G=game,e=G.ego;const L=window.OSMX?OSMX.feat.filter(f=>/landmark|market|stadium|busstop|garage/.test(f.kind)&&Math.hypot(toX(f.lon)-e.x,toZ(f.lat)-e.z)>700&&Math.hypot(toX(f.lon)-e.x,toZ(f.lat)-e.z)<4500):[];if(L.length){const f=pick(L);return {label:f.name||'Pickup point',short:f.name||'Pickup',lat:f.lat,lon:f.lon}}const a=Math.random()*6.28,d=rnd(1200,3500);return {label:'Street corner',short:'Street corner',lat:toLat(e.z)+Math.sin(a)*d/110574,lon:toLon(e.x)+Math.cos(a)*d/(111320*Math.cos(toLat(e.z)*Math.PI/180))}}
+ MD.register({id:'robotaxi',name:'🚕 Robotaxi business',desc:'Run a robotaxi: drive to each pickup, carry the fare to their drop-off, earn $3 + $1.80/mi + $0.40/min plus tips for a comfortable ride. Buy more robotaxis ($8,000 each) – every fleet car earns passive income while you drive.',fmt:v=>'$'+Math.round(v).toLocaleString(),
+  start(){this.leg='pickup';this.fare=null;this.t0=game.simTime;this.passive=0;this.next(true)},
+  next(first){const G=game;const spot=randomSpot();this.target=spot;G.B=spot;G.destShort=spot.short;if(!first)try{rerouteNow({})}catch(e){}this.legT0=G.simTime;this.legS0=G.odo;MD.toast(this.leg==='pickup'?`🚕 New ride request! Pick up at ${spot.short}`:`🚕 Passenger aboard → ${spot.short}`,4500)},
+  arrive(){const G=game;setTimeout(()=>{G.arrived=false;const a=document.getElementById('arrive');if(a)a.style.display='none'},50);
+   if(this.leg==='pickup'){this.leg='dropoff';this.pickT=G.simTime;this.pickOdo=G.odo;this.c0=window.COMFORT?COMFORT.score:90;setTimeout(()=>this.next(),2500)}
+   else{const mi=(G.odo-this.pickOdo)/1609,min=(G.simTime-this.pickT)/60,fare=3+1.8*mi+0.4*min,cs=window.COMFORT?COMFORT.score:80,tip=cs>90?fare*0.2:cs>75?fare*0.1:0,stars=cs>90?5:cs>75?4:cs>55?3:2;RB.cash+=fare+tip;RB.rides++;RB.rating=(RB.rating*(RB.rides-1)+stars)/RB.rides;saveR();MD.record('robotaxi','',RB.cash);MD.toast(`🚕 Fare $${fare.toFixed(2)} + tip $${tip.toFixed(2)} · ${'★'.repeat(stars)}<br>Balance $${Math.round(RB.cash).toLocaleString()} · fleet ${RB.fleet}`,6000);this.leg='pickup';setTimeout(()=>this.next(),3000)}},
+  sim(dt){this.passive+=dt;if(this.passive>60){this.passive=0;if(RB.fleet>1){RB.cash+=(RB.fleet-1)*rnd(0.3,0.9);saveR()}}},
+  frame(){MD.hud(`🚕 ${this.leg==='pickup'?'Heading to pickup':'Passenger aboard'} · ${this.target?this.target.short:''} · 💵 $${Math.round(RB.cash).toLocaleString()} · 🚗×${RB.fleet} · ⭐ ${RB.rating.toFixed(2)} <button id="buyCar" style="pointer-events:auto;margin-left:6px">Buy robotaxi $8,000</button>`);const b=document.getElementById('buyCar');if(b&&!b.onclick)b.onclick=()=>{if(RB.cash>=8000){RB.cash-=8000;RB.fleet++;saveR();MD.toast('🚕 Fleet grown to '+RB.fleet+' cars!')}else MD.toast('Not enough cash yet.',2500)};document.getElementById('modeHud').style.pointerEvents='auto'}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
