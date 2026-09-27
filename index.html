@@ -3716,6 +3716,7 @@ function hyperPredict(dt){const G=game;if(!G||!G.ego||!smartOn()||dt<=0)return;c
  for(const a of G.agents)if(a.mesh)track(a,a.mesh.position.x,a.mesh.position.z,a.mesh.rotation.y,a.spec.style==='harley'?'moto':'car');
  if(CHASE.on)for(const c of CHASE.cops)track(c,c.mesh.position.x,c.mesh.position.z,c.mesh.rotation.y,'cop');if(CHAOS.on)for(const a of CHAOS.cars)track(a,a.x,a.z,a.head,'car');for(const p of G.peds){track(p,p.x,p.z,p.mesh.rotation.y,'ped');if(p.dog)track(p.dog,p.dog.x,p.dog.z,0,'ped')}if(CHAOS.on){for(const p of CHAOS.peds)track(p,p.x,p.z,p.head||0,'ped');for(const a of CHAOS.animals||[])track(a,a.x,a.z,a.head||0,'ped')}
  if(G.protest&&G.protest.state!=='dispersing')for(const q of G.protest.people)track(q,q.f.position.x,q.f.position.z,0,'ped');
+ if(window.ACT)for(const o of ACT.list)if(o.mesh&&o.kind!=='construction')track(o,o.mesh.position.x,o.mesh.position.z,o.mesh.rotation.y,/cyclist|moto/.test(o.kind)?'moto':'ped'); /* road actors: cyclists, jaywalkers, children, cones, lane-splitting motorcycles */
  for(const B of CHASE.blocks)for(const m of B.cars){const r=m.userData.rb||(m.userData.rb={mesh:m});track(r,m.position.x,m.position.z,m.rotation.y,'car')}
  HDRONE.seen=dOnly;let worst=null;const T=4,st=0.2;
  for(const b of objs){const path=[];let px=b.x,pz=b.z,vx=b.vx,vz=b.vz;const sp0=Math.hypot(vx,vz);let hx=sp0>0.3?vx/sp0:Math.cos(b.h),hz=sp0>0.3?vz/sp0:-Math.sin(b.h),sp=sp0;
@@ -5099,7 +5100,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   return ACT.add({kind:'cyclist',mesh:m,s:s0,lat:edge(),v:rnd(4.5,7.5),vs:0,r:0.45,clear:1.0,gap:5,why:'🚲 Following a cyclist – no safe room to pass yet',keepBehind:120,
    update(o,dt){o.vs=o.v;o.s+=o.v*dt;o.lat=lerp(o.lat,ACT.lane(o.s)+1.25,Math.min(1,dt));const p=ACT.place(o);for(const w of o.mesh.userData.wheels)w.rotation.z-=o.v*dt/0.34;ACT.walk(o.mesh.userData.rider,o.t*o.v/2.2);if(o.s>G.route.total-40)o.dead=true}})}
  /* passing plan for cyclists: room inside the lane? other lane? centre line? */
- function cyclistPass(dt){const G=game,e=G.ego;const c=ACT.list.filter(o=>o.kind==='cyclist'&&o.s>e.s-6&&o.s-e.s<45).sort((a,b)=>a.s-b.s)[0];if(!c){XB.cyc=lerp(XB.cyc||0,0,Math.min(1,dt));return null}
+ function cyclistPass(dt){const G=game,e=G.ego;if(smartOn()){XB.cyc=0;return 'smart'} /* the smart planner tracks the cyclist itself and crabs past with room */const c=ACT.list.filter(o=>o.kind==='cyclist'&&o.s>e.s-6&&o.s-e.s<45).sort((a,b)=>a.s-b.s)[0];if(!c){XB.cyc=lerp(XB.cyc||0,0,Math.min(1,dt));return null}
   const W=G.spec.W||1.9,egoBase=ACT.lane(e.s)+(window.LANEBIAS||0)-(XB.cyc||0),need=c.lat-(c.r+1.0+W/2),shift=Math.min(0,need-egoBase); /* how far left of our normal line we must be */
   const n=window.LANES?LANES.count(e.s):1;if(n>1){if(!c.blk)c.blk=LANES.block(0,1e9,0,'Changing lanes to pass a cyclist');c.blk.s0=c.s-60;c.blk.s1=c.s+15;c.onRemove=()=>LANES.unblock(c.blk);XB.cyc=0;return 'lane'} /* keep the kerb lane blocked while the cyclist is around, not on a timer */
   if(shift>-0.9){XB.cyc=lerp(XB.cyc||0,shift,Math.min(1,dt*1.5));c.hazard=(c.lat-(e.off??0))<c.r+W/2+0.95;c.why='🚲 Moving over to give the cyclist 1 m';return 'inlane'}
