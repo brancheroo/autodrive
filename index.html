@@ -5095,10 +5095,12 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   const bar=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.46,6),steel);bar.rotation.x=Math.PI/2;bar.position.set(0.42,0.9,0);g.add(bar);const seat=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.05,0.12),tyre);seat.position.set(-0.2,0.86,0);g.add(seat);
   const r=ACT.person('drive',0x2b3444);r.position.set(-0.12,-0.32,0);r.userData.fig.rotation.z=-0.42;g.add(r);const helm=new THREE.Mesh(new THREE.SphereGeometry(0.135,14,8,0,Math.PI*2,0,Math.PI/2),F);helm.position.set(0.1,1.38,0);helm.scale.set(1.25,1,1);g.add(helm);
   g.userData.wheels=wheels;g.userData.rider=r;return g}
+ /* where bikes belong: local / collector streets at ≤35 mph (never motorways, trunk roads, links or fast arterials) */
+ const bikeOK=s=>{const G=game,i=routeLLnh(clamp(s,0,G.route.total))[2],ni=NODEINFO.get(G.route.nodes[i])||{},hw=ni.hw||'';return /^(residential|living_street|unclassified|tertiary|secondary|service)$/.test(hw)&&speedLimitAt(i)<=35};
  /* ---------- cyclist ---------- */
- function cyclist(){const G=game,e=G.ego,s0=e.s+rnd(110,220);if(s0>G.route.total-60)return;const m=bikeMesh(),edge=()=>{const n=window.LANES?LANES.count(s0):1,base=ACT.lane(s0);return base+(n>1?0:0)+1.25};
+ function cyclist(){const G=game,e=G.ego,s0=e.s+rnd(110,220);if(s0>G.route.total-60||!bikeOK(s0)||!bikeOK(e.s))return;const m=bikeMesh(),edge=()=>{const n=window.LANES?LANES.count(s0):1,base=ACT.lane(s0);return base+(n>1?0:0)+1.25};
   return ACT.add({kind:'cyclist',mesh:m,s:s0,lat:edge(),v:rnd(4.5,7.5),vs:0,r:0.45,clear:1.0,gap:5,why:'🚲 Following a cyclist – no safe room to pass yet',keepBehind:120,
-   update(o,dt){o.vs=o.v;o.s+=o.v*dt;o.lat=lerp(o.lat,ACT.lane(o.s)+1.25,Math.min(1,dt));const p=ACT.place(o);for(const w of o.mesh.userData.wheels)w.rotation.z-=o.v*dt/0.34;ACT.walk(o.mesh.userData.rider,o.t*o.v/2.2);if(o.s>G.route.total-40)o.dead=true}})}
+   update(o,dt){if(!bikeOK(o.s+25)){o.turnT=(o.turnT||0)+dt;o.lat+=dt*1.2;if(o.turnT>2.5)o.dead=true} /* road ahead isn't for bikes: turn off onto the side street / path */o.vs=o.v;o.s+=o.v*dt;o.lat=lerp(o.lat,ACT.lane(o.s)+1.25,Math.min(1,dt));const p=ACT.place(o);for(const w of o.mesh.userData.wheels)w.rotation.z-=o.v*dt/0.34;ACT.walk(o.mesh.userData.rider,o.t*o.v/2.2);if(o.s>G.route.total-40)o.dead=true}})}
  /* passing plan for cyclists: room inside the lane? other lane? centre line? */
  function cyclistPass(dt){const G=game,e=G.ego;if(smartOn()){XB.cyc=0;return 'smart'} /* the smart planner tracks the cyclist itself and crabs past with room */const c=ACT.list.filter(o=>o.kind==='cyclist'&&o.s>e.s-6&&o.s-e.s<45).sort((a,b)=>a.s-b.s)[0];if(!c){XB.cyc=lerp(XB.cyc||0,0,Math.min(1,dt));return null}
   const W=G.spec.W||1.9,egoBase=ACT.lane(e.s)+(window.LANEBIAS||0)-(XB.cyc||0),need=c.lat-(c.r+1.0+W/2),shift=Math.min(0,need-egoBase); /* how far left of our normal line we must be */
@@ -5122,9 +5124,9 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   start(){RU.next={cyclist:rnd(40,110),moto:rnd(20,60),ped:rnd(60,150)};XB.cyc=0;XB.moto=0},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on)||(typeof CHASE!=='undefined'&&CHASE.on))return;const hw=(NODEINFO.get(G.route.nodes[routeLLnh(e.s)[2]])||{}).hw||'',fwy=/motorway|trunk/.test(hw),city=!fwy&&G.limitMph<=40;
    for(const k in RU.next){RU.next[k]-=dt;if(RU.next[k]>0)continue;RU.next[k]={cyclist:rnd(70,200),moto:rnd(30,90),ped:rnd(90,240)}[k];
-    if(k==='cyclist'&&city&&WX.snow<0.5&&ACT.list.filter(o=>o.kind==='cyclist').length<2)cyclist();
+    if(k==='cyclist'&&city&&bikeOK(e.s)&&WX.snow<0.5&&ACT.list.filter(o=>o.kind==='cyclist').length<2)cyclist();
     if(k==='moto'&&fwy&&e.v<16&&!ACT.list.some(o=>o.kind==='moto'))moto();
-    if(k==='ped'&&city&&G.limitMph<=35)jaywalker()}
+    if(k==='ped'&&city&&G.limitMph<=35&&!/motorway|trunk|_link/.test(hw))jaywalker()}
    RU.pass=cyclistPass(dt)}});
 })();
 </script>
