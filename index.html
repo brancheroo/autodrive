@@ -6428,6 +6428,67 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    const c=H.g.userData.cone,from=H.g.position,to=new THREE.Vector3(e.x,e.mesh.position.y,e.z),L=from.distanceTo(to);c.scale.set(1,L/90,1);c.position.copy(from).lerp(to,0.5);c.lookAt(to);c.rotateX(Math.PI/2)}});
 })();
 </script>
+<script>/* mods/80-audio.js */
+/* Audio pack: (76) spatial 3-D audio for traffic engines and sirens, (77) road-surface sounds (bridge-joint thumps,
+   gravel crunch, wet hiss boost), (78) turn-signal tick-tock and seatbelt chime, (79) navigation voice,
+   (80) your rider singing along to AI Radio, (81) local radio stations with generated DJs, (82) the Yugone's
+   tired engine (misfires, valve rattle, belt squeal).
+   76: the 6 nearest vehicles each get an engine voice (EV whine or combustion rumble by type) through an HRTF
+       PannerNode that follows them; police/emergency sirens are re-routed through panners too. The listener
+       follows the camera, so sound moves around you as cars pass.
+   79: "In half a mile, turn left onto Main Street" … "Turn left now" (speech synthesis; 🧭 toggles it).
+   81: 📻 cycles FM stations for the region – call letters (K… west of the Mississippi, W… east), a genre that
+       fits the region, a generated DJ who talks about the city, the weather and the traffic between tunes. */
+(function(){
+ const AU={voices:[],navOn:UIX.load('navVoice',true),fm:null,lastNav:{},beltT:0};window.AUDIOX=AU;
+ const C=()=>audio&&audio.ctx,M=()=>audio&&audio.master;
+ const say=(t,rate=1.02,vol=0.9)=>{try{if(!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(t);u.rate=rate;u.volume=vol;speechSynthesis.speak(u)}catch(e){}};
+ /* ---------- 76 spatial engines ---------- */
+ function voice(){const c=C();const o=c.createOscillator(),o2=c.createOscillator(),g=c.createGain(),f=c.createBiquadFilter(),p=c.createPanner();p.panningModel='HRTF';p.distanceModel='inverse';p.refDistance=6;p.maxDistance=400;p.rolloffFactor=1.4;o.type='sawtooth';o2.type='triangle';f.type='lowpass';f.frequency.value=600;g.gain.value=0;o.connect(f);o2.connect(f);f.connect(g);g.connect(p);p.connect(M());o.start();o2.start();return {o,o2,g,f,p,a:null}}
+ function listener(){const c=C(),L=c.listener,p=camera.position,d=new THREE.Vector3();camera.getWorldDirection(d);if(L.positionX){L.positionX.value=p.x;L.positionY.value=p.y;L.positionZ.value=p.z;L.forwardX.value=d.x;L.forwardY.value=d.y;L.forwardZ.value=d.z;L.upX.value=0;L.upY.value=1;L.upZ.value=0}else{L.setPosition(p.x,p.y,p.z);L.setOrientation(d.x,d.y,d.z,0,1,0)}}
+ const setP=(p,x,y,z)=>{if(p.positionX){p.positionX.value=x;p.positionY.value=y;p.positionZ.value=z}else p.setPosition(x,y,z)};
+ const _ss=window.sirenStart;window.sirenStart=function(obj){_ss(obj);try{const S=obj.siren;if(!S)return;const c=C(),p=c.createPanner();p.panningModel='HRTF';p.refDistance=10;p.rolloffFactor=1.1;S.g.disconnect();S.g.connect(p);p.connect(M());S.pan=p}catch(e){}};
+ /* ---------- 81 local radio ---------- */
+ const GENRE=(lat,lon,city)=>/Nashville|Franklin|Austin|Round Rock|Dallas|Houston/.test(city)||(lon>-105&&lon<-85&&lat<37)?['country',[196,247,294,392],'Country']:/New Orleans|Metairie/.test(city)?['jazz',[220,277,330,415],'Jazz']:/Seattle|Portland|Bellevue/.test(city)?['indie',[220,262,330,392],'Indie Rock']:/Miami|Key Biscayne/.test(city)?['latin',[262,330,392,494],'Latin']:/Chicago|Oak Park/.test(city)?['blues',[196,233,262,311],'Blues']:/Los Angeles|Pasadena|Santa Monica|Phoenix|Scottsdale/.test(city)?['hiphop',[110,131,165,196],'Hip-Hop']:['classic',[247,294,370,440],'Classic Rock'];
+ function station(){const G=game,lat=toLat(G.ego.z),lon=toLon(G.ego.x),city=((G.city||'')+'').split(',')[0]||'the area',[kind,notes,label]=GENRE(lat,lon,city),first=lon<-90?'K':'W',call=first+String.fromCharCode(65+Math.floor(Math.random()*26),65+Math.floor(Math.random()*26),65+Math.floor(Math.random()*26)),freq=(88.1+Math.floor(Math.random()*100)*0.2).toFixed(1);return {kind,notes,label,call,freq,city,t:0,next:0,step:0,talk:10}}
+ function dj(S){const G=game,wx={clear:'sunshine',rain:'rain',fog:'fog',blizzard:'snow',hurricane:'a nasty storm',dust:'dust',smoke:'wildfire smoke'}[WX.key]||'weather',tr=trafficFactor()>1.2?'traffic is heavy':'roads are moving',lines=[`You're listening to ${S.call}, ${S.freq}, ${S.city}'s home for ${S.label}.`,`Right now in ${S.city} we've got ${wx}, and the ${tr}.`,`That was a good one. Stick around, more ${S.label} after this.`,`Shout out to everyone riding in a self-driving car tonight. Don't let it pick the music.`,`${S.call}. ${S.freq}. ${S.label} all day long.`];say(lines[Math.floor(Math.random()*lines.length)],1.08,0.85)}
+ function fmTick(dt){const S=AU.fm;if(!S||!C())return;S.t+=dt;S.talk-=dt;if(S.talk<0){S.talk=45+Math.random()*50;dj(S);S.next=S.t+6;return}if(S.t<S.next)return;const c=C(),bpm={country:100,jazz:120,indie:118,latin:104,blues:82,hiphop:88,classic:112}[S.kind],beat=60/bpm/2;S.next=S.t+beat;S.step++;const n=S.notes[(S.step>>1)%S.notes.length]*(S.step%8<4?1:1.5);
+  const o=c.createOscillator(),g=c.createGain();o.type=S.kind==='hiphop'?'square':S.kind==='jazz'?'sine':'triangle';o.frequency.value=n*(S.kind==='hiphop'?0.5:1);g.gain.setValueAtTime(0.0001,c.currentTime);g.gain.exponentialRampToValueAtTime(0.05,c.currentTime+0.01);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+beat*0.9);o.connect(g);g.connect(M());o.start();o.stop(c.currentTime+beat);
+  if(S.step%2===0){const k=c.createOscillator(),kg=c.createGain();k.frequency.setValueAtTime(120,c.currentTime);k.frequency.exponentialRampToValueAtTime(40,c.currentTime+0.12);kg.gain.setValueAtTime(0.12,c.currentTime);kg.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.15);k.connect(kg);kg.connect(M());k.start();k.stop(c.currentTime+0.16)}}
+ function radio(){if(AU.fm){AU.fm=null;MODES.toast('📻 Local radio off',1500);return}if(typeof AIFM!=='undefined'&&AIFM.on&&typeof aifmToggle==='function')aifmToggle();if(typeof TECH!=='undefined'&&TECH.on&&typeof techToggle==='function')techToggle();AU.fm=station();MODES.toast(`📻 ${AU.fm.call} ${AU.fm.freq} FM · ${AU.fm.label}`,3000);setTimeout(()=>AU.fm&&dj(AU.fm),800)}
+ /* ---------- small helpers ---------- */
+ const tick=(hi)=>{const c=C();if(!c)return;const o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=hi?2200:1700;g.gain.setValueAtTime(0.025,c.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.025);o.connect(g);g.connect(M());o.start();o.stop(c.currentTime+0.03)};
+ const thump=(v)=>{const c=C();if(!c)return;const o=c.createOscillator(),g=c.createGain();o.frequency.setValueAtTime(70,c.currentTime);o.frequency.exponentialRampToValueAtTime(35,c.currentTime+0.08);g.gain.setValueAtTime(0.09*v,c.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.1);o.connect(g);g.connect(M());o.start();o.stop(c.currentTime+0.12)};
+ const chime=()=>{const c=C();if(!c)return;for(let i=0;i<3;i++){const o=c.createOscillator(),g=c.createGain();o.frequency.value=880;g.gain.setValueAtTime(0.0001,c.currentTime+i*0.6);g.gain.exponentialRampToValueAtTime(0.07,c.currentTime+i*0.6+0.01);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+i*0.6+0.45);o.connect(g);g.connect(M());o.start(c.currentTime+i*0.6);o.stop(c.currentTime+i*0.6+0.5)}};
+ const pop=()=>{const c=C();if(!c)return;const b=c.createBuffer(1,c.sampleRate*0.08,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(c.sampleRate*0.01));const s=c.createBufferSource(),g=c.createGain();g.gain.value=0.35;s.buffer=b;s.connect(g);g.connect(M());s.start()};
+ let lastSig=0,lastBlink=false,bridgeD=0,gravel=null,rattle=null,squeal=null,singT=0;
+ MODS.push({id:'audiox',disable(){for(const v of AU.voices)v.g.gain.value=0;AU.fm=null},
+  start(){AU.lastNav={};AU.beltT=1.2;AU.fm=null;UIX.btn('navBtn',AU.navOn?'🧭':'🧭̸','Navigation voice on/off',function(){AU.navOn=!AU.navOn;UIX.save('navVoice',AU.navOn);this.textContent=AU.navOn?'🧭':'🧭̸'});UIX.btn('fmBtn','📻','Local radio: cycle / off',radio)},
+  frame(){const G=game;if(!G||!G.route||!G.ego||!C())return;const c=C(),dt=1/60,e=G.ego;listener();
+   if(AU.beltT>0){AU.beltT-=dt;if(AU.beltT<=0)chime()}
+   /* 76 engines */
+   if(AU.voices.length<6)AU.voices.push(voice());const near=G.agents.filter(a=>a.mesh).map(a=>({a,d:Math.hypot(a.x-e.x,a.z-e.z)})).filter(o=>o.d<180).sort((p,q)=>p.d-q.d).slice(0,6);
+   AU.voices.forEach((v,i)=>{const o=near[i];if(!o){v.g.gain.setTargetAtTime(0,c.currentTime,0.2);return}const a=o.a,ev=a.spec&&(a.spec.sound==='ev'||a.av),big=a.spec&&(a.spec.L>7),rpm=clamp(a.v/30,0.1,1);setP(v.p,a.mesh.position.x,a.mesh.position.y+0.6,a.mesh.position.z);
+    v.o.frequency.setTargetAtTime(ev?300+rpm*900:(big?35:55)+rpm*(big?60:110),c.currentTime,0.1);v.o2.frequency.setTargetAtTime(ev?450+rpm*1400:(big?70:110)+rpm*(big?120:220),c.currentTime,0.1);v.f.frequency.value=ev?2200:big?300:700;v.g.gain.setTargetAtTime((ev?0.012:big?0.06:0.035)*(0.4+rpm),c.currentTime,0.15)});
+   for(const list of [window.EVS?EVS.list:[],typeof CHASE!=='undefined'?CHASE.cops:[]])for(const o of list){const S=o.siren;if(S&&S.pan&&o.mesh)setP(S.pan,o.mesh.position.x,o.mesh.position.y+1.5,o.mesh.position.z)}
+   /* 78 indicator tick-tock */
+   if(G.sig===1||G.sig===-1||G.sig===2){if(G.blinkOn!==lastBlink){tick(G.blinkOn);lastBlink=G.blinkOn}}
+   /* 77 road surface: bridge joints, gravel */
+   const onBridge=typeof NODEH!=='undefined'&&NODEH.has(G.route.nodes[routeLLnh(e.s)[2]])&&routeY(e.s,0)>groundY(e.x,e.z)+3;if(onBridge&&e.v>2){bridgeD+=e.v*dt;if(bridgeD>28){bridgeD=0;thump(Math.min(1,e.v/25));setTimeout(()=>thump(Math.min(1,e.v/25)*0.8),Math.max(40,(G.spec.wb||2.8)/Math.max(1,e.v)*1000))}}
+   const dirt=window.MODES&&MODES.cur&&MODES.cur.id==='rally';if(!gravel){const s=c.createBufferSource();s.buffer=audio.noiseBuf;s.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=2600;f.Q.value=0.7;gravel=c.createGain();gravel.gain.value=0;s.connect(f);f.connect(gravel);gravel.connect(M());s.start()}gravel.gain.setTargetAtTime(dirt?clamp(e.v/25,0,1)*0.25*(0.7+Math.random()*0.6):0,c.currentTime,0.05);
+   if(audio.road&&WX.wet)audio.road.gain.value*=1.25;
+   /* 79 navigation voice */
+   const ns=G.nextStep;if(AU.navOn&&ns&&ns.type!=='depart'){const key=ns.type+ns.name+Math.round((ns.d+e.s)/10);const L=AU.lastNav[key]||(AU.lastNav[key]={});const act=ns.type==='arrive'?'arrive at your destination':`${/uturn/.test(ns.mod||'')?'make a U-turn':ns.type==='roundabout'||ns.type==='rotary'?'enter the roundabout':'turn '+(ns.mod||'').replace('slight ','slight ')}${ns.name?' onto '+ns.name.replace(/\bSt\b/,'Street').replace(/\bAve\b/,'Avenue'):''}`;
+    const fire=(k,txt)=>{if(!L[k]){L[k]=1;say(txt)}};if(ns.d<1700&&ns.d>1200&&e.v>18)fire('1mi',`In one mile, ${act}.`);if(ns.d<500&&ns.d>300)fire('q',`In a quarter mile, ${act}.`);if(ns.d<130&&ns.d>60&&ns.type!=='arrive')fire('400',`In 400 feet, ${act}.`);if(ns.d<30)fire('now',ns.type==='arrive'?'You have arrived.':act.charAt(0).toUpperCase()+act.slice(1)+' now.')}
+   /* 80 sing along */
+   singT-=dt;if(typeof AIFM!=='undefined'&&AIFM.on&&AIFM.line&&singT<0){singT=9+Math.random()*10;const b=UIX.banner('singBub','left:50%;bottom:190px;transform:translateX(-50%);background:#fff9;color:#111;padding:5px 12px;border-radius:14px;font:italic 600 13px Georgia');b.textContent='🎤 You: “'+AIFM.line.slice(0,70)+'…”';b.style.display='block';clearTimeout(b._t);b._t=setTimeout(()=>b.style.display='none',4000)}
+   const r=e.mesh.userData.rider;if(r&&r.userData.head&&((typeof AIFM!=='undefined'&&AIFM.on)||AU.fm))r.userData.head.rotation.z=Math.sin(performance.now()/1000*Math.PI*2*((AU.fm?1.7:2)))*0.12;
+   fmTick(dt);
+   /* 82 Yugone engine */
+   if(G.spec.id==='yugo'){if(Math.random()<dt*(0.4+Math.max(0,e.acc||0)*0.6))pop();if(!rattle){const s=c.createBufferSource();s.buffer=audio.noiseBuf;s.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=3800;f.Q.value=9;rattle=c.createGain();rattle.gain.value=0;s.connect(f);f.connect(rattle);rattle.connect(M());s.start();const o=c.createOscillator();o.type='sawtooth';o.frequency.value=2400;const sg=c.createGain();sg.gain.value=0;o.connect(sg);sg.connect(M());o.start();squeal={o,g:sg}}
+    rattle.gain.setTargetAtTime(0.03+Math.abs(Math.sin(performance.now()/90))*0.03,c.currentTime,0.02);squeal.g.gain.setTargetAtTime((e.acc||0)>1.2&&e.v<12?0.02:0,c.currentTime,0.08);squeal.o.frequency.setTargetAtTime(2200+e.v*40,c.currentTime,0.1)}}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
