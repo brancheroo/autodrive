@@ -2924,7 +2924,7 @@ const tsMap=v=>{const x=Math.pow(10,v/100);return x<10?Math.round(x*2)/2:x<100?M
 $('ts').oninput=ev=>{const sc=tsMap(+ev.target.value);if(game)game.scale=sc;$('tsv').textContent=sc+'×'};
 $('pauseBtn').onclick=()=>{if(game){game.paused=!game.paused;$('pauseBtn').textContent=game.paused?'▶ Resume':'⏸ Pause'}};
 $('menuBtn').onclick=()=>location.reload();
-$('chaosBtn').onclick=toggleChaos;
+$('chaosBtn').onclick=()=>toggleChaos(); /* defined in a later module (mods/000-core-chaos.js) */
 $('protestBtn').onclick=()=>deployProtest();
 function cycleWeather(){if(!game)return;setWeather(WX_ORDER[(WX_ORDER.indexOf(WX.key)+1)%WX_ORDER.length])}
 $('wxBtn').onclick=cycleWeather;
