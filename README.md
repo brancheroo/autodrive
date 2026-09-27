@@ -38,16 +38,17 @@ SF buildings: DataSF · Signs & street names: OpenStreetMap · Live vocals: meSp
 
 ## Controls
 
-C camera (interior / exterior / overhead / drone circle / drone follow / helicopter / trackside follow shots) · drag pan · wheel zoom · Space pause · W weather · X chaos ·
-P oil protest · R AI Radio (songs written live about where you are) · S tracking satellite on/off (3 km prediction-based self-driving, any car) · I trip &amp; data panel on/off · T Techno FM (generated live, 25–200 BPM from speed &amp; situation) · D window dog · N reroute now · K chase mode (1–10 police) · E express (chase driving, no police) · click the in-car screens (interior view) · time slider 1–1000×.
-V call an emergency vehicle (🚑) · F photo mode (📸, drag to orbit, Save photo) · Esc skip crash replay · 🔗 copy a shareable trip link · click the FPS readout to change graphics quality.
+C camera · Space pause · **Esc pause menu** · **? all shortcuts** · E driving style (Normal / Comfort / Express) · H take over (arrow keys drive) · K police chase · X chaos · W weather · P protest · N reroute · S tracking satellite · I trip panel · D window dog · T Techno FM · R AI Radio · V emergency vehicle · F photo mode · M rear-view mirror · B cinema mode · ` performance profiler.
+Gamepads and touch screens are supported. Drag to look around, wheel/pinch to zoom.
 
-## Features on the start screen
+## Start screen
 
-Graphics quality (Low / High / Ultra) · Dense fog weather · your rider's shirt, headwear, glasses, hair and beard · Time trial against a ghost of your best run (or any car's best run) on the same trip · Delivery run: one stop per line, optional "by 3:30pm" deadline · driving-skill grade on each car card (at-fault crashes per 100 km: benchmark plus your own trips, updated as you drive) · Live AI rival that drives the same route · ⚙️ Features on/off. With Live weather, conditions change along the route from the forecast. Crash replays can be saved as video clips; couriers and passengers walk to and from the car at delivery stops.
+Game mode (free ride, robotaxi business, career, daily challenge, Cannonball Run, rush hour, fuel-economy, scavenger hunt, hurricane evacuation, rally, driver's test) with local leaderboards and share codes · 22 cars, each graded on driving skill · driving style · graphics quality · weather (incl. fog, dust storm, wildfire smoke) · your rider's outfit, face and hair · passengers (companions, kids, mood, cat, parrot) · garage (paint, wraps, decals, upgrades, repairs) · time-trial ghost · live AI rival · delivery run · shareable trip links · resume a saved trip.
 
-Add `?selftest` to the URL to start a ride in every car and check each one keeps running.
+## In the ride
+
+🎬 in-car activities · 📔 road-trip journal · 🧪 scenario editor · ◧ split-screen · 📥 save the route for offline use · 🐞 debug log · ⚙️ switch any feature off · ♿ accessibility & 5 languages (pause menu).
 
 ## Code layout
 
-`autodrive/index.html` is the core game. Newer features live as separate modules in `autodrive/mods/*.js`; `python3 autodrive/build.py` inlines them into index.html so the published page stays one self-contained file.
+`autodrive/index.html` is the core; features live in `autodrive/mods/*.js` and `python3 autodrive/build.py` inlines them so the published page stays one file. Add `?selftest` to the URL to start a ride in every car and check each keeps running.
