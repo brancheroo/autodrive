@@ -5045,7 +5045,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   start(){L.k=0;L.tk=0;L.blocks=[];mergeSeen=new Set();window.LANEBIAS=0;window.SIGOVR=0},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;const n=L.count(e.s);L.cool-=dt;const smart=smartOn(); /* smart planner (Predictacar / satellite) chooses its own lateral line relative to the lane centre – an extra offset here would desync its plan from where the car really is */
    /* traffic lanes: spread new route cars across lanes; they pass slower cars; keep offsets inside the road */
-   for(const a of G.agents){if(a.kind==='route'&&!a.loose){const na=L.count(a.s);if(a.laneK==null)a.laneK=Math.floor(Math.random()*na);
+   for(const a of G.agents){if(a.kind==='route'&&!a.loose){const na=L.count(a.s),ow=routeOnewayAt(a.s);if(a.laneK==null)a.laneK=ow?Math.floor(Math.random()*na):0;if(!ow&&!a.merge)a.laneK=0; /* two-way streets: traffic keeps to its lane (OSM lane data there is too patchy to weave safely) */
      if(a.merge){const m=a.merge,d=m.sM-a.s;if(m.state==='ramp'){a.laneK=-1;if(d<70){const ok=!G.agents.some(b=>b!==a&&b.kind==='route'&&(b.laneK||0)===0&&Math.abs(b.s-a.s)<9)&&!(L.k===0&&Math.abs(e.s-a.s)<9);if(ok){m.state='in';a.laneK=0}else if(d<15)a.v=Math.max(0,a.v-4*dt)}}}
      else{const nAhead=L.count(a.s+Math.max(60,a.v*5));if(a.laneK>nAhead-1){const tk=a.laneK-1;if(laneFree(a,tk,10))a.laneK=tk;else{a.dropWait=true}}else a.dropWait=false;if(a.laneK>na-1){if(laneFree(a,na-1,7))a.laneK=na-1;else a.v=Math.max(0,a.v-5*dt)}}
      if(!a.merge&&!a.noLaneChange&&na>1&&Math.random()<dt*0.03){const lead=G.agents.find(b=>b!==a&&b.kind==='route'&&b.laneK===a.laneK&&b.s>a.s&&b.s-a.s<40&&b.v<a.v-2);if(lead){const tk=a.laneK+1<na?a.laneK+1:a.laneK-1;if(tk>=0&&laneFree(a,tk,14))a.laneK=tk}}
@@ -5057,9 +5057,9 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    /* ride lane choice */
    if(n<=1&&L.k>0){if(gapOK(L.k-1)){L.k--;L.cool=3;L.chg=3}L.tk=0;L.why='Lane ends – merging right';window.SIGOVR=1;const tgt=-L.k*L.laneW;window.LANEBIAS=lerp(window.LANEBIAS||0,tgt,Math.min(1,dt*0.7));return}
    if(n<=1){L.tk=0;L.k=0;L.why='';let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;window.LANEBIAS=lerp(window.LANEBIAS||0,xb,Math.min(1,dt*0.8));window.SIGOVR=Math.abs(xb)>0.8?(xb<0?-1:1):0;return}
-   const fwy=/motorway|trunk/.test(hw),turn=upcomingTurn(fwy?2000:350);let want=L.pref!=null?L.pref:fwy&&n>=3?1:0,why=L.pref!=null?'Using the Express Lane':''; /* express lane preference from the infra pack */
+   const fwy=/motorway|trunk/.test(hw),turn=upcomingTurn(fwy?2000:350);let want=L.pref!=null?L.pref:fwy&&n>=3&&routeOnewayAt(e.s)?1:0,why=L.pref!=null?'Using the Express Lane':''; /* express lane preference from the infra pack */
    const cur=L.k,lead=leadIn(cur,90),myV=Math.min(speedLimitAt(routeLLnh(e.s)[2])/MPH,e.v+10);
-   const slow=lead&&lead.v<myV-4&&lead.s-e.s<70&&cur+1<n&&!(turn&&turn.side>0&&turn.d<600);L.slowT=slow?(L.slowT||0)+dt:0;const rightClear=cur>0&&!leadIn(cur-1,90);L.clearT=rightClear?(L.clearT||0)+dt:0;
+   const slow=lead&&lead.v<myV-4&&lead.s-e.s<70&&cur+1<n&&!(turn&&turn.side>0&&turn.d<600)&&routeOnewayAt(e.s); /* passing lane changes only on one-way roads / freeways */L.slowT=slow?(L.slowT||0)+dt:0;const rightClear=cur>0&&!leadIn(cur-1,90);L.clearT=rightClear?(L.clearT||0)+dt:0;
    if(L.slowT>2){want=cur+1;why=`Passing slower traffic (${Math.round(lead.v*MPH)} mph)`}
    else if(cur>want&&L.clearT>6){why='Keeping right except to pass'}else if(cur>want)want=cur; /* hysteresis: pass only after 2 s stuck behind, return only after 6 s of clear lane */
    const tg=G.agents.find(a=>a.kind==='route'&&a.aggro&&a.s<e.s&&e.s-a.s<12&&laneOfLat(a.s,latOf(a))===cur);if(tg){L.tailT=(L.tailT||0)+dt;if(L.tailT>3&&cur>0){want=cur-1;why='Moving over to let a tailgater past'}}else L.tailT=0;
