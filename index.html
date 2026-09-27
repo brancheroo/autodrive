@@ -5384,6 +5384,46 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   postRender(){if(T.mode!=='thermal'||!game||!game.route)return;scene.overrideMaterial=hot;const ac=renderer.autoClear;renderer.autoClear=false;const mask=camera.layers.mask;camera.layers.set(HOT);renderer.render(scene,camera);camera.layers.mask=mask;renderer.autoClear=ac;scene.overrideMaterial=null;scene.background=T.bg;scene.fog=T.fog}});
 })();
 </script>
+<script>/* mods/50-sky.js */
+/* (27) Proper day/night sky and (28) moon.
+   The sky shader is extended with: a twilight band (warm orange/red toward the sun, pink-violet above) through
+   civil & nautical twilight; a procedural star field (thousands of stars of varied brightness and colour,
+   twinkling near the horizon, plus a faint Milky Way band) fading in after dusk; and a moon rendered as a lit
+   sphere – its position from a low-precision lunar ephemeris (RA/Dec → alt/az for your location and time) and
+   its phase from the Sun–Moon elongation, with faint earthshine and mottled maria. At night a bluish moonlight
+   directional light scales with the phase and the moon's altitude. */
+(function(){
+ skyMat.uniforms.night={value:0};skyMat.uniforms.twi={value:0};skyMat.uniforms.moonDir={value:new THREE.Vector3(0,-1,0)};skyMat.uniforms.stime={value:0};skyMat.uniforms.moonOn={value:0};
+ skyMat.fragmentShader=`uniform vec3 top,hor,sunDir,sunCol,moonDir;uniform float night,twi,stime,moonOn;varying vec3 vd;
+float h31(vec3 p){p=fract(p*0.3183099+vec3(.1,.2,.3));p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float n3(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(h31(i),h31(i+vec3(1,0,0)),f.x),mix(h31(i+vec3(0,1,0)),h31(i+vec3(1,1,0)),f.x),f.y),mix(mix(h31(i+vec3(0,0,1)),h31(i+vec3(1,0,1)),f.x),mix(h31(i+vec3(0,1,1)),h31(i+vec3(1,1,1)),f.x),f.y),f.z);}
+void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.45));
+ /* twilight: warm band toward the sun, rosy-violet higher up */
+ vec2 dz=normalize(d.xz+1e-5),sz=normalize(sunDir.xz+1e-5);float toward=pow(max(dot(dz,sz),0.),2.);
+ c+=twi*(vec3(1.0,0.42,0.16)*exp(-h*7.)*(0.35+0.9*toward)+vec3(0.55,0.25,0.45)*exp(-h*2.5)*0.22*(1.-toward*0.5));
+ /* stars + milky way */
+ if(night>0.01&&d.y>0.){vec3 q=d*420.;vec3 cell=floor(q);float r=h31(cell);if(r>0.9965){vec3 sp=(cell+0.5+vec3(h31(cell+3.),h31(cell+7.),h31(cell+11.))*0.4-0.2)/420.;float dd=length(d-normalize(sp))*420.;float m=smoothstep(0.9,0.,dd);float tw=0.75+0.25*sin(stime*(2.+r*9.)+r*80.)*(1.-h);float mag=pow((r-0.9965)/0.0035,3.);vec3 sc=mix(vec3(0.75,0.82,1.),vec3(1.,0.85,0.7),h31(cell+19.));c+=sc*m*(0.35+1.8*mag)*tw*night*smoothstep(0.,0.08,d.y);}
+  vec3 gal=normalize(vec3(0.35,0.55,-0.76));float band=exp(-pow(dot(d,gal),2.)*28.);c+=vec3(0.55,0.6,0.75)*band*(0.35+0.65*n3(d*40.))*0.05*night;}
+ /* moon */
+ if(moonOn>0.5){float cm=dot(d,moonDir);float R=0.024;if(cm>cos(R*1.6)){vec3 u=normalize(cross(moonDir,vec3(0.,1.,0.)+vec3(1e-4)));vec3 v=cross(u,moonDir);vec3 pp=d-moonDir*cm;vec2 xy=vec2(dot(pp,u),dot(pp,v))/R;float rr=dot(xy,xy);
+  if(rr<1.){vec3 N=xy.x*u+xy.y*v-moonDir*sqrt(1.-rr);float lit=smoothstep(-0.06,0.08,dot(N,sunDir));float maria=0.78+0.22*n3(vec3(xy*3.1,1.))-0.18*smoothstep(0.55,0.75,n3(vec3(xy*1.7,4.)));vec3 mc=vec3(0.96,0.95,0.9)*maria;float edge=smoothstep(1.,0.93,rr);
+   vec3 moonC=mc*(lit*1.25+0.035)*edge;float vis=mix(0.25,1.,night);c=mix(c,c*0.3+moonC*1.4,edge*vis);}
+  else{float glow=exp(-(1.-cm)*2600.)*0.35;c+=vec3(0.7,0.75,0.9)*glow*night;}}}
+ float s=max(dot(d,sunDir),0.);c+=sunCol*(pow(s,600.)*4.+pow(s,8.)*.25);if(vd.y<0.)c=hor;gl_FragColor=vec4(c,1.);}`;
+ skyMat.needsUpdate=true;
+ const moonLight=new THREE.DirectionalLight(0x9fb3ff,0);scene.add(moonLight);scene.add(moonLight.target);
+ function moon(date,lat,lon){const r=Math.PI/180,d=date.getTime()/86400000-10957.5;const L=(218.316+13.176396*d)*r,M=(134.963+13.064993*d)*r,F=(93.272+13.229350*d)*r;
+  const lam=L+6.289*r*Math.sin(M),bet=5.128*r*Math.sin(F),e=23.439*r;const ra=Math.atan2(Math.sin(lam)*Math.cos(e)-Math.tan(bet)*Math.sin(e),Math.cos(lam)),dec=Math.asin(Math.sin(bet)*Math.cos(e)+Math.cos(bet)*Math.sin(e)*Math.sin(lam));
+  const gmst=(18.697374558+24.06570982441908*d)%24,ha=(gmst*15+lon)*r-ra,la=lat*r;const el=Math.asin(Math.sin(la)*Math.sin(dec)+Math.cos(la)*Math.cos(dec)*Math.cos(ha)),az=Math.atan2(-Math.sin(ha),Math.tan(dec)*Math.cos(la)-Math.sin(la)*Math.cos(ha));
+  const g=(357.529+0.98560028*d)*r,q=280.459+0.98564736*d,Ls=(q+1.915*Math.sin(g)+0.020*Math.sin(2*g))*r;let ph=lam-Ls;ph=Math.atan2(Math.sin(ph),Math.cos(ph));const illum=(1-Math.cos(ph))/2;return {el,az,illum,waxing:Math.sin(ph)>0}}
+ window.SKY={moon};
+ MODS.push({id:'sky',
+  preRender(){const G=game;if(!G||!G.ego||!G.route)return;const date=new Date(G.simTime*1000),lat=toLat(G.ego.z),lon=toLon(G.ego.x),sp=sunPos(date,lat,lon),el=sp.el*180/Math.PI;
+   const U=skyMat.uniforms;U.night.value=clamp((-el-4)/10,0,1)*(1-WX.cloud*0.9);U.twi.value=clamp(1-Math.abs(el+2)/8.5,0,1)*(1-WX.cloud*0.8);U.stime.value=performance.now()/1000;
+   const m=moon(date,lat,lon),md=new THREE.Vector3(Math.cos(m.el)*Math.sin(m.az),Math.sin(m.el),-Math.cos(m.el)*Math.cos(m.az));U.moonDir.value.copy(md);U.moonOn.value=m.el>-0.05&&WX.cloud<0.85?1:0;SKY.m=m;
+   const e=G.ego;moonLight.position.set(e.x+md.x*300,e.mesh.position.y+Math.max(20,md.y*300),e.z+md.z*300);moonLight.target.position.set(e.x,e.mesh.position.y,e.z);moonLight.intensity=G.dark&&m.el>0?0.22*m.illum*Math.min(1,Math.sin(m.el)*3)*(1-WX.cloud):0}});
+})();
+</script>
 <script>/* mods/60-hyperlearn.js */
 /* Predictacar self-learning: the car's computer rewrites its own driving rules from experience.
    Its safety envelope and trajectory planner read their constants from HB (following buffer, reaction latency,
