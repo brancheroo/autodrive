@@ -4998,6 +4998,224 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   preRender(){if(T.msg&&game&&game.route&&!/🛡/.test(game.status||''))game.status=T.msg}});
 })();
 </script>
+<script>/* mods/33-roadusers.js */
+/* (8) Cyclists, (9) lane-splitting motorcycles, (10) jaywalkers & distracted pedestrians.
+   Cyclists ride near the kerb on city streets (in the bike lane where OSM tags one). The ride gives them at
+   least 1 m: it moves over inside a wide lane, changes lane on multi-lane roads, or crosses the centre line on
+   two-lane roads only when oncoming traffic is clear – otherwise it follows patiently at their speed.
+   On slow multi-lane freeways, motorcycles split lanes between you and the next lane; the ride keeps its
+   line (no lane changes while one is alongside) and eases right a touch to give room.
+   Jaywalkers step out mid-block and walk across; distracted ones look at their phone, walk slower and
+   sometimes pause in the road. Everyone – you, same-way traffic and oncoming traffic – predicts and yields. */
+(function(){
+ const RU={next:{},msg:null};window.RU=RU;const rnd=(a,b)=>a+Math.random()*(b-a);
+ const COLS=[0xd0312d,0x2d6cdf,0x2aa84a,0xf2b705,0x8e44ad,0x111111,0xeeeeee];
+ function bikeMesh(){const g=new THREE.Group(),tyre=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.7}),F=new THREE.MeshStandardMaterial({color:COLS[Math.floor(Math.random()*COLS.length)],metalness:0.5,roughness:0.35}),steel=new THREE.MeshStandardMaterial({color:0xb8bcc2,metalness:0.9,roughness:0.25});
+  const wheels=[];for(const x of [0.52,-0.52]){const w=new THREE.Group();w.position.set(x,0.34,0);const t=new THREE.Mesh(new THREE.TorusGeometry(0.33,0.028,8,28),tyre);w.add(t);for(let k=0;k<8;k++){const sp=new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.004,0.64,4),steel);sp.rotation.z=k/8*Math.PI;w.add(sp)}g.add(w);wheels.push(w)}
+  const tube=(x1,y1,x2,y2,r=0.022)=>{const L=Math.hypot(x2-x1,y2-y1),m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,L,8),F);m.position.set((x1+x2)/2,(y1+y2)/2,0);m.rotation.z=Math.atan2(y2-y1,x2-x1)-Math.PI/2;g.add(m)};
+  tube(-0.52,0.34,-0.05,0.36);tube(-0.05,0.36,0.38,0.78);tube(-0.52,0.34,-0.18,0.82);tube(-0.18,0.82,0.38,0.78);tube(-0.05,0.36,-0.18,0.82);tube(0.52,0.34,0.42,0.88,0.018);
+  const bar=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.46,6),steel);bar.rotation.x=Math.PI/2;bar.position.set(0.42,0.9,0);g.add(bar);const seat=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.05,0.12),tyre);seat.position.set(-0.2,0.86,0);g.add(seat);
+  const r=ACT.person('drive',0x2b3444);r.position.set(-0.12,-0.32,0);r.userData.fig.rotation.z=-0.42;g.add(r);const helm=new THREE.Mesh(new THREE.SphereGeometry(0.135,14,8,0,Math.PI*2,0,Math.PI/2),F);helm.position.set(0.1,1.38,0);helm.scale.set(1.25,1,1);g.add(helm);
+  g.userData.wheels=wheels;g.userData.rider=r;return g}
+ /* ---------- cyclist ---------- */
+ function cyclist(){const G=game,e=G.ego,s0=e.s+rnd(110,220);if(s0>G.route.total-60)return;const m=bikeMesh(),edge=()=>{const n=window.LANES?LANES.count(s0):1,base=ACT.lane(s0);return base+(n>1?0:0)+1.25};
+  return ACT.add({kind:'cyclist',mesh:m,s:s0,lat:edge(),v:rnd(4.5,7.5),vs:0,r:0.45,clear:1.0,gap:5,why:'🚲 Following a cyclist – no safe room to pass yet',keepBehind:120,
+   update(o,dt){o.vs=o.v;o.s+=o.v*dt;o.lat=lerp(o.lat,ACT.lane(o.s)+1.25,Math.min(1,dt));const p=ACT.place(o);for(const w of o.mesh.userData.wheels)w.rotation.z-=o.v*dt/0.34;ACT.walk(o.mesh.userData.rider,o.t*o.v/2.2);if(o.s>G.route.total-40)o.dead=true}})}
+ /* passing plan for cyclists: room inside the lane? other lane? centre line? */
+ function cyclistPass(dt){const G=game,e=G.ego;const c=ACT.list.filter(o=>o.kind==='cyclist'&&o.s>e.s-6&&o.s-e.s<45).sort((a,b)=>a.s-b.s)[0];if(!c){XB.cyc=lerp(XB.cyc||0,0,Math.min(1,dt));return null}
+  const W=G.spec.W||1.9,egoBase=ACT.lane(e.s)+(window.LANEBIAS||0)-(XB.cyc||0),need=c.lat-(c.r+1.0+W/2),shift=Math.min(0,need-egoBase); /* how far left of our normal line we must be */
+  const n=window.LANES?LANES.count(e.s):1;if(n>1){if(LANES.k===0){const b=LANES.block(e.s-5,c.s+10,0,'Changing lanes to pass a cyclist');setTimeout(()=>LANES.unblock(b),2500)}XB.cyc=0;return 'lane'}
+  if(shift>-0.9){XB.cyc=lerp(XB.cyc||0,shift,Math.min(1,dt*1.5));c.hazard=(c.lat-(e.off??0))<c.r+W/2+0.95;c.why='🚲 Moving over to give the cyclist 1 m';return 'inlane'}
+  const oneway=routeOnewayAt(e.s),clear=oneway||!G.agents.some(a=>a.kind==='oncoming'&&a.s>e.s-5&&a.s-e.s<Math.max(160,(e.v+a.v)*9));
+  if(clear&&shift>-3.2){XB.cyc=lerp(XB.cyc||0,shift,Math.min(1,dt*1.2));c.hazard=(c.lat-(e.off??0))<c.r+W/2+0.95;c.why='🚲 Crossing the centre line to give the cyclist 1 m';return 'cross'}
+  XB.cyc=lerp(XB.cyc||0,0,Math.min(1,dt));c.hazard=true;c.why='🚲 Following a cyclist – oncoming traffic, no safe room to pass';return 'follow'}
+ /* ---------- motorcycles lane splitting ---------- */
+ function moto(){const G=game,e=G.ego,n=window.LANES?LANES.count(e.s):1;if(n<2||typeof buildHarley!=='function')return;const m=buildHarley(),side=LANES.k>0&&Math.random()<0.5?1:-1;
+  return ACT.add({kind:'moto',mesh:m,s:e.s-rnd(50,90),lat:0,v:e.v+rnd(4,7),hazard:false,keepBehind:500,side,
+   update(o,dt){const E=G.ego;o.v=clamp(Math.max(o.v,E.v+3),0,E.v+8);o.s+=o.v*dt;const base=ACT.lane(o.s)+(window.LANEBIAS||0);o.lat=base+o.side*((G.spec.W||1.9)/2+0.95);ACT.place(o);if(o.s>E.s+350)o.dead=true;
+    if(Math.abs(o.s-E.s)<25)XB.moto=-o.side*0.35;else if(o.s>E.s+25)XB.moto=0}})}
+ /* ---------- jaywalker ---------- */
+ function jaywalker(){const G=game,e=G.ego,s0=e.s+rnd(55,110);if(s0>G.route.total-40)return;const phone=Math.random()<0.45,side=Math.random()<0.5?1:-1,base=ACT.lane(s0),half=(window.LANES?LANES.count(s0):1)*3.6/2+(routeOnewayAt(s0)?0:3.6);
+  const m=ACT.person(phone?'phone':'rider',COLS[Math.floor(Math.random()*COLS.length)]);let pause=phone&&Math.random()<0.5?rnd(1.5,3.5):0;
+  return ACT.add({kind:'ped',mesh:m,s:s0,lat:base+side*(half+1.2),v:phone?rnd(0.8,1.1):rnd(1.2,1.6),r:0.35,clear:0.9,gap:5,dir:-side,yaw:0,why:phone?'🚶 Stopping for a distracted pedestrian on their phone':'🚶 Stopping for a jaywalker',
+   update(o,dt){const mid=Math.abs(o.lat-base)<1.5;if(mid&&pause>0){pause-=dt;o.vl=0;ACT.walk(o.mesh,o.t,false);o.why='🚶 Pedestrian stopped in the road looking at their phone'}else{o.vl=o.dir*o.v;o.lat+=o.vl*dt;ACT.walk(o.mesh,o.t)}o.yaw=o.dir>0?-Math.PI/2:Math.PI/2;ACT.place(o);if(Math.abs(o.lat-base)>half+2&&o.t>2)o.dead=true}})}
+ MODS.push({id:'roadusers',disable(){for(const o of ACT.list.slice())if(/cyclist|moto|ped/.test(o.kind))ACT.remove(o);XB.cyc=0;XB.moto=0},
+  start(){RU.next={cyclist:rnd(40,110),moto:rnd(20,60),ped:rnd(60,150)};XB.cyc=0;XB.moto=0},
+  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on)||(typeof CHASE!=='undefined'&&CHASE.on))return;const hw=(NODEINFO.get(G.route.nodes[routeLLnh(e.s)[2]])||{}).hw||'',fwy=/motorway|trunk/.test(hw),city=!fwy&&G.limitMph<=40;
+   for(const k in RU.next){RU.next[k]-=dt;if(RU.next[k]>0)continue;RU.next[k]={cyclist:rnd(70,200),moto:rnd(30,90),ped:rnd(90,240)}[k];
+    if(k==='cyclist'&&city&&WX.snow<0.5&&ACT.list.filter(o=>o.kind==='cyclist').length<2)cyclist();
+    if(k==='moto'&&fwy&&e.v<16&&!ACT.list.some(o=>o.kind==='moto'))moto();
+    if(k==='ped'&&city&&G.limitMph<=35)jaywalker()}
+   RU.pass=cyclistPass(dt)}});
+})();
+</script>
+<script>/* mods/34-school.js */
+/* (5) School zones & school buses.
+   School zones come from real OSM school / kindergarten locations: any stretch of your route within ~150 m of
+   a school gets "SCHOOL ZONE · 20 WHEN FLASHING" signs with flashing beacons, active on weekdays 7:00–9:00 and
+   14:00–16:00 local time (limit 20 mph). A crossing guard with a STOP paddle walks children across at the
+   school crosswalk during those hours. School buses run as real traffic: they stop at kerbside stops, fold
+   out the stop arm and flash red; children get on or off. Everyone behind stops, oncoming traffic stops too
+   on undivided roads, and nobody passes until the arm folds away. */
+(function(){
+ const SC={zones:[],buses:[],next:0};window.SCHOOL=SC;const rnd=(a,b)=>a+Math.random()*(b-a);const HK=(window.PLAN_HOOKS=window.PLAN_HOOKS||[]);
+ function active(){const G=game;try{const d=new Date(G.simTime*1000),wd=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(new Intl.DateTimeFormat('en-US',{timeZone:G.tz,weekday:'short'}).format(d)),h=tzHour(d);return wd>0&&wd<6&&((h>=7&&h<9)||(h>=14&&h<16))}catch(e){return false}}
+ function beacon(){const g=new THREE.Group();for(const y of [0.25,-0.25]){const m=new THREE.Mesh(new THREE.SphereGeometry(0.12,12,8),new THREE.MeshBasicMaterial({color:0x553300}));m.position.set(0,2.95+y*0,y*1.6);g.add(m)}g.userData.lamps=g.children;return g}
+ function zoneSign(s,off,yaw){const g=ACT.sign('SCHOOL\nZONE\nSPEED\nLIMIT 20\nWHEN\nFLASHING','#f5f5f0','#111',0.9,1.5);const b=beacon();b.position.y=0.6;g.add(b);const p=ACT.pose(s,off);g.position.set(p.x,p.y,p.z);g.rotation.y=p.h-Math.PI/2+(yaw||0);g.userData.beacon=b;scene.add(g);return g}
+ function buildZones(){const G=game,R=G.route;for(const f of OSMX.feat){if(f.kind!=='school'||f._z)continue;f._z=1;const pr=projectOnRoute(R,f.lat,f.lon);if(pr.off>150)continue;
+   const s0=Math.max(0,pr.s-150),s1=Math.min(R.total,pr.s+150);if(SC.zones.some(z=>z.s0<s1&&z.s1>s0))continue;const z={s0,s1,name:f.name||'school',signs:[],guardAt:pr.s};SC.zones.push(z)}}
+ function dressZone(z){if(z.signs.length)return;const base=ACT.lane(z.s0);z.signs.push(zoneSign(z.s0,base+4.2,0));z.signs.push(zoneSign(z.s1,-base-4.2,Math.PI));const end=ACT.sign('END\nSCHOOL\nZONE','#f5f5f0','#111',0.8,0.8),p=ACT.pose(z.s1,base+4.2);end.position.set(p.x,p.y,p.z);end.rotation.y=p.h-Math.PI/2;scene.add(end);z.signs.push(end)}
+ function guard(z){const G=game;if(z.guard)return;const g=ACT.person('rider',0xe8ff2a),pad=ACT.sign('STOP','#c8102e','#fff',0.45,0.45);pad.scale.setScalar(0.5);pad.position.set(0.35,-0.2,0.3);g.add(pad);const base=ACT.lane(z.guardAt);
+  z.guard=ACT.add({kind:'guard',mesh:g,s:z.guardAt,lat:base+4,r:0.4,hazard:false,keep:true,update(o,dt){o.cycle=(o.cycle||rnd(5,20))-dt;if(o.cycle<0&&!o.crossing){o.crossing=true;o.cycle=rnd(30,70);kids(z)}const inRoad=ACT.list.some(k=>k.kind==='kid'&&k.z===z&&Math.abs(k.lat-base)<5);o.hazard=inRoad;o.why='🚸 Crossing guard stopping traffic for children';o.lat=lerp(o.lat,inRoad?base:base+4,Math.min(1,dt*0.8));if(!inRoad&&o.crossing&&!ACT.list.some(k=>k.kind==='kid'&&k.z===z))o.crossing=false;ACT.place(o);ACT.walk(o.mesh,o.t,inRoad)}})}
+ function kids(z,at,dir,count){const base=ACT.lane(at??z.guardAt),side=dir||(Math.random()<0.5?1:-1),n=count||2+Math.floor(Math.random()*4);for(let i=0;i<n;i++){const k=ACT.person('rider',[0xff5a5a,0x5aa0ff,0xffd24a,0x6ad06a][i%4]);k.scale.setScalar(0.62);
+   ACT.add({kind:'kid',z,mesh:k,s:(at??z.guardAt)+rnd(-1.5,1.5),lat:base+side*6+i*0.4*side,v:rnd(0.9,1.3),r:0.3,clear:1,gap:6,why:'🚸 Stopping for children crossing',delay:i*0.6,
+    update(o,dt){if(o.delay>0){o.delay-=dt;o.vl=0}else{o.vl=-side*o.v;o.lat+=o.vl*dt}o.yaw=side>0?Math.PI/2:-Math.PI/2;ACT.place(o);ACT.walk(o.mesh,o.t,o.delay<=0);if(Math.abs(o.lat-base)>7.5&&o.t>3)o.dead=true}})}}
+ /* ---------- school bus as real traffic ---------- */
+ function busMesh(){const spec={style:'van',L:11,W:2.5,H:3.1,wb:6,wr:0.5,top:55};const g=buildCar(spec,'#f5b400');const P=(profCache[spec.style+spec.L+spec.W+spec.H]||{}).P,half=P?P.half(0.5):1.25;
+  const t=ACT.signTex('SCHOOL BUS','#f5b400','#111',512,96);for(const s of [1,-1]){const d=new THREE.Mesh(new THREE.PlaneGeometry(5.5,1),new THREE.MeshStandardMaterial({map:t}));d.position.set(0,2.35,s*(half+0.02));d.rotation.y=s>0?0:Math.PI;g.add(d)}
+  const arm=new THREE.Group();arm.position.set(3.4,1.5,-(half+0.04));const oct=new THREE.Mesh(new THREE.CircleGeometry(0.3,8),new THREE.MeshStandardMaterial({map:ACT.signTex('STOP','#c8102e','#fff',128,128),side:THREE.DoubleSide}));oct.rotation.y=Math.PI/2;oct.position.z=-0.38;arm.add(oct);arm.rotation.y=Math.PI/2;g.add(arm);
+  const red=[],amb=[];for(const z of [0.9,-0.9])for(const [x,arr,c] of [[5.55,red,0x440000],[-5.55,red,0x440000],[5.55,amb,0x442800]]){const l=new THREE.Mesh(new THREE.SphereGeometry(0.09,10,8),new THREE.MeshBasicMaterial({color:c}));l.position.set(x,3.0-(arr===amb?0.25:0),z);g.add(l);arr.push(l)}
+  g.userData.arm=arm;g.userData.red=red;g.userData.amb=amb;return {g,spec}}
+ function spawnBus(){const G=game,e=G.ego,s0=e.s+rnd(160,300);if(s0>G.route.total-200)return;const {g,spec}=busMesh();const a=newAgent(spec,'#f5b400',s0,8,1);scene.remove(a.mesh);a.mesh=g;scene.add(g);a.spec=spec;a.off=laneOffsetAt(routeLLnh(s0)[2]);a.laneK=0;a.bus={next:s0+rnd(120,300),state:'drive',t:0};G.agents.push(a);SC.buses.push(a)}
+ HK.push((a,isEgo,lead,allow)=>{const G=game;if(a.bus){const B=a.bus,d=B.next-a.s;if(B.state==='drive'&&d<60)return {v:allow(0,Math.max(0,d)),reason:''};if(B.state!=='drive')return {v:0,force:true}}
+  for(const b of SC.buses){if(b===a||!b.bus||b.bus.state==='drive'||b.bus.state==='closing')continue;const d=b.s-a.s-(b.spec.L+(a.spec.L||4.6))/2;if(d>-2&&d<70){const lat=isEgo?(a.off??0):(a.off??1.85)+(a.offAdd||0);const same=Math.abs(lat-((b.off??1.85)+(b.offAdd||0)))<6;if(same||!routeOnewayAt(a.s)){if(isEgo)G.overtakeT=0;return {v:allow(0,Math.max(0,d-5)),reason:'🚌 School bus stopped with its stop arm out – waiting'}}}}return null});
+ const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);for(const b of SC.buses){if(!b.bus||b.bus.state==='drive'||b.bus.state==='closing')continue;if(routeOnewayAt(b.s))continue;const d=a.s-b.s-(b.spec.L+a.spec.L)/2;if(d>-2&&d<70){a.v=Math.max(0,a.v-Math.min(8,a.v*1.5)*dt);if(d<8)a.v=0}}};
+ MODS.push({id:'school',disable(){for(const z of SC.zones)for(const s of z.signs)scene.remove(s)},
+  start(){for(const z of SC.zones)for(const s of z.signs)scene.remove(s);SC.zones=[];SC.buses=[];SC.next=rnd(60,200);for(const f of OSMX.feat)delete f._z},
+  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;SC.chk=(SC.chk||0)-dt;if(SC.chk<0){SC.chk=5;buildZones()}
+   const on=active();SC.on=on;let cap=null;for(const z of SC.zones){if(z.s1<e.s-300)continue;if(z.s0-e.s<600)dressZone(z);if(on&&z.s0-e.s<400)guard(z);if(on&&e.s>z.s0-5&&e.s<z.s1){cap=20/MPH;SC.msg=`🏫 School zone (${z.name}) · 20 mph while the lights flash`}}
+   capSet('school',cap);if(cap==null)SC.msg=null;
+   const t=performance.now()/500|0;for(const z of SC.zones)for(const s of z.signs){const b=s.userData.beacon;if(b)b.userData.lamps.forEach((l,i)=>l.material.color.setHex(on&&(t+i)%2?0xffb000:0x553300))}
+   SC.next-=dt;const hw=(NODEINFO.get(G.route.nodes[routeLLnh(e.s)[2]])||{}).hw||'';if(SC.next<0){SC.next=rnd(300,700);const h=(()=>{try{return tzHour(new Date(G.simTime*1000))}catch(e){return 12}})();if(/residential|tertiary|secondary|unclassified/.test(hw)&&h>=6.5&&h<17.5&&!SC.buses.some(b=>G.agents.includes(b)))spawnBus()}
+   SC.buses=SC.buses.filter(b=>G.agents.includes(b));
+   for(const b of SC.buses){const B=b.bus,U=b.mesh.userData;B.t+=dt;
+    if(B.state==='drive'){if(b.s>=B.next-1&&b.v<0.3){B.state='opening';B.t=0}}
+    else if(B.state==='opening'){U.arm.rotation.y=lerp(U.arm.rotation.y,0,Math.min(1,dt*3));if(B.t>1.2){B.state='loading';B.t=0;kids({guardAt:b.s+2},b.s+3,1,1+Math.floor(Math.random()*3))}}
+    else if(B.state==='loading'){if(B.t>rnd(9,14)){B.state='closing';B.t=0}}
+    else if(B.state==='closing'){U.arm.rotation.y=lerp(U.arm.rotation.y,Math.PI/2,Math.min(1,dt*3));if(B.t>1.5){B.state='drive';B.next=b.s+rnd(250,700)}}
+    const flash=B.state!=='drive',k=(performance.now()/350|0)%2;U.red.forEach((l,i)=>l.material.color.setHex(flash&&B.state!=='closing'&&(i+k)%2?0xff1a1a:0x440000));U.amb.forEach((l,i)=>l.material.color.setHex(B.state==='drive'&&B.next-b.s<60&&(i+k)%2?0xffb000:0x442800))}},
+  preRender(){if(SC.msg&&game&&game.route&&!/🛡|🚌|🚸/.test(game.status||''))game.status=SC.msg}});
+})();
+</script>
+<script>/* mods/35-construction.js */
+/* (7) Construction zones. Two kinds:
+   • Multi-lane road: "RIGHT/LEFT LANE CLOSED AHEAD" warning signs, a flashing arrow-board trailer, a cone taper
+     that closes one lane over ~60 m, cones along the closed lane, workers and equipment inside it, and a work-zone
+     speed limit (45 mph freeway / 25 mph city). Your car and route traffic merge out of the closed lane early
+     (zipper style – traffic in the closed lane merges at the taper when there's a gap).
+   • Two-lane road: one lane closed with flaggers at both ends turning STOP/SLOW paddles in turn. Your car waits
+     at STOP, then on SLOW drives through (in the opposite lane if its own lane is the one closed); oncoming
+     traffic waits at its own flagger. */
+(function(){
+ const CZ={zones:[],next:0};window.WORK=CZ;const rnd=(a,b)=>a+Math.random()*(b-a);const HK=(window.PLAN_HOOKS=window.PLAN_HOOKS||[]);
+ function cone(){const g=new THREE.Group(),o=new THREE.MeshStandardMaterial({color:0xff5a00,roughness:0.55}),w=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.4,emissive:0x222222});const c=new THREE.Mesh(new THREE.ConeGeometry(0.17,0.72,16),o);c.position.y=0.38;g.add(c);for(const y of [0.42,0.25]){const b=new THREE.Mesh(new THREE.CylinderGeometry(0.1-(y-0.25)*0.25+0.02,0.12-(y-0.25)*0.25+0.02,0.07,16),w);b.position.y=y;g.add(b)}const base=new THREE.Mesh(new THREE.BoxGeometry(0.44,0.04,0.44),new THREE.MeshStandardMaterial({color:0x222222}));base.position.y=0.02;g.add(base);return g}
+ function drum(){const g=new THREE.Group(),o=new THREE.MeshStandardMaterial({color:0xff5a00,roughness:0.5}),w=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.4,emissive:0x333333});for(let i=0;i<4;i++){const m=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.3,0.24,16),i%2?w:o);m.position.y=0.14+i*0.24;g.add(m)}return g}
+ function arrowBoard(dir){const g=new THREE.Group(),frame=new THREE.Mesh(new THREE.BoxGeometry(0.15,1.3,2.4),new THREE.MeshStandardMaterial({color:0x111111}));frame.position.y=2.2;g.add(frame);const trailer=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.5,1.6),new THREE.MeshStandardMaterial({color:0xff8c00}));trailer.position.y=0.55;g.add(trailer);
+  const lamps=[],pts=[[0,-0.9],[0,-0.6],[0,-0.3],[0,0],[0,0.3],[0,0.6],[0.3,0.6],[-0.3,0.6],[0.2,0.8],[-0.2,0.8],[0.45,0.4],[-0.45,0.4]];for(const [y,z] of pts){const l=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,6),new THREE.MeshBasicMaterial({color:0x331a00}));l.position.set(0.09,2.2+y,z*dir);g.add(l);lamps.push(l)}g.userData.lamps=lamps;return g}
+ function excavator(){const g=new THREE.Group(),y=new THREE.MeshStandardMaterial({color:0xf2b705,roughness:0.6}),k=new THREE.MeshStandardMaterial({color:0x222222,roughness:0.8});const tr=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.7,2.4),k);tr.position.y=0.35;g.add(tr);const body=new THREE.Mesh(new THREE.BoxGeometry(2.6,1.2,2.2),y);body.position.y=1.3;g.add(body);const cab=new THREE.Mesh(new THREE.BoxGeometry(1.1,1.2,1),new THREE.MeshStandardMaterial({color:0x335577,roughness:0.2,metalness:0.4}));cab.position.set(0.4,2.4,-0.55);g.add(cab);
+  const b1=new THREE.Mesh(new THREE.BoxGeometry(3.2,0.35,0.35),y);b1.position.set(2.2,2.4,0.4);b1.rotation.z=0.5;g.add(b1);const b2=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.3,0.3),y);b2.position.set(4,1.7,0.4);b2.rotation.z=-0.9;g.add(b2);const bk=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.6,0.9),k);bk.position.set(4.6,0.6,0.4);g.add(bk);g.userData.arm=b2;return g}
+ const put=(m,s,lat,yaw=0,dy=0)=>{const p=ACT.pose(s,lat);m.position.set(p.x,p.y+dy,p.z);m.rotation.y=p.h+yaw;if(!m.parent)scene.add(m);return m};
+ function makeZone(){const G=game,e=G.ego,s0=e.s+rnd(420,700),len=rnd(160,320);if(s0+len>G.route.total-100)return;const n=window.LANES?LANES.count(s0):1,fwy=/motorway|trunk/.test((NODEINFO.get(G.route.nodes[routeLLnh(s0)[2]])||{}).hw||''),base=ACT.lane(s0),z={s0,s1:s0+len,objs:[],n,fwy,limit:(fwy?45:25)/MPH};
+  const sign=(txt,s,lat,diamond=true)=>{const g=ACT.sign(txt,'#ff8c00','#111',1.1,1.1,diamond);put(g,s,lat,-Math.PI/2);z.objs.push(g)};
+  if(n>=2){const closeK=Math.random()<0.6?0:n-1;z.type='lane';z.k=closeK;const laneLat=k=>base-k*3.6,cl=laneLat(closeK),edgeSide=closeK===0?1:-1;
+   sign(`${closeK===0?'RIGHT':'LEFT'}\nLANE\nCLOSED\nAHEAD`,s0-350,closeK===0?base+4.4:laneLat(n-1)-4.4);sign('ROAD\nWORK\nAHEAD',s0-600,base+4.4);sign(`WORK ZONE\n${fwy?45:25} MPH`,s0-120,base+4.4,false);
+   const ab=arrowBoard(closeK===0?-1:1);put(ab,s0-10,cl,-Math.PI/2);z.objs.push(ab);z.board=ab;
+   for(let d=0;d<=60;d+=5){const lat=cl+edgeSide*1.8-edgeSide*3.6*(d/60),c=cone();put(c,s0+d,lat);z.objs.push(c);ACT.add({kind:'cone',s:s0+d,lat,r:0.22,clear:0.35,gap:3,hazard:true,keep:true,why:'🚧 Merging out of the closed lane',update(){}}).s1=z.s1}
+   for(let d=65;d<len;d+=12){const c=d%36<12?drum():cone(),lat=cl-edgeSide*1.8;put(c,s0+d,lat);z.objs.push(c);ACT.add({kind:'cone',s:s0+d,lat,r:0.28,clear:0.3,gap:3,hazard:true,keep:true,update(){}})}
+   const ex=excavator();put(ex,s0+len*0.5,cl,Math.random()*0.6);z.objs.push(ex);z.ex=ex;for(let i=0;i<3;i++){const w=ACT.person('rider',0xe8ff2a);const hat=new THREE.Mesh(new THREE.SphereGeometry(0.13,10,6,0,Math.PI*2,0,Math.PI/2),new THREE.MeshStandardMaterial({color:0xffd000}));hat.position.y=1.45;w.add(hat);put(w,s0+len*(0.3+i*0.2),cl+rnd(-0.8,0.8),rnd(0,6));z.objs.push(w)}
+   z.block=LANES.block(s0-20,z.s1,closeK,`${closeK===0?'Right':'Left'} lane closed ahead – merging`)}
+  else{z.type='flag';const ownClosed=Math.random()<0.5,cl=ownClosed?base:-base;z.ownClosed=ownClosed;z.phase=Math.random()<0.5?'ours':'theirs';z.pt=rnd(10,30);
+   sign('ROAD\nWORK\nAHEAD',s0-300,base+4.4);sign('ONE LANE\nROAD\nAHEAD',s0-160,base+4.4);sign('BE\nPREPARED\nTO STOP',s0-60,base+4.4);
+   for(let d=0;d<len;d+=8){const c=cone(),lat=cl+(ownClosed?-1.7:1.7);put(c,s0+d,lat);z.objs.push(c);ACT.add({kind:'cone',s:s0+d,lat,r:0.22,clear:0.25,gap:3,hazard:true,keep:true,update(){}})}
+   const ex=excavator();put(ex,s0+len*0.5,cl,0.3);z.objs.push(ex);z.ex=ex;
+   z.flag=[];for(const [s,lat,yaw] of [[s0-8,base+3.6,Math.PI],[z.s1+8,-base-3.6,0]]){const f=ACT.person('rider',0xff6a00),pad=new THREE.Mesh(new THREE.CircleGeometry(0.28,8),new THREE.MeshStandardMaterial({map:ACT.signTex('STOP','#c8102e','#fff',128,128),side:THREE.DoubleSide})),pole=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,1.8,6),new THREE.MeshStandardMaterial({color:0x777777}));pole.position.set(0.3,0.9,0.3);f.add(pole);pad.position.set(0.3,1.9,0.3);pad.rotation.y=Math.PI/2;f.add(pad);put(f,s,lat,yaw);z.objs.push(f);z.flag.push({m:f,pad})}
+   z.stopT=ACT.signTex('STOP','#c8102e','#fff',128,128);z.slowT=ACT.signTex('SLOW','#ff8c00','#111',128,128)}
+  CZ.zones.push(z)}
+ function remZone(z){for(const m of z.objs)scene.remove(m);if(z.block)LANES.unblock(z.block);for(const o of ACT.list.slice())if(o.kind==='cone'&&o.s>=z.s0-1&&o.s<=z.s1+1)ACT.remove(o);XB.work=0}
+ HK.push((a,isEgo,lead,allow)=>{const G=game;for(const z of CZ.zones){const d=z.s0-a.s;if(d>250||a.s>z.s1)continue;let r=null;
+   if(z.type==='flag'){const stop=z.phase!=='ours';if(stop&&d>-2){r={v:allow(0,Math.max(0,d-14)),reason:'👷 Flagger holding traffic – one lane road'}}}
+   if(a.s>z.s0-120){const v=d>0?allow(z.limit,d):z.limit;if(!r||v<r.v)r={v,reason:r?r.reason:`🚧 Work zone · ${Math.round(z.limit*MPH)} mph`}}
+   if(r)return r}return null});
+ const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);for(const z of CZ.zones){if(z.type!=='flag')continue;const d=a.s-z.s1;if(z.phase!=='theirs'&&d>-2&&d<60){a.v=Math.max(0,a.v-Math.min(8,a.v)*dt*1.5);if(d<16)a.v=0}if(a.s>z.s0&&a.s<z.s1+2)a.v=Math.min(a.v,z.limit)}};
+ MODS.push({id:'construction',disable(){for(const z of CZ.zones)remZone(z);CZ.zones=[]},
+  start(){for(const z of CZ.zones)remZone(z);CZ.zones=[];CZ.next=rnd(90,300);XB.work=0},
+  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;CZ.next-=dt;if(CZ.next<0){CZ.next=rnd(500,1100);if(!CZ.zones.length&&!(typeof CHASE!=='undefined'&&CHASE.on))makeZone()}
+   let xb=0;for(const z of CZ.zones.slice()){if(z.s1<e.s-150){remZone(z);CZ.zones.splice(CZ.zones.indexOf(z),1);continue}
+    if(z.board){const on=(performance.now()/450|0)%2;z.board.userData.lamps.forEach(l=>l.material.color.setHex(on?0xffb000:0x331a00))}if(z.ex&&z.ex.userData.arm)z.ex.userData.arm.rotation.z=-0.9+Math.sin(performance.now()/1400)*0.35;
+    if(z.type==='flag'){z.pt-=dt;const oncIn=G.agents.some(a=>a.kind==='oncoming'&&a.s>z.s0-3&&a.s<z.s1+3),egoIn=e.s>z.s0-3&&e.s<z.s1+3;if(z.pt<0&&!(z.phase==='ours'&&egoIn)&&!(z.phase==='theirs'&&oncIn)){z.phase=z.phase==='ours'?'theirs':'ours';z.pt=z.phase==='ours'?rnd(25,40):rnd(20,35)}
+     z.flag[0].pad.material.map=z.phase==='ours'?z.slowT:z.stopT;z.flag[1].pad.material.map=z.phase==='ours'?z.stopT:z.slowT;
+     if(z.ownClosed&&e.s>z.s0-40&&e.s<z.s1+10&&z.phase==='ours')xb=-2*ACT.lane(e.s)}}
+   XB.work=lerp(XB.work||0,xb,Math.min(1,dt*1.2));
+   /* zipper: route cars in a closed lane merge at the taper when there's room */
+   for(const a of G.agents){if(a.kind!=='route')continue;for(const z of CZ.zones){if(z.type!=='lane'||a.laneK!==z.k||a.s<z.s0-200||a.s>z.s1)continue;const tk=z.k===0?1:z.k-1;if(!G.agents.some(b=>b!==a&&b.kind==='route'&&b.laneK===tk&&Math.abs(b.s-a.s)<9)&&!(LANES.k===tk&&Math.abs(e.s-a.s)<9))a.laneK=tk;else if(z.s0-a.s<25)a.v=Math.max(0,a.v-3*dt)}}}});
+})();
+</script>
+<script>/* mods/36-events.js */
+/* (13) Failures the self-driving system must handle, at random (every ~15–30 min of driving) or on demand from
+   the ⚠️ menu:
+   • Tyre blowout – bang, car shakes and pulls, hazards on, controlled stop on the shoulder, 45 s to fit the
+     space-saver spare (one wheel visibly swapped), then limited to 50 mph.
+   • Brake fade – braking force drops to 55 %: the car doubles its following gap, lowers speed, and uses
+     engine/regen braking early; recovers after the brakes cool (~2 min of gentle driving).
+   • Sensor failure – one sensor drops out (lidar, radar or front camera). Perception range falls, speed is
+     capped to what the remaining sensors can safely see, and a warning shows until it recalibrates. */
+(function(){
+ const EV={cur:null,next:0};window.FAIL=EV;const rnd=(a,b)=>a+Math.random()*(b-a);
+ function bang(){try{const C=audio.ctx;if(!C||!audio.master)return;const b=C.createBuffer(1,C.sampleRate*0.4,C.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(C.sampleRate*0.05));const s=C.createBufferSource(),g=C.createGain();g.gain.value=0.9;s.buffer=b;s.connect(g);g.connect(audio.master);s.start()}catch(e){}}
+ function flatWheel(on){const w=(game.ego.mesh.userData.wheels||[])[1];if(!w)return;const t=w.spin||w;t.scale.y=on?0.78:1;if(!on&&t.children)t.traverse(o=>{if(o.isMesh&&o.material&&o.material.color){o.material=o.material.clone();o.material.color.multiplyScalar(0.7)}})}
+ function start(kind){const G=game,S=sensorsOf();kind=kind||['blowout','fade','sensor'][Math.floor(Math.random()*3)];if(EV.cur)stop();
+  if(kind==='blowout'){EV.cur={kind,t:0,phase:'pull'};bang();CRASH.shake=0.7;flatWheel(true)}
+  if(kind==='fade'){EV.cur={kind,t:0,heat:1};window.EGO_DECEL=0.55}
+  if(kind==='sensor'){const opts=[S.lidar&&'lidar',S.radar&&'radar','front camera'].filter(Boolean),which=opts[Math.floor(Math.random()*opts.length)];EV.cur={kind,t:0,which,dur:rnd(70,120)};window.SENSOR_FAULT=which==='lidar'?0.35:which==='radar'?0.7:0.5}
+  banner()}
+ function stop(){const c=EV.cur;if(!c)return;if(c.kind==='fade')window.EGO_DECEL=null;if(c.kind==='sensor')window.SENSOR_FAULT=null;if(c.kind==='blowout'){XB.fail=0;window.SIGOVR=0}capSet('fail',null);EV.cur=null;banner()}
+ function banner(){const b=UIX.banner('failBan','top:128px;left:50%;transform:translateX(-50%);background:#8a1c1ce6;color:#fff;padding:6px 14px;border-radius:9px');b.style.display=EV.cur?'block':'none';if(EV.cur)b.textContent=msg()}
+ function msg(){const c=EV.cur;if(!c)return '';if(c.kind==='blowout')return {pull:'🛞 Tyre blowout! Hazards on, pulling onto the shoulder',fix:`🛞 Stopped on the shoulder – fitting the spare (${Math.max(0,Math.ceil(45-c.t))} s)`,limp:'🛞 Space-saver spare fitted · limited to 50 mph'}[c.phase];
+  if(c.kind==='fade')return `🔥 Brake fade – braking at ${Math.round((window.EGO_DECEL||1)*100)} %, longer gaps, gentle speed`;return `📡 ${c.which} failure – perception at ${Math.round((window.SENSOR_FAULT||1)*100)} %, speed capped`}
+ const menu=()=>{let d=document.getElementById('failMenu');if(d){d.remove();return}d=UIX.banner('failMenu','top:50%;left:50%;transform:translate(-50%,-50%);z-index:9998;background:#0e141df5;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:12px 16px;pointer-events:auto;font:13px system-ui');
+  d.innerHTML='<b>⚠️ Trigger a failure</b><br>'+[['blowout','🛞 Tyre blowout'],['fade','🔥 Brake fade'],['sensor','📡 Sensor failure'],['clear','✅ Clear current failure']].map(([k,t])=>`<button data-k="${k}" style="display:block;width:100%;margin-top:6px;padding:7px;border-radius:8px">${t}</button>`).join('');d.querySelectorAll('button').forEach(b=>b.onclick=()=>{b.dataset.k==='clear'?stop():start(b.dataset.k);d.remove()})};
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!isEgo||!EV.cur)return null;const c=EV.cur;
+  if(c.kind==='fade'&&lead){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2,want=(4+3.2*a.v);return {v:Math.sqrt(Math.max(0,lead.v*lead.v+2*3*Math.max(0,gap-want))),reason:msg()}}
+  if(c.kind==='sensor'){const S=sensorsOf(),R=Math.min(maxRange(S),250)*(window.SENSOR_FAULT||1)*WX.perc;return {v:Math.sqrt(2*3*Math.max(0,R*0.5)),reason:msg()}}return null});
+ MODS.push({id:'failures',disable:stop,
+  start(){stop();EV.next=rnd(900,1800);UIX.btn('failBtn','⚠️','Trigger a failure (blowout, brake fade, sensor)',menu)},
+  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;EV.next-=dt;if(EV.next<0){EV.next=rnd(900,1800);if(!EV.cur&&e.v>8&&!(typeof CHASE!=='undefined'&&CHASE.on))start()}
+   const c=EV.cur;if(!c)return;c.t+=dt;
+   if(c.kind==='blowout'){window.SIGOVR=2;if(c.phase==='pull'){XB.fail=lerp(XB.fail||0,(window.LANES?(LANES.count(e.s)-1)*0:0)+2.6,Math.min(1,dt*0.8));capSet('fail',Math.max(0,e.v-3.5*dt*3));if(c.t<1.5)CHASE.evade=(CHASE.evade||0)+Math.sin(c.t*20)*0.05;if(e.v<0.3&&c.t>3){c.phase='fix';c.t=0}}
+    else if(c.phase==='fix'){capSet('fail',0);if(c.t>45){c.phase='limp';c.t=0;flatWheel(false)}}else{XB.fail=lerp(XB.fail||0,0,Math.min(1,dt));window.SIGOVR=0;capSet('fail',50/MPH);if(c.t>600)stop()}}
+   if(c.kind==='fade'){c.heat=Math.max(0,c.heat-dt/120*(e.acc>-1?1:-0.5));window.EGO_DECEL=0.55+0.45*(1-c.heat);capSet('fail',Math.max(12,speedLimitAt(routeLLnh(e.s)[2])/MPH*0.8));if(c.heat<=0)stop()}
+   if(c.kind==='sensor'&&c.t>c.dur)stop();
+   const b=document.getElementById('failBan');if(b&&EV.cur)b.textContent=msg()},
+  preRender(){if(EV.cur&&game&&game.route&&!/🛡/.test(game.status||''))game.status=msg()}});
+})();
+</script>
+<script>/* mods/37-control.js */
+/* (14) Driving-style selector – Grandma / Chill / Normal / Assertive / Sporty / Express – on the start screen and
+   as a HUD control you can change mid-ride; it changes acceleration, speed vs. the limit and following gap.
+   (15) Manual take-over: press H (or the 🕹 button). A chime sounds and autopilot disengages: ↑ throttle,
+   ↓ brake, ← → steer across the lanes. Take-over is refused if a collision is imminent; press H again and the
+   system re-engages after checking the lane. Your car keeps physical collisions while you drive. */
+(function(){
+ Object.assign(DRIVE_P,{Grandma:{acc:0.5,spd:0.88,gap:1.8},Sporty:{acc:1.45,spd:1.1,gap:0.7}});
+ const STY=[['Grandma','👵 Grandma'],['Chill','🌿 Chill'],['Standard','🙂 Normal'],['Assertive','💪 Assertive'],['Sporty','🏁 Sporty'],['Express','⚡ Express']];
+ UIX.section('Driving style',`<select id="styleSel" style="width:100%;${UIX.sel}">${STY.map(([k,t])=>`<option value="${k}">${t}</option>`).join('')}</select><div style="font-size:11px;color:var(--dim)">Grandma: slow &amp; huge gaps · Sporty: quick with tight gaps · Express: chase-style driving, no police.</div>`,/Graphics quality/);
+ const ss=document.getElementById('styleSel');ss.value=UIX.load('style','Standard');
+ function apply(v){UIX.save('style',v);ss.value=v;const h=document.getElementById('styleHud');if(h)h.value=v;if(!game||!game.route){return}if(v==='Express'){DRIVE.profile='Assertive';if(!EXPRESS.on)expressToggle()}else{DRIVE.profile=v;if(EXPRESS.on)expressToggle()}}
+ ss.onchange=()=>apply(ss.value);
+ const M={on:false,keys:{}};window.MANUAL=M;
+ function chime(up){try{const C=audio.ctx;if(!C||!audio.master)return;for(const [f,t] of (up?[[660,0],[990,0.12]]:[[990,0],[660,0.12]])){const o=C.createOscillator(),g=C.createGain();o.frequency.value=f;g.gain.setValueAtTime(0.0001,C.currentTime+t);g.gain.exponentialRampToValueAtTime(0.25,C.currentTime+t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,C.currentTime+t+0.3);o.connect(g);g.connect(audio.master);o.start(C.currentTime+t);o.stop(C.currentTime+t+0.35)}}catch(e){}}
+ function ban(){const b=UIX.banner('manBan','top:92px;left:50%;transform:translateX(-50%);background:#1b6ef3e6;color:#fff;padding:6px 14px;border-radius:9px');b.style.display=M.on?'block':'none';b.textContent='🕹 YOU ARE DRIVING · ↑ throttle · ↓ brake · ← → steer · H to hand back to autopilot'}
+ function toggle(){const G=game;if(!G||!G.route)return;if(!M.on){const risk=G.hp&&G.hp.risk===1;if(risk){G.status='⚠️ Take-over refused – collision avoidance active';return}M.on=true;M.lat=0;chime(false)}else{M.on=false;chime(true);G.status='🤖 Autopilot re-engaged'}ban()}
+ addEventListener('keydown',ev=>{if(/^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName)||!game||!game.route)return;if(ev.key==='h'||ev.key==='H')toggle();if(M.on&&/^Arrow/.test(ev.key)){M.keys[ev.key]=true;ev.preventDefault()}});
+ addEventListener('keyup',ev=>{delete M.keys[ev.key]});
+ MODS.push({id:'control',
+  start(){M.on=false;M.keys={};ban();apply(ss.value);UIX.btn('manBtn','🕹','Take over / hand back (H)',toggle);
+   const host=document.getElementById('menuBtn');if(host&&!document.getElementById('styleHud')){const s=document.createElement('select');s.id='styleHud';s.title='Driving style';s.innerHTML=STY.map(([k,t])=>`<option value="${k}">${t}</option>`).join('');s.value=ss.value;s.onchange=()=>apply(s.value);s.style.cssText='background:#0e141d;color:#e8eef5;border:1px solid #2a3a52;border-radius:8px;padding:4px';host.parentElement.insertBefore(s,host)}},
+  postPlan(dt){const G=game,e=G.ego;if(!M.on)return;const K=M.keys,acc=K.ArrowUp?Math.min(4.5,(G.spec.hp||300)/100):K.ArrowDown?-8:-0.35;e.v=clamp(e.v+acc*dt,0,(typeof G.spec.top==='number'?G.spec.top:85)/MPH);e.acc=acc;
+   const steer=(K.ArrowRight?1:0)-(K.ArrowLeft?1:0);M.lat=clamp((M.lat||0)+steer*2.4*dt,-6,4);XB.manual=M.lat;window.SIGOVR=steer?steer:0;G.status='🕹 Manual driving'},
+  sim(){if(!M.on)XB.manual=lerp(XB.manual||0,0,0.02)}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
