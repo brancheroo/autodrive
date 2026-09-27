@@ -4400,16 +4400,23 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
  const _na=window.newAgent;window.newAgent=function(){const a=_na.apply(this,arguments);try{if(a&&a.mesh&&!/^(harley)$/.test(a.spec&&a.spec.style))bake(a.mesh)}catch(e){console.warn('bake',e)}return a};
  if(typeof buildCop==='function'){const _bc=window.buildCop;window.buildCop=function(){const g=_bc.apply(this,arguments);try{bake(g)}catch(e){}return g}}
  /* ---------- 2. perception camera via render target ---------- */
- const _rp=window.renderPerception;let rt=null,fr=0;const bcam=new THREE.OrthographicCamera(-1,1,1,-1,0,1),bscene=new THREE.Scene(),bmat=new THREE.MeshBasicMaterial({toneMapped:true,depthTest:false,depthWrite:false});bscene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bmat));
+ const _rp=window.renderPerception;let rt=null,fr=0;const bcam=new THREE.OrthographicCamera(-1,1,1,-1,0,1),bscene=new THREE.Scene(),bmat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,uniforms:{map:{value:null},mode:{value:0},t:{value:0}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
+  fragmentShader:`uniform sampler2D map;uniform float mode,t;varying vec2 vUv;
+   vec3 aces(vec3 x){return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.,1.);}
+   vec3 ironbow(float v){v=clamp(v,0.,1.);vec3 a=vec3(0.02,0.0,0.08),b=vec3(0.45,0.05,0.55),c=vec3(0.95,0.35,0.05),d=vec3(1.,0.85,0.25),e=vec3(1.);return v<0.25?mix(a,b,v/0.25):v<0.55?mix(b,c,(v-0.25)/0.3):v<0.8?mix(c,d,(v-0.55)/0.25):mix(d,e,(v-0.8)/0.2);}
+   void main(){vec3 c=texture2D(map,vUv).rgb;if(mode<0.5){c=pow(aces(c*0.82),vec3(1./2.2));}
+    else if(mode<1.5){float l=dot(pow(aces(c*3.2),vec3(1./2.2)),vec3(.3,.59,.11));l=pow(l,0.8)*(0.85+0.15*sin(vUv.y*540.))*(1.-0.6*pow(length(vUv-.5)*1.4,2.))+fract(sin(dot(vUv*t,vec2(12.9,78.2)))*43758.)*0.06;c=vec3(0.15,1.,0.25)*l;}
+    else{float l=dot(c,vec3(.3,.59,.11));c=ironbow(l*1.15);}
+    gl_FragColor=vec4(c,1.);}`}); /* perception blit: tone-map + sRGB here (the render target is linear), or night-vision / ironbow thermal for the Predictacar's vision modes */bscene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bmat));
  window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const wrap=document.getElementById('cvWrap');if(wrap&&(getComputedStyle(wrap).visibility==='hidden'||wrap.style.display==='none'))return; /* hidden (photo mode etc.) */const r=area.getBoundingClientRect();if(r.width<10||r.height<10)return;
   const t=tier(),every=t==='ultra'?2:t==='high'?3:4,scale=t==='ultra'?0.85:t==='high'?0.7:0.5,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
-  if(!rt||rt.width!==W||rt.height!==H){if(rt)rt.dispose();rt=new THREE.WebGLRenderTarget(W,H,{samples:0});bmat.map=rt.texture;bmat.needsUpdate=true;fr=0}
+  if(!rt||rt.width!==W||rt.height!==H){if(rt)rt.dispose();rt=new THREE.WebGLRenderTarget(W,H,{samples:0});bmat.uniforms.map.value=rt.texture;fr=0}
   const realRender=renderer.render;fr++;
   if(fr%every===1||every===1){const au=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;const prev=renderer.getRenderTarget();
-   renderer.render=function(sc,cam){if(cam===cvCam){renderer.setRenderTarget(rt);renderer.setScissorTest(false);renderer.setViewport(0,0,W,H);realRender.call(renderer,sc,cam);renderer.setRenderTarget(prev)}else realRender.call(renderer,sc,cam)};
+   renderer.render=function(sc,cam){if(cam===cvCam){renderer.setRenderTarget(rt);renderer.setScissorTest(false);renderer.setViewport(0,0,W,H);const rr=(a,b)=>realRender.call(renderer,a,b);if(window.THERMAL)THERMAL.render(rr,sc,cam);else rr(sc,cam);renderer.setRenderTarget(prev)}else realRender.call(renderer,sc,cam)};
    try{_rp()}finally{renderer.render=realRender;renderer.shadowMap.autoUpdate=au}}
   else{renderer.render=function(sc,cam){if(cam!==cvCam)realRender.call(renderer,sc,cam)};try{_rp()}finally{renderer.render=realRender}} /* overlay only */
-  const y=innerHeight-r.bottom;renderer.setScissorTest(true);renderer.setViewport(r.left,y,r.width,r.height);renderer.setScissor(r.left,y,r.width,r.height);const ac=renderer.autoClear;renderer.autoClear=false;renderer.render(bscene,bcam);renderer.autoClear=ac;renderer.setScissorTest(false);renderer.setViewport(0,0,innerWidth,innerHeight)};
+  bmat.uniforms.mode.value=window.THERMAL?THERMAL.shaderMode():0;bmat.uniforms.t.value=performance.now()/1000%100;const y=innerHeight-r.bottom;renderer.setScissorTest(true);renderer.setViewport(r.left,y,r.width,r.height);renderer.setScissor(r.left,y,r.width,r.height);const ac=renderer.autoClear;renderer.autoClear=false;renderer.render(bscene,bcam);renderer.autoClear=ac;renderer.setScissorTest(false);renderer.setViewport(0,0,innerWidth,innerHeight)};
  /* ---------- 3. shadow map cadence ---------- */
  let sf=0;
  MODS.push({id:'perf',
@@ -5536,26 +5543,25 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
 })();
 </script>
 <script>/* mods/42-thermal.js */
-/* (25) Predictacar vision modes – 🌡 cycles Normal → Night vision → Thermal.
-   Night vision: image-intensifier look – brightened green phosphor with scan-line grain and a vignette.
-   Thermal: a two-pass render. Pass 1 draws the world with a cool "ambient temperature" material; pass 2 re-draws
-   only warm things (people, animals, running vehicles – hot hood, tyres, exhaust) with a hot material on top of the
-   same depth buffer, so they glow exactly where they're visible. An SVG colour map turns the result into an
-   "ironbow" palette (black → purple → orange → white-hot). */
+/* (25) Predictacar vision modes for the PERCEPTION CAMERA – 🌡 cycles Normal → Night vision → Thermal.
+   Only the perception panel changes; your main view stays normal.
+   Thermal: the perception camera renders the world with a dark "ambient temperature" material, then re-draws only warm
+   things (people, animals, cyclists, running vehicles) with a hot material on the same depth buffer, and the panel maps
+   brightness to an ironbow palette (black → purple → orange → white-hot). Night vision: brightened green phosphor with
+   scan lines and a vignette. */
 (function(){
  const T={mode:'off'};window.THERMAL=T;const HOT=5;
- const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('width','0');svg.setAttribute('height','0');svg.style.position='absolute';
- svg.innerHTML=`<filter id="ironbow" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 1 0"/><feComponentTransfer><feFuncR type="table" tableValues="0 0.25 0.55 0.85 1 1 1"/><feFuncG type="table" tableValues="0 0 0.05 0.25 0.55 0.85 1"/><feFuncB type="table" tableValues="0.05 0.35 0.55 0.35 0.1 0.2 0.9"/></feComponentTransfer></filter>`;document.body.appendChild(svg);
- const grain=UIX.banner('nvGrain','inset:0;z-index:3;display:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px),radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.75) 100%);mix-blend-mode:multiply');
- const cold=new THREE.MeshLambertMaterial({color:0x0e0e0e,emissive:0x050505}), /* ambient-temperature world stays dark so only warm bodies glow */hot=new THREE.MeshBasicMaterial({color:0xffffff}),warm=new THREE.MeshBasicMaterial({color:0xb0b0b0});
- function tagHot(){const G=game;const mark=(o,lvl)=>{if(!o)return;o.traverse(c=>{if(c.isMesh){c.layers.enable(HOT);c.userData.heat=lvl}})};
-  for(const a of G.agents)if(a.mesh&&!a.mesh.userData._hot){a.mesh.userData._hot=1;mark(a.mesh,a.v>0.5||a.kind!=='parked'?0.8:0.5)}for(const p of G.peds)if(p.mesh&&!p.mesh.userData._hot){p.mesh.userData._hot=1;mark(p.mesh,1)}
-  if(window.ACT)for(const o of ACT.list)if(o.mesh&&!o.mesh.userData._hot&&/ped|kid|guard|cyclist|moto/.test(o.kind)){o.mesh.userData._hot=1;mark(o.mesh,1)}if(typeof CHAOS!=='undefined'&&CHAOS.on)for(const a of CHAOS.animals||[])if(a.mesh&&!a.mesh.userData._hot){a.mesh.userData._hot=1;mark(a.mesh,1)}}
- function setMode(m){T.mode=m;const c=renderer.domElement;c.style.filter=m==='thermal'?'url(#ironbow) contrast(1.15)':m==='nv'?'grayscale(1) brightness(2.6) contrast(1.35) sepia(1) hue-rotate(58deg) saturate(3.2)':'';grain.style.display=m==='nv'?'block':'none';const b=document.getElementById('thermBtn');if(b)b.textContent=m==='thermal'?'🌡 Thermal':m==='nv'?'🌙 Night vision':'🌡';}
+ const cold=new THREE.MeshLambertMaterial({color:0x0e0e0e,emissive:0x050505}),hot=new THREE.MeshBasicMaterial({color:0xffffff});
+ function tagHot(){const G=game;const mark=o=>{if(!o)return;o.traverse(c=>{if(c.isMesh)c.layers.enable(HOT)})};
+  for(const a of G.agents)if(a.mesh&&!a.mesh.userData._hot){a.mesh.userData._hot=1;mark(a.mesh)}for(const p of G.peds)if(p.mesh&&!p.mesh.userData._hot){p.mesh.userData._hot=1;mark(p.mesh)}
+  if(window.ACT)for(const o of ACT.list)if(o.mesh&&!o.mesh.userData._hot&&/ped|kid|guard|cyclist|moto|animal|fan|bot/.test(o.kind)){o.mesh.userData._hot=1;mark(o.mesh)}if(typeof CHAOS!=='undefined'&&CHAOS.on)for(const a of CHAOS.animals||[])if(a.mesh&&!a.mesh.userData._hot){a.mesh.userData._hot=1;mark(a.mesh)}}
+ /* called by the perception render (mods/02b-perf.js) in place of a normal render of the perception camera */
+ T.render=(render,sc,cam)=>{if(T.mode!=='thermal'){render(sc,cam);return}tagHot();const bg=sc.background,fog=sc.fog,ac=renderer.autoClear;sc.background=null;sc.fog=null;renderer.setClearColor(0x050505,1);sc.overrideMaterial=cold;render(sc,cam);
+  sc.overrideMaterial=hot;renderer.autoClear=false;const mask=cam.layers.mask;cam.layers.set(HOT);render(sc,cam);cam.layers.mask=mask;renderer.autoClear=ac;sc.overrideMaterial=null;sc.background=bg;sc.fog=fog};
+ T.shaderMode=()=>T.mode==='thermal'?2:T.mode==='nv'?1:0;
+ function setMode(m){T.mode=m;const b=document.getElementById('thermBtn');if(b)b.textContent=m==='thermal'?'🌡 Thermal':m==='nv'?'🌙 Night vision':'🌡';const t=document.getElementById('cvTitle');if(t&&m!=='off')t.textContent='PERCEPTION · '+(m==='thermal'?'THERMAL':'NIGHT VISION')}
  MODS.push({id:'thermal',disable(){setMode('off')},
-  start(){setMode('off');if(game.spec.hyper)UIX.btn('thermBtn','🌡','Vision: normal / night vision / thermal',()=>setMode(T.mode==='off'?'nv':T.mode==='nv'?'thermal':'off'));else{const b=document.getElementById('thermBtn');if(b)b.remove()}},
-  preRender(){if(T.mode!=='thermal'||!game||!game.route)return;tagHot();scene.overrideMaterial=cold;T.bg=scene.background;scene.background=null;renderer.setClearColor(0x050505,1);T.fog=scene.fog;scene.fog=null},
-  postRender(){if(T.mode!=='thermal'||!game||!game.route)return;scene.overrideMaterial=hot;const ac=renderer.autoClear;renderer.autoClear=false;const mask=camera.layers.mask;camera.layers.set(HOT);renderer.render(scene,camera);camera.layers.mask=mask;renderer.autoClear=ac;scene.overrideMaterial=null;scene.background=T.bg;scene.fog=T.fog}});
+  start(){setMode('off');renderer.domElement.style.filter='';if(game.spec.hyper)UIX.btn('thermBtn','🌡','Perception camera: normal / night vision / thermal',()=>setMode(T.mode==='off'?'nv':T.mode==='nv'?'thermal':'off'));else{const b=document.getElementById('thermBtn');if(b)b.remove()}}});
 })();
 </script>
 <script>/* mods/50-sky.js */
