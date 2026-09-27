@@ -4934,7 +4934,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!A.list.length)return null;const W=a.spec.W||1.9,lat=isEgo?(a.off??A.lane(a.s)):((a.off??1.85)+(a.offAdd||0));const c=A.conflict(a.s+(a.spec.L||4.6)/2,a.v,1,lat,W);if(!c)return null;return {v:allow(c.vo,c.d),reason:c.o.why||'Yielding'}});
  window.ONC_HOOK=(a,dt)=>{if(!A.list.length)return;const c=A.conflict(a.s-(a.spec.L||4.6)/2,a.v,-1,-1.9+(a.offAdd||0),a.spec.W||1.9);if(c){const v=Math.sqrt(Math.max(0,c.vo*c.vo+2*4*c.d));if(v<a.v)a.v=Math.max(0,a.v-Math.min(7,(a.v-v)*2)*dt)}};
  MODS.push({id:'actors',
-  start(){for(const o of A.list.slice())A.remove(o);for(const k in XB)delete XB[k]},
+  start(){for(const o of A.list.slice())A.remove(o);for(const k in XB)delete XB[k];A.route=null},
   sim(dt){const G=game,e=G.ego;if(!G.route)return;if(A.route!==G.route){const first=!A.route;A.route=G.route;if(!first){for(const o of A.list.slice())A.remove(o);modCall('reroute')}} /* route changed: route-relative things are invalid – every pack rebuilds */
    for(const o of A.list.slice()){o.t+=dt;try{o.update&&o.update(o,dt)}catch(err){console.error(err);A.remove(o);continue}
    if(o.dead||(o.s!=null&&o.s<e.s-(o.keepBehind||200)&&!o.keep)||(o.ttl&&o.t>o.ttl)){A.remove(o)}}}});
