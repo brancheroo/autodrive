@@ -5021,7 +5021,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    for(let k=want,step=0;step<n;step++){if(!blocked(k,e.s-10,e.s+250))break;const b=blocked(k,e.s-10,e.s+250);why=b.why||'Lane closed ahead';k=k>0?k-1:k+1;if(k<0||k>=n)break;want=k}
    L.tk=clamp(want,0,n-1);L.why=why;
    if(L.tk!==L.k&&L.cool<=0&&!(window.DRV&&DRV.manual)){const nk=L.k+Math.sign(L.tk-L.k);if(gapOK(nk)){L.k=nk;L.cool=8;L.chg=3;L.slowT=0;L.clearT=0}else if(why)L.why=why+' · waiting for a gap'}
-   let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;const tgt=-L.k*L.laneW+xb;window.LANEBIAS=lerp(window.LANEBIAS||0,tgt,Math.min(1,dt*0.7));L.chg-=dt;window.SIGOVR=L.chg>0||L.tk!==L.k?(L.tk>L.k||L.chg>0&&tgt<(window.LANEBIAS||0)-0.3?-1:1):0;if(Math.abs(tgt-window.LANEBIAS)<0.3&&L.tk===L.k)window.SIGOVR=0},
+   let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;const tgt=-L.k*L.laneW+xb;window.LANEBIAS=lerp(window.LANEBIAS||0,tgt,Math.min(1,dt*(DRIVE.profile==='Comfort'?0.4:0.7))); /* comfort: slower, gentler lane changes */L.chg-=dt;window.SIGOVR=L.chg>0||L.tk!==L.k?(L.tk>L.k||L.chg>0&&tgt<(window.LANEBIAS||0)-0.3?-1:1):0;if(Math.abs(tgt-window.LANEBIAS)<0.3&&L.tk===L.k)window.SIGOVR=0},
   preRender(){const st=game&&game.status||'';if(L.why&&game&&game.route&&(L.tk!==L.k||Math.abs(-L.k*L.laneW-(window.LANEBIAS||0))>0.4)&&(/^(Cruising|Following vehicle)/.test(st)||!st))game.status='↔️ '+L.why}});
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(isEgo){if(L.k>0&&L.tk<L.k){for(let x=10;x<200;x+=10)if(L.count(a.s+x)<=L.k)return {v:allow(0,Math.max(0,x-8)),reason:'↔️ Our lane ends – waiting for a gap to merge'}}return null}if(!a.dropWait)return null;let d=40;for(let x=10;x<200;x+=10)if(L.count(a.s+x)<=a.laneK){d=x;break}return {v:allow(0,Math.max(0,d-8))}}); /* lane ends and no gap yet: stop short of the end rather than squeeze */
  /* courtesy for mergers + stay out of the ramp car's way */
@@ -5280,11 +5280,13 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    system re-engages after checking the lane. Your car keeps physical collisions while you drive. */
 (function(){
  Object.assign(DRIVE_P,{Grandma:{acc:0.5,spd:0.88,gap:1.8},Sporty:{acc:1.45,spd:1.1,gap:0.7}});
- const STY=[['Grandma','👵 Grandma'],['Chill','🌿 Chill'],['Standard','🙂 Normal'],['Assertive','💪 Assertive'],['Sporty','🏁 Sporty'],['Express','⚡ Express']];
- UIX.section('Driving style',`<select id="styleSel" style="width:100%;${UIX.sel}">${STY.map(([k,t])=>`<option value="${k}">${t}</option>`).join('')}</select><div style="font-size:11px;color:var(--dim)">Grandma: slow &amp; huge gaps · Sporty: quick with tight gaps · Express: chase-style driving, no police.</div>`,/Graphics quality/);
- const ss=document.getElementById('styleSel');ss.value=UIX.load('style','Standard');
- function apply(v){UIX.save('style',v);ss.value=v;const h=document.getElementById('styleHud');if(h)h.value=v;if(!game||!game.route){return}if(v==='Express'){DRIVE.profile='Assertive';if(!EXPRESS.on)expressToggle()}else{DRIVE.profile=v;if(EXPRESS.on)expressToggle()}}
+ const STY=[['Standard','🙂 Normal'],['Comfort','🛋 Comfort'],['Express','⚡ Express']];
+ UIX.section('Driving style',`<select id="styleSel" style="width:100%;${UIX.sel}">${STY.map(([k,t])=>`<option value="${k}">${t}</option>`).join('')}</select><div style="font-size:11px;color:var(--dim)">Comfort: smooth and gentle, minimal g-forces · Express: chase-style driving, no police.</div>`,/Graphics quality/);
+ const ss=document.getElementById('styleSel');{const v=UIX.load('style','Standard');ss.value=STY.some(x=>x[0]===v)?v:'Standard'}
+ function apply(v){if(!STY.some(x=>x[0]===v))v='Standard';UIX.save('style',v);ss.value=v;const h=document.getElementById('styleHud');if(h)h.value=v;if(!game||!game.route)return;if(v==='Express'){DRIVE.profile='Assertive';if(!EXPRESS.on)expressToggle()}else{DRIVE.profile=v;if(EXPRESS.on)expressToggle()}}
  ss.onchange=()=>apply(ss.value);
+ /* E cycles Normal → Comfort → Express (replaces the old Express toggle key) */
+ addEventListener('keydown',ev=>{if(/^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName)||!game||!game.route)return;if(ev.key==='e'||ev.key==='E'){ev.stopImmediatePropagation();const i=STY.findIndex(x=>x[0]===ss.value);apply(STY[(i+1)%STY.length][0])}},true);
  const M={on:false,keys:{}};window.MANUAL=M;
  function chime(up){try{const C=audio.ctx;if(!C||!audio.master)return;for(const [f,t] of (up?[[660,0],[990,0.12]]:[[990,0],[660,0.12]])){const o=C.createOscillator(),g=C.createGain();o.frequency.value=f;g.gain.setValueAtTime(0.0001,C.currentTime+t);g.gain.exponentialRampToValueAtTime(0.25,C.currentTime+t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,C.currentTime+t+0.3);o.connect(g);g.connect(audio.master);o.start(C.currentTime+t);o.stop(C.currentTime+t+0.35)}}catch(e){}}
  function ban(){const b=UIX.banner('manBan','top:92px;left:50%;transform:translateX(-50%);background:#1b6ef3e6;color:#fff;padding:6px 14px;border-radius:9px');b.style.display=M.on?'block':'none';b.textContent='🕹 YOU ARE DRIVING · ↑ throttle · ↓ brake · ← → steer · H to hand back to autopilot'}
@@ -5293,7 +5295,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  addEventListener('keyup',ev=>{delete M.keys[ev.key]});
  MODS.push({id:'control',
   start(){M.on=false;M.keys={};ban();apply(ss.value);UIX.btn('manBtn','🕹','Take over / hand back (H)',toggle);
-   const host=document.getElementById('menuBtn');if(host&&!document.getElementById('styleHud')){const s=document.createElement('select');s.id='styleHud';s.title='Driving style';s.innerHTML=STY.map(([k,t])=>`<option value="${k}">${t}</option>`).join('');s.value=ss.value;s.onchange=()=>apply(s.value);s.style.cssText='background:#0e141d;color:#e8eef5;border:1px solid #2a3a52;border-radius:8px;padding:4px';host.parentElement.insertBefore(s,host)}},
+   const eb=document.getElementById('expBtn');if(eb&&!document.getElementById('styleHud')){const s=document.createElement('select');s.id='styleHud';s.title='Driving style (E)';s.innerHTML=STY.map(([k,t])=>`<option value="${k}">${t}</option>`).join('');s.value=ss.value;s.onchange=()=>apply(s.value);s.style.cssText='background:#0e141d;color:#e8eef5;border:1px solid #2a3a52;border-radius:8px;padding:4px 6px;font:inherit';eb.replaceWith(s)} /* replaces the ⚡ Express button */},
   postPlan(dt){const G=game,e=G.ego;if(!M.on)return;const K=M.keys,acc=K.ArrowUp?Math.min(4.5,(G.spec.hp||300)/100):K.ArrowDown?-8:-0.35;e.v=clamp(e.v+acc*dt,0,(typeof G.spec.top==='number'?G.spec.top:85)/MPH);e.acc=acc;
    const steer=(K.ArrowRight?1:0)-(K.ArrowLeft?1:0);M.lat=clamp((M.lat||0)+steer*2.4*dt,-6,4);XB.manual=M.lat;window.SIGOVR=steer?steer:0;G.status='🕹 Manual driving'},
   sim(){if(!M.on)XB.manual=lerp(XB.manual||0,0,0.02)}});
