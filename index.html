@@ -3594,7 +3594,7 @@ function tripToggle(){let on=true;try{on=localStorage.getItem('tripPanel')!=='of
 setTimeout(()=>{let on=true;try{on=localStorage.getItem('tripPanel')!=='off'}catch(e){}tripApply(on)},0);
 function techToggle(){TECH.on?techStop():techStart()}
 function aifmStop(){AIFM.on=false;clearInterval(AIFM.timer);try{speechSynthesis.cancel()}catch(e){}if(AIFM.ctx)AIFM.ctx.suspend();aifmUI()}
-function aifmToggle(){if(!AIFM.on&&TECH.on)techStop();if(RADIO.playing&&!AIFM.on)radioStop();AIFM.on?aifmStop():aifmStart()}
+function aifmToggle(){if(!AIFM.on&&TECH.on)techStop();if(RADIO.playing&&!AIFM.on)radioStop();AIFM.on?aifmStop():aifmStart();try{if(window.UIX)UIX.save('aiRadio',AIFM.on)}catch(e){}}
 function aifmSkip(){try{speechSynthesis.cancel()}catch(e){}if(AIFM.on){if(AIFM.ctx.state==='suspended')AIFM.ctx.resume();aifmLoad()}aifmUI()}
 function aifmLoad(){const S=aifmGenerate(),C=AIFM.ctx;AIFM.S=S;AIFM.song++;AIFM.arr=aifmArrange(S);AIFM.bars=AIFM.arr.reduce((a,s)=>a+s[1],0);AIFM.stepDur=60/S.bpm/4;AIFM.step=0;AIFM.next=C.currentTime+0.15;AIFM.t0=AIFM.next;
  const sc=S.minor||S.blues?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];AIFM.scale=sc;AIFM.rng=rng(Math.floor(Math.random()*1e9));if(AIFM.voxDelay)AIFM.voxDelay.delayTime.value=Math.min(1.9,60/S.bpm*0.75);AIFM.line='';AIFM.nextLine='';AIFM.mel=null}
@@ -6663,7 +6663,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    81: 📻 cycles FM stations for the region – call letters (K… west of the Mississippi, W… east), a genre that
        fits the region, a generated DJ who talks about the city, the weather and the traffic between tunes. */
 (function(){
- const AU={voices:[],navOn:UIX.load('navVoice',true),fm:null,lastNav:{},beltT:0};window.AUDIOX=AU;
+ const AU={voices:[],navOn:UIX.load('navVoice2',false),fm:null,lastNav:{},beltT:0};window.AUDIOX=AU;
  const C=()=>audio&&audio.ctx,M=()=>audio&&audio.master;
  const say=(t,rate=1.02,vol=0.9)=>{try{if(!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(t);u.rate=rate;u.volume=vol;speechSynthesis.speak(u)}catch(e){}};
  /* ---------- 76 spatial engines ---------- */
@@ -6686,7 +6686,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  const pop=()=>{const c=C();if(!c)return;const b=c.createBuffer(1,c.sampleRate*0.08,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(c.sampleRate*0.01));const s=c.createBufferSource(),g=c.createGain();g.gain.value=0.35;s.buffer=b;s.connect(g);g.connect(M());s.start()};
  let lastSig=0,lastBlink=false,bridgeD=0,gravel=null,rattle=null,squeal=null,singT=0;
  MODS.push({id:'audiox',disable(){for(const v of AU.voices)v.g.gain.value=0;AU.fm=null},
-  start(){AU.lastNav={};AU.beltT=1.2;AU.fm=null;UIX.btn('navBtn',AU.navOn?'🧭':'🧭̸','Navigation voice on/off',function(){AU.navOn=!AU.navOn;UIX.save('navVoice',AU.navOn);this.textContent=AU.navOn?'🧭':'🧭̸'});UIX.btn('fmBtn','📻','Local radio: cycle / off',radio)},
+  start(){AU.lastNav={};AU.beltT=1.2;AU.fm=null;setTimeout(()=>{try{if(UIX.load('aiRadio',true)&&typeof AIFM!=='undefined'&&!AIFM.on&&typeof aifmToggle==='function')aifmToggle()}catch(e){}},1200); /* AI Radio (sung lyrics) plays by default */UIX.btn('navBtn',AU.navOn?'🧭':'🧭̸','Navigation voice on/off',function(){AU.navOn=!AU.navOn;UIX.save('navVoice2',AU.navOn);this.textContent=AU.navOn?'🧭':'🧭̸'});UIX.btn('fmBtn','📻','Local radio: cycle / off',radio)},
   frame(){const G=game;if(!G||!G.route||!G.ego||!C())return;const c=C(),dt=1/60,e=G.ego;listener();
    if(AU.beltT>0){AU.beltT-=dt;if(AU.beltT<=0)chime()}
    /* 76 engines */
