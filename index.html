@@ -6122,21 +6122,20 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  const C=Object.assign({seat:'default',n:0,kids:0,mood:'calm',cat:false,parrot:false},UIX.load('cabin',{}));window.CABIN=C;const save=()=>UIX.save('cabin',C);const rnd=(a,b)=>a+Math.random()*(b-a),pick=a=>a[Math.floor(Math.random()*a.length)];
  const opt=(v,t)=>`<option value="${v}">${t}</option>`;
  UIX.section('Passengers',`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
-  <select id="cSeat" style="${UIX.sel}">${opt('default','Your seat: usual')+opt('driver','Your seat: driver')+opt('front','Your seat: front passenger')+opt('rearL','Your seat: rear left')+opt('rearR','Your seat: rear right')}</select>
   <select id="cMood" style="${UIX.sel}">${opt('calm','Mood: calm')+opt('nervous','Mood: nervous passenger')+opt('thrill','Mood: thrill-seeker')}</select>
   <label>Companions <input id="cN" type="number" min="0" max="3" style="width:44px;${UIX.sel}"></label><label>…of which kids <input id="cK" type="number" min="0" max="3" style="width:44px;${UIX.sel}"></label>
   <label><input type="checkbox" id="cCat"> Cat in a carrier</label><label><input type="checkbox" id="cParrot"> Parrot on your shoulder</label></div>`,/Time trial/);
- for(const [id,k,p,num] of [['cSeat','seat','value'],['cMood','mood','value'],['cN','n','value',1],['cK','kids','value',1],['cCat','cat','checked'],['cParrot','parrot','checked']]){const el=document.getElementById(id);el[p]=C[k];el.addEventListener('change',()=>{C[k]=num?clamp(+el.value||0,0,3):el[p];if(k==='kids')C.kids=Math.min(C.kids,C.n);save()})}
+ for(const [id,k,p,num] of [['cMood','mood','value'],['cN','n','value',1],['cK','kids','value',1],['cCat','cat','checked'],['cParrot','parrot','checked']]){const el=document.getElementById(id);el[p]=C[k];el.addEventListener('change',()=>{C[k]=num?clamp(+el.value||0,0,3):el[p];if(k==='kids')C.kids=Math.min(C.kids,C.n);save()})}
  /* seat → eye position (interior camera + your rider follow it) */
  const SEATS={driver:[0,-1],front:[0,1],rearL:[1,-1],rearR:[1,1]};
- const _ep=window.eyePos;window.eyePos=function(spec){const e=_ep(spec);if(!C.ready||!game||!game.spec||spec!==game.spec||C.seat==='default'||spec.style==='pod'||spec.hyper)return e;const [row,side]=SEATS[C.seat];const out=e.clone();out.z=side*spec.W*0.2;if(row){out.x-=0.95;out.y-=0.03}return out};
- function mySeat(){const spec=game.spec;if(C.seat!=='default')return C.seat;return spec.driver?'driver':'front'}
+ C.seat='driver';const _ep=window.eyePos;window.eyePos=function(spec){const e=_ep(spec);if(!C.ready||!game||!game.spec||spec!==game.spec||spec.style==='pod'||spec.hyper)return e;const out=e.clone();out.z=-spec.W*0.2;return out}; /* you always ride in the driver's seat (front left) */
+ function mySeat(){return 'driver'}
  /* companions */
  const NAMES=['Maya','Jordan','Priya','Leo','Sam','Aiko','Diego','Grace','Omar','Zoe','Theo','Nia'];const KIDN=['Lily','Max','Ava','Noah','Ruby','Eli'];
  const PASS=[];let bubbleT=0,chatT=0,wtT=0,areT=0,lastLog=0,sick=0,act=null;
  function bubble(who,txt){const el=UIX.banner('paxSay','left:50%;bottom:160px;transform:translateX(-50%);background:#fffffff0;color:#111;padding:7px 12px;border-radius:14px;font:600 13px system-ui;max-width:60vw;box-shadow:0 4px 16px #0006;transition:opacity .4s');el.textContent=`${who}: ${txt}`;el.style.opacity=1;clearTimeout(el._t);el._t=setTimeout(()=>el.style.opacity=0,4200)}
  function seatPos(spec,seat){const e=_ep(spec),[row,side]=SEATS[seat];return new THREE.Vector3(e.x-(row?0.95:0),e.y-0.02-(row?0.03:0),side*spec.W*0.2)}
- function spawnCompanions(){const G=game,spec=G.spec,m=G.ego.mesh,mine=mySeat();for(const p of PASS)m.remove(p.g);PASS.length=0;const free=['front','rearL','rearR','driver'].filter(s=>s!==mine&&!(s==='driver'&&spec.driver));
+ function spawnCompanions(){const G=game,spec=G.spec,m=G.ego.mesh,mine=mySeat();for(const p of PASS)m.remove(p.g);PASS.length=0;const free=['front','rearL','rearR'];
   for(let i=0;i<Math.min(C.n,free.length);i++){const kid=i<C.kids,seat=free[i],d=buildDriver(spec,'rider',seat,seatPos(spec,seat));if(kid){d.scale.setScalar(0.72);d.position.y-=0.18}m.add(d);PASS.push({g:d,kid,name:kid?pick(KIDN):pick(NAMES),seat,rating:5})}}
  /* pets */
  let cat=null,parrot=null;function pets(){const G=game,spec=G.spec,m=G.ego.mesh;if(cat){m.remove(cat);cat=null}if(parrot&&parrot.parent)parrot.parent.remove(parrot);parrot=null;
