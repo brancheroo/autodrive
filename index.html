@@ -4993,7 +4993,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  function spawnMerger(sM){const G=game,e=G.ego;const sp=pickSpec();const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],Math.max(e.s+5,sM-120-Math.random()*60),Math.max(15,e.v*0.9),1);a.off=laneOffsetAt(routeLLnh(a.s)[2]);a.merge={sM,state:'ramp'};a.laneK=-1;G.agents.push(a);return a}
  MODS.push({id:'lanes',
   start(){L.k=0;L.tk=0;L.blocks=[];mergeSeen=new Set();window.LANEBIAS=0;window.SIGOVR=0},
-  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;const n=L.count(e.s);L.cool-=dt;
+  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;const n=L.count(e.s);L.cool-=dt;const smart=smartOn(); /* smart planner (Predictacar / satellite) chooses its own lateral line relative to the lane centre – an extra offset here would desync its plan from where the car really is */
    /* traffic lanes: spread new route cars across lanes; they pass slower cars; keep offsets inside the road */
    for(const a of G.agents){if(a.kind==='route'&&!a.loose){const na=L.count(a.s);if(a.laneK==null)a.laneK=Math.floor(Math.random()*na);
      if(a.merge){const m=a.merge,d=m.sM-a.s;if(m.state==='ramp'){a.laneK=-1;if(d<70){const ok=!G.agents.some(b=>b!==a&&b.kind==='route'&&(b.laneK||0)===0&&Math.abs(b.s-a.s)<9)&&!(L.k===0&&Math.abs(e.s-a.s)<9);if(ok){m.state='in';a.laneK=0}else if(d<15)a.v=Math.max(0,a.v-4*dt)}}}
@@ -5003,6 +5003,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
     else if(a.kind==='oncoming')a.offAdd=(a.wobble||0)}
    /* merge points ahead on freeways */
    const hw=(ni(e.s).hw||'');if(/motorway|trunk/.test(hw)){const ends=linkEnds(),R=G.route,i0=routeLLnh(e.s)[2];for(let i=i0;i<R.nodes.length&&R.cum[i]-e.s<600;i++){const id=R.nodes[i];if(R.cum[i]-e.s<200||mergeSeen.has(id))continue;const w=ends.get(id);if(w&&!R.nodes.includes(w.nodes[0])){mergeSeen.add(id);if(Math.random()<0.8)spawnMerger(R.cum[i])}}}
+   if(smart){L.k=0;L.tk=0;L.why='';window.LANEBIAS=lerp(window.LANEBIAS||0,0,Math.min(1,dt*2));window.SIGOVR=0;return}
    /* ride lane choice */
    if(n<=1&&L.k>0){if(gapOK(L.k-1)){L.k--;L.cool=3;L.chg=3}L.tk=0;L.why='Lane ends – merging right';window.SIGOVR=1;const tgt=-L.k*L.laneW;window.LANEBIAS=lerp(window.LANEBIAS||0,tgt,Math.min(1,dt*0.7));return}
    if(n<=1){L.tk=0;L.k=0;L.why='';let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;window.LANEBIAS=lerp(window.LANEBIAS||0,xb,Math.min(1,dt*0.8));window.SIGOVR=Math.abs(xb)>0.8?(xb<0?-1:1):0;return}
