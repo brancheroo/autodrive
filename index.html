@@ -4937,7 +4937,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  const egoLanes=()=>{const G=game,e=G.ego,base=laneOffsetAt(routeLLnh(e.s)[2]),x=(base-(e.off??base))/L.laneW;return new Set([Math.floor(x+0.35),Math.ceil(x-0.35)])}; /* lanes the ride's body actually occupies */
  const laneFree=(a,k,d)=>!game.agents.some(b=>b!==a&&b.kind==='route'&&!b.loose&&laneOfLat(b.s,latOf(b))===k&&Math.abs(b.s-a.s)<d)&&!(egoLanes().has(k)&&Math.abs(game.ego.s-a.s)<d+2);
  function gapOK(k,dir){const G=game,e=G.ego;for(const a of G.agents){if(a.kind!=='route'||a.loose)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;const d=a.s-e.s,need=d>0?8+Math.max(0,e.v-a.v)*1.5:10+Math.max(0,a.v-e.v)*3;if(Math.abs(d)<need)return false}
-  if(window.ACT)for(const o of ACT.list)if(o.kind==='moto'&&Math.abs(o.s-e.s)<25)return false;return true}
+  if(window.ACT)for(const o of ACT.list)if(o.kind==='moto'&&Math.abs(o.s-e.s)<25)return false;const bsz=window.BLINDSPOT&&BLINDSPOT();if(bsz&&(k>L.k?bsz.L:bsz.R))return false;return true} /* never change into an occupied blind spot */
  function upcomingTurn(prep){const G=game,e=G.ego;for(const st of G.route.steps){const d=st.s-e.s;if(d<0)continue;if(d>prep)break;if(st.type==='arrive'||st.type==='depart')continue;const m=st.mod||'';if(/left/.test(m)&&!/slight/.test(m))return {side:-1,d,st};if(/right/.test(m)&&!/slight/.test(m))return {side:1,d,st};if(/off ramp|fork/.test(st.type)&&/slight left/.test(m))return {side:-1,d,st};if(/off ramp|fork/.test(st.type)&&/slight right/.test(m))return {side:1,d,st}}return null}
  function leadIn(k,range){const G=game,e=G.ego;let best=null;for(const a of G.agents){if(a.kind!=='route'||a.loose||a.s<=e.s||a.s-e.s>range)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;if(!best||a.s<best.s)best=a}return best}
  /* ---------- merge points: on-ramp links joining the route ---------- */
@@ -5301,6 +5301,64 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   preRender(){const G=game;if(!G||!G.route||!G.ego||!V.ov)return;const cam=document.getElementById('cvCam'),r=cam.getBoundingClientRect(),dpr=devicePixelRatio,W=Math.round(r.width*dpr),H=Math.round(r.height*dpr);if(V.ov.width!==W||V.ov.height!==H){V.ov.width=W;V.ov.height=H}const x=V.ov.getContext('2d');
    V.frame=(V.frame||0)+1;if(V.frame%3)return;x.clearRect(0,0,W,H);let dets=[];try{dets=detections()}catch(e){}
    if(V.mode==='lidar'&&!(sensorsOf().lidar)){x.fillStyle='#02060a';x.fillRect(0,0,W,H);x.fillStyle='#9fe';x.font=`${11*dpr}px system-ui`;x.fillText('This car has no lidar',10*dpr,20*dpr)}else if(V.mode==='radar'&&!(sensorsOf().radar)){x.fillStyle='#020a06';x.fillRect(0,0,W,H);x.fillStyle='#9fe';x.font=`${11*dpr}px system-ui`;x.fillText('This car has no radar',10*dpr,20*dpr)}else if(V.mode==='lidar')drawLidar(x,W,H);else if(V.mode==='radar')drawRadar(x,W,H,dets);else{if(V.heat)drawHeat(x,W,H,dets);drawLabels(x,W,H,dets)}}});
+})();
+</script>
+<script>/* mods/41-sensorlogic.js */
+/* (19) Sensor-failure toggles, (20) blind-spot monitoring, (21) occlusion reasoning, (22) traffic-light recognition
+   with confidence, (23) sign reading with optional speech.
+   19: 🔧 menu: cover the lidar, switch off the radar, blind the front camera. Perception, the planner's speed and
+       the views all respond; with every sensor gone the car hazards-on stops.
+   20: blind-spot zones either side behind the mirrors, drawn on the road in exterior views and lit amber when a
+       vehicle, motorcycle or cyclist is in them; mirror icons in the HUD; lane changes wait for a clear zone.
+   21: big vehicles stopped or parked at the kerb (vans, buses, trucks, parked cars) hide whoever may be behind
+       them. The car slows to a speed from which it could stop if a child stepped out, and says why.
+   22: every traffic light ahead is read with a confidence from distance, weather, glare/dirt and sensor faults.
+       If the light can't be read well enough close to the stop line, the car slows until it can.
+   23: speed limits, stop and yield signs, school / work zones are read out on screen (and spoken if 🗣 is on). */
+(function(){
+ const SL={off:UIX.load('sensOff',{}),speak:UIX.load('signSpeak',false),read:[]};window.SLOGIC=SL;
+ const _so=window.sensorsOf;window.sensorsOf=function(){const S=_so();if(!SL.off.lidar&&!SL.off.radar&&!SL.off.cam)return S;const o={...S};if(SL.off.lidar)o.lidar=0;if(SL.off.radar)o.radar=0;if(SL.off.cam)o.cam=Math.min(o.cam||0,8);o.wedges=(S.wedges||[]).filter(w=>!(SL.off.lidar&&/lidar/.test(w[3]))&&!(SL.off.radar&&/radar/.test(w[3]))&&!(SL.off.cam&&/cam/.test(w[3])));return o};
+ function menu(){let d=document.getElementById('sensMenu');if(d){d.remove();return}d=UIX.banner('sensMenu','top:50%;left:50%;transform:translate(-50%,-50%);z-index:9998;background:#0e141df5;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:12px 16px;pointer-events:auto;font:13px system-ui;min-width:260px');
+  const S=_so();d.innerHTML='<b>🔧 Sensor faults</b> <button id="smX" style="float:right">✕</button>'+[['lidar','Cover the lidar',S.lidar],['radar','Switch off the radar',S.radar],['cam','Blind the front camera',S.cam]].map(([k,t,has])=>`<label style="display:flex;gap:8px;padding:4px 0;opacity:${has?1:0.45}"><input type="checkbox" data-k="${k}" ${SL.off[k]?'checked':''} ${has?'':'disabled'}> ${t}${has?'':' (not fitted)'}</label>`).join('')+'<div style="font-size:11px;opacity:.7;margin-top:4px">The car drives only as fast as what it can still see allows.</div>';
+  d.querySelector('#smX').onclick=()=>d.remove();d.querySelectorAll('input').forEach(i=>i.onchange=()=>{SL.off[i.dataset.k]=i.checked;UIX.save('sensOff',SL.off)})}
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow,look,idx)=>{if(!isEgo)return null;const G=game;let best=null;const put=(v,reason)=>{if(!best||v<best.v)best={v,reason}};
+  /* 19: degraded sensing */
+  if(SL.off.lidar||SL.off.radar||SL.off.cam){const S=sensorsOf(),R=Math.min(maxRange(S),250)*WX.perc*(window.SENSOR_FAULT||1);if(R<10)put(allow(0,Math.max(0,look*0.1)),'🔧 All forward sensors blind – stopping with hazards on');else put(Math.sqrt(2*3*R*0.5),`🔧 Degraded sensing (${Math.round(R)} m) – speed capped`)}
+  /* 21: occlusion */
+  const occ=SL.occ;if(occ)put(occ.v,occ.why);
+  /* 22: unreadable light */
+  const lt=SL.lights&&SL.lights[0];if(lt&&lt.d<70&&lt.conf<0.5)put(allow(4,Math.max(0,lt.d-25)),`🚦 Can't read the light clearly (${Math.round(lt.conf*100)} %) – slowing`);
+  return best});
+ const bs={L:null,R:null};
+ function bsZones(){const m=game.ego.mesh;if(bs.L&&bs.L.parent===m)return;const spec=game.spec;for(const side of ['L','R']){const g=new THREE.Mesh(new THREE.PlaneGeometry(6,3.2),new THREE.MeshBasicMaterial({color:0xffb000,transparent:true,opacity:0,depthWrite:false}));g.rotation.x=-Math.PI/2;g.position.set(-spec.L/2-2.2,0.06,(side==='L'?-1:1)*(spec.W/2+1.7));m.add(g);bs[side]=g}}
+ function hud(){let h=document.getElementById('bsHud');if(!h){h=UIX.banner('bsHud','top:70px;left:50%;transform:translateX(-50%);font:700 16px system-ui;display:flex;gap:220px;pointer-events:none');h.innerHTML='<span id="bsL" style="opacity:.15">◀ 🚗</span><span id="bsR" style="opacity:.15">🚗 ▶</span>'}return h}
+ const say=t=>{if(!SL.speak||!window.speechSynthesis)return;try{const u=new SpeechSynthesisUtterance(t);u.rate=1.05;u.volume=0.8;speechSynthesis.speak(u)}catch(e){}};
+ function readSign(key,text,spoken,conf){if(SL.read[0]&&SL.read[0].key===key)return;SL.read.unshift({key,text,conf,t:performance.now()});SL.read=SL.read.slice(0,4);say(spoken);draw()}
+ function draw(){let d=document.getElementById('signRead');const w=document.getElementById('cvWrap');if(!w)return;if(!d){d=document.createElement('div');d.id='signRead';d.style.cssText='font:600 10px system-ui;background:#0b0f16d9;color:#e8eef5;padding:3px 6px;display:flex;flex-wrap:wrap;gap:4px';w.appendChild(d)}
+  const L=(SL.lights||[]).slice(0,3).map(l=>`<span style="padding:1px 5px;border-radius:5px;background:${l.state==='R'?'#8a1c1c':l.state==='Y'?'#8a6a00':'#1c6b3a'}">🚦 ${l.state==='R'?'RED':l.state==='Y'?'YELLOW':'GREEN'} ${Math.round(l.d)} m · ${Math.round(l.conf*100)} %</span>`).join('');
+  const S=SL.read.filter(r=>performance.now()-r.t<15000).map(r=>`<span style="padding:1px 5px;border-radius:5px;background:#243447">🪧 ${r.text}${r.conf?` · ${Math.round(r.conf*100)} %`:''}</span>`).join('');d.innerHTML=L+S+`<button id="spk" title="Read signs aloud" style="margin-left:auto;font:10px system-ui;padding:0 5px">${SL.speak?'🗣 on':'🗣 off'}</button>`;d.querySelector('#spk').onclick=()=>{SL.speak=!SL.speak;UIX.save('signSpeak',SL.speak);draw()}}
+ let lastLim=null,t2=0;
+ MODS.push({id:'sensorlogic',
+  start(){bs.L=bs.R=null;lastLim=null;SL.read=[];UIX.btn('sensBtn','🔧','Sensor faults: cover lidar / radar / camera',menu)},
+  sim(dt){const G=game,e=G.ego;if(!G.route)return;t2-=dt;if(t2>0)return;t2=0.25;const fx=Math.cos(e.head),fz=-Math.sin(e.head),W=(G.spec.W||1.9)/2,S=sensorsOf(),camQ=(window.CAMQ??1)*(window.SENSOR_FAULT||1)*(SL.off.cam?0.15:1);
+   /* 20 blind spots */
+   const occ={L:false,R:false},cand=[...G.agents.filter(a=>a.mesh).map(a=>({x:a.x,z:a.z})),...(window.ACT?ACT.list.filter(o=>o.mesh&&/cyclist|moto/.test(o.kind)).map(o=>({x:o.mesh.position.x,z:o.mesh.position.z})):[])];
+   for(const c of cand){const dx=c.x-e.x,dz=c.z-e.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;if(f<-(G.spec.L/2+6)||f>-(G.spec.L/2)+1.5)continue;if(Math.abs(l)<W+0.2||Math.abs(l)>W+3.6)continue;occ[l<0?'L':'R']=true}SL.bs=occ;
+   /* 21 occlusion: kerbside big vehicles / parked cars ahead */
+   SL.occ=null;const lim=speedLimitAt(routeLLnh(e.s)[2]);if(lim<=35&&!(typeof CHASE!=='undefined'&&CHASE.on)){const occl=[];for(const a of G.agents){if(!a.mesh||a.kind==='way')continue;const big=(a.spec.H||1.5)>1.9||(a.spec.L||4.6)>5.5;if(a.v>1.5&&!big)continue;occl.push({x:a.x,z:a.z,L:a.spec.L||4.6,big,what:big?(a.bus?'bus':(a.spec.L||0)>7?'truck':'van'):'car'})}
+    if(window.PARKQ)for(const q of PARKQ)if(q.used)occl.push({x:q.x,z:q.z,L:4.6,big:false,what:'parked car'});
+    for(const o of occl){const dx=o.x-e.x,dz=o.z-e.z,f=dx*fx+dz*fz,l=Math.abs(-dx*fz+dz*fx);if(f<3||f>45||l<W+1.2||l>W+5)continue;const gapLat=l-W-1.1,front=f-o.L/2,vStop=Math.sqrt(2*4*Math.max(0,front-2))+Math.max(0,gapLat)*1.8,v=clamp(vStop,4,lim/MPH);if(!SL.occ||v<SL.occ.v)SL.occ={v,why:`👀 A child might step out from behind that ${o.what} – covering the brake`}}}
+   /* 22 lights */
+   SL.lights=(G.upcoming||[]).filter(u=>u.type==='signal').map(u=>{const d=Math.hypot(u.x-e.x,u.z-e.z),glare=document.getElementById('glareFx'),g=glare?+glare.style.opacity||0:0,camOnly=!S.lidar&&!S.radar;const conf=clamp(0.995-d/(S.cam?S.cam*2.2:120)-(1-WX.perc)*0.35-g*0.5-(1-camQ)*0.6,0.05,0.995);return {...u,d,conf}}).sort((a,b)=>a.d-b.d);
+   /* 23 signs */
+   if(G.limitMph!==lastLim&&G.limitMph){if(lastLim!=null)readSign('lim'+G.limitMph,`SPEED LIMIT ${G.limitMph}`,`Speed limit ${G.limitMph}`,clamp(0.97*camQ+0.02,0.3,0.99));lastLim=G.limitMph}
+   const st=(G.upcoming||[]).find(u=>u.type==='stop');if(st){const d=Math.hypot(st.x-e.x,st.z-e.z);if(d<70)readSign('stop'+Math.round(st.x),'STOP','Stop sign ahead',clamp(0.99-d/200,0.5,0.99))}
+   if(window.SCHOOL&&SCHOOL.msg)readSign('school','SCHOOL ZONE 20','School zone',0.95);if(window.WORK&&WORK.zones.some(z=>z.s0-e.s<400&&z.s0-e.s>0))readSign('work'+Math.round(WORK.zones[0].s0),'ROAD WORK AHEAD','Road work ahead',0.96);
+   draw()},
+  preRender(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;bsZones();const ext=G.cam!=='in';for(const s of ['L','R']){bs[s].material.opacity=ext?(SL.bs&&SL.bs[s]?0.45:0.08):0}const h=hud();for(const s of ['L','R']){const el=document.getElementById('bs'+s);if(el)el.style.opacity=SL.bs&&SL.bs[s]?'1':'.15'}
+   if(SL.occ&&!/🛡|✋|🚸|🚌|👷|red|Stop/.test(G.status||'')&&G.ego.v>=SL.occ.v-0.5)G.status=SL.occ.why}});
+ /* lane changes wait for clear blind spots */
+ const _gap=()=>SL.bs;window.BLINDSPOT=_gap;
 })();
 </script>
 <script>/* mods/60-hyperlearn.js */
