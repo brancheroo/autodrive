@@ -2560,11 +2560,11 @@ function chaseSpinYaw(){return CHASE.spin>0?CHASE.spinDir*Math.sin((1.6-CHASE.sp
 const CRASH={shake:0,log:[]};
 function massOf(spec,kind){if(spec.apc)return 15000;if(kind==='ego'){const E=ENERGY[spec.id];if(E&&E.kg)return E.kg}if(spec.style==='harley')return 420;if(spec.style==='dualie')return 4100;if(spec.style==='semi')return 30000;if(spec.style==='box')return 8000;if(spec.style==='step')return 5500;if(kind==='cop')return 2000;return Math.round(1500*(spec.L*spec.W)/(4.8*1.85))}
 function vehBodies(){const G=game,B=[];if(!G||!G.ego)return B;const e=G.ego;
- B.push({ref:e,kind:'ego',m:massOf(G.spec,'ego'),L:G.spec.L,W:G.spec.W,get x(){return e.loose?e.loose.x:e.mesh.position.x},get z(){return e.loose?e.loose.z:e.mesh.position.z},get h(){return e.loose?e.loose.h:e.mesh.rotation.y}});
+ B.push({ref:e,kind:'ego',m:massOf(G.spec,'ego'),L:G.spec.L,W:G.spec.W,get y(){return e.mesh.position.y},get x(){return e.loose?e.loose.x:e.mesh.position.x},get z(){return e.loose?e.loose.z:e.mesh.position.z},get h(){return e.loose?e.loose.h:e.mesh.rotation.y}});
  for(const a of G.agents)if(a.mesh&&a.mesh.visible!==false&&a.spec.L>8&&!a.loose&&(a.kind==='route'||a.kind==='oncoming')){ /* long vehicles (semis, buses, RVs): one box per ~6 m segment laid along the road's actual curve, not a single straight 21 m slab that sweeps across the next lane on bends */
   const L=a.spec.L,N=Math.ceil(L/6),seg=L/N,onc=a.kind==='oncoming',lat=onc?-1.9+(a.offAdd||0):(a.off??1.85)+(a.offAdd||0);
-  for(let k=0;k<N;k++){const along=-L/2+(k+0.5)*seg,ss=clamp(a.s+(onc?-along:along),0,G.route.total),p=routeXZ(ss,lat),h=Math.atan2(-p[3],p[2])+(onc?Math.PI:0);B.push({ref:a,kind:'traffic',m:massOf(a.spec,'traffic')/N,L:seg+0.3,W:a.spec.W,x:p[0],z:p[1],h,cx:a.mesh.position.x,cz:a.mesh.position.z,ch:a.mesh.rotation.y})}}
- for(const a of G.agents)if(a.mesh&&a.mesh.visible!==false&&!(a.spec.L>8&&!a.loose&&(a.kind==='route'||a.kind==='oncoming')))B.push({ref:a,kind:a.kind==='way'?'way':'traffic',m:massOf(a.spec,'traffic'),L:a.spec.L,W:a.spec.W,get x(){return a.loose?a.loose.x:a.mesh.position.x},get z(){return a.loose?a.loose.z:a.mesh.position.z},get h(){return a.loose?a.loose.h:a.mesh.rotation.y}});
+  for(let k=0;k<N;k++){const along=-L/2+(k+0.5)*seg,ss=clamp(a.s+(onc?-along:along),0,G.route.total),p=routeXZ(ss,lat),h=Math.atan2(-p[3],p[2])+(onc?Math.PI:0);B.push({ref:a,kind:'traffic',m:massOf(a.spec,'traffic')/N,L:seg+0.3,W:a.spec.W,x:p[0],z:p[1],y:routeY(ss,lat),h,cx:a.mesh.position.x,cz:a.mesh.position.z,ch:a.mesh.rotation.y})}}
+ for(const a of G.agents)if(a.mesh&&a.mesh.visible!==false&&!(a.spec.L>8&&!a.loose&&(a.kind==='route'||a.kind==='oncoming')))B.push({ref:a,kind:a.kind==='way'?'way':'traffic',m:massOf(a.spec,'traffic'),L:a.spec.L,W:a.spec.W,get y(){return a.mesh.position.y},get x(){return a.loose?a.loose.x:a.mesh.position.x},get z(){return a.loose?a.loose.z:a.mesh.position.z},get h(){return a.loose?a.loose.h:a.mesh.rotation.y}});
  if(CHASE.on){for(const c of CHASE.cops)B.push({ref:c,kind:'cop',m:2000,L:COP_SPEC.L,W:COP_SPEC.W,get x(){return c.loose?c.loose.x:c.mesh.position.x},get z(){return c.loose?c.loose.z:c.mesh.position.z},get h(){return c.loose?c.loose.h:c.mesh.rotation.y}});
   for(const b of CHASE.blocks)for(const m of b.cars){m.userData.rb=m.userData.rb||{mesh:m};const r=m.userData.rb;B.push({ref:r,kind:'block',m:2000,L:COP_SPEC.L,W:COP_SPEC.W,get x(){return r.loose?r.loose.x:m.position.x},get z(){return r.loose?r.loose.z:m.position.z},get h(){return r.loose?r.loose.h:m.rotation.y}})}}
  if(CHAOS.on)for(const a of CHAOS.cars)B.push({ref:a,kind:'chaos',m:1500,L:CHAOS.spec.L,W:CHAOS.spec.W,get x(){return a.loose?a.loose.x:a.x},get z(){return a.loose?a.loose.z:a.z},get h(){return a.loose?a.loose.h:a.head}});
@@ -2580,7 +2580,7 @@ function velOf(b,dt){const r=b.ref;if(r.loose)return{vx:r.loose.vx,vz:r.loose.vz
 function makeLoose(b,v){const r=b.ref;r.loose={x:b.cx??b.x,z:b.cz??b.z,h:b.ch??b.h,vx:v.vx,vz:v.vz,w:v.w,stopT:0,t:0}}
 function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;const bodies=vehBodies(),mu=0.75*(WX.mu||1),g=9.81;
  // 1. find & resolve contacts
- for(let i=0;i<bodies.length;i++){const A=bodies[i];for(let j=i+1;j<bodies.length;j++){const B=bodies[j];const R=(A.L+B.L)/2+0.5;if(Math.abs(A.x-B.x)>R||Math.abs(A.z-B.z)>R)continue;
+ for(let i=0;i<bodies.length;i++){const A=bodies[i];for(let j=i+1;j<bodies.length;j++){const B=bodies[j];const R=(A.L+B.L)/2+0.5;if(Math.abs(A.x-B.x)>R||Math.abs(A.z-B.z)>R)continue;if(A.y!=null&&B.y!=null&&Math.abs(A.y-B.y)>3)continue; /* different levels: overpass above / road below */
    if(A.kind!=='ego'&&B.kind!=='ego'&&A.kind===B.kind&&A.kind!=='chaos'&&A.kind!=='cop')continue; // same scripted lane stream: they queue, they don't overlap by design
    if((A.ref._age??9)<1.5||(B.ref._age??9)<1.5)continue;const c=satOverlap(A,B);if(!c)continue;
    const va=velOf(A,dt),vb=velOf(B,dt),n=c.n,ra=[c.p[0]-A.x,c.p[1]-A.z],rb=[c.p[0]-B.x,c.p[1]-B.z],IA=A.m*(A.L*A.L+A.W*A.W)/12,IB=B.m*(B.L*B.L+B.W*B.W)/12;
@@ -4273,8 +4273,8 @@ function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.pause
  if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=dt;
  if(W.t>10){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
   if(W.n>=3){e.s=Math.min(G.route.total-5,e.s+35);e.v=4;W.n=0;G.status='⏱️ Still blocked · easing past the obstruction'} // last resort: squeeze past whatever it is
-  else if(smartOn()&&(/Queued|Following|vehicle/i.test(G.status||'')||W.n===1&&!W.cd)){G.overtakeT=9;G.status='⏱️ No progress for 10 s · overtaking'} /* only the smart planner may pull out around a queue; ordinary cars wait and then detour */
-  else if(W.cd<=0){W.cd=20;G.status='⏱️ No progress for 10 s · detouring';rerouteNow()}else if(smartOn()){G.overtakeT=9}}}
+  else if(/Queued|Following|vehicle/i.test(G.status||'')||W.n===1&&!W.cd){G.overtakeT=9;G.status='⏱️ No progress for 10 s · overtaking'}
+  else if(W.cd<=0){W.cd=20;G.status='⏱️ No progress for 10 s · detouring';rerouteNow()}else{G.overtakeT=9}}}
 /* points no new route may pass through (within 14 m): an active protest and any police roadblocks */
 function blockedPts(){const G=game,o=[];if(G.protest&&G.protest.state!=='dispersing')o.push([toLon(G.protest.x),toLat(G.protest.z)]);if(CHASE.on)for(const B of CHASE.blocks)o.push([toLon(B.x),toLat(B.z)]);if(G.impasse&&G.simTime-G.impasse.t<120)o.push([toLon(G.impasse.x),toLat(G.impasse.z)]);return o}
 function routeHitsBlock(r,bl){if(!bl.length)return false;for(let k=0;k<r.pts.length;k++){if(r.cum[k]<30)continue;for(const b of bl)if(hav(r.pts[k],b)<14)return true}return false} /* passes through the crowd/roadblock itself (not just a parallel carriageway nearby) */
@@ -5013,24 +5013,24 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
 (function(){
  const EN={bodies:[],t:-1};window.ENVELOPE=EN;
  function collect(){const G=game;if(EN.t===G.simTime)return EN.bodies;EN.t=G.simTime;const B=[],e=G.ego;
-  const add=(ref,x,z,h,v,L,W,kind)=>{if(!isFinite(x)||!isFinite(z))return;B.push({ref,x,z,vx:Math.cos(h)*v,vz:-Math.sin(h)*v,h,L,W,kind})};
-  if(e&&e.mesh)add(e,e.mesh.position.x,e.mesh.position.z,e.mesh.rotation.y,e.v,G.spec.L,G.spec.W,'ego');
-  for(const a of G.agents){if(!a.mesh)continue;const h=a.loose?a.loose.h:a.mesh.rotation.y,v=a.loose?Math.hypot(a.loose.vx,a.loose.vz):a.v;add(a,a.mesh.position.x,a.mesh.position.z,h,v,a.spec.L||4.6,a.spec.W||1.9,a.kind)}
+  const add=(ref,x,z,h,v,L,W,kind,y)=>{if(!isFinite(x)||!isFinite(z))return;B.push({ref,x,z,y,vx:Math.cos(h)*v,vz:-Math.sin(h)*v,h,L,W,kind})};
+  if(e&&e.mesh)add(e,e.mesh.position.x,e.mesh.position.z,e.mesh.rotation.y,e.v,G.spec.L,G.spec.W,'ego',e.mesh.position.y);
+  for(const a of G.agents){if(!a.mesh)continue;const h=a.loose?a.loose.h:a.mesh.rotation.y,v=a.loose?Math.hypot(a.loose.vx,a.loose.vz):a.v;add(a,a.mesh.position.x,a.mesh.position.z,h,v,a.spec.L||4.6,a.spec.W||1.9,a.kind,a.mesh.position.y)}
   for(const p of G.peds)add(p,p.x,p.z,0,0,0.5,0.5,'ped');
   if(window.ACT)for(const o of ACT.list){if(!o.mesh||o.hazard===false&&o.kind!=='tram')continue;const q=o.mesh.position;add(o,q.x,q.z,o.mesh.rotation.y,0,o.kind==='cyclist'?1.8:o.kind==='tram'?14:o.kind==='wreck'?4.8:0.6,o.kind==='cyclist'?0.6:o.kind==='tram'?2.6:o.kind==='wreck'?2:0.6,o.kind)}
   EN.bodies=B;return B}
  /* speed cap for vehicle `me` (body) from everything in its swept path */
  function cap(me,decel){const B=collect(),fx=Math.cos(me.h),fz=-Math.sin(me.h),v=Math.max(me.vx*fx+me.vz*fz,0);let best=null;
-  for(const b of B){if(b.ref===me.ref)continue;const dx=b.x-me.x,dz=b.z-me.z;if(Math.abs(dx)>90||Math.abs(dz)>90)continue;const f0=dx*fx+dz*fz;if(f0<-2)continue;
+  for(const b of B){if(b.ref===me.ref)continue;if(me.y!=null&&b.y!=null&&Math.abs(me.y-b.y)>3)continue; /* other level */const dx=b.x-me.x,dz=b.z-me.z;if(Math.abs(dx)>90||Math.abs(dz)>90)continue;const f0=dx*fx+dz*fz;if(f0<-2)continue;
    const rvf=(b.vx*fx+b.vz*fz),rvl=(-b.vx*fz+b.vz*fx),l0=-dx*fz+dz*fx,halfW=(me.W+b.W)/2+0.35,halfL=(me.L+b.L)/2;
    const tHit=Math.min(4,Math.max(0,(f0-halfL))/Math.max(0.5,v-Math.min(rvf,v*0.5)));const lPred=l0+rvl*tHit,lMin=Math.min(Math.abs(l0),Math.abs(lPred),Math.sign(l0)!==Math.sign(lPred)?0:99);
    if(lMin>halfW)continue;const gap=f0-halfL-1.5-v*0.25,vb=Math.max(0,rvf);const allowV=Math.sqrt(Math.max(0,vb*vb+2*decel*Math.max(0,gap)));if(!best||allowV<best.v)best={v:allowV,b}}
   return best}
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(isEgo&&smartOn())return null; /* the Predictacar/satellite planner has its own, stronger envelope */
-  const G=game;if(!a.mesh)return null;const me={ref:a,x:a.mesh.position.x,z:a.mesh.position.z,h:a.mesh.rotation.y,vx:Math.cos(a.mesh.rotation.y)*a.v,vz:-Math.sin(a.mesh.rotation.y)*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};
+  const G=game;if(!a.mesh)return null;const me={ref:a,y:a.mesh.position.y,x:a.mesh.position.x,z:a.mesh.position.z,h:a.mesh.rotation.y,vx:Math.cos(a.mesh.rotation.y)*a.v,vz:-Math.sin(a.mesh.rotation.y)*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};
   const c=cap(me,isEgo?5.5:4.5);if(!c)return null;return {v:c.v,reason:isEgo?`🛡 Safety envelope: ${c.b.kind==='ped'?'pedestrian':c.b.kind==='way'?'crossing car':c.b.kind==='oncoming'?'oncoming car':c.b.kind==='ego'?'your car':c.b.kind} in our path`:''}});
- const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);if(!a.mesh)return;const me={ref:a,x:a.mesh.position.x,z:a.mesh.position.z,h:a.mesh.rotation.y,vx:Math.cos(a.mesh.rotation.y)*a.v,vz:-Math.sin(a.mesh.rotation.y)*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};const c=cap(me,5);if(c&&c.v<a.v)a.v=Math.max(0,a.v-Math.min(8,(a.v-c.v)*3)*dt)};
- const _wh=window.WAY_HOOK;window.WAY_HOOK=(a,p,fx,fz,dt)=>{let v=_wh?_wh(a,p,fx,fz,dt):null;if(!a.mesh)return v;const h=Math.atan2(-fz,fx),me={ref:a,x:a.mesh.position.x,z:a.mesh.position.z,h,vx:fx*a.v,vz:fz*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};const c=cap(me,5);if(c)v=v==null?c.v:Math.min(v,c.v);return v};
+ const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);if(!a.mesh)return;const me={ref:a,y:a.mesh.position.y,x:a.mesh.position.x,z:a.mesh.position.z,h:a.mesh.rotation.y,vx:Math.cos(a.mesh.rotation.y)*a.v,vz:-Math.sin(a.mesh.rotation.y)*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};const c=cap(me,5);if(c&&c.v<a.v)a.v=Math.max(0,a.v-Math.min(8,(a.v-c.v)*3)*dt)};
+ const _wh=window.WAY_HOOK;window.WAY_HOOK=(a,p,fx,fz,dt)=>{let v=_wh?_wh(a,p,fx,fz,dt):null;if(!a.mesh)return v;const h=Math.atan2(-fz,fx),me={ref:a,y:a.mesh.position.y,x:a.mesh.position.x,z:a.mesh.position.z,h,vx:fx*a.v,vz:fz*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};const c=cap(me,5);if(c)v=v==null?c.v:Math.min(v,c.v);return v};
  /* sideways moves: hold the ride's lateral target while something occupies the space alongside on that side */
  EN.sideBlocked=dir=>{const G=game,e=G.ego;if(!e||!e.mesh)return false;const B=collect(),h=e.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h);for(const b of B){if(b.ref===e)continue;const dx=b.x-e.mesh.position.x,dz=b.z-e.mesh.position.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;if(Math.abs(f)>(G.spec.L+b.L)/2+2)continue;if(Math.sign(l)!==Math.sign(dir))continue;if(Math.abs(l)<(G.spec.W+b.W)/2+1.4)return true}return false};
  MODS.push({id:'envelope'});
