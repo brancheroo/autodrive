@@ -6189,6 +6189,36 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    setTimeout(()=>{const a=document.getElementById('arrTxt');if(a)a.innerHTML+=`<div style="margin-top:8px;font-size:13px;text-align:left">${lines.join('<br>')}</div>`},50)}});
 })();
 </script>
+<script>/* mods/70-modes.js */
+/* Game-mode framework: a "Game mode" menu on the start screen; each mode module registers
+   {id,name,desc,setup(),start(),sim(dt),frame(),arrive(),hud()}. Modes can pick their own trip, set conditions,
+   keep a score and record it. (66) Leaderboards: every mode keeps a local top-10 (per trip where relevant) with
+   date, car and score; results can be exported as a short share code and codes from friends imported, so boards
+   can be compared without a server. */
+(function(){
+ const MD={list:[],cur:null};window.MODES=MD;
+ MD.register=m=>{MD.list.push(m);refresh()};
+ const box=UIX.section('Game mode',`<select id="modeSel" style="width:100%;${UIX.sel}"><option value="free">🚗 Free ride</option></select><div id="modeDesc" style="font-size:11px;color:var(--dim);margin-top:3px">Drive anywhere, no objectives.</div><div style="display:flex;gap:6px;margin-top:4px"><button id="lbBtn" style="flex:1">🏆 Leaderboards</button></div>`,/Choose a self-driving|Route/);
+ const sel=document.getElementById('modeSel');function refresh(){const v=UIX.load('mode','free');sel.innerHTML='<option value="free">🚗 Free ride</option>'+MD.list.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');sel.value=MD.list.some(m=>m.id===v)?v:'free';desc()}
+ function desc(){const m=MD.list.find(x=>x.id===sel.value);document.getElementById('modeDesc').textContent=m?m.desc:'Drive anywhere, no objectives.';if(m&&m.setup)try{m.setup()}catch(e){console.warn(e)}}
+ sel.onchange=()=>{UIX.save('mode',sel.value);desc()};
+ /* leaderboards */
+ const LB=UIX.load('boards',{});MD.record=(modeId,key,score,extra)=>{const k=modeId+(key?'|'+key:''),b=LB[k]||(LB[k]=[]);const e={score:+(+score).toFixed(2),car:game&&game.spec?game.spec.name:'',date:new Date().toISOString().slice(0,10),...extra};b.push(e);const m=MD.list.find(x=>x.id===modeId),hi=m&&m.lowerIsBetter?1:-1;b.sort((a,c)=>hi*(c.score-a.score)*-1);LB[k]=b.slice(0,10);UIX.save('boards',LB);return LB[k].indexOf(e)+1};
+ const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/=+$/,''),dec=s=>JSON.parse(decodeURIComponent(escape(atob(s))));
+ function boards(){let d=document.getElementById('lbBox');if(d){d.remove();return}d=UIX.banner('lbBox','top:50%;left:50%;transform:translate(-50%,-50%);z-index:9998;background:#0e141df7;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:14px 18px;pointer-events:auto;font:13px system-ui;max-height:80vh;overflow:auto;min-width:360px');
+  const rows=Object.entries(LB).map(([k,b])=>{const [mid,key]=k.split('|'),m=MD.list.find(x=>x.id===mid);return `<div style="margin-top:8px"><b>${m?m.name:mid}</b>${key?` <span style="opacity:.6">· ${key}</span>`:''}<ol style="margin:4px 0 0 18px;padding:0">${b.map(e=>`<li>${m&&m.fmt?m.fmt(e.score):e.score} · ${e.car} · <span style="opacity:.6">${e.date}${e.who?' · '+e.who:''}</span></li>`).join('')}</ol></div>`}).join('')||'<div style="opacity:.7;margin-top:8px">No scores yet – pick a game mode and play.</div>';
+  d.innerHTML=`<b style="font-size:15px">🏆 Leaderboards</b> <button id="lbX" style="float:right">✕</button>${rows}<div style="margin-top:10px;display:flex;gap:6px"><button id="lbExp">Copy share code</button><button id="lbImp">Import a friend's code</button></div><div style="font-size:11px;opacity:.6;margin-top:4px">Boards are stored on this device; share codes let friends merge scores.</div>`;
+  d.querySelector('#lbX').onclick=()=>d.remove();d.querySelector('#lbExp').onclick=async()=>{const who=prompt('Your name for the board:','Me')||'Me';const out={};for(const k in LB)out[k]=LB[k].map(e=>({...e,who:e.who||who}));const code=enc(out);try{await navigator.clipboard.writeText(code);alert('Share code copied.')}catch(e){prompt('Copy this code:',code)}};
+  d.querySelector('#lbImp').onclick=()=>{const c=prompt('Paste a share code:');if(!c)return;try{const o=dec(c.trim());for(const k in o){const b=LB[k]||(LB[k]=[]);for(const e of o[k])if(!b.some(x=>x.score===e.score&&x.date===e.date&&x.who===e.who))b.push(e);const mid=k.split('|')[0],m=MD.list.find(x=>x.id===mid),hi=m&&m.lowerIsBetter?1:-1;b.sort((a,c2)=>hi*(c2.score-a.score)*-1);LB[k]=b.slice(0,10)}UIX.save('boards',LB);d.remove();boards()}catch(e){alert('That code could not be read.')}}}
+ document.getElementById('lbBtn').onclick=boards;
+ const hud=UIX.banner('modeHud','top:8px;left:50%;transform:translateX(-50%);background:#0e141de6;color:#fff;border:1px solid #2a3a52;padding:5px 12px;border-radius:10px;font:600 12px system-ui;display:none;max-width:70vw;text-align:center');
+ MD.hud=t=>{hud.style.display=t?'block':'none';if(t)hud.innerHTML=t};
+ MD.toast=(t,ms=5000)=>{const b=UIX.banner('modeToast','top:44%;left:50%;transform:translate(-50%,-50%);background:#101820f0;color:#fff;border:1px solid #35d0ff;padding:14px 22px;border-radius:14px;font:600 16px system-ui;text-align:center;pointer-events:none');b.innerHTML=t;b.style.display='block';clearTimeout(b._t);b._t=setTimeout(()=>b.style.display='none',ms)};
+ const call=(h,a)=>{const m=MD.cur;if(m&&m[h])try{return m[h](a)}catch(e){modFail('mode:'+m.id+'.'+h,e)}};
+ MODS.push({id:'modes',start(){MD.cur=MD.list.find(x=>x.id===UIX.load('mode','free'))||null;MD.hud(null);call('start')},sim(dt){call('sim',dt)},frame(){call('frame')},arrive(){call('arrive')}});
+ setTimeout(refresh,0);
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
