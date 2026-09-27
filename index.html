@@ -2513,7 +2513,7 @@ function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego||smartOn()
 /* out in a passing line: whatever is ahead in THAT line is the car to follow */
 (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!isEgo||!fastOn()||smartOn()||!a.mesh)return null;const G=game,h=a.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h);let best=null;
  for(const b of G.agents){if(!b.mesh||b===a)continue;const dx=b.mesh.position.x-a.mesh.position.x,dz=b.mesh.position.z-a.mesh.position.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;if(f<=0||f>160||Math.abs(l)>(a.spec.W+(b.spec.W||1.9))/2+0.4)continue;
-  const bv=Math.max(0,(b.kind==='oncoming'?-1:1)*b.v*Math.cos((b.mesh.rotation.y-h))),gap=f-((b.spec.L||4.6)+a.spec.L)/2-2-a.v*0.3,v=allow(bv,gap);if(!best||v<best)best=v}
+  const bv=Math.max(0,(b.kind==='oncoming'?-1:1)*b.v*Math.cos((b.mesh.rotation.y-h))),gap=f-((b.spec.L||4.6)+a.spec.L)/2-3-Math.max(0,a.v-bv)*0.5-a.v*0.4,v=allow(bv,gap) /* ~0.4 s headway plus margin for the closing speed */;if(!best||v<best)best=v}
  return best==null?null:{v:Math.max(0,best),reason:'EXPRESS · car ahead in this line'}});
 function chaseToggle(){if(!game||!game.route)return;CHASE.on?chaseStop():chaseStart()}
 function chaseStart(){const G=game,e=G.ego;CHASE.on=true;CHASE.n=+(document.getElementById('copN')||{value:3}).value||3;CHASE.trail=[];CHASE.pits=0;CHASE.blockTimer=35;
