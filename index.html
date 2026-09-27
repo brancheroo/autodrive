@@ -2095,7 +2095,7 @@ if(btn)btn.textContent='🎵 '+(AIFM.on?'On':'Off');if(!el)return;el.style.displ
 const CLIMATE={set:70,fan:3,ac:true,seat:0,auto:true};
 function outsideF(){if(WX.live&&WX.live.tempC!=null)return WX.live.tempC*9/5+32;return({clear:72,rain:56,blizzard:18,hurricane:82})[WX.key]}
 function climateKW(){const dT=Math.abs(CLIMATE.set-outsideF());const hp=CLIMATE.set>outsideF()?dT*0.045:(CLIMATE.ac?dT*0.035:0);return Math.min(6,hp+CLIMATE.fan*0.06+CLIMATE.seat*0.08)}
-const DRIVE={profile:'Standard'};const DRIVE_P={Chill:{acc:0.7,spd:0.96,gap:1.3},Standard:{acc:1,spd:1,gap:1},Assertive:{acc:1.25,spd:1.05,gap:0.8}};
+const DRIVE={profile:'Standard'};const DRIVE_P={Chill:{acc:0.7,spd:0.96,gap:1.3},Standard:{acc:1,spd:1,gap:1},Assertive:{acc:1.25,spd:1.05,gap:0.8},Comfort:{acc:0.5,spd:0.95,gap:1.5,brk:0.55,lat:0.5,dg:0.55}}; /* Comfort: smooth, minimal g – plans braking at ~1.2 m/s², corners at ~1 m/s² lateral */
 const DOCKED={tesla:1,'center-mb':1,'center-ford':1,'center-rivian':1,waymo:1,bmw:1,cadillac:1,lucid:1,zoox:1,rider:1};
 function dockRegion(S){const W=S.c.width,H=S.c.height,k=S.kind;if(k==='cadillac')return[W*0.3+8,0,W*0.45,H];if(k==='lucid')return[W*2/3,0,W/3,H];if(k==='tesla')return[W*0.36,0,W*0.64,H];return[0,0,W,H]}
 function btn(S,x,y,w,h,label,fn,on,th){const c=S.ctx;c.fillStyle=on?th.acc:th.btn;rr(c,x,y,w,h,Math.min(w,h)*0.18);c.fill();c.fillStyle=on?'#fff':th.fg;c.font=`600 ${Math.max(9,h*0.38)}px system-ui`;c.textAlign='center';c.textBaseline='middle';c.fillText(label,x+w/2,y+h/2+1);c.textAlign='left';c.textBaseline='alphabetic';S.hits.push({x,y,w,h,fn})}
@@ -2619,10 +2619,10 @@ function plan(a,dt,lead,isEgo){
  const lim=speedLimitAt(idx)/MPH;
  target=Math.min(lim*WX.speedF,WX.cap/MPH);reason=WX.key==='clear'?'Cruising':'Cruising · '+WX.label.toLowerCase()+' mode';if(isEgo)game.limitMph=speedLimitAt(idx);
  const chase=isEgo&&fastOn();if(chase){target=Math.max(lim*2.4+12,38)*Math.min(1,WX.speedF+0.25);if(a.spec.hyper)target=Math.max(target,lim>24?447:lim*3.4); /* full rockets: 1000 mph where the road allows */ /* rockets: 500 mph where the road allows */reason=CHASE.on?'CHASE · flat out':'EXPRESS · flat out'} // chase: well over the limit, ignores lights & signs (never other cars)
- const brake=WX.brake*(isEgo&&fastOn()?1.8:1);
+ const brake=WX.brake*(isEgo&&fastOn()?1.8:1)*(isEgo&&!fastOn()?(DRIVE_P[DRIVE.profile].brk||1):1);
  const allow=(vc,d)=>Math.sqrt(Math.max(0,vc*vc+2*brake*Math.max(0,d)));
  // curvature
- for(let d=5;d<look;d+=5){const p0=routeXZ(a.s+d-5,0),p1=routeXZ(a.s+d+5,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh<0.02)continue;const Rr=10/dh,vc=Math.max(3.0,Math.sqrt(WX.latA*(chase?(a.spec.hyper&&isEgo?2.8:1.9):1)*(isEgo&&a.spec.hyper?HB.grip:1)*Rr)); /* fans up to 9× grip (planner keeps ~5% margin) */ /* hypercar: vacuum fans can triple grip */const v=allow(vc,d-4);if(v<target){target=v;reason=vc<8?'Slowing for turn':'Slowing for curve'}}
+ for(let d=5;d<look;d+=5){const p0=routeXZ(a.s+d-5,0),p1=routeXZ(a.s+d+5,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh<0.02)continue;const Rr=10/dh,vc=Math.max(3.0,Math.sqrt(WX.latA*(isEgo&&!chase?(DRIVE_P[DRIVE.profile].lat||1):1)*(chase?(a.spec.hyper&&isEgo?2.8:1.9):1)*(isEgo&&a.spec.hyper?HB.grip:1)*Rr)); /* fans up to 9× grip (planner keeps ~5% margin) */ /* hypercar: vacuum fans can triple grip */const v=allow(vc,d-4);if(v<target){target=v;reason=vc<8?'Slowing for turn':'Slowing for curve'}}
  // controls along route nodes
  const up=[];
  for(let i=idx+1;i<R.nodes.length&&R.cum[i]-a.s<look&&!chase;i++){const c=CONTROLS.get(R.nodes[i]);if(!c)continue;const d=R.cum[i]-a.s;
@@ -2664,7 +2664,7 @@ function plan(a,dt,lead,isEgo){
  const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){if(!chase)target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
  const fanG=isEgo&&a.spec.hyper?1+2*((game.fans||[0,0,0,0]).reduce((q,v)=>q+v,0)/4):1;
  const amax=isEgo&&a.spec.hyper?Math.min(26.8/1.7*(chase?1:0.35)*DP.acc,WX.mu*9.81*(chase?1.6:0.6)*fanG):Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc))*(chase?2.3:1):1.8,WX.mu*9.81*(chase?0.7:0.35)); // traction-limited on wet/snow/ice
- let acc=target>a.v?amax*(1-Math.pow(a.v/Math.max(target,0.1),4)):clamp((target-a.v)*1.6,(isEgo&&a.spec.hyper?-(hyperBrakeCap(a.v)*1.2):-6.5)*(isEgo&&window.EGO_DECEL?EGO_DECEL:1),0);
+ let acc=target>a.v?amax*(1-Math.pow(a.v/Math.max(target,0.1),4)):clamp((target-a.v)*1.6*(isEgo&&!chase?(DP.dg||1):1),(isEgo&&a.spec.hyper?-(hyperBrakeCap(a.v)*1.2):-6.5)*(isEgo&&window.EGO_DECEL?EGO_DECEL:1),0);
  if(isEgo&&a.spec.plim&&acc>0){const E=ES(),vv=Math.max(a.v,2.5),Pw=a.spec.hp*745.7*0.85,drag=0.5*1.2*E.cda*vv*vv+E.crr*E.kg*9.81,gr=(a.grade||0)*E.kg*9.81;acc=Math.min(acc,Math.max(0,(Pw/vv-drag-gr)/E.kg),2.6)} // power-limited: slow 0–60, runs out of breath near 86 mph
  if(target>a.v&&target-a.v<0.2)acc=0;
  if(isEgo&&a.spec.hyper){ /* VACUUM FANS: per-wheel suction sized to the grip actually needed (lateral + longitudinal, with weight transfer) */
