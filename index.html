@@ -5817,7 +5817,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  MODS.push({id:'accidents',disable(){for(const Z of AX.list.slice())rem(Z)},reroute(){for(const Z of AX.list.slice())rem(Z)},
   start(){for(const Z of AX.list.slice())rem(Z);AX.next=rnd(600,1500)},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on)||(typeof CHASE!=='undefined'&&CHASE.on))return;AX.next-=dt;if(AX.next<0){AX.next=rnd(900,1800);if(!AX.list.length)make()}
-   for(const Z of AX.list.slice()){if(Z.s0<e.s-250){rem(Z);continue}if(Math.random()<dt*3&&typeof puff==='function')try{puff(Z.smokeAt.x,Z.smokeAt.y+1,Z.smokeAt.z)}catch(err){}}},
+   for(const Z of AX.list.slice()){if(Z.s0<e.s-250){rem(Z);continue}if(Math.random()<dt*3&&typeof puff==='function')try{puff(new THREE.Vector3(Z.smokeAt.x,Z.smokeAt.y+1,Z.smokeAt.z),new THREE.Vector3((Math.random()-0.5)*0.4,1.4,(Math.random()-0.5)*0.4),true)}catch(err){}}},
   frame(){const t=performance.now()/1000;for(const Z of AX.list){if(Z.cop)try{flashBar(Z.cop,t,0)}catch(e){}for(const f of Z.flares)f.userData.s.material.opacity=0.6+Math.random()*0.4}}});
  AX.make=make;
 })();
