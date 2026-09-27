@@ -3749,7 +3749,9 @@ function uturnCheck(){const G=game,e=G.ego;if(!G.route||e.loose)return;const p=r
 function uturnPose(U,u){const h00=2*u*u*u-3*u*u+1,h10=u*u*u-2*u*u+u,h01=-2*u*u*u+3*u*u,h11=u*u*u-u*u;const x=h00*U.P0[0]+h10*U.T0[0]+h01*U.P1[0]+h11*U.T1[0],z=h00*U.P0[1]+h10*U.T0[1]+h01*U.P1[1]+h11*U.T1[1];
  const d00=6*u*u-6*u,d10=3*u*u-4*u+1,d01=-6*u*u+6*u,d11=3*u*u-2*u;const dx=d00*U.P0[0]+d10*U.T0[0]+d01*U.P1[0]+d11*U.T1[0],dz=d00*U.P0[1]+d10*U.T0[1]+d01*U.P1[1]+d11*U.T1[1];return{x,z,h:Math.atan2(-dz,dx),sp:Math.hypot(dx,dz)}}
 function updateUturn(dt){const G=game,e=G.ego,U=G.uturn;G.sig=-1;
- if(G.spec.hyper&&U.phase==='turn'){ /* 360° wheels: spin on the spot to face the new way, then crab straight across */
+ if(G.spec.hyper&&U.phase==='turn'&&U.noPivot==null){ /* can we crab straight across? the line to the new lane must be short and clear of buildings */
+  const P=e.mesh.position,dx=U.P1[0]-P.x,dz=U.P1[1]-P.z,L=Math.hypot(dx,dz);let blocked=L>16;for(let k=1;k<12&&!blocked;k++){const x=P.x+dx*k/12,z=P.z+dz*k/12;if(bAt(x,z))blocked=true}U.noPivot=blocked;if(blocked)G.status='↩️ No straight line across – taking the normal U-turn arc'}
+ if(G.spec.hyper&&U.phase==='turn'&&!U.noPivot){ /* 360° wheels: spin on the spot to face the new way, then crab straight across */
   if(!U.pivot){U.pivot=1;U.h0=e.mesh.rotation.y;U.h1=Math.atan2(-U.T1[1],U.T1[0]);U.k=0}const P=e.mesh.position;
   if(U.pivot===1){let d=U.h1-U.h0;d=Math.atan2(Math.sin(d),Math.cos(d));U.k=Math.min(1,U.k+dt/1.6);const hh=U.h0+d*(0.5-0.5*Math.cos(Math.PI*U.k));e.mesh.rotation.y=hh;e.head=hh;U.wheel=0.78;spinWheels(e,dt,0);G.status='↩️ Pivoting on the spot (360° wheels)';if(U.k>=1){U.pivot=2;U.k=0}}
   else{const dx=U.P1[0]-P.x,dz=U.P1[1]-P.z,L=Math.hypot(dx,dz),stp=Math.min(L,8*dt);if(L>0.05){P.x+=dx/L*stp;P.z+=dz/L*stp;P.y=Math.max(groundY(P.x,P.z),(roadSurfaceY(P.x,P.z,groundY(P.x,P.z))??-1e9))+0.03;e.x=P.x;e.z=P.z;const f=Math.cos(U.h1)*dx-Math.sin(U.h1)*dz;const rr=Math.sin(U.h1)*dx+Math.cos(U.h1)*dz;U.wheel=clamp(-Math.atan2(rr,f),-Math.PI/2,Math.PI/2);spinWheels(e,dt,0);G.status='↔️ Crabbing into the new lane'}
