@@ -3236,7 +3236,7 @@ function manageTiles(){
  for(const k of [...TILES.keys()])if(!want.has(k)){const [i,j]=k.split('_').map(Number);if(Math.abs(i-ci)>2||Math.abs(j-cj)>2)unloadTile(k)}
  // order by distance
  const order=[...want].sort((a,b)=>{const [ai,aj]=a.split('_').map(Number),[bi,bj]=b.split('_').map(Number);return (Math.abs(ai-ci)+Math.abs(aj-cj))-(Math.abs(bi-ci)+Math.abs(bj-cj))});
- for(const k of order){if(RAW.has(k)){if(!TILES.has(k)){const nb=neighbourKeys(k).filter(n=>want.has(n));const ready=nb.every(n=>RAW.has(n));const w0=RAW.get(k)._wait||(RAW.get(k)._wait=performance.now());if(ready||performance.now()-w0>6000)buildTile(k)}}else if(netBusy<3)fetchTile(k)}
+ let built=false;for(const k of order){if(RAW.has(k)){if(!TILES.has(k)&&!built){const nb=neighbourKeys(k).filter(n=>want.has(n));const ready=nb.every(n=>RAW.has(n));const w0=RAW.get(k)._wait||(RAW.get(k)._wait=performance.now());if(ready||performance.now()-w0>6000){buildTile(k);built=true}}}else if(netBusy<3)fetchTile(k)} /* at most one tile build per pass (nearest first) so arriving tiles don't stack into one long hitch */
  // route road ribbon (guarantees a road even before/without OSM tiles, e.g. at 100x on interstates)
  if(!G.rr||Math.abs(G.rr.s-e.s)>300||G.rr.ox!==ORIGIN.lon||G.rr.tv!==TERR.ver&&Math.abs(G.rr.s-e.s)>40){if(G.rr)scene.remove(G.rr.mesh);const b=new Buf(),pts=[];for(let s=Math.max(0,e.s-400);s<Math.min(G.route.total,e.s+1200);s+=4){const p=routeXZ(s,0);pts.push([p[0],p[1],routeY(s,0)+0.05])}ribbon(b,pts,7.6,0.03,1.9);const g=b.geo();const m=new THREE.Mesh(g,MAT.road2);m.receiveShadow=true;scene.add(m);G.rr={s:e.s,mesh:m,ox:ORIGIN.lon,tv:TERR.ver}}
 }
