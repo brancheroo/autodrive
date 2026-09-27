@@ -4368,7 +4368,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  if(typeof buildCop==='function'){const _bc=window.buildCop;window.buildCop=function(){const g=_bc.apply(this,arguments);try{bake(g)}catch(e){}return g}}
  /* ---------- 2. perception camera via render target ---------- */
  const _rp=window.renderPerception;let rt=null,fr=0;const bcam=new THREE.OrthographicCamera(-1,1,1,-1,0,1),bscene=new THREE.Scene(),bmat=new THREE.MeshBasicMaterial({toneMapped:true,depthTest:false,depthWrite:false});bscene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bmat));
- window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const r=area.getBoundingClientRect();if(r.width<10||r.height<10)return;
+ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const wrap=document.getElementById('cvWrap');if(wrap&&(getComputedStyle(wrap).visibility==='hidden'||wrap.style.display==='none'))return; /* hidden (photo mode etc.) */const r=area.getBoundingClientRect();if(r.width<10||r.height<10)return;
   const t=tier(),every=t==='ultra'?2:t==='high'?3:4,scale=t==='ultra'?0.85:t==='high'?0.7:0.5,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
   if(!rt||rt.width!==W||rt.height!==H){if(rt)rt.dispose();rt=new THREE.WebGLRenderTarget(W,H,{samples:0});bmat.map=rt.texture;bmat.needsUpdate=true;fr=0}
   const realRender=renderer.render;fr++;
