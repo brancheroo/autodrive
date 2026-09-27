@@ -5039,6 +5039,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   const m=ACT.person(phone?'phone':'rider',COLS[Math.floor(Math.random()*COLS.length)]);let pause=phone&&Math.random()<0.5?rnd(1.5,3.5):0;
   return ACT.add({kind:'ped',mesh:m,s:s0,lat:base+side*(half+1.2),v:phone?rnd(0.8,1.1):rnd(1.2,1.6),r:0.35,clear:0.9,gap:5,dir:-side,yaw:0,why:phone?'🚶 Stopping for a distracted pedestrian on their phone':'🚶 Stopping for a jaywalker',
    update(o,dt){const mid=Math.abs(o.lat-base)<1.5;if(mid&&pause>0){pause-=dt;o.vl=0;ACT.walk(o.mesh,o.t,false);o.why='🚶 Pedestrian stopped in the road looking at their phone'}else{o.vl=o.dir*o.v;o.lat+=o.vl*dt;ACT.walk(o.mesh,o.t)}o.yaw=o.dir>0?-Math.PI/2:Math.PI/2;ACT.place(o);if(Math.abs(o.lat-base)>half+2&&o.t>2)o.dead=true}})}
+ RU.spawn={cyclist,moto,jaywalker};
  MODS.push({id:'roadusers',disable(){for(const o of ACT.list.slice())if(/cyclist|moto|ped/.test(o.kind))ACT.remove(o);XB.cyc=0;XB.moto=0},
   start(){RU.next={cyclist:rnd(40,110),moto:rnd(20,60),ped:rnd(60,150)};XB.cyc=0;XB.moto=0},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on)||(typeof CHASE!=='undefined'&&CHASE.on))return;const hw=(NODEINFO.get(G.route.nodes[routeLLnh(e.s)[2]])||{}).hw||'',fwy=/motorway|trunk/.test(hw),city=!fwy&&G.limitMph<=40;
@@ -5080,6 +5081,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  HK.push((a,isEgo,lead,allow)=>{const G=game;if(a.bus){const B=a.bus,d=B.next-a.s;if(B.state==='drive'&&d<60)return {v:allow(0,Math.max(0,d)),reason:''};if(B.state!=='drive')return {v:0,force:true}}
   for(const b of SC.buses){if(b===a||!b.bus||b.bus.state==='drive'||b.bus.state==='closing')continue;const d=b.s-a.s-(b.spec.L+(a.spec.L||4.6))/2;if(d>-2&&d<70){const lat=isEgo?(a.off??0):(a.off??1.85)+(a.offAdd||0);const same=Math.abs(lat-((b.off??1.85)+(b.offAdd||0)))<6;if(same||!routeOnewayAt(a.s)){if(isEgo)G.overtakeT=0;return {v:allow(0,Math.max(0,d-5)),reason:'🚌 School bus stopped with its stop arm out – waiting'}}}}return null});
  const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);for(const b of SC.buses){if(!b.bus||b.bus.state==='drive'||b.bus.state==='closing')continue;if(routeOnewayAt(b.s))continue;const d=a.s-b.s-(b.spec.L+a.spec.L)/2;if(d>-2&&d<70){a.v=Math.max(0,a.v-Math.min(8,a.v*1.5)*dt);if(d<8)a.v=0}}};
+ SC.spawnBus=spawnBus;
  MODS.push({id:'school',disable(){for(const z of SC.zones)for(const s of z.signs)scene.remove(s)},
   start(){for(const z of SC.zones)for(const s of z.signs)scene.remove(s);SC.zones=[];SC.buses=[];SC.next=rnd(60,200);for(const f of OSMX.feat)delete f._z},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;SC.chk=(SC.chk||0)-dt;if(SC.chk<0){SC.chk=5;buildZones()}
@@ -5137,6 +5139,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    if(a.s>z.s0-120){const v=d>0?allow(z.limit,d):z.limit;if(!r||v<r.v)r={v,reason:r?r.reason:`🚧 Work zone · ${Math.round(z.limit*MPH)} mph`}}
    if(r)return r}return null});
  const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);for(const z of CZ.zones){if(z.type!=='flag')continue;const d=a.s-z.s1;if(z.phase!=='theirs'&&d>-2&&d<60){a.v=Math.max(0,a.v-Math.min(8,a.v)*dt*1.5);if(d<16)a.v=0}if(a.s>z.s0&&a.s<z.s1+2)a.v=Math.min(a.v,z.limit)}};
+ CZ.make=makeZone;
  MODS.push({id:'construction',disable(){for(const z of CZ.zones)remZone(z);CZ.zones=[]},
   start(){for(const z of CZ.zones)remZone(z);CZ.zones=[];CZ.next=rnd(90,300);XB.work=0},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;CZ.next-=dt;if(CZ.next<0){CZ.next=rnd(500,1100);if(!CZ.zones.length&&!(typeof CHASE!=='undefined'&&CHASE.on))makeZone()}
