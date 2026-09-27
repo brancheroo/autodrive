@@ -5314,8 +5314,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  const V={mode:UIX.load('sensView','cam'),big:false,heat:UIX.load('sensHeat',true),pts:[],sweepT:0};window.SV=V;
  /* feed actors into perception */
  const _det=window.detections;let dCache=null,dT=0;window.detections=function(){const now=performance.now();if(dCache&&now-dT<40)return dCache;dT=now;const out=_det();dCache=out; /* shared 40 ms cache: perception, labels, heat map, radar, BEV */try{const G=game,e=G.ego,fx=Math.cos(e.head),fz=-Math.sin(e.head),S=sensorsOf(),R=Math.min(maxRange(S),250)*WX.perc*(window.SENSOR_FAULT||1);
-  for(const o of (window.ACT?ACT.list:[])){if(!o.mesh)continue;const x=o.mesh.position.x,z=o.mesh.position.z,dx=x-e.x,dz=z-e.z,d=Math.hypot(dx,dz);if(d>R||d<1)continue;const cls=o.kind==='cyclist'?'bike':/ped|kid|guard/.test(o.kind)?'ped':o.kind==='cone'?'cone':o.kind==='moto'?'moto':'obj';
-   const dims={bike:[0.6,1.8,1.8],ped:[0.6,o.kind==='kid'?1.2:1.8,0.5],cone:[0.4,0.7,0.4],moto:[0.9,1.4,2.2],obj:[1,1,1]}[cls];out.push({cls,x,y:groundY(x,z),z,w:dims[0],h:dims[1],l:dims[2],head:o.mesh.rotation.y,d,f:dx*fx+dz*fz,lat:-dx*fz+dz*fx,conf:clamp(0.98-d/R*0.4,0.4,0.98),actor:o})}}catch(err){}return out};
+  for(const o of (window.ACT?ACT.list:[])){if(!o.mesh)continue;const x=o.mesh.position.x,z=o.mesh.position.z,dx=x-e.x,dz=z-e.z,d=Math.hypot(dx,dz);if(d>R||d<1)continue;const cls=o.kind==='cyclist'?'bike':/ped|kid|guard/.test(o.kind)?'ped':o.kind==='cone'?'cone':o.kind==='moto'?'moto':o.kind==='animal'?'animal':'obj';
+   const dims={bike:[0.6,1.8,1.8],ped:[0.6,o.kind==='kid'?1.2:1.8,0.5],cone:[0.4,0.7,0.4],moto:[0.9,1.4,2.2],animal:[0.8,1.3,1.8],obj:[1,1,1]}[cls];out.push({cls,x,y:groundY(x,z),z,w:dims[0],h:dims[1],l:dims[2],head:o.mesh.rotation.y,d,f:dx*fx+dz*fz,lat:-dx*fz+dz*fx,conf:clamp(0.98-d/R*0.4,0.4,0.98),actor:o})}}catch(err){}return out};
  /* UI: chips + expand */
  function ui(){const w=document.getElementById('cvWrap');if(!w||document.getElementById('svChips'))return;const bar=document.createElement('div');bar.id='svChips';bar.style.cssText='display:flex;gap:4px;padding:3px 5px;background:#0b0f16d9;font:10px system-ui;align-items:center;flex-wrap:wrap';
   const chip=(k,t)=>`<button data-k="${k}" style="padding:1px 6px;border-radius:6px;border:1px solid #2a3a52;background:#0e141d;color:#cfe3ff;cursor:pointer;font:10px system-ui">${t}</button>`;
@@ -5630,6 +5630,55 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    for(const B of IN.bridges){B.t-=dt;if(B.t<0){B.state=B.state==='down'?'up':'down';B.t=B.state==='up'?rnd(45,80):rnd(120,300)}const up=B.state==='up';for(const l of B.leaves)l.leaf.rotation.z=lerp(l.leaf.rotation.z,up?l.dir*1.2:0,Math.min(1,dt*0.3));for(const g of B.gates)g.rotation.z=lerp(g.rotation.z,up?0:Math.PI/2*0.98,Math.min(1,dt));const k=(performance.now()/500|0)%2;B.lamps.forEach((l,i)=>l.material.color.setHex(up&&(i+k)%2?0xff1a1a:0x330000))}
    if(IN.express&&window.LANES){const n=LANES.count(e.s),lead=G.agents.filter(a=>a.kind==='route'&&a.s>e.s&&a.s-e.s<120&&(a.laneK||0)<n-1);const slow=lead.length>=2&&lead.reduce((q,a)=>q+a.v,0)/lead.length<18;if(slow&&!IN.expPaid){IN.expPaid=true;const fee=2.5+Math.floor(Math.random()*6);IN.tollTotal+=fee;readToll(`Express Lane $${fee.toFixed(2)} – bypassing slow traffic`)}XB.express=0;if(slow||IN.expPaid)LANES.pref=n-1}else if(window.LANES){LANES.pref=null;IN.expPaid=false}}});
  function readToll(t){const b=UIX.banner('tollBan','top:128px;right:8px;background:#6a1b9ae6;color:#fff;padding:5px 10px;border-radius:9px;font:12px system-ui');b.textContent='💳 '+t+` · trip tolls $${IN.tollTotal.toFixed(2)}`;b.style.display='block';clearTimeout(b._t);b._t=setTimeout(()=>b.style.display='none',8000)}
+})();
+</script>
+<script>/* mods/54-wildlife.js */
+/* (34) Wildlife by region. On rural stretches (≥40 mph, sparse buildings) animals appear by biome and latitude:
+   • Forest / mountains / Northeast / Pacific NW: deer herds (2–4, cross in a line), elk, moose north of 44°N,
+     black bears.  • Florida & Gulf coast: alligators (slow, sometimes basking on the shoulder), wild turkeys,
+     armadillos.  • Desert Southwest: tumbleweeds rolling across with the wind, coyotes, roadrunners, javelinas.
+   • Plains / Midwest / elsewhere: deer, turkeys, pheasants, coyotes.
+   Crossing animals are real hazards – everyone brakes for them via predicted paths. At night deer can freeze in
+   your headlights mid-road. Tumbleweeds aren't hazards: hit one and it bursts into twigs. */
+(function(){
+ const W={next:30};window.WILD=W;const rnd=(a,b)=>a+Math.random()*(b-a);
+ const geo={};const G2=(k,f)=>geo[k]||(geo[k]=f());
+ const SP={
+  deer:{g:()=>quadruped(1.5,1.35,{ears:true,antlers:true,neck:0.9,neckLen:1.1,headUp:0.1,legW:0.7,tail:0.3}),c:['#9c6b3c','#8a5d33','#a8784a'],v:[5,9],herd:[2,4],r:0.6,freeze:true},
+  elk:{g:()=>quadruped(2.3,1.7,{ears:true,antlers:true,neck:0.9,neckLen:1.2,headUp:0.15,legW:0.9,tail:0.2}),c:['#7a5634','#8b6a45'],v:[4,8],herd:[1,3],r:0.9},
+  moose:{g:()=>quadruped(2.6,2.0,{antlers:true,neck:0.8,snout:1.3,legW:1,tail:0.2}),c:['#3b2a1c'],v:[2,4],herd:[1,1],r:1.1},
+  bear:{g:()=>quadruped(1.7,1.0,{bodyFrac:0.55,wide:1.2,legW:1.6,ears:true,snout:0.7,tail:0}),c:['#1a1614','#3a2618'],v:[2,5],herd:[1,2],r:0.8},
+  gator:{g:()=>quadruped(3.2,0.42,{bodyFrac:0.72,wide:1.35,legW:1.3,snout:2.2,tail:2.4,headUp:0}),c:['#2f3a24','#3b4630'],v:[0.4,1.0],herd:[1,1],r:0.7},
+  turkey:{g:()=>bird(0.95),c:['#3a2a1e','#4a3526'],v:[1,2],herd:[2,6],r:0.35},
+  armadillo:{g:()=>quadruped(0.75,0.3,{bodyFrac:0.7,wide:1.1,snout:0.9,tail:0.8,ears:true}),c:['#8a7a66'],v:[0.8,1.5],herd:[1,1],r:0.3},
+  coyote:{g:()=>quadruped(1.1,0.75,{ears:true,snout:0.9,tail:1.0}),c:['#9a8466','#8a7458'],v:[3,7],herd:[1,2],r:0.4},
+  roadrunner:{g:()=>bird(0.55),c:['#6b5a44'],v:[4,7],herd:[1,1],r:0.25},
+  javelina:{g:()=>quadruped(0.95,0.55,{bodyFrac:0.6,wide:1.1,snout:0.8,ears:true,tail:0.2}),c:['#3d3530'],v:[1.5,3],herd:[2,5],r:0.4},
+  pheasant:{g:()=>bird(0.7),c:['#8a4a22','#6a3a1a'],v:[1.5,3],herd:[1,2],r:0.25}};
+ function pool(){const G=game,e=G.ego,lat=toLat(e.z),lon=toLon(e.x),n=(G.bio&&G.bio.n)||'';
+  if(/Desert/.test(n)||(lat<37&&lon<-103&&lon>-117))return [['tumble',5],['coyote',2],['roadrunner',2],['javelina',1.5]];
+  if(/Gulf|Southeast/.test(n)||(lat<31.5&&lon>-94))return [['gator',lat<30.8?3:1],['turkey',2],['armadillo',2],['deer',2]];
+  if(/Mountain|Northeast|Pacific/.test(n)||lat>43)return [['deer',5],['elk',lon<-104?2:0.3],['moose',lat>44?1.2:0],['bear',1],['turkey',1]];
+  return [['deer',5],['turkey',2],['pheasant',lat>38&&lon>-104&&lon<-85?2:0.2],['coyote',1.5]]}
+ const pick=P=>{let t=P.reduce((q,x)=>q+x[1],0)*Math.random();for(const [k,w] of P){t-=w;if(t<=0)return k}return P[0][0]};
+ function rural(){const G=game,e=G.ego,T=TILES.get(Math.floor(toLat(e.z)/TS)+'_'+Math.floor(toLon(e.x)/TS));const dense=T&&T.group&&T.group.children.length>60;return G.limitMph>=40&&!dense}
+ function spawnAnimal(kind){const G=game,e=G.ego,s0=e.s+rnd(110,230);if(s0>G.route.total-50)return;const base=ACT.lane(s0),half=(window.LANES?LANES.count(s0):1)*3.6*(routeOnewayAt(s0)?0.5:1)+2;
+  if(kind==='tumble')return tumble(s0,base,half);const S=SP[kind],side=Math.random()<0.5?1:-1,n=S.herd[0]+Math.floor(Math.random()*(S.herd[1]-S.herd[0]+1)),bask=kind==='gator'&&Math.random()<0.4,night=G.dark;
+  for(let i=0;i<n;i++){const mat=new THREE.MeshStandardMaterial({color:S.c[Math.floor(Math.random()*S.c.length)],roughness:0.85}),m=new THREE.Mesh(G2(kind,S.g),mat);m.castShadow=true;const g=new THREE.Group();g.add(m);
+   let frozen=0;ACT.add({kind:'animal',sp:kind,mesh:g,s:s0+i*rnd(2,5),lat:base+side*(half+2+i*1.6),v:rnd(S.v[0],S.v[1]),r:S.r,clear:0.8,gap:6,delay:i*rnd(0.6,1.4),yaw:side>0?Math.PI/2:-Math.PI/2,why:`🦌 Stopping for ${kind==='gator'?'an alligator':kind==='elk'||kind==='armadillo'?'an '+kind:'a '+kind} on the road`.replace('🦌',{gator:'🐊',turkey:'🦃',bear:'🐻',coyote:'🐺',armadillo:'🦔',roadrunner:'🐦',pheasant:'🐦',javelina:'🐗',moose:'🫎',elk:'🦌',deer:'🦌'}[kind]||'🦌'),
+    update(o,dt){if(o.delay>0){o.delay-=dt;o.vl=0}else if(bask&&!o.moved){o.lat=base+side*(half-0.8);o.vl=0;if(o.t>rnd(20,40))o.moved=true}
+     else{const E=game.ego,d=o.s-E.s,lit=night&&d>0&&d<50&&Math.abs(o.lat-(E.off||0))<4;if(S.freeze&&lit&&!o.froze&&Math.random()<0.02){o.froze=rnd(2,5)}if(o.froze>0){o.froze-=dt;o.vl=0;o.why='🦌 Deer frozen in the headlights – waiting'}else{o.vl=-side*o.v;o.lat+=o.vl*dt}}
+     ACT.place(o);o.mesh.children[0].position.y=o.vl?Math.abs(Math.sin(o.t*o.v*2))*0.06:0;if(Math.abs(o.lat-base)>half+6&&o.t>3)o.dead=true}})}}
+ function tumble(s0,base,half){const g=new THREE.Group(),mat=new THREE.MeshStandardMaterial({color:0x9a7a4a,roughness:1});for(let i=0;i<26;i++){const b=new THREE.Mesh(new THREE.TorusGeometry(0.35+Math.random()*0.2,0.012,4,12,Math.PI*(1+Math.random())),mat);b.rotation.set(Math.random()*6,Math.random()*6,Math.random()*6);g.add(b)}
+  const side=Math.random()<0.5?1:-1,sc=0.7+Math.random()*0.6;g.scale.setScalar(sc);
+  return ACT.add({kind:'tumble',mesh:g,s:s0,lat:base+side*(half+4),v:rnd(3,7)*(0.6+(WX.wind||3)/10),hazard:false,dy:0.45*sc,update(o,dt){o.lat-=side*o.v*dt;o.s+=Math.sin(o.t)*0.3*dt;o.mesh.rotation.x+=side*o.v*dt*2;o.dy=0.45*sc+Math.abs(Math.sin(o.t*3))*0.25;ACT.place(o);
+   const E=game.ego,dx=o.mesh.position.x-E.x,dz=o.mesh.position.z-E.z;if(Math.hypot(dx,dz)<2.2&&!o.hit){o.hit=1;burst(o.mesh.position)}if(o.hit)o.dead=true;if(Math.abs(o.lat-base)>half+8&&o.t>3)o.dead=true}})}
+ const twigs=[];function burst(p){for(let i=0;i<30;i++){const m=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,0.2+Math.random()*0.3,3),new THREE.MeshStandardMaterial({color:0x9a7a4a}));m.position.copy(p);scene.add(m);twigs.push({m,v:new THREE.Vector3((Math.random()-0.5)*8,Math.random()*5,(Math.random()-0.5)*8),t:1.6})}}
+ MODS.push({id:'wildlife',disable(){for(const o of ACT.list.slice())if(/animal|tumble/.test(o.kind))ACT.remove(o)},
+  start(){W.next=rnd(40,120)},
+  sim(dt){const G=game;if(!G.route||(window.BENCH&&BENCH.on)||(typeof CHASE!=='undefined'&&CHASE.on))return;W.next-=dt;if(W.next<0){W.next=rnd(60,180);if(rural()&&!ACT.list.some(o=>o.kind==='animal'||o.kind==='tumble')){const P=pool(),k=pick(P);W.last=k;spawnAnimal(k)}}},
+  frame(){const dt=1/60;for(let i=twigs.length-1;i>=0;i--){const t=twigs[i];t.t-=dt;t.v.y-=9.8*dt;t.m.position.addScaledVector(t.v,dt);t.m.rotation.x+=dt*8;if(t.t<0){scene.remove(t.m);twigs.splice(i,1)}}}});
+ W.spawn=spawnAnimal;
 })();
 </script>
 <script>/* mods/60-hyperlearn.js */
