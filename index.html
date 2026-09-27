@@ -2219,7 +2219,7 @@ function plan(a,dt,lead,isEgo){
   if(c.type==='signal'){const st=signalState(c.id,ax,game.simTime);if(isEgo)up.push({x:c.x,z:c.z,type:'signal',state:st});
    if(st==='R'||(st==='Y'&&d>a.v*a.v/(2*3.5)+3)){const v=allow(0,d-stopOff(c));if(v<target){target=v;reason=st==='R'?'Stopping: red light':'Stopping: yellow light'}}}
   else if(c.type==='stop'&&!a.handled.has(c.id)){if(isEgo)up.push({x:c.x,z:c.z,type:'stop'});const v=allow(0,d-stopOff(c)+1);if(v<target){target=v;reason='Stop sign ahead'}
-   if(d<9&&a.v<0.3){a.stopT+=dt;reason='Full stop at stop sign';if(window.ISECT)ISECT.arrive(c,a);if(a.stopT>2.2){if(!window.ISECT||ISECT.mayGo(c,a)){a.handled.add(c.id);a.stopT=0;if(window.ISECT)ISECT.go(c,a)}else reason=ISECT.why(c,a)}}}
+   if(d<stopOff(c)+3&&a.v<0.3){a.stopT+=dt;reason='Full stop at stop sign';if(window.ISECT)ISECT.arrive(c,a);if(a.stopT>2.2){if(!window.ISECT||ISECT.mayGo(c,a)){a.handled.add(c.id);a.stopT=0;if(window.ISECT)ISECT.go(c,a)}else reason=ISECT.why(c,a)}}}
   else if(c.type==='give_way'){const v=allow(4.5,d-6);if(v<target){target=v;reason='Yield'}}}
  if(isEgo)game.upcoming=up;
  // lead (in a chase the car overtakes while swerving away from a cruiser)
