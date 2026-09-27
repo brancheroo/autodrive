@@ -5307,7 +5307,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
 (function(){
  const V={mode:UIX.load('sensView','cam'),big:false,heat:UIX.load('sensHeat',true),pts:[],sweepT:0};window.SV=V;
  /* feed actors into perception */
- const _det=window.detections;window.detections=function(){const out=_det();try{const G=game,e=G.ego,fx=Math.cos(e.head),fz=-Math.sin(e.head),S=sensorsOf(),R=Math.min(maxRange(S),250)*WX.perc*(window.SENSOR_FAULT||1);
+ const _det=window.detections;let dCache=null,dT=0;window.detections=function(){const now=performance.now();if(dCache&&now-dT<40)return dCache;dT=now;const out=_det();dCache=out; /* shared 40 ms cache: perception, labels, heat map, radar, BEV */try{const G=game,e=G.ego,fx=Math.cos(e.head),fz=-Math.sin(e.head),S=sensorsOf(),R=Math.min(maxRange(S),250)*WX.perc*(window.SENSOR_FAULT||1);
   for(const o of (window.ACT?ACT.list:[])){if(!o.mesh)continue;const x=o.mesh.position.x,z=o.mesh.position.z,dx=x-e.x,dz=z-e.z,d=Math.hypot(dx,dz);if(d>R||d<1)continue;const cls=o.kind==='cyclist'?'bike':/ped|kid|guard/.test(o.kind)?'ped':o.kind==='cone'?'cone':o.kind==='moto'?'moto':'obj';
    const dims={bike:[0.6,1.8,1.8],ped:[0.6,o.kind==='kid'?1.2:1.8,0.5],cone:[0.4,0.7,0.4],moto:[0.9,1.4,2.2],obj:[1,1,1]}[cls];out.push({cls,x,y:groundY(x,z),z,w:dims[0],h:dims[1],l:dims[2],head:o.mesh.rotation.y,d,f:dx*fx+dz*fz,lat:-dx*fz+dz*fx,conf:clamp(0.98-d/R*0.4,0.4,0.98),actor:o})}}catch(err){}return out};
  /* UI: chips + expand */
