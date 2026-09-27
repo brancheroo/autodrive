@@ -4534,7 +4534,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
   for(const z of [-spec.W*0.33,spec.W*0.33]){const s=new THREE.SpotLight(0xfff2d8,0,95,0.42,0.55,1.4);s.position.set(spec.L/2-0.1,0.72,z);s.target=tgt;s.castShadow=false;m.add(s);L.push(s)}}
  MODS.push({id:'night',disable(){if(L)for(const s of L)s.intensity=0},
   start(){L=null},
-  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;if(!L||L[0].parent!==G.ego.mesh)make();const on=G.dark||WX.vis<300;for(const s of L)s.intensity+=((on?(G.dark?3.2:1.6):0)-s.intensity)*0.1;
+  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;if(!L||L[0].parent!==G.ego.mesh)make();const on=G.dark||WX.vis<300||window.INTUNNEL;for(const s of L)s.intensity+=((on?(G.dark?3.2:1.6):0)-s.intensity)*0.1;
    flick-=1/60;if(G.dark&&flick<0){flick=4+Math.random()*6;for(const k in FACMAT){FACMAT[k].emissiveIntensity=(k==='store'?1.1:0.85)*(0.8+Math.random()*0.35)}}}});
 })();
 </script>
@@ -5456,6 +5456,43 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  MODS.push({id:'seasons',disable(){apply('summer');for(const f of fallen)f.m.visible=false;if(bankG){scene.remove(bankG);bankG=null}},
   start(){S.cur=null;lastBank=-1e9},
   frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;chk-=1/60;if(chk<0){chk=5;const se=season();if(se!==S.cur)apply(se);banks()}leafFall(1/60*(G.paused?0:1))}});
+})();
+</script>
+<script>/* mods/52-tunnels.js */
+/* (29) Tunnels. OSM tunnel roads were driven through an empty underground void. Now every stretch of the route
+   that runs ≥2.5 m below the terrain (OSM bore heights) gets a real tunnel: an arched concrete bore with vertical
+   walls and a tiled lining, a paved deck with lane lines, rows of lamp strips along the crown, jet fans, portal
+   frames at each end with the tunnel name, warm lighting that follows the car, headlights on, and a reverberant
+   echo on all car / radio sound while inside. Built ~1.5 km ahead, removed after you've passed. */
+(function(){
+ const TN={list:[],inside:false};window.TUNNEL=TN;
+ function lining(){const c=document.createElement('canvas');c.width=256;c.height=256;const x=c.getContext('2d');x.fillStyle='#c9c5b8';x.fillRect(0,0,256,256);for(let i=0;i<8;i++)for(let j=0;j<8;j++){x.fillStyle=`hsl(45,${8+Math.random()*6}%,${74+Math.random()*8}%)`;x.fillRect(i*32+1,j*32+1,30,30)}x.fillStyle='rgba(0,0,0,.18)';for(let k=0;k<40;k++)x.fillRect(Math.random()*256,Math.random()*256,Math.random()*40,2);const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;t.anisotropy=ANISO;return t}
+ const MATS={wall:new THREE.MeshStandardMaterial({map:lining(),roughness:0.8,side:THREE.DoubleSide}),crown:new THREE.MeshStandardMaterial({color:0x5a5a58,roughness:0.9,side:THREE.DoubleSide}),deck:new THREE.MeshStandardMaterial({color:0x2c2d30,roughness:0.85}),lamp:new THREE.MeshBasicMaterial({color:0xffe2a8}),line:new THREE.MeshBasicMaterial({color:0xe8e8e0}),portal:new THREE.MeshStandardMaterial({color:0x8d8a84,roughness:0.9})};
+ function scan(){const G=game,R=G.route,e=G.ego,out=[];let run=null;for(let s=Math.max(0,e.s-50);s<Math.min(R.total,e.s+1500);s+=5){const q=routeXZ(s,0),y=routeY(s,0),gy=groundY(q[0],q[1]);const under=y<gy-2.5;if(under){if(!run)run={s0:s,s1:s};run.s1=s}else if(run&&s-run.s1>20){out.push(run);run=null}}if(run)out.push(run);return out.filter(r=>r.s1-r.s0>=40)}
+ function build(r){const G=game,g=new THREE.Group(),n=Math.ceil((r.s1-r.s0)/4)+1,segs=14,pos=[],uv=[],idx=[],cpos=[],cidx=[];
+  const lanes=window.LANES?LANES.count((r.s0+r.s1)/2):1,one=routeOnewayAt((r.s0+r.s1)/2),hw=(one?lanes*3.6/2:lanes*3.6)+1.4,c0=one?0:0,wallH=1.6,rad=hw;
+  for(let i=0;i<n;i++){const s=Math.min(r.s1,r.s0+i*4),p=routeXZ(s,0),y=routeY(s,0),rx=p[3],rz=-p[2];
+   for(let k=0;k<=segs;k++){const a=k/segs*Math.PI,lx=Math.cos(a)*rad,ly=wallH+Math.sin(a)*rad*0.72;const lxw=k===0?hw:k===segs?-hw:lx;pos.push(p[0]+rx*lxw,y+ly,p[1]+rz*lxw);uv.push(k/segs*4,s/8)}
+   for(const side of [1,-1]){pos.push(p[0]+rx*hw*side,y-0.05,p[1]+rz*hw*side);uv.push(0,s/8)}}
+  const stride=segs+3;for(let i=0;i<n-1;i++){for(let k=0;k<segs;k++){const a=i*stride+k,b=a+1,c=a+stride,d=c+1;idx.push(a,c,b,b,c,d)}const w0=i*stride,wl=i*stride+segs+1;idx.push(wl,wl+stride,w0,w0,wl+stride,w0+stride);const e0=i*stride+segs,er=i*stride+segs+2;idx.push(e0,e0+stride,er,er,e0+stride,er+stride)}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(idx);geo.computeVertexNormals();const tube=new THREE.Mesh(geo,MATS.wall);tube.castShadow=true;tube.receiveShadow=true;g.add(tube);
+  const dpos=[],didx=[];for(let i=0;i<n;i++){const s=Math.min(r.s1,r.s0+i*4),p=routeXZ(s,0),y=routeY(s,0),rx=p[3],rz=-p[2];for(const side of [1,-1])dpos.push(p[0]+rx*hw*side,y+0.02,p[1]+rz*hw*side);if(i){const a=(i-1)*2;didx.push(a,a+1,a+2,a+1,a+3,a+2)}}
+  const dg=new THREE.BufferGeometry();dg.setAttribute('position',new THREE.Float32BufferAttribute(dpos,3));dg.setIndex(didx);dg.computeVertexNormals();const deck=new THREE.Mesh(dg,MATS.deck);deck.receiveShadow=true;g.add(deck);
+  const lampGeo=new THREE.BoxGeometry(1.4,0.06,0.18),nL=Math.floor((r.s1-r.s0)/10),lamps=new THREE.InstancedMesh(lampGeo,MATS.lamp,nL*2),mm=new THREE.Matrix4(),qq=new THREE.Quaternion();let li=0;
+  for(let j=0;j<nL;j++){const s=r.s0+5+j*10,p=routeXZ(s,0),y=routeY(s,0),h=Math.atan2(-p[3],p[2]);qq.setFromAxisAngle(new THREE.Vector3(0,1,0),h);for(const side of [0.45,-0.45]){mm.compose(new THREE.Vector3(p[0]+p[3]*hw*side,y+wallH+rad*0.72*0.93,p[1]-p[2]*hw*side),qq,new THREE.Vector3(1,1,1));lamps.setMatrixAt(li++,mm)}}g.add(lamps);
+  const dash=new THREE.InstancedMesh(new THREE.BoxGeometry(3,0.02,0.12),MATS.line,Math.ceil((r.s1-r.s0)/12)*Math.max(1,lanes-1+ (one?0:1)));let di=0;for(let s=r.s0;s<r.s1;s+=12){const p=routeXZ(s,0),y=routeY(s,0),h=Math.atan2(-p[3],p[2]);qq.setFromAxisAngle(new THREE.Vector3(0,1,0),h);const offs=one?Array.from({length:lanes-1},(_,k)=>hw-1.4-3.6*(k+1)):[0];for(const o of offs){if(di>=dash.count)break;mm.compose(new THREE.Vector3(p[0]+p[3]*o,y+0.04,p[1]-p[2]*o),qq,new THREE.Vector3(1,1,1));dash.setMatrixAt(di++,mm)}}dash.count=di;g.add(dash);
+  for(const [s,dir] of [[r.s0,-1],[r.s1,1]]){const p=routeXZ(s,0),y=routeY(s,0),h=Math.atan2(-p[3],p[2]),fr=new THREE.Group();fr.position.set(p[0],y,p[1]);fr.rotation.y=h;const T=wallH+rad*0.72+1.8;for(const side of [1,-1]){const col=new THREE.Mesh(new THREE.BoxGeometry(1.2,T,1.4),MATS.portal);col.position.set(0,T/2,side*(hw+0.7));fr.add(col)}const beam=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.6,hw*2+2.8),MATS.portal);beam.position.set(0,T-0.8,0);fr.add(beam);
+   const name=(G.route.steps.find(st=>st.s<=s+5&&st.s>s-400)||{}).name||'';if(name){const lab=new THREE.Mesh(new THREE.PlaneGeometry(Math.min(hw*1.8,name.length*0.5),0.7),new THREE.MeshBasicMaterial({map:ACT.signTex(name.toUpperCase(),'#1b3d2a','#fff',512,64)}));lab.position.set(dir*0.62,T-0.8,0);lab.rotation.y=dir>0?Math.PI/2:-Math.PI/2;fr.add(lab)}g.add(fr)}
+  scene.add(g);r.g=g;return r}
+ /* echo */
+ let conv=null,wet=null;function echo(on){try{const C=audio.ctx;if(!C||!audio.master)return;if(!conv){conv=C.createConvolver();const L=C.sampleRate*2.2,b=C.createBuffer(2,L,C.sampleRate);for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);for(let i=0;i<L;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/L,2.6)*(i<C.sampleRate*0.012?0:1)}conv.buffer=b;wet=C.createGain();wet.gain.value=0;audio.master.connect(conv);conv.connect(wet);wet.connect(C.destination)}wet.gain.setTargetAtTime(on?0.55:0,C.currentTime,0.4)}catch(e){}}
+ const lights=[new THREE.PointLight(0xffd9a0,0,28,1.6),new THREE.PointLight(0xffd9a0,0,28,1.6)];for(const l of lights)scene.add(l);
+ let chk=0;
+ MODS.push({id:'tunnels',disable(){for(const r of TN.list)if(r.g)scene.remove(r.g);TN.list=[];echo(false);for(const l of lights)l.intensity=0},
+  start(){for(const r of TN.list)if(r.g)scene.remove(r.g);TN.list=[];TN.inside=false},
+  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;const e=G.ego;chk-=1/60;if(chk<0){chk=3;const found=scan();for(const f of found)if(!TN.list.some(r=>Math.abs(r.s0-f.s0)<30))TN.list.push(build(f));for(const r of TN.list.slice())if(r.s1<e.s-300){scene.remove(r.g);TN.list.splice(TN.list.indexOf(r),1)}}
+   const inT=TN.list.some(r=>e.s>r.s0-3&&e.s<r.s1+3);if(inT!==TN.inside){TN.inside=inT;echo(inT)}window.INTUNNEL=inT;
+   lights.forEach((l,i)=>{l.intensity=inT?2.2:0;if(inT){const s=e.s+(i?-8:14),p=routeXZ(Math.max(0,s),0);l.position.set(p[0],routeY(Math.max(0,s),0)+4.4,p[1])}})}});
 })();
 </script>
 <script>/* mods/60-hyperlearn.js */
