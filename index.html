@@ -6088,6 +6088,96 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  window.GARAGE_DMG=DMG;
 })();
 </script>
+<script>/* mods/64-cabin.js */
+/* Cabin pack – (51) chatty passengers who react and rate the ride, (52) choose your seat + up to 3 companions,
+   (53) kids asking "are we there yet?", (54) rider mood, (55) in-car activities (nap / movie / video call),
+   (56) seat recline & sleep, (57) motion-sickness meter (can make the car pull over), (58) cat carrier & shoulder
+   parrot, (59) waving at people in passing cars.
+   • Seats: driver / front passenger / rear left / rear right. The interior camera follows your seat.
+   • Companions (0–3, adults or kids) sit in the remaining seats and chat about the place, the weather, the speed
+     and what the car just did; they gasp at near misses and cheer or complain according to your mood.
+   • Mood: calm (neutral), nervous (hates hard braking, fast corners and speed), thrill-seeker (loves acceleration).
+   • 🎬 menu: Nap (seat reclines, eyes shut, Zzz; car switches to Comfort), Movie (a screen plays a cartoon;
+     reading-a-screen raises motion sickness), Video call (a caller on screen chats).
+   • Motion sickness builds from g-forces, jerk, rear seats and screen time; over 90 % the car pulls over for air.
+   • Arrival: every passenger gives the ride 1–5 stars with a comment. */
+(function(){
+ const C=Object.assign({seat:'default',n:0,kids:0,mood:'calm',cat:false,parrot:false},UIX.load('cabin',{}));window.CABIN=C;const save=()=>UIX.save('cabin',C);const rnd=(a,b)=>a+Math.random()*(b-a),pick=a=>a[Math.floor(Math.random()*a.length)];
+ const opt=(v,t)=>`<option value="${v}">${t}</option>`;
+ UIX.section('Passengers',`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+  <select id="cSeat" style="${UIX.sel}">${opt('default','Your seat: usual')+opt('driver','Your seat: driver')+opt('front','Your seat: front passenger')+opt('rearL','Your seat: rear left')+opt('rearR','Your seat: rear right')}</select>
+  <select id="cMood" style="${UIX.sel}">${opt('calm','Mood: calm')+opt('nervous','Mood: nervous passenger')+opt('thrill','Mood: thrill-seeker')}</select>
+  <label>Companions <input id="cN" type="number" min="0" max="3" style="width:44px;${UIX.sel}"></label><label>…of which kids <input id="cK" type="number" min="0" max="3" style="width:44px;${UIX.sel}"></label>
+  <label><input type="checkbox" id="cCat"> Cat in a carrier</label><label><input type="checkbox" id="cParrot"> Parrot on your shoulder</label></div>`,/Time trial/);
+ for(const [id,k,p,num] of [['cSeat','seat','value'],['cMood','mood','value'],['cN','n','value',1],['cK','kids','value',1],['cCat','cat','checked'],['cParrot','parrot','checked']]){const el=document.getElementById(id);el[p]=C[k];el.addEventListener('change',()=>{C[k]=num?clamp(+el.value||0,0,3):el[p];if(k==='kids')C.kids=Math.min(C.kids,C.n);save()})}
+ /* seat → eye position (interior camera + your rider follow it) */
+ const SEATS={driver:[0,-1],front:[0,1],rearL:[1,-1],rearR:[1,1]};
+ const _ep=window.eyePos;window.eyePos=function(spec){const e=_ep(spec);if(!game||!game.spec||spec!==game.spec||C.seat==='default'||spec.style==='pod'||spec.hyper)return e;const [row,side]=SEATS[C.seat];const out=e.clone();out.z=side*spec.W*0.2;if(row){out.x-=0.95;out.y-=0.03}return out};
+ function mySeat(){const spec=game.spec;if(C.seat!=='default')return C.seat;return spec.driver?'driver':'front'}
+ /* companions */
+ const NAMES=['Maya','Jordan','Priya','Leo','Sam','Aiko','Diego','Grace','Omar','Zoe','Theo','Nia'];const KIDN=['Lily','Max','Ava','Noah','Ruby','Eli'];
+ const PASS=[];let bubbleT=0,chatT=0,wtT=0,areT=0,lastLog=0,sick=0,act=null;
+ function bubble(who,txt){const el=UIX.banner('paxSay','left:50%;bottom:160px;transform:translateX(-50%);background:#fffffff0;color:#111;padding:7px 12px;border-radius:14px;font:600 13px system-ui;max-width:60vw;box-shadow:0 4px 16px #0006;transition:opacity .4s');el.textContent=`${who}: ${txt}`;el.style.opacity=1;clearTimeout(el._t);el._t=setTimeout(()=>el.style.opacity=0,4200)}
+ function seatPos(spec,seat){const e=_ep(spec),[row,side]=SEATS[seat];return new THREE.Vector3(e.x-(row?0.95:0),e.y-0.02-(row?0.03:0),side*spec.W*0.2)}
+ function spawnCompanions(){const G=game,spec=G.spec,m=G.ego.mesh,mine=mySeat();for(const p of PASS)m.remove(p.g);PASS.length=0;const free=['front','rearL','rearR','driver'].filter(s=>s!==mine&&!(s==='driver'&&spec.driver));
+  for(let i=0;i<Math.min(C.n,free.length);i++){const kid=i<C.kids,seat=free[i],d=buildDriver(spec,'rider',seat,seatPos(spec,seat));if(kid){d.scale.setScalar(0.72);d.position.y-=0.18}m.add(d);PASS.push({g:d,kid,name:kid?pick(KIDN):pick(NAMES),seat,rating:5})}}
+ /* pets */
+ let cat=null,parrot=null;function pets(){const G=game,spec=G.spec,m=G.ego.mesh;if(cat){m.remove(cat);cat=null}if(parrot&&parrot.parent)parrot.parent.remove(parrot);parrot=null;
+  if(C.cat){const seat=['rearL','rearR','front'].find(s=>s!==mySeat()&&!PASS.some(p=>p.seat===s))||'rearL',p=seatPos(spec,seat);cat=new THREE.Group();const box=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.34,0.34),new THREE.MeshStandardMaterial({color:0x9aa3ab,roughness:0.6}));cat.add(box);const grate=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.26),new THREE.MeshStandardMaterial({color:0x222222,wireframe:true}));grate.position.set(0.252,0,0);grate.rotation.y=Math.PI/2;cat.add(grate);
+   const head=new THREE.Mesh(quadruped(0.5,0.3,{ears:true,snout:0.55,tail:0}),new THREE.MeshStandardMaterial({color:0xf08c2c}));head.scale.setScalar(0.8);head.position.set(-0.05,-0.12,0);cat.add(head);cat.position.set(p.x+0.05,p.y-0.45,p.z);m.add(cat);cat.userData.head=head}
+  if(C.parrot){const r=m.userData.rider;if(r){parrot=new THREE.Group();const body=new THREE.Mesh(bird(0.32),new THREE.MeshStandardMaterial({color:0x22b04a,roughness:0.5}));parrot.add(body);const wing=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.02,0.05),new THREE.MeshStandardMaterial({color:0xd32f2f}));wing.position.set(-0.02,0.12,0.06);parrot.add(wing);parrot.position.set(-0.05,-0.12,0.2);r.add(parrot)}}}
+ /* lines */
+ const L={
+  place:()=>{const G=game,c=((G.city||'')+'').split(',')[0];return pick([c?`So this is ${c}.`:'Nice area.',`Love this stretch of ${(G.nextStep&&G.nextStep.name)||'road'}.`,'Look at that view!','I could get used to not driving.'])},
+  weather:()=>({rain:'Glad we\'re not walking in this rain.',blizzard:'It\'s a total whiteout out there!',hurricane:'Is it safe to be out in this??',fog:'I can\'t see a thing, how can the car?',dust:'Whoa, the dust is everywhere.',smoke:'The sky is orange… wildfire smoke.'})[WX.key]||pick(['Perfect weather for a drive.','What a nice day.']),
+  speed:v=>C.mood==='thrill'?(v>30?'YES! Faster!':'Come on, floor it!'):C.mood==='nervous'?(v>28?'Isn\'t this a bit fast?!':'Nice and slow, I like it.'):pick(['Smooth ride.','This is relaxing.']),
+  near:()=>C.mood==='thrill'?pick(['Ha! That was close!','Again!']):pick(['WHOA!','That was close!','My heart!','Did you see that car?!']),
+  brake:()=>C.mood==='nervous'?pick(['Ow! Easy on the brakes!','I spilled my coffee…']):C.mood==='thrill'?'Nice stop!':'Oof, hard stop.',
+  accel:()=>C.mood==='thrill'?pick(['WOOOO!','Pinned to my seat!']):C.mood==='nervous'?'Too fast, too fast!':'Nice pickup.',
+  kid:n=>['Are we there yet?','Are we there yet??','ARE WE THERE YET?!','I\'m bored…','I need to pee.','How much longer?','Can we get ice cream?'][Math.min(6,n+Math.floor(Math.random()*2))]};
+ function say(p,t){if(!p)return;bubble(p.name,t)}
+ /* activities menu */
+ function menu(){let d=document.getElementById('actMenu');if(d){d.remove();return}d=UIX.banner('actMenu','top:50%;left:50%;transform:translate(-50%,-50%);z-index:9998;background:#0e141df5;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:12px 16px;pointer-events:auto;font:13px system-ui');
+  d.innerHTML='<b>🎬 In-car activity</b><br>'+[['none','🙂 Just ride'],['nap','😴 Nap (recline seat)'],['movie','🎞 Watch a movie'],['call','📞 Video call']].map(([k,t])=>`<button data-k="${k}" style="display:block;width:100%;margin-top:6px;padding:7px;border-radius:8px;${act===k?'outline:2px solid #35d0ff':''}">${t}</button>`).join('');d.querySelectorAll('button').forEach(b=>b.onclick=()=>{setAct(b.dataset.k);d.remove()})}
+ let screen=null,scrCtx=null,scrTex=null,zzz=null,prevStyle=null;
+ function setAct(k){const G=game,r=G.ego.mesh.userData.rider;act=k==='none'?null:k;if(screen){screen.parent&&screen.parent.remove(screen);screen=null}if(zzz){zzz.parent&&zzz.parent.remove(zzz);zzz=null}if(r)r.rotation.z=0;
+  if(act==='nap'){prevStyle=UIX.load('style','Standard');const h=document.getElementById('styleHud');if(h){h.value='Comfort';h.dispatchEvent(new Event('change'))}if(r){zzz=new THREE.Sprite(new THREE.SpriteMaterial({map:ACT.signTex('Z z z','rgba(0,0,0,0)','#bfe3ff',256,128),transparent:true,depthWrite:false}));zzz.scale.set(0.5,0.25,1);zzz.position.set(0.1,0.45,0);r.add(zzz)}}
+  else if(prevStyle){const h=document.getElementById('styleHud');if(h){h.value=prevStyle;h.dispatchEvent(new Event('change'))}prevStyle=null}
+  if(act==='movie'||act==='call'){const c=document.createElement('canvas');c.width=320;c.height=180;scrCtx=c.getContext('2d');scrTex=new THREE.CanvasTexture(c);scrTex.encoding=THREE.sRGBEncoding;screen=new THREE.Mesh(new THREE.PlaneGeometry(0.36,0.2),new THREE.MeshBasicMaterial({map:scrTex}));const e=eyePos(G.spec);screen.position.set(e.x+0.45,e.y-0.18,e.z);screen.rotation.y=-Math.PI/2;screen.rotation.x=-0.25;G.ego.mesh.add(screen)}
+  if(act==='call'){bubble('📞 Mom','Hi sweetie! Are you in one of those self-driving cars?')}}
+ function drawScreen2(t){if(!scrCtx)return;const x=scrCtx;if(act==='movie'){x.fillStyle=`hsl(${(t*20)%360},60%,55%)`;x.fillRect(0,0,320,180);x.fillStyle='#2a8a3a';x.fillRect(0,130,320,50);for(let i=0;i<3;i++){const px=((t*60+i*120)%420)-50,py=110-Math.abs(Math.sin(t*3+i))*50;x.fillStyle=['#ffd23f','#ff5a5f','#3fa7ff'][i];x.beginPath();x.arc(px,py,16,0,7);x.fill();x.fillStyle='#111';x.beginPath();x.arc(px+5,py-4,3,0,7);x.fill()}x.fillStyle='rgba(0,0,0,.5)';x.fillRect(0,0,320,22);x.fillStyle='#fff';x.font='bold 13px system-ui';x.fillText('▶ THE BOUNCY BALLS 3 · 0'+Math.floor(t/60)%10+':'+String(Math.floor(t)%60).padStart(2,'0'),8,15)}
+  else if(act==='call'){x.fillStyle='#223';x.fillRect(0,0,320,180);x.fillStyle='#e0b48a';x.beginPath();x.arc(160,90,48,0,7);x.fill();x.fillStyle='#5a3a22';x.beginPath();x.arc(160,70,50,Math.PI,0);x.fill();x.fillStyle='#111';x.beginPath();x.arc(142,86,5,0,7);x.arc(178,86,5,0,7);x.fill();const mo=Math.abs(Math.sin(t*9))*8;x.fillStyle='#8a2a2a';x.beginPath();x.ellipse(160,112,12,2+mo,0,0,7);x.fill();x.fillStyle='#fff';x.font='12px system-ui';x.fillText('Mom · '+Math.floor(t/60)+':'+String(Math.floor(t)%60).padStart(2,'0'),8,172)}scrTex.needsUpdate=true}
+ /* sickness meter */
+ const meter=UIX.banner('sickBox','right:8px;top:252px;font:11px ui-monospace,monospace;color:#c8f5c0;background:#0008;padding:2px 6px;border-radius:6px;display:none');
+ let pullT=0,lastV=null,lastH=null,waveT=0,rateDone=false;
+ MODS.push({id:'cabin',
+  start(){act=null;sick=0;pullT=0;rateDone=false;lastLog=CRASH.log.length;chatT=rnd(20,40);areT=rnd(90,180);setTimeout(()=>{try{spawnCompanions();pets()}catch(e){console.warn(e)}},600);UIX.btn('actBtn','🎬','In-car activity: nap / movie / video call',menu);meter.style.display='block';capSet('sick',null)},
+  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;
+   /* sickness */
+   if(lastV!=null){const al=(e.v-lastV)/dt;let dh=e.head-lastH;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const at=e.v*dh/dt;if(Math.abs(al)<14&&Math.abs(at)<14){const rear=/rear/.test(mySeat())?1.3:1,screenF=act==='movie'||act==='call'?1.8:act==='nap'?0.4:1,moodF=C.mood==='nervous'?1.4:C.mood==='thrill'?0.6:1;sick=clamp(sick+(Math.max(0,Math.abs(al)-1.2)*0.35+Math.max(0,Math.abs(at)-1.5)*0.45)*dt*rear*screenF*moodF-dt*0.12,0,100)}}lastV=e.v;lastH=e.head;
+   if(sick>90&&pullT<=0&&e.v>2){pullT=35;say(PASS[0]||{name:'You'},'I\'m going to be sick… pull over!')}if(pullT>0){pullT-=dt;capSet('sick',pullT>5?0:null);XB.sick=pullT>5?2.2:0;window.SIGOVR=pullT>5?1:window.SIGOVR;sick=Math.max(0,sick-dt*3);G.status='🤢 Pulling over so the passenger can get some air'}else{capSet('sick',null);XB.sick=0}
+   /* chat */
+   chatT-=dt;if(chatT<0&&!pullT){chatT=rnd(35,80);const p=PASS.length?pick(PASS.filter(q=>!q.kid).length?PASS.filter(q=>!q.kid):PASS):null;if(p)say(p,pick([L.place(),L.weather(),L.speed(e.v)]))}
+   if(C.kids&&PASS.some(p=>p.kid)){areT-=dt;if(areT<0){areT=rnd(70,160);const k=PASS.find(p=>p.kid);k.asked=(k.asked||0)+1;say(k,L.kid(k.asked));setTimeout(()=>bubble('You',pick(['Almost!','Soon, sweetie.','Look out the window!','The screen says '+(G.etaStr||'not long')+'.'])),2500)}}
+   /* reactions */
+   const a=e.acc||0;if(CRASH.log.length>lastLog){lastLog=CRASH.log.length;for(const p of PASS)p.rating=Math.max(1,p.rating-2);say(PASS[0]||null,'AAAH! Are we OK?!')}
+   if(G.hp&&G.hp.risk===1&&Math.random()<dt*0.4){for(const p of PASS)p.rating=Math.max(1,p.rating-0.5);say(pick(PASS)||null,L.near())}
+   if(a<-5&&Math.random()<dt*2){for(const p of PASS)p.rating-=C.mood==='nervous'?0.4:0.15;if(PASS.length)say(pick(PASS),L.brake())}
+   if(a>3.5&&Math.random()<dt*1){for(const p of PASS)p.rating+=C.mood==='thrill'?0.2:C.mood==='nervous'?-0.3:0;if(PASS.length)say(pick(PASS),L.accel())}
+   for(const p of PASS)p.rating=clamp(p.rating,1,5);
+   /* waving (59) */
+   waveT-=dt;if(waveT<0){for(const o of G.agents){if(!o.mesh||!o.mesh.userData.driver)continue;const dx=o.x-e.x,dz=o.z-e.z,f=dx*Math.cos(e.head)-dz*Math.sin(e.head),l=Math.abs(dx*Math.sin(e.head)+dz*Math.cos(e.head));if(Math.abs(f)<3&&l<4.5&&Math.abs(o.v-e.v)<3){waveT=rnd(25,50);C.wave=1.6;o.waveBack=1.6;break}}}},
+  frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;const t=performance.now()/1000,r=G.ego.mesh.userData.rider;meter.textContent=`🤢 Motion sickness ${Math.round(sick)} %`;meter.style.color=sick>70?'#ff9a9a':sick>40?'#ffe08a':'#c8f5c0';
+   if(act==='nap'&&r){r.rotation.z=lerp(r.rotation.z,0.55,0.03);if(r.userData.head)r.userData.head.rotation.z=0.25;if(zzz)zzz.position.y=0.45+Math.sin(t*1.5)*0.05}
+   if(screen)drawScreen2(t);if(act==='call'&&Math.random()<0.004)bubble('📞 Mom',pick(['Are you eating enough?','Send me a picture of the car!','Your father says hi.','Is it driving safely?']));
+   if(cat&&cat.userData.head)cat.userData.head.rotation.y=Math.sin(t*0.7)*0.4;if(parrot){parrot.rotation.y=Math.sin(t*2)*0.3;parrot.children[0].position.y=Math.abs(Math.sin(t*4))*0.02;if(Math.random()<0.0015)bubble('🦜 Polly',pick(['SQUAWK! Red light!','Pretty bird!','Are we there yet? SQUAWK!','Watch the road! SQUAWK!','Polly wants a charger!']))}
+   for(const p of PASS){const h=p.g.userData.head;if(h)h.rotation.y=Math.sin(t*0.3+p.g.id)*0.6}
+   if(C.wave>0&&r){C.wave-=1/60;const arms=r.userData.anim&&r.userData.anim.arm;if(arms&&arms[0]){arms[0].rotation.z=-2.4;arms[0].rotation.x=Math.sin(t*12)*0.4}}
+   for(const o of G.agents)if(o.waveBack>0){o.waveBack-=1/60;const d=o.mesh.userData.driver;if(d){const arm=d.children.find(c=>c.isGroup&&Math.abs(c.position.y+0.26)<0.02);if(arm){arm.rotation.z=o.waveBack>0.05?-2.4:-1.0;arm.rotation.x=Math.sin(t*12)*0.4}}}},
+  arrive(){if(rateDone)return;rateDone=true;const G=game,cs=window.COMFORT?COMFORT.score:80;const lines=[];const all=[...PASS,{name:'You',rating:5,me:true}];for(const p of all){let r=p.me?Math.round((cs/20+ (5-(sick/25)))/2):Math.round((p.rating+cs/20)/2-sick/60);r=clamp(r,1,5);const c=r>=5?pick(['Perfect ride!','Would ride again.','So smooth.']):r>=4?pick(['Pretty good.','Nice trip.']):r>=3?pick(['It was OK.','A bit bumpy.']):pick(['Never again.','I feel sick.','Terrifying.']);lines.push(`${p.name}: ${'★'.repeat(r)}${'☆'.repeat(5-r)} "${c}"`)}
+   setTimeout(()=>{const a=document.getElementById('arrTxt');if(a)a.innerHTML+=`<div style="margin-top:8px;font-size:13px;text-align:left">${lines.join('<br>')}</div>`},50)}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
