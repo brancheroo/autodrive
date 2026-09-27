@@ -2606,7 +2606,13 @@ function speedLimitAt(idx){
  const R=game.route,nid=R.nodes[idx],ni=NODEINFO.get(nid);
  if(ni&&ni.spd)return ni.spd;
  const sp=R.speed[Math.min(idx,R.speed.length-1)]||11;return clamp(Math.round(sp*MPH*1.15/5)*5,20,75)}
-function laneOffsetAt(idx){let ni=NODEINFO.get(game.route.nodes[idx]);if(!ni||ni.lanes==null){const N=game.route.nodes;for(let d=1;d<=4;d++){const x=NODEINFO.get(N[idx+d])||NODEINFO.get(N[idx-d]);if(x&&x.lanes!=null&&(!ni||x.oneway===ni.oneway)){ni=x;break}}} /* untagged node (often an intersection): borrow the nearest tagged neighbour's lanes so the lane position doesn't jump */if(!ni)return 1.85;if(ni.oneway){const l=ni.lanes||2;return l>=2?(l*3.6)/2-1.8-0.3:0}return 1.85+(ni.lanes>=4?3.6:0)}
+/* lane counts along the route with OSM gaps filled: untagged stretches inherit the nearest tagged value of the same road
+   (same one-way status & road class, within 400 m), so lane positions and lane choice don't flicker on patchy tagging */
+function routeLanes(idx){const R=game.route;if(!R._lanes||R._lanesN!==NODEINFO.size){const N=R.nodes,n=N.length,val=new Array(n).fill(null),src=N.map(id=>NODEINFO.get(id)||null);
+  for(let i=0;i<n;i++){const x=src[i];if(x&&x.lanes!=null)val[i]=x.lanes}
+  const fill=new Array(n).fill(null);for(let i=0;i<n;i++){if(val[i]!=null){fill[i]=val[i];continue}const me=src[i];let best=null,bd=401;for(const dir of [-1,1]){for(let j=i+dir;j>=0&&j<n;j+=dir){const d=Math.abs(R.cum[j]-R.cum[i]);if(d>=bd)break;const x=src[j];if(val[j]!=null&&(!me||!x||(x.oneway===me.oneway&&x.hw===me.hw))){best=val[j];bd=d;break}}}fill[i]=best}
+  R._lanes=fill;R._lanesN=NODEINFO.size}return R._lanes[clamp(idx,0,R._lanes.length-1)]}
+function laneOffsetAt(idx){let ni=NODEINFO.get(game.route.nodes[idx]);const fl=routeLanes(idx);if(ni&&ni.lanes==null&&fl!=null)ni={...ni,lanes:fl};else if(!ni&&fl!=null)ni={lanes:fl};if(!ni)return 1.85;if(ni.oneway){const l=ni.lanes||2;return l>=2?(l*3.6)/2-1.8-0.3:0}return 1.85+(ni.lanes>=4?3.6:0)}
 function plan(a,dt,lead,isEgo){
  const R=game.route,e=a;const look=Math.max(70,a.v*a.v/(2*2.2)+50);let target=1e9,reason='';
  const [,,idx]=routeLLnh(a.s);
