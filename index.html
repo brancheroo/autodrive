@@ -6033,6 +6033,61 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
     if(Math.hypot(p[0]-e.x,p[1]-e.z)>1400)drop(T)}}});
 })();
 </script>
+<script>/* mods/63-garage.js */
+/* Garage: (47) vintage Starfire's bolt-on autopilot hardware, (48) paint shop, (49) upgrades, (50) persistent damage.
+   48 Paint shop: any custom colour, a wrap (racing stripes over hood/roof/boot, flames along the sides, woodland camo,
+      carbon fibre, checkered flag, pinstripes) and a custom side decal (number or name) in your chosen colour.
+   49 Upgrades: performance tyres (+12 % cornering grip), extended battery / long-range tank (+25 % energy),
+      aero kit (−10 % drag, lowered stance), sensor package (adds a 200 m roof lidar to any car).
+   50 Damage persists between trips for each car (the exact dents are replayed onto the body next time) until you
+      pay to repair it in the garage – cost scales with how bad it is. */
+(function(){
+ const GS=Object.assign({custom:false,col:'#ff3b30',wrap:'none',decal:'',decalCol:'#ffffff',tyres:false,battery:false,aero:false,sensor:false},UIX.load('garage',{}));window.GARAGE=GS;const save=()=>UIX.save('garage',GS);
+ const DMG=UIX.load('carDamage',{});const saveD=()=>UIX.save('carDamage',DMG);
+ const opt=(v,t)=>`<option value="${v}">${t}</option>`;
+ UIX.section('Garage',`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+  <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gCustom"> Custom colour <input type="color" id="gCol" style="width:38px;height:24px;border:0;background:none"></label>
+  <select id="gWrap" style="${UIX.sel}">${opt('none','No wrap')+opt('stripes','Racing stripes')+opt('flames','Flames')+opt('camo','Woodland camo')+opt('carbon','Carbon fibre')+opt('checker','Checkered')+opt('pin','Pinstripes')}</select>
+  <input id="gDecal" maxlength="8" placeholder="Side decal (e.g. 42)" style="${UIX.sel}"><label style="display:flex;gap:6px;align-items:center">Decal <input type="color" id="gDecalCol" style="width:38px;height:24px;border:0;background:none"></label>
+  <label><input type="checkbox" id="gTyres"> Performance tyres</label><label><input type="checkbox" id="gBatt"> Extended battery / tank</label><label><input type="checkbox" id="gAero"> Aero kit</label><label><input type="checkbox" id="gSens"> Lidar sensor package</label></div>
+  <div id="gDmg" style="margin-top:6px;font-size:12px"></div>`,/Driving style/);
+ const g=id=>document.getElementById(id);const bind=[['gCustom','custom','checked'],['gCol','col','value'],['gWrap','wrap','value'],['gDecal','decal','value'],['gDecalCol','decalCol','value'],['gTyres','tyres','checked'],['gBatt','battery','checked'],['gAero','aero','checked'],['gSens','sensor','checked']];
+ for(const [id,k,p] of bind){const el=g(id);el[p]=GS[k];el.addEventListener('change',()=>{GS[k]=el[p];save()})}
+ function dmgUI(){const d=g('gDmg');if(!d||typeof selCar==='undefined')return;const R=DMG[selCar.id];if(!R||!R.dmg){d.innerHTML=`🔧 ${selCar.name}: no damage`;return}const cost=Math.round(250+R.dmg*9000+R.hits.length*120);d.innerHTML=`🔧 ${selCar.name}: ${Math.round(R.dmg*100)} % damaged (${R.hits.length} dents) <button id="gRepair" style="margin-left:6px">Repair · $${cost.toLocaleString()}</button>`;g('gRepair').onclick=()=>{delete DMG[selCar.id];saveD();dmgUI();if(window.showroom){try{refreshShowcar()}catch(e){}}}}
+ const _rc=window.renderCars;window.renderCars=function(){const r=_rc.apply(this,arguments);setTimeout(dmgUI,0);return r};setTimeout(dmgUI,50);
+ /* ---------- paint & wraps ---------- */
+ function wrapTex(kind,col){const c=document.createElement('canvas');c.width=1024;c.height=256;const x=c.getContext('2d');x.clearRect(0,0,1024,256);
+  if(kind==='flames'){for(let i=0;i<9;i++){const y0=40+Math.random()*170,len=260+Math.random()*420;const gr=x.createLinearGradient(0,0,len,0);gr.addColorStop(0,'#ffd23f');gr.addColorStop(0.5,'#ff7b00');gr.addColorStop(1,'rgba(200,20,0,0)');x.fillStyle=gr;x.beginPath();x.moveTo(0,y0-30);for(let k=0;k<=8;k++){const px=len*k/8;x.quadraticCurveTo(px+20,y0-30+Math.sin(k*1.7)*26-k*2,px+len/8,y0-8+Math.sin(k)*10)}x.lineTo(0,y0+30);x.fill()}}
+  else if(kind==='camo'){for(let i=0;i<140;i++){x.fillStyle=['#3b4a2a','#5a6a3a','#2a2a1a','#7a6a4a'][i%4];x.beginPath();x.ellipse(Math.random()*1024,Math.random()*256,20+Math.random()*60,10+Math.random()*30,Math.random()*3,0,7);x.fill()}}
+  else if(kind==='carbon'){for(let i=0;i<1024;i+=8)for(let j=0;j<256;j+=8){x.fillStyle=((i+j)/8)%2?'#1c1d20':'#2e3035';x.fillRect(i,j,8,8)}}
+  else if(kind==='checker'){for(let i=0;i<1024;i+=32)for(let j=0;j<256;j+=32){x.fillStyle=((i+j)/32)%2?'#111':'#f4f4f4';x.fillRect(i,j,32,32)}}
+  else if(kind==='pin'){x.strokeStyle=col;x.lineWidth=5;x.beginPath();x.moveTo(20,120);x.bezierCurveTo(300,80,700,160,1004,110);x.stroke();x.lineWidth=2;x.beginPath();x.moveTo(20,138);x.bezierCurveTo(300,98,700,178,1004,128);x.stroke()}
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t}
+ function decalTex(txt,col){const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d');x.fillStyle=col;x.font='900 200px Impact, Arial Black';x.textAlign='center';x.textBaseline='middle';x.strokeStyle='rgba(0,0,0,.6)';x.lineWidth=10;x.strokeText(txt,256,135);x.fillText(txt,256,135);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t}
+ function dress(){const G=game,m=G.ego.mesh,spec=G.spec,pc=profCache[spec.id]||{},P=pc.P;if(!P)return;
+  if(GS.custom&&m.userData.paint&&m.userData.paint.color)m.userData.paint.color.set(GS.col);
+  const grp=new THREE.Group();grp.userData.garage=1;m.add(grp);const half=u=>P.half(u)+0.012;
+  if(GS.wrap==='stripes'){const mat=new THREE.MeshStandardMaterial({color:GS.custom?0xffffff:0xf4f4f4,roughness:0.4,polygonOffset:true,polygonOffsetFactor:-3});for(const zc of [0.22,-0.22]){const pos=[],idx=[];const N=40;for(let i=0;i<=N;i++){const u=0.02+i/N*0.96,x=P.xOf(u),y=P.top(u)+0.012;pos.push(x,y,zc-0.14,x,y,zc+0.14);if(i){const a=(i-1)*2;idx.push(a,a+2,a+1,a+1,a+2,a+3)}}const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));gg.setIndex(idx);gg.computeVertexNormals();grp.add(new THREE.Mesh(gg,mat))}}
+  else if(GS.wrap!=='none'){const t=wrapTex(GS.wrap,GS.decalCol);for(const sd of [1,-1]){const u0=0.08,u1=0.92,L=Math.abs(P.xOf(u0)-P.xOf(u1)),pl=new THREE.Mesh(new THREE.PlaneGeometry(L,0.42),new THREE.MeshStandardMaterial({map:t,transparent:true,roughness:0.5,polygonOffset:true,polygonOffsetFactor:-3}));pl.position.set((P.xOf(u0)+P.xOf(u1))/2,P.belt(0.5)-0.32,sd*half(0.5));pl.rotation.y=sd>0?0:Math.PI;if(sd<0)pl.scale.x=-1;grp.add(pl)}}
+  if(GS.decal){const t=decalTex(GS.decal,GS.decalCol);for(const sd of [1,-1]){const pl=new THREE.Mesh(new THREE.PlaneGeometry(0.9,0.45),new THREE.MeshStandardMaterial({map:t,transparent:true,polygonOffset:true,polygonOffsetFactor:-4}));pl.position.set(P.xOf(0.42),P.belt(0.42)-0.3,sd*(half(0.42)+0.004));pl.rotation.y=sd>0?0:Math.PI;grp.add(pl)}}
+  if(GS.sensor&&!sensorsOf0().lidar){const puck=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.18,0.14,20),new THREE.MeshStandardMaterial({color:0x111111,metalness:0.5,roughness:0.3}));puck.position.set(P.xOf(0.55),P.top(0.55)+0.1,0);grp.add(puck);m.userData.lidarSpin=m.userData.lidarSpin||puck}
+  if(spec.id==='starfire'){const bar=new THREE.Group(),blk=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.4});const rack=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.06,1.5),new THREE.MeshStandardMaterial({color:0xb8bcc0,metalness:0.9,roughness:0.2}));bar.add(rack);for(const z of [-0.45,0,0.45]){const cam=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.08,0.1),blk);cam.position.set(0.05,0.07,z);bar.add(cam);const lens=new THREE.Mesh(new THREE.CircleGeometry(0.025,12),new THREE.MeshStandardMaterial({color:0x0a0f18,metalness:0.8,roughness:0.05}));lens.position.set(0.112,0.07,z);lens.rotation.y=Math.PI/2;bar.add(lens)}
+   bar.position.set(P.xOf(0.58),P.top(0.58)+0.05,0);grp.add(bar);const radar=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.14,0.28),blk);radar.position.set(P.xOf(0.005)+0.03,0.55,0);grp.add(radar);const cable=new THREE.Mesh(new THREE.TorusGeometry(0.35,0.012,6,20,Math.PI),blk);cable.position.set(P.xOf(0.52),P.top(0.5)-0.1,half(0.5)-0.05);cable.rotation.y=Math.PI/2;grp.add(cable);
+   const lap=new THREE.Mesh(new THREE.BoxGeometry(0.32,0.02,0.24),new THREE.MeshStandardMaterial({color:0x2a2a2a}));lap.position.set(P.xOf(0.5),P.belt(0.5)-0.25,0.25);grp.add(lap);const scr=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.2),new THREE.MeshBasicMaterial({color:0x2dd0ff}));scr.position.set(P.xOf(0.5)+0.11,P.belt(0.5)-0.15,0.25);scr.rotation.y=-Math.PI/2;scr.rotation.x=-0.3;grp.add(scr)}
+  if(GS.aero){m.position.y-=0.04;const lip=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.04,spec.W*0.9),new THREE.MeshStandardMaterial({color:0x111111}));lip.position.set(P.xOf(0.01),0.18,0);grp.add(lip)}}
+ /* ---------- upgrades ---------- */
+ const E0={};let sensorsOf0=window.sensorsOf;
+ window.sensorsOf=function(){const S=sensorsOf0();if(!GS.sensor||!game||!game.route||S.lidar)return S;return {...S,lidar:200,label:S.label+' + roof lidar pkg',wedges:[...(S.wedges||[]),[0,360,200,'lidar']]}};
+ function upgrades(){const G=game,id=G.spec.id,E=ENERGY[id];if(!E0[id])E0[id]={...E};Object.assign(E,E0[id]);if(GS.battery){if(E.ice)E.tankL=E0[id].tankL*1.25;else E.kwh=E0[id].kwh*1.25}if(GS.aero)E.cda=E0[id].cda*0.9;window.UPG_GRIP=GS.tyres?1.12:1;if(GS.battery){G.energy=capJ(E)*G.soc}}
+ /* ---------- persistent damage ---------- */
+ let replaying=false;const _dv=window.damageVehicle;
+ window.damageVehicle=function(obj,px,pz,nx,nz,sev){const r=_dv.apply(this,arguments);try{const G=game;if(!replaying&&G&&G.ego&&obj===G.ego.mesh&&sev>=0.05){obj.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(obj.matrixWorld).invert(),p=new THREE.Vector3(px,obj.position.y+0.7,pz).applyMatrix4(inv),n=new THREE.Vector3(nx,0,nz).transformDirection(inv);const R=DMG[G.spec.id]||(DMG[G.spec.id]={dmg:0,hits:[]});R.hits.push([+p.x.toFixed(3),+p.z.toFixed(3),+n.x.toFixed(3),+n.z.toFixed(3),+sev.toFixed(3)]);if(R.hits.length>24)R.hits.shift();R.dmg=obj.userData.dmg||R.dmg;saveD()}}catch(e){}return r};
+ function replayDamage(){const G=game,R=DMG[G.spec.id];if(!R||!R.hits.length)return;const m=G.ego.mesh;m.updateMatrixWorld(true);replaying=true;try{for(const [lx,lz,nx,nz,sev] of R.hits){const p=new THREE.Vector3(lx,0,lz).applyMatrix4(m.matrixWorld),n=new THREE.Vector3(nx,0,nz).transformDirection(m.matrixWorld);_dv(m,p.x,p.z,n.x,n.z,sev)}}finally{replaying=false}m.userData.dmg=R.dmg;G.status=`🔧 Still carrying ${Math.round(R.dmg*100)} % damage from earlier trips`}
+ MODS.push({id:'garage',
+  start(){let done=false;const go=()=>{if(done)return;const G=game;if(!G||!G.ego||!G.ego.mesh||!profCache[G.spec.id]){setTimeout(go,200);return}done=true;try{upgrades()}catch(e){}try{dress()}catch(e){console.warn(e)}setTimeout(()=>{try{replayDamage()}catch(e){}},1500)};setTimeout(go,300)}});
+ window.GARAGE_DMG=DMG;
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
