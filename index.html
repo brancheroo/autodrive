@@ -5983,13 +5983,48 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   let cross=Math.random()<0.35?rnd(10,40):-1;return ACT.add({kind:'bot',mesh:g,s:s0,lat:side*half,v:rnd(1.2,1.8),r:0.4,clear:0.8,gap:4,hazard:false,why:'🤖 Waiting for a delivery robot to cross',
    update(o,dt){if(cross>0){cross-=dt;o.s+=o.v*dt;o.yaw=0}else if(cross>-1&&cross<=0){o.hazard=true;o.vl=-side*o.v;o.lat+=o.vl*dt;o.yaw=side>0?Math.PI/2:-Math.PI/2;if(Math.abs(o.lat+side*half)<0.3){cross=-2;o.hazard=false}}else{o.s+=o.v*dt;o.yaw=0;o.hazard=false;o.vl=0}ACT.place(o);flag.rotation.y=Math.sin(o.t*6)*0.3}})}
  MODS.push({id:'trafficvehicles',
-  start(){TV.next={bot:rnd(40,120)}},
+  start(){TV.next={bot:rnd(40,120)};for(const T of TV.trailers)scene.remove(T.g);TV.trailers=[]},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;
    for(const a of G.agents){if(a.busStop){const B=a.busStop;if(B.next==null)B.next=nextStop(a);if(B.state==='drive'&&a.s>=B.next-1.5&&a.v<0.4){B.state='dwell';B.t=rnd(12,20)}else if(B.state==='dwell'){B.t-=dt;if(B.t<0){B.state='drive';B.next=nextStop(a)}}}}
    TV.next.bot-=dt;if(TV.next.bot<0){TV.next.bot=rnd(90,240);if(G.limitMph<=30&&!ACT.list.some(o=>o.kind==='bot'))robot()}},
   preRender(){const G=game;if(!G||!G.route)return;const t=performance.now()/1000;for(const T of TV.trailers.slice())if(!G.agents.includes(T.a)){scene.remove(T.g);TV.trailers.splice(TV.trailers.indexOf(T),1)} /* vehicle despawned → trailer / towed car goes too */for(const a of G.agents){if(a.mesh&&a.mesh.userData.beacon)a.mesh.userData.beacon.material.color.setHex(((t*2)|0)%2?0xffa000:0x553300);const T=a.trailer2;if(!T)continue;if(!G.agents.includes(a)||a.loose){scene.remove(T.g);a.trailer2=null;continue}
     const s=a.s-T.back,lat=(a.off??1.85)+(a.offAdd||0),p=routeXZ(Math.max(0,s),lat),h=Math.atan2(-p[3],p[2]);T.g.position.set(p[0],routeY(Math.max(0,s),lat),p[1]);T.g.rotation.y=h}
   }});
+})();
+</script>
+<script>/* mods/62-trams.js */
+/* (44) Trams & cable cars on the real OSM tram / light-rail lines near your route. Modern two-section light-rail
+   vehicles (pantograph, white with a coloured band); inside San Francisco they're classic cable cars (wood-and-red
+   open bodies, running boards, gripman). They run at ~10 m/s along the actual track, dwell at the real tram stops,
+   ring their bell, and where the track shares the street with your route they're tracked as hazards (route
+   position + lateral offset every frame) so everyone yields to them. */
+(function(){
+ const TR={list:[],next:5};window.TRAMS=TR;const rnd=(a,b)=>a+Math.random()*(b-a);
+ const M=(c,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:0.5,...o});
+ const inSF=(lat,lon)=>lat>37.70&&lat<37.82&&lon>-122.52&&lon<-122.35;
+ function lrv(){const g=new THREE.Group(),col=[0xc8102e,0x1f5fb4,0x2a9d8f,0x6a1b9a][Math.floor(Math.random()*4)];for(const [x,L] of [[7.2,13.5],[-7.2,13.5]]){const b=new THREE.Mesh(new THREE.BoxGeometry(L,3.1,2.65),M(0xf2f2ee,{roughness:0.35}));b.position.set(x,1.95,0);g.add(b);const band=new THREE.Mesh(new THREE.BoxGeometry(L+0.02,0.35,2.67),M(col));band.position.set(x,1.1,0);g.add(band);const win=new THREE.Mesh(new THREE.BoxGeometry(L-1,1.1,2.68),M(0x1b2530,{metalness:0.5,roughness:0.15}));win.position.set(x,2.45,0);g.add(win)}
+  const pan=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.9,0.05),M(0x333333));pan.position.set(4,4,0);pan.rotation.z=0.5;g.add(pan);return g}
+ function cableCar(){const g=new THREE.Group(),red=M(0xa61b1b),cream=M(0xefe3c2),wood=M(0x7a4a24);const b=new THREE.Mesh(new THREE.BoxGeometry(8.4,1.1,2.4),red);b.position.y=0.95;g.add(b);const cab=new THREE.Mesh(new THREE.BoxGeometry(4,1.6,2.3),cream);cab.position.set(0,2.3,0);g.add(cab);const roof=new THREE.Mesh(new THREE.BoxGeometry(8.8,0.2,2.6),red);roof.position.y=3.25;g.add(roof);
+  for(const x of [-3.4,-2.4,2.4,3.4])for(const z of [1.05,-1.05]){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.6,6),wood);p.position.set(x,2.3,z);g.add(p)}for(const z of [1.35,-1.35]){const rb=new THREE.Mesh(new THREE.BoxGeometry(8.2,0.08,0.35),wood);rb.position.set(0,0.5,z);g.add(rb)}
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(2.2,0.35),new THREE.MeshBasicMaterial({map:ACT.signTex('POWELL & MASON','#1b1b1b','#f2d27a',512,80)}));sign.position.set(4.25,2.95,0);sign.rotation.y=Math.PI/2;g.add(sign);return g}
+ function spawn(){const G=game,e=G.ego;if(!window.OSMX)return;const lines=OSMX.feat.filter(f=>f.kind==='tram'&&f.geom&&f.geom.length>3);let best=null;for(const f of lines){const x=toX(f.lon),z=toZ(f.lat),d=Math.hypot(x-e.x,z-e.z);if(d<900&&(!best||d<best.d))best={f,d}}if(!best)return;
+  const pts=best.f.geom.map(g=>[toX(g[1]),toZ(g[0])]),cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));if(cum[cum.length-1]<200)return;
+  const sf=inSF(best.f.lat,best.f.lon),g=sf?cableCar():lrv(),len=sf?8.8:27;scene.add(g);const dir=Math.random()<0.5?1:-1,T={g,pts,cum,d:dir>0?0:cum[cum.length-1],dir,v:0,vmax:sf?4.2:rnd(9,12),len,sf,dwell:0,stops:[],t:0,ox:ORIGIN.lon};
+  for(const s of OSMX.feat){if(s.kind!=='tramstop')continue;const x=toX(s.lon),z=toZ(s.lat);for(let i=0;i<pts.length;i++)if(Math.hypot(pts[i][0]-x,pts[i][1]-z)<14){T.stops.push(cum[i]);break}}
+  TR.list.push(T);bell()}
+ function pose(T,d){const P=T.pts,C=T.cum;d=clamp(d,0,C[C.length-1]);let i=1;while(i<C.length-1&&C[i]<d)i++;const a=P[i-1],b=P[i],k=(d-C[i-1])/((C[i]-C[i-1])||1);return [a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,Math.atan2(-(b[1]-a[1]),b[0]-a[0])]}
+ function bell(){try{const C=audio.ctx;if(!C||!audio.master)return;for(let i=0;i<2;i++){const o=C.createOscillator(),g=C.createGain();o.type='triangle';o.frequency.value=1760;g.gain.setValueAtTime(0.06,C.currentTime+i*0.18);g.gain.exponentialRampToValueAtTime(0.0001,C.currentTime+i*0.18+0.4);o.connect(g);g.connect(audio.master);o.start(C.currentTime+i*0.18);o.stop(C.currentTime+i*0.18+0.45)}}catch(e){}}
+ function routeProj(x,z,T){const G=game,e=G.ego;let best=null;const s0=T.rs??e.s;for(let s=Math.max(0,s0-80);s<Math.min(G.route.total,s0+160);s+=3){const q=routeXZ(s,0),d=Math.hypot(q[0]-x,q[1]-z);if(!best||d<best.d)best={s,d,q}}if(!best||best.d>9)return null;const q=best.q,lat=(x-q[0])*q[3]-(z-q[1])*q[2];return {s:best.s,lat}}
+ function drop(T){scene.remove(T.g);if(T.act)ACT.remove(T.act);TR.list.splice(TR.list.indexOf(T),1)}
+ MODS.push({id:'trams',disable(){for(const T of TR.list.slice())drop(T)},reroute(){for(const T of TR.list)if(T.act){ACT.remove(T.act);T.act=null;T.rs=null}},
+  start(){for(const T of TR.list.slice())drop(T);TR.next=rnd(5,30)},
+  sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;TR.next-=dt;if(TR.next<0){TR.next=rnd(60,160);if(TR.list.length<2)spawn()}
+   for(const T of TR.list.slice()){if(T.ox!==ORIGIN.lon){drop(T);continue}T.t+=dt;const end=T.cum[T.cum.length-1];
+    if(T.dwell>0){T.dwell-=dt;T.v=0;if(T.dwell<=0)bell()}else{const nxt=T.stops.filter(s=>(s-T.d)*T.dir>1).sort((a,b)=>(a-b)*T.dir)[0];const toStop=nxt!=null?(nxt-T.d)*T.dir:1e9;let tgt=Math.min(T.vmax,Math.sqrt(2*1.1*Math.max(0,toStop-1)));
+     const p=pose(T,T.d),ahead=Math.hypot(e.x-p[0]-Math.cos(p[2])*T.dir*(T.len/2+8),e.z-p[1]+Math.sin(p[2])*T.dir*(T.len/2+8));if(ahead<6)tgt=0;T.v+=clamp(tgt-T.v,-1.4*dt,1.0*dt);if(toStop<1.2&&T.v<0.3&&nxt!=null){T.dwell=rnd(12,20);T.stops=T.stops.filter(s=>s!==nxt)}}
+    T.d+=T.v*T.dir*dt;if(T.d<0||T.d>end){drop(T);continue}const p=pose(T,T.d);T.g.position.set(p[0],groundY(p[0],p[1])+0.05,p[1]);T.g.rotation.y=p[2]+(T.dir<0?Math.PI:0);
+    const rp=routeProj(p[0],p[1],T);if(rp){T.rs=rp.s;if(!T.act)T.act=ACT.add({kind:'tram',s:rp.s,lat:rp.lat,r:1.4,clear:0.6,gap:6,hazard:true,keep:true,why:T.sf?'🚋 Yielding to a cable car':'🚊 Yielding to a tram',update(){}});T.act.s=rp.s;T.act.lat=rp.lat;const h=Math.atan2(-Math.sin(p[2]),Math.cos(p[2]));T.act.vs=T.v*T.dir*Math.cos(p[2]-(Math.atan2(-routeXZ(rp.s,0)[3],routeXZ(rp.s,0)[2])))}else if(T.act){ACT.remove(T.act);T.act=null;T.rs=null}
+    if(Math.hypot(p[0]-e.x,p[1]-e.z)>1400)drop(T)}}});
 })();
 </script>
 <script>/* mods/90-selftest.js */
