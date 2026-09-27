@@ -3184,7 +3184,7 @@ function step(){
  scrT-=rdt;if(scrT<=0){scrT=0.12;G.clockStr=localTime(dt2);for(const S of SCREENS)drawScreen(S)}
  uiT-=rdt;if(uiT<=0){uiT=0.15;updateHUD()}
  audio.update(e,G);
- modCall('preRender'); renderer.render(scene,camera);
+ modCall('preRender'); renderer.render(scene,camera);modCall('postRender');
  if(!G.miniT||now-G.miniT>50){G.miniT=now;drawMini()}
  updateWeather(rdt);
  if(G.protest)updateProtest(Math.min(0.5,rawDt)*(G.paused?0:G.scale),rdt);
