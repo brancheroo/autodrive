@@ -2617,7 +2617,7 @@ function recoverCop(c){const L=c.loose,T=CHASE.trail;let best=c.d,bd=1e9;for(con
 const _dv=new THREE.Vector3(),_dp=new THREE.Vector3(),_dn=new THREE.Vector3(),_dm=new THREE.Matrix4();
 function damageVehicle(obj,px,pz,nx,nz,sev){if(!obj||sev<0.05)return;obj.updateMatrixWorld(true);const ud=obj.userData;sev*=ud.armor||1;if(sev<0.03)return;ud.dmg=Math.min(1,(ud.dmg||0)+sev*0.35);
  const y0=obj.position.y+0.7,R=0.9+sev*1.3,depth=Math.min(0.55,0.06+sev*0.32);
- const inter=ud.interior;obj.traverse(m=>{if(!m.isMesh||!m.geometry||!m.geometry.attributes.position||m.isInstancedMesh||m.isSprite)return;if(inter){for(let p=m;p&&p!==obj;p=p.parent)if(p===inter)return} /* interior (steering wheel, dash, screens, seats) never dents – only the body */let pos=m.geometry.attributes.position;if(pos.count>20000)return;
+ const skip=new Set([ud.interior,ud.rider,ud.wdogH,ud.driver,...(ud.pax||[])].filter(Boolean));obj.traverse(m=>{if(!m.isMesh||!m.geometry||!m.geometry.attributes.position||m.isInstancedMesh||m.isSprite)return;if(skip.size){for(let p=m;p&&p!==obj;p=p.parent)if(skip.has(p)||(p.userData&&p.userData.noDent))return} /* interior (steering wheel, dash, screens, seats) never dents – only the body */let pos=m.geometry.attributes.position;if(pos.count>20000)return;
   _dm.copy(m.matrixWorld).invert();_dp.set(px,y0,pz).applyMatrix4(_dm);_dn.set(nx,0,nz).transformDirection(_dm);
   let hit=false;const sc=m.matrixWorld.getMaxScaleOnAxis()||1,Rl=R/sc,dl=depth/sc;
   for(let i=0;i<pos.count;i++){_dv.fromBufferAttribute(pos,i);const dx=_dv.x-_dp.x,dy=(_dv.y-_dp.y)*0.6,dz=_dv.z-_dp.z,d=Math.sqrt(dx*dx+dy*dy+dz*dz);if(d>=Rl)continue;
