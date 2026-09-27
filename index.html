@@ -6374,6 +6374,55 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   arrive(){const p=Math.round(this.pts),rank=MD.record('test',game.spec.name,p);MD.toast(`📋 ${p>=80?'✅ PASSED':'❌ FAILED'} – ${p}/100<br><span style="font-size:12px">${this.notes.slice(0,6).join('<br>')||'Flawless drive.'}</span>`,10000)}});
 })();
 </script>
+<script>/* mods/74-journal.js */
+/* (68) Road-trip journal – an automatic travel log for every ride: entering a new city, passing landmarks,
+   weather changes, sunrise/sunset, notable events (crash, emergency vehicle, accident, train, festival, detour),
+   each with a time, place and a small photo snapshot from the chase camera. 📔 opens it; "Save journal" downloads
+   a self-contained HTML page (text + photos). The latest trip's journal is kept on this device. */
+(function(){
+ const J={entries:[],last:{}};window.JOURNAL=J;
+ function snap(){try{const G=game,cam=new THREE.PerspectiveCamera(55,16/9,0.3,5000),e=G.ego;cam.position.set(e.x-Math.cos(e.head)*14+Math.sin(e.head)*5,e.mesh.position.y+6,e.z+Math.sin(e.head)*14+Math.cos(e.head)*5);cam.lookAt(e.x+Math.cos(e.head)*6,e.mesh.position.y+1.5,e.z-Math.sin(e.head)*6);cam.updateMatrixWorld();
+  const rt=new THREE.WebGLRenderTarget(320,180),prev=renderer.getRenderTarget();renderer.setRenderTarget(rt);renderer.render(scene,cam);const px=new Uint8Array(320*180*4);renderer.readRenderTargetPixels(rt,0,0,320,180,px);renderer.setRenderTarget(prev);rt.dispose();
+  const c=document.createElement('canvas');c.width=320;c.height=180;const x=c.getContext('2d'),img=x.createImageData(320,180);for(let y=0;y<180;y++)for(let i=0;i<320*4;i++){const v=px[(179-y)*320*4+i];img.data[y*320*4+i]=i%4===3?255:Math.min(255,Math.pow(v/255,1/2.2)*255)}x.putImageData(img,0,0);return c.toDataURL('image/jpeg',0.72)}catch(e){return null}}
+ function add(icon,text,photo){const G=game;const t=new Intl.DateTimeFormat('en-US',{timeZone:G.tz,hour:'numeric',minute:'2-digit'}).format(new Date(G.simTime*1000));const e={icon,text,t,place:((G.city||'')+'').split(',').slice(0,2).join(','),mi:+(G.odo/1609).toFixed(1),photo:photo?snap():null};J.entries.push(e);if(J.entries.length>120)J.entries.shift();try{localStorage.setItem('journal',JSON.stringify({trip:(G.A.short||'')+' → '+(G.B.short||''),car:G.spec.name,entries:J.entries.map(x=>({...x,photo:null}))}))}catch(err){}}
+ function view(){let d=document.getElementById('jBox');if(d){d.remove();return}d=UIX.banner('jBox','top:60px;right:12px;width:380px;max-height:75vh;overflow:auto;background:#f7f3ea;color:#2a2418;border:1px solid #c9b894;border-radius:12px;padding:14px;pointer-events:auto;font:13px Georgia,serif;z-index:70;box-shadow:0 8px 30px #0008');
+  const G=game;d.innerHTML=`<b style="font-size:16px">📔 ${G.A.short} → ${G.B.short}</b> <button id="jX" style="float:right">✕</button><div style="font-size:11px;opacity:.7">${G.spec.name}</div>`+J.entries.map(e=>`<div style="margin:10px 0;border-top:1px dashed #c9b894;padding-top:8px"><div style="font-size:11px;opacity:.7">${e.t} · mile ${e.mi}${e.place?' · '+e.place:''}</div><div>${e.icon} ${e.text}</div>${e.photo?`<img src="${e.photo}" style="width:100%;border-radius:6px;margin-top:5px">`:''}</div>`).join('')+`<button id="jSave" style="margin-top:8px">💾 Save journal</button>`;
+  d.querySelector('#jX').onclick=()=>d.remove();d.querySelector('#jSave').onclick=()=>{const html=`<!doctype html><meta charset="utf-8"><title>Road trip: ${G.A.short} to ${G.B.short}</title><body style="font:16px Georgia,serif;max-width:720px;margin:40px auto;background:#f7f3ea;color:#2a2418"><h1>${G.A.short} → ${G.B.short}</h1><p><i>${G.spec.name} · ${new Date().toLocaleDateString()}</i></p>`+J.entries.map(e=>`<hr><p><small>${e.t} · mile ${e.mi}${e.place?' · '+e.place:''}</small><br>${e.icon} ${e.text}</p>${e.photo?`<img src="${e.photo}" style="width:100%;border-radius:8px">`:''}`).join('')+'</body>';const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download='road-trip-journal.html';document.body.appendChild(a);a.click();a.remove()}}
+ let chk=0,lastLog=0;
+ MODS.push({id:'journal',
+  start(){J.entries=[];J.last={city:null,wx:WX.key,dark:null,lm:new Set(),ev:0,ac:0,tr:0};lastLog=CRASH.log.length;UIX.btn('jBtn','📔','Road-trip journal',view);setTimeout(()=>{try{add('🚗',`Set off from ${game.A.short} in the ${game.spec.name}, heading for ${game.B.short} (${fmtDist(game.route.total)}).`,true)}catch(e){}},4000)},
+  sim(dt){const G=game,L=J.last;if(!G.route||(window.BENCH&&BENCH.on))return;chk-=dt;if(chk>0)return;chk=2;
+   const city=((G.city||'')+'').split(',')[0];if(city&&city!==L.city){if(L.city!=null)add('🏙',`Rolled into ${city}.`,true);L.city=city}
+   if(WX.key!==L.wx){add({rain:'🌧',fog:'🌫',blizzard:'❄️',hurricane:'🌀',dust:'🌪',smoke:'🔥',clear:'☀️'}[WX.key]||'🌦',`Weather turned to ${WX.label.toLowerCase()}.`,true);L.wx=WX.key}
+   if(L.dark!=null&&L.dark!==G.dark)add(G.dark?'🌇':'🌅',G.dark?'The sun went down; headlights on.':'Sunrise.',true);L.dark=G.dark;
+   if(window.LANDMARKS)for(const [id,g] of LANDMARKS.built){if(L.lm.has(id))continue;if(Math.hypot(g.position.x-G.ego.x,g.position.z-G.ego.z)<3000){L.lm.add(id);add('📸',`Passed the ${{ggb:'Golden Gate Bridge',hollywood:'Hollywood Sign',needle:'Space Needle',arch:'Gateway Arch',liberty:'Statue of Liberty',washington:'Washington Monument',strat:'Strat tower',luxor:'Luxor pyramid',eiffel:'Paris Las Vegas Eiffel Tower'}[id]||id}.`,true)}}
+   if(CRASH.log.length>lastLog){const n=CRASH.log.slice(lastLog).filter(c=>c.a==='ego'||c.b==='ego');lastLog=CRASH.log.length;if(n.length)add('💥',`A ${n[0].mph} mph bump with ${n[0].b==='building'||n[0].a==='building'?'a building':'another car'}.`,true)}
+   if(window.EVS&&EVS.list.length>L.ev)add('🚑','Pulled over to let an emergency vehicle past.',false);L.ev=window.EVS?EVS.list.length:0;
+   if(window.ACCIDENTS&&ACCIDENTS.list.length>L.ac)add('🚨','Crawled past an accident scene.',true);L.ac=window.ACCIDENTS?ACCIDENTS.list.length:0;
+   const tr=window.INFRA?INFRA.xings.filter(x=>x.train).length:0;if(tr>L.tr)add('🚂','Waited at a level crossing while a train rolled through.',true);L.tr=tr},
+  arrive(){add('🏁',`Arrived at ${game.B.short} after ${fmtDist(game.route.total)}.`,true)}});
+})();
+</script>
+<script>/* mods/75-heli.js */
+/* (70) Police helicopter with a searchlight in night chases: a helicopter model with spinning rotors circles above
+   your car during a police chase after dark, pointing a real spotlight (SpotLight + visible light cone) at you,
+   with rotor thump audio. It trails the chase and re-acquires you if you break line of sight. */
+(function(){
+ const H={g:null,t:0};window.HELI=H;
+ function build(){const g=new THREE.Group(),m=new THREE.MeshStandardMaterial({color:0x1b2330,metalness:0.4,roughness:0.4});const body=new THREE.Mesh(new THREE.SphereGeometry(1.4,16,12),m);body.scale.set(1.6,1,1);g.add(body);const tail=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.3,5,8),m);tail.rotation.z=Math.PI/2;tail.position.x=-4;g.add(tail);
+  const rotor=new THREE.Mesh(new THREE.BoxGeometry(11,0.05,0.3),new THREE.MeshStandardMaterial({color:0x111111}));rotor.position.y=1.4;g.add(rotor);const r2=rotor.clone();r2.rotation.y=Math.PI/2;g.add(r2);g.userData.rot=[rotor,r2];const sk=new THREE.Mesh(new THREE.BoxGeometry(3,0.08,0.08),m);sk.position.set(0,-1.2,0.8);g.add(sk);const sk2=sk.clone();sk2.position.z=-0.8;g.add(sk2);
+  const spot=new THREE.SpotLight(0xf2f6ff,6,260,0.14,0.4,1.2);spot.position.set(0.8,-1,0);g.add(spot);g.add(spot.target);g.userData.spot=spot;
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(9,90,24,1,true),new THREE.MeshBasicMaterial({color:0xdde8ff,transparent:true,opacity:0.08,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));g.userData.cone=cone;scene.add(cone);
+  const nav=new THREE.Mesh(new THREE.SphereGeometry(0.12,6,4),new THREE.MeshBasicMaterial({color:0xff2020}));nav.position.set(-6.4,0.4,0);g.add(nav);g.userData.nav=nav;scene.add(g);return g}
+ function thump(on){try{const C=audio.ctx;if(!C||!audio.master)return;if(!H.snd){const o=C.createOscillator(),lfo=C.createOscillator(),g=C.createGain(),lg=C.createGain();o.type='sawtooth';o.frequency.value=48;lfo.frequency.value=17;lg.gain.value=0.5;lfo.connect(lg);lg.connect(g.gain);g.gain.value=0;const f=C.createBiquadFilter();f.type='lowpass';f.frequency.value=220;o.connect(f);f.connect(g);g.connect(audio.master);o.start();lfo.start();H.snd=g}H.snd.gain.setTargetAtTime(on?0.12:0,C.currentTime,0.6)}catch(e){}}
+ function drop(){if(H.g){scene.remove(H.g);scene.remove(H.g.userData.cone);H.g=null}thump(false)}
+ MODS.push({id:'heli',disable:drop,start:drop,
+  frame(){const G=game;if(!G||!G.route||!G.ego)return;const want=typeof CHASE!=='undefined'&&CHASE.on&&G.dark;if(!want){if(H.g)drop();return}if(!H.g){H.g=build();thump(true)}
+   const e=G.ego,t=(H.t+=1/60),r=70,a=t*0.18;const tx=e.x+Math.cos(a)*r,tz=e.z+Math.sin(a)*r,ty=e.mesh.position.y+85;H.g.position.lerp(new THREE.Vector3(tx,ty,tz),0.02);H.g.lookAt(e.x,H.g.position.y,e.z);H.g.rotateY(-Math.PI/2);
+   for(const ro of H.g.userData.rot)ro.rotation.y+=0.9;const sp=H.g.userData.spot;sp.target.position.copy(H.g.worldToLocal(new THREE.Vector3(e.x,e.mesh.position.y,e.z)));H.g.userData.nav.visible=((t*2)|0)%2===0;
+   const c=H.g.userData.cone,from=H.g.position,to=new THREE.Vector3(e.x,e.mesh.position.y,e.z),L=from.distanceTo(to);c.scale.set(1,L/90,1);c.position.copy(from).lerp(to,0.5);c.lookAt(to);c.rotateX(Math.PI/2)}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
