@@ -2245,7 +2245,7 @@ function plan(a,dt,lead,isEgo){
  if(isEgo)game.upcoming=up;
  // lead (in a chase the car overtakes while swerving away from a cruiser)
  if(chase&&lead&&lead.s-a.s<90&&lead.s-a.s>0&&lead.v<a.v+3){CHASE.pass=2.5;reason=(CHASE.on?'CHASE':'EXPRESS')+(CHASE.passSide>0?' · passing on the right':CHASE.passSide<0?' · passing on the left':' · boxed in, waiting for a gap')}
- if(lead&&!(isEgo&&smartOn())&&(!chase||(EXPRESS.on&&!CHASE.on&&!smartOn()&&(CHASE.passSide===0||Math.abs(CHASE.evade)<2.8)))&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap:1)*(isEgo&&a.spec.basicAD&&!smartOn()?1.6:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
+ if(lead&&!(isEgo&&smartOn())&&(!chase||(EXPRESS.on&&!CHASE.on&&!smartOn()&&(CHASE.passSide===0||Math.abs(CHASE.evade)<2.8)))&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(2.5+1.6*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap*(window.LEARN_GAP?LEARN_GAP():1):1)*(isEgo&&a.spec.basicAD&&!smartOn()?1.6:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
  // planned charging / fuel stop
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
@@ -2507,7 +2507,7 @@ function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego||smartOn()
    const free=side=>{const o=side*3.4-cur; /* target line relative to where the car is now */for(const b of G.agents){if(!b.mesh)continue;const dx=b.mesh.position.x-e.x,dz=b.mesh.position.z-e.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;
      const rel=(b.kind==='oncoming'?-1:1)*((b.mesh.rotation.y-e.head+9.42)%6.283-3.14<1.6?1:1);if(f>-12&&f<Math.max(45,e.v*4)&&Math.abs(l-(o))<2.6)return false;
      if(side<0&&b.kind==='oncoming'&&f>0&&f<(e.v+b.v)*5+30&&Math.abs(l-o)<3.2)return false}return true};
-   const ow=typeof routeOnewayAt==='function'&&routeOnewayAt(e.s),nl=window.LANES?LANES.count(e.s):1,sb=d=>window.ENVELOPE&&ENVELOPE.sideBlocked(d);const L=free(-1)&&!sb(-1)&&(ow?nl>1:true),Rt=free(1)&&!sb(1)&&nl>1; /* passing only where there is paved lane: another lane our way, or a clear oncoming lane – legal or not, but never onto the kerb / parked cars */CHASE.passSide=(cur>0.5&&Rt)?1:(cur<-0.5&&L)?-1:L?-1:Rt?1:0}}else{CHASE.passSide=0;CHASE.sideT=0}
+   const ow=typeof routeOnewayAt==='function'&&routeOnewayAt(e.s),nl=window.LANES?LANES.count(e.s):1,sb=d=>window.ENVELOPE&&ENVELOPE.sideBlocked(d);const tl=sd=>(window.LANEBIAS||0)+laneOffsetAt(routeLLnh(e.s)[2])+sd*3.4,pk=sd=>!window.DRIVE2||DRIVE2.laneClear(tl(sd),5);const L=free(-1)&&!sb(-1)&&(ow?nl>1:true)&&pk(-1),Rt=free(1)&&!sb(1)&&nl>1&&pk(1); /* passing only where there is paved lane: another lane our way, or a clear oncoming lane – legal or not, but never onto the kerb / parked cars */CHASE.passSide=(cur>0.5&&Rt)?1:(cur<-0.5&&L)?-1:L?-1:Rt?1:0}}else{CHASE.passSide=0;CHASE.sideT=0}
  if(CHASE.pass<=0&&Math.abs(CHASE.evade)>0.5&&window.ENVELOPE&&ENVELOPE.sideBlocked(-Math.sign(CHASE.evade))){CHASE.pass=0.3;CHASE.passSide=Math.sign(CHASE.evade)} /* still alongside: hold the passing line */
  CHASE.evade=lerp(CHASE.evade,CHASE.pass>0?CHASE.passSide*3.4:0,Math.min(1,dt*(CHASE.pass>0?2.5:1.2)))}
 /* out in a passing line: whatever is ahead in THAT line is the car to follow */
@@ -2740,7 +2740,7 @@ function step(){
   }
  }
  // place ego
- const off=laneOffsetAt(routeLLnh(e.s)[2])+(window.LANEBIAS||0)+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);const offPrev=e.off;e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(spec.hyper?(e.v<=44.7?9:9*44.7/e.v):fastOn()||G.overtakeT>0||G.dodgeT>0?2.2:0.5))); /* hypercar: 360° wheels = fast sideways crab */
+ let off=laneOffsetAt(routeLLnh(e.s)[2])+(window.LANEBIAS||0)+(fastOn()||G.overtakeT>0||G.dodgeT>0||Math.abs(CHASE.evade)>0.05?CHASE.evade:0);if(window.DRIVE2)off=DRIVE2.arb(off,e,rdt); /* one arbiter picks the final line */const offPrev=e.off;e.off=e.off===undefined?off:lerp(e.off,off,Math.min(1,rdt*G.scale*(spec.hyper?(e.v<=44.7?9:9*44.7/e.v):fastOn()||G.overtakeT>0||G.dodgeT>0?2.2:0.5))); /* hypercar: 360° wheels = fast sideways crab */
  if(spec.hyper&&rdt>0&&offPrev!==undefined){const latV=(e.off-offPrev)/(rdt*G.scale||1e-3);G.crab=lerp(G.crab||0,-Math.atan2(latV,Math.max(e.v,0.25)),Math.min(1,rdt*10))}
  const towAnim=G.tow&&G.tow.phase!=='towing'&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling';
  const prevHead=e.head;if(!towAnim&&!G.uturn){place(e,e.off);if(CHASE.spin>0)e.mesh.rotation.y+=chaseSpinYaw();if(!spec.hyper&&rdt>0&&offPrev!==undefined){const latV=(e.off-offPrev)/(rdt*G.scale||1e-3);G.laneYaw=lerp(G.laneYaw||0,clamp(-Math.atan2(latV,Math.max(e.v,2.5)),-0.35,0.35),Math.min(1,rdt*6));e.mesh.rotation.y+=G.laneYaw}} /* ordinary cars steer into lane changes (only the 360°-wheel Predictacar moves sideways without turning) */
@@ -5046,7 +5046,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);if(!a.mesh)return;const me={ref:a,y:a.mesh.position.y,x:a.mesh.position.x,z:a.mesh.position.z,h:a.mesh.rotation.y,vx:Math.cos(a.mesh.rotation.y)*a.v,vz:-Math.sin(a.mesh.rotation.y)*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};const c=cap(me,5);if(c&&c.v<a.v)a.v=Math.max(0,a.v-Math.min(8,(a.v-c.v)*3)*dt)};
  const _wh=window.WAY_HOOK;window.WAY_HOOK=(a,p,fx,fz,dt)=>{let v=_wh?_wh(a,p,fx,fz,dt):null;if(!a.mesh)return v;const h=Math.atan2(-fz,fx),me={ref:a,y:a.mesh.position.y,x:a.mesh.position.x,z:a.mesh.position.z,h,vx:fx*a.v,vz:fz*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};const c=cap(me,5);if(c)v=v==null?c.v:Math.min(v,c.v);return v};
  /* sideways moves: hold the ride's lateral target while something occupies the space alongside on that side */
- EN.sideBlocked=dir=>{const G=game,e=G.ego;if(!e||!e.mesh)return false;const B=collect(),h=e.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h);for(const b of B){if(b.ref===e)continue;const dx=b.x-e.mesh.position.x,dz=b.z-e.mesh.position.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;if(Math.abs(f)>(G.spec.L+b.L)/2+2)continue;if(Math.sign(l)!==Math.sign(dir))continue;if(Math.abs(l)<(G.spec.W+b.W)/2+1.4)return true}return false};
+ EN.sideBlocked=dir=>{const G=game,e=G.ego;if(!e||!e.mesh)return false;const B=collect(),h=e.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h);for(const b of B){if(b.ref===e)continue;if(b.y!=null&&Math.abs(b.y-e.mesh.position.y)>3)continue;const dx=b.x-e.mesh.position.x,dz=b.z-e.mesh.position.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;if(Math.abs(f)>(G.spec.L+b.L)/2+2)continue;if(Math.sign(l)!==Math.sign(dir))continue;if(Math.abs(l)<(G.spec.W+b.W)/2+1.4)return true}return false};
  MODS.push({id:'envelope'});
 })();
 </script>
@@ -5085,6 +5085,131 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    if(A.route!==G.route){const first=!A.route;A.route=G.route;if(!first){for(const o of A.list.slice())A.remove(o);modCall('reroute')}} /* route changed: route-relative things are invalid – every pack rebuilds */
    for(const o of A.list.slice()){o.t+=dt;try{o.update&&o.update(o,dt)}catch(err){console.error(err);A.remove(o);continue}
    if(o.dead||(o.s!=null&&o.s<e.s-(o.keepBehind||200)&&!o.keep)||(o.ttl&&o.t>o.ttl)){A.remove(o)}}}});
+})();
+</script>
+<script>/* mods/29b-drive2.js */
+/* Drive 2 – the ordinary cars' driving stack, second generation (the Predictacar keeps its own planner).
+   1  one lateral arbiter: lane choice, passing, dodges, pull-overs and every XB nudge are summed as before, but the final
+      line is chosen here from candidates scored against predicted traffic, so the separate nudges can no longer fight
+      each other into a vehicle
+   2  road-edge awareness: every candidate line is clamped to the paved width, and buildings beside the line are tested
+   3  checked U-turns: the arc is tested against buildings; if it does not fit, a three-point turn; if that does not
+      fit either, the car loops around the block
+   4  cut-in prediction: side traffic's measured lateral drift is extrapolated; aggressive drivers get a wider berth
+   5  path prediction: route and oncoming traffic are predicted along the road (s, lateral) instead of in a straight line
+   6  one pass check: clear-lane test (gap ahead and behind, closing speeds, time to complete) used by lane changes and
+      Express passing
+   7  intersection scan: arrival-time conflict check against crossing traffic at every junction; Express treats every
+      junction as blind
+   8  level separation: nothing on another deck (overpass, ramp, tunnel) is treated as a conflict
+   9  near-miss learning: every hard brake / short time-to-collision is logged per road type and widens the following gap
+      there on later trips
+   10 (testkit.js) TK.regress: headless regression soak over cars × routes × styles, crashes per 100 km */
+(function(){
+ const D2={on:true,trk:new Map(),pc:new Map(),pcT:-1};window.DRIVE2=D2;
+ const T_STEPS=[0.4,0.8,1.2,1.6,2.0,2.5];
+ const active=()=>D2.on&&game&&game.route&&game.ego&&game.ego.mesh&&!smartOn()&&!game.uturn&&!game.ego.loose&&!(window.BENCH&&BENCH.on);
+ /* ---------- 5 · tracking + prediction in the route frame ---------- */
+ function routeLat(s,x,z){const c=routeXZ(s,0);return (x-c[0])*(-c[3])+(z-c[1])*c[2]}
+ function track(dt){const G=game;if(!(dt>0))return;const seen=new Set();
+  for(const a of G.agents){if(!a.mesh)continue;seen.add(a);const P=a.mesh.position;let T=D2.trk.get(a);
+   const onR=(a.kind==='route'||a.kind==='oncoming')&&a.s!=null&&!a.loose,lat=onR?routeLat(a.s,P.x,P.z):0;
+   if(!T){T={x:P.x,z:P.z,s:a.s,lat,vx:0,vz:0,sd:0,ld:0};D2.trk.set(a,T);continue}
+   const k=Math.min(1,dt*4);T.vx=lerp(T.vx,(P.x-T.x)/dt,k);T.vz=lerp(T.vz,(P.z-T.z)/dt,k);
+   if(onR&&T.s!=null&&Math.abs(a.s-T.s)<30){T.sd=lerp(T.sd,(a.s-T.s)/dt,k);T.ld=lerp(T.ld,clamp((lat-T.lat)/dt,-3,3),k)}else{T.sd=0;T.ld=0}
+   T.x=P.x;T.z=P.z;T.s=a.s;T.lat=lat;T.onR=onR}
+  for(const a of D2.trk.keys())if(!seen.has(a))D2.trk.delete(a)}
+ D2.predict=(a,t)=>{const T=D2.trk.get(a),P=a.mesh.position;if(!T)return [P.x,P.z];
+  if(T.onR&&game.route){const s=clamp(a.s+T.sd*t,0,game.route.total),l=T.lat+clamp(T.ld*t,-3.6,3.6);const q=routeXZ(s,l);return [q[0],q[1]]}
+  return [P.x+T.vx*t,P.z+T.vz*t]};
+ function predCache(){const G=game;if(D2.pcT===G.simTime)return D2.pc;D2.pcT=G.simTime;D2.pc.clear();const e=G.ego,E=e.mesh.position;
+  for(const a of G.agents){if(!a.mesh||!a.spec)continue;const P=a.mesh.position;if(Math.abs(P.x-E.x)>140||Math.abs(P.z-E.z)>140)continue;
+   if(Math.abs(P.y-E.y)>3)continue; /* 8 · another level */
+   D2.pc.set(a,T_STEPS.map(t=>D2.predict(a,t)))}
+  return D2.pc}
+ const margin=a=>(a.aggro||a.drunk?0.7:0)+(a.spec&&a.spec.L>8?0.3:0); /* 4 · aggressive / drunk / long vehicles: wider berth */
+ /* risk of the ego following lateral line `lat` (reached smoothly from `cur`) over the prediction horizon */
+ function risk(lat,cur){const G=game,e=G.ego,W=G.spec.W,L=G.spec.L,pc=predCache();let r=0;
+  for(let i=0;i<T_STEPS.length;i++){const t=T_STEPS[i],l=lerp(cur,lat,Math.min(1,t/1.3)),q=routeXZ(Math.min(G.route.total,e.s+e.v*t),l),fx=q[2],fz=q[3];
+   for(const [a,P] of pc){const p=P[i],dx=p[0]-q[0],dz=p[1]-q[1],f=dx*fx+dz*fz,s=dx*(-fz)+dz*fx;
+    if(Math.abs(f)<(L+(a.spec.L||4.6))/2+0.6&&Math.abs(s)<(W+(a.spec.W||1.9))/2+0.35+margin(a))r+=(3-t)}}
+  return r}
+ /* ---------- 2 · road edges ---------- */
+ D2.edges=s=>{const G=game,R=G.route,i=routeLLnh(clamp(s,0,R.total))[2],n=NODEINFO.get(R.nodes[i])||{},ln=(window.routeLanes&&routeLanes(i))||n.lanes||0;
+  const w=ln?ln*3.6+(n.oneway?1.2:0.6):(DEF_W[n.hw]||8),h=Math.max(0.2,w/2-G.spec.W/2-0.25);return [-h,h]};
+ function buildingAt(s,l){const q=routeXZ(s,l);return typeof bAt==='function'&&bAt(q[0],q[1])}
+ /* ---------- 1 · the arbiter ---------- */
+ D2.last={};
+ D2.arb=(want,e,dt)=>{if(!active())return want;const G=game,s=e.s,base=laneOffsetAt(routeLLnh(s)[2]),cur=e.off===undefined?want:e.off;
+  let [lo,hi]=D2.edges(s+Math.max(4,e.v*0.8));lo=Math.min(lo,base);hi=Math.max(hi,base); /* the lane itself is always legal */
+  const clampE=x=>clamp(x,lo,hi);const w0=clampE(want);
+  if(D2.last.t===G.simTime)return D2.last.v;
+  const rWant=risk(w0,cur);let best=w0,why='';
+  if(rWant>0.01){let bc=rWant*100;
+   for(const c of [base,cur,(w0+base)/2,w0-1.2,w0+1.2,cur-1.8,cur+1.8].map(clampE)){if(buildingAt(s+8,c))continue;const rc=risk(c,cur),cost=rc*100+Math.abs(c-w0)*1.5+Math.abs(c-cur)*0.4;if(cost<bc){bc=cost;best=c}}
+   if(best!==w0)why='🧭 Adjusting line around predicted traffic'}
+  if(buildingAt(s+6,best)){best=clampE(base);why='🧱 Keeping off the kerb'}
+  D2.last={t:G.simTime,v:best,why,risk:rWant};return best};
+ /* ---------- 6 · the one pass / lane check ---------- */
+ D2.laneClear=(lat,Tpass=4)=>{if(!game||!game.route)return true;const G=game,e=G.ego;const [lo,hi]=D2.edges(e.s);if(lat<lo-1.2||lat>hi+1.2)return false;
+  const W=G.spec.W,L=G.spec.L;for(const a of G.agents){if(!a.mesh||!a.spec||a===e)continue;const T=D2.trk.get(a);if(!T||!T.onR)continue;if(Math.abs(a.mesh.position.y-e.mesh.position.y)>3)continue;
+   const d0=a.s-e.s,rel=T.sd-e.v;const la=T.lat;if(Math.abs(la-lat)>(W+(a.spec.W||1.9))/2+0.5+margin(a))continue;
+   const len=(L+(a.spec.L||4.6))/2;
+   if(d0>=-len&&d0<e.v*Tpass+40+len){const dT=d0+rel*Tpass;if(d0<len+4||dT<len+6)return false; if(T.sd<0)return false} /* ahead in that line, or oncoming inside the pass window */
+   if(d0<-len&&d0>-80){if(T.sd>e.v&&(d0+(T.sd-e.v)*Tpass)>-len-6)return false}} /* catching up from behind */
+  return true};
+ /* ---------- 4 + 7 · speed hooks ---------- */
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!isEgo||!active())return null;const G=game,e=G.ego,pc=predCache();let best=null,why='';
+  const cur=e.off===undefined?laneOffsetAt(routeLLnh(e.s)[2]):e.off,W=G.spec.W,L=G.spec.L;
+  /* 4 · anything predicted to enter our own line ahead (cut-ins) */
+  for(const [b,P] of pc){if(b.kind==='way')continue;for(let i=0;i<T_STEPS.length;i++){const t=T_STEPS[i],q=routeXZ(Math.min(G.route.total,e.s+e.v*t),cur),p=P[i],dx=p[0]-q[0],dz=p[1]-q[1],f=dx*q[2]+dz*q[3],sd=dx*(-q[3])+dz*q[2];
+    if(f>0&&Math.abs(sd)<(W+(b.spec.W||1.9))/2+0.3+margin(b)){const T=D2.trk.get(b);const bv=T&&T.onR?Math.max(0,T.sd):0;const now=b.mesh.position,gap=Math.hypot(now.x-e.mesh.position.x,now.z-e.mesh.position.z)-(L+(b.spec.L||4.6))/2-2.5;const v=allow(bv,gap);if(best==null||v<best){best=v;why=Math.abs(sd)>0.1&&T&&Math.abs(T.ld)>0.4?'✂️ Car cutting in – making room':''}break}}}
+  /* 7 · junction arrival-time conflicts */
+  const R=G.route,idx=routeLLnh(e.s)[2],ignore=fastOn();
+  for(let i=idx+1;i<R.nodes.length&&R.cum[i]-e.s<(ignore?140:90);i++){const nid=R.nodes[i],nw=nodeWays.get(nid);if(!nw||nw.length<3&&!(nw.length>=2&&nw.some(w=>w.k>0&&w.k<w.el.nodes.length-1)))continue;
+   const c=CONTROLS.get(nid);if(c&&c.type==='signal'&&!ignore&&signalState(c.id,0,G.simTime)!=='R')continue; /* green for us: cross traffic is held */
+   const d=R.cum[i]-e.s,tA=d/Math.max(1,e.v),X=routeXZ(R.cum[i],0);let conflict=false;
+   for(const [b,P] of pc){if(b.kind!=='way')continue;for(let j=0;j<T_STEPS.length;j++){const t=T_STEPS[j];if(Math.abs(t-tA)>1.6)continue;if(Math.hypot(P[j][0]-X[0],P[j][1]-X[1])<9){conflict=true;break}}if(conflict)break}
+   if(conflict){const v=allow(0,d-(typeof stopOff==='function'&&c?stopOff(c):8));if(best==null||v<best){best=v;why='🚦 Crossing traffic at the junction – waiting'}}
+   else if(ignore&&(!c||c.type!=='signal'||signalState(c.id,0,G.simTime)==='R')){const v=Math.sqrt(2*5*Math.max(0,d-4))+11;if(best==null||v<best){best=v;why='⚡ EXPRESS · checking the junction'}} /* blind junction: arrive slow enough to stop */
+   break}
+  return best==null?null:{v:Math.max(0,best),reason:why||undefined}});
+ /* ---------- 3 · checked U-turns ---------- */
+ function arcClear(U,ext){for(let k=0;k<=24;k++){const p=uturnPose(U,k/24),c=Math.cos(p.h),s=-Math.sin(p.h),W=game.spec.W/2+0.2,L=game.spec.L/2+0.2;
+   for(const [f,l] of [[L,W],[L,-W],[-L,W],[-L,-W],[0,0]]){const x=p.x+c*f-s*l,z=p.z+s*f+c*l;if(bAt(x,z))return false}}return true}
+ const _uc=window.uturnCheck;
+ window.uturnCheck=function(){_uc.apply(this,arguments);const G=game,U=G.uturn;if(!U||G.spec.hyper||U.checked)return;U.checked=true;
+  if(arcClear(U))return;
+  /* three-point turn: forward-left across, reverse, forward into the new lane */
+  const e=G.ego,h0=e.mesh.rotation.y,fx=Math.cos(h0),fz=-Math.sin(h0),nx=fz,nz=-fx; /* n = left of travel */
+  const cur=e.off??1.85,toLeft=cur+ (D2.edges(e.s)[1]+G.spec.W/2+0.25),A=[U.P0[0]+fx*4+nx*toLeft*0.75,U.P0[1]+fz*4+nz*toLeft*0.75],hA=h0+Math.PI/2,
+   B=[U.P0[0]+fx*1+nx*toLeft*0.35,U.P0[1]+fz*1+nz*toLeft*0.35],hB=h0+Math.PI*0.55;
+  const seg=(P0,h0_,P1,h1_,rev,k)=>{const dir=rev?-1:1;return {P0,P1,T0:[Math.cos(h0_)*k*dir,-Math.sin(h0_)*k*dir],T1:[Math.cos(h1_)*k*dir,-Math.sin(h1_)*k*dir],rev}};
+  const S=[seg(U.P0,h0,A,hA,false,6),seg(A,hA,B,hB,true,4),seg(B,hB,U.P1,Math.atan2(-U.T1[1],U.T1[0]),false,7)];
+  if(S.every(x=>arcClear(x))){U.kt={S,i:0,u:0};G.status='↩️ Three-point turn (no room for a U-turn)';return}
+  /* nothing fits: drive on and loop round the block */
+  G.uturn=null;e.s=Math.min(G.route.total,e.s);G.status='🔁 No room to turn – looping around the block';G.noUturnT=G.simTime;setTimeout(()=>{try{if(typeof rerouteNow==='function')rerouteNow()}catch(err){}},1500)};
+ const _uu=window.updateUturn;
+ window.updateUturn=function(dt){const G=game,U=G.uturn;if(!U||!U.kt||U.phase!=='turn')return _uu.apply(this,arguments);const e=G.ego,K=U.kt,S=K.S[K.i];
+  const pz=uturnPose(S,K.u);e.v=Math.min(3.5,e.v+2*dt);K.u=Math.min(1,K.u+e.v*dt/Math.max(1,pz.sp));const p=uturnPose(S,K.u),h=S.rev?p.h+Math.PI:p.h;
+  e.mesh.position.set(p.x,Math.max(groundY(p.x,p.z),(roadSurfaceY(p.x,p.z,groundY(p.x,p.z))??-1e9))+0.03,p.z);e.mesh.rotation.y=h;e.x=p.x;e.z=p.z;e.head=h;spinWheels(e,dt,S.rev?-0.6:0.6);
+  G.status=`↩️ Three-point turn · ${K.i+1}/3${S.rev?' (reversing)':''}`;
+  if(K.u>=1){K.i++;K.u=0;e.v=0;if(K.i>=K.S.length){G.uturn=null;e.s=12;e.off=laneOffsetAt(0);G.sig=0;G.status='Three-point turn complete · on the new route'}}};
+ /* ---------- 9 · near-miss learning ---------- */
+ let LRN={};try{LRN=JSON.parse(localStorage.getItem('drive2Learn')||'{}')}catch(err){LRN={}}
+ const hwOf=()=>{const G=game,n=NODEINFO.get(G.route.nodes[routeLLnh(G.ego.s)[2]]);return (n&&n.hw||'road').replace(/_link$/,'')};
+ const save=()=>{try{localStorage.setItem('drive2Learn',JSON.stringify(LRN))}catch(err){}};
+ window.LEARN_GAP=()=>{if(!game||!game.route||smartOn())return 1;const r=LRN[hwOf()];if(!r||r.km<2)return 1;return 1+clamp(r.nm/r.km*0.35,0,0.6)};
+ D2.learn=LRN;
+ let prevV=0,cd=0,saveT=0;
+ function learn(dt){const G=game,e=G.ego,hw=hwOf(),R=LRN[hw]||(LRN[hw]={km:0,nm:0});R.km+=e.v*dt/1000;cd-=dt;saveT+=dt;
+  const dec=(prevV-e.v)/Math.max(dt,1e-3);prevV=e.v;let near=dec>5.5&&e.v>3;
+  if(!near){const pc=predCache();for(const [b,P] of pc){const T=D2.trk.get(b);if(!T||!T.onR||T.sd<-1)continue;const d=b.s-e.s-(G.spec.L+(b.spec.L||4.6))/2;if(d<0||Math.abs(T.lat-(e.off??0))>1.6)continue;const cl=e.v-T.sd;if(cl>1&&d/cl<1.1){near=true;break}}}
+  if(near&&cd<=0){cd=6;R.nm++;G.nearMiss=(G.nearMiss||0)+1;save()}
+  if(saveT>20){saveT=0;save()}}
+ MODS.push({id:'drive2',
+  start(){D2.trk.clear();D2.pc.clear();D2.last={};prevV=0},
+  sim(dt){if(!game||!game.route||!game.ego||!game.ego.mesh)return;track(dt);if(active()){learn(dt);if(D2.last.why&&D2.last.t===game.simTime&&!/Stopping|Stop sign|red light/.test(game.status||''))game.status=D2.last.why}}});
 })();
 </script>
 <script>/* mods/30-isect.js */
@@ -5132,7 +5257,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  function laneOfLat(s,lat){const base=laneOffsetAt(routeLLnh(clamp(s,0,game.route.total))[2]);return Math.round((base-lat)/L.laneW)}
  const egoLanes=()=>{const G=game,e=G.ego,base=laneOffsetAt(routeLLnh(e.s)[2]),x=(base-(e.off??base))/L.laneW;return new Set([Math.floor(x+0.35),Math.ceil(x-0.35)])}; /* lanes the ride's body actually occupies */
  const laneFree=(a,k,d)=>!game.agents.some(b=>b!==a&&b.kind==='route'&&!b.loose&&laneOfLat(b.s,latOf(b))===k&&Math.abs(b.s-a.s)<d+((b.spec.L||4.6)+(a.spec.L||4.6))/2)&&!(egoLanes().has(k)&&Math.abs(game.ego.s-a.s)<d+2+((game.spec.L||4.6)+(a.spec.L||4.6))/2); /* bumper-to-bumper, not centre-to-centre */
- function gapOK(k,dir){const G=game,e=G.ego;for(const a of G.agents){if(a.kind!=='route'||a.loose)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;const d=a.s-e.s,need=(d>0?8+Math.max(0,e.v-a.v)*1.5:10+Math.max(0,a.v-e.v)*3)+((a.spec.L||4.6)+(G.spec.L||4.6))/2;if(Math.abs(d)<need)return false}
+ function gapOK(k,dir){const G=game,e=G.ego;if(window.DRIVE2&&!DRIVE2.laneClear(laneOffsetAt(routeLLnh(e.s)[2])-k*L.laneW,3.5))return false; /* the shared pass / lane check */for(const a of G.agents){if(a.kind!=='route'||a.loose)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;const d=a.s-e.s,need=(d>0?8+Math.max(0,e.v-a.v)*1.5:10+Math.max(0,a.v-e.v)*3)+((a.spec.L||4.6)+(G.spec.L||4.6))/2;if(Math.abs(d)<need)return false}
   if(window.ACT)for(const o of ACT.list)if(o.kind==='moto'&&Math.abs(o.s-e.s)<25)return false;const bsz=window.BLINDSPOT&&BLINDSPOT();if(bsz&&(k>L.k?bsz.L:bsz.R))return false;return true} /* never change into an occupied blind spot */
  function upcomingTurn(prep){const G=game,e=G.ego;for(const st of G.route.steps){const d=st.s-e.s;if(d<0)continue;if(d>prep)break;if(st.type==='arrive'||st.type==='depart')continue;const m=st.mod||'';if(/left/.test(m)&&!/slight/.test(m))return {side:-1,d,st};if(/right/.test(m)&&!/slight/.test(m))return {side:1,d,st};if(/off ramp|fork/.test(st.type)&&/slight left/.test(m))return {side:-1,d,st};if(/off ramp|fork/.test(st.type)&&/slight right/.test(m))return {side:1,d,st}}return null}
  function leadIn(k,range){const G=game,e=G.ego;let best=null;for(const a of G.agents){if(a.kind!=='route'||a.loose||a.s<=e.s||a.s-e.s>range)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;if(!best||a.s<best.s)best=a}return best}
