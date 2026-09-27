@@ -2199,6 +2199,9 @@ function routeLanes(idx){const R=game.route;if(!R._lanes||R._lanesN!==NODEINFO.s
    neighbouring cars overlap on one-way streets whose lane tags change every few metres */
 function laneOffsetAt(idx){const R=game.route;if(!R._lo||R._loN!==NODEINFO.size){const n=R.nodes.length,raw=new Float32Array(n);for(let i=0;i<n;i++)raw[i]=laneOffsetRaw(i);const sm=new Float32Array(n);let a=0,b=0,sum=0;for(let i=0;i<n;i++){while(b<n&&R.cum[b]<=R.cum[i]+35){sum+=raw[b];b++}while(a<b&&R.cum[a]<R.cum[i]-35){sum-=raw[a];a++}sm[i]=sum/Math.max(1,b-a)}R._lo=sm;R._loN=NODEINFO.size}return R._lo[clamp(idx,0,R._lo.length-1)]}
 function laneOffsetRaw(idx){let ni=NODEINFO.get(game.route.nodes[idx]);const fl=routeLanes(idx);if(ni&&ni.lanes==null&&fl!=null)ni={...ni,lanes:fl};else if(!ni&&fl!=null)ni={lanes:fl};if(!ni)return 1.85;if(ni.oneway){const l=ni.lanes||2;return l>=2?(l*3.6)/2-1.8-0.3:0}return 1.85+(ni.lanes>=4?3.6:0)}
+/* where to stop before a controlled node: clear of the crossing road – half the widest road through the node + 3 m
+   (was a fixed 6–7 m, which on wide cross streets parked the car inside the lanes cross traffic uses) */
+function stopOff(c){if(c._so!=null&&c._soT>performance.now()-20000)return c._so;let hw=0;for(const T of TILES.values())for(const w of T.ways)if(w.nodes&&w.nodes.includes(c.id))hw=Math.max(hw,(w.w||7)/2);c._so=clamp(3+hw,7,16);c._soT=performance.now();return c._so}
 function plan(a,dt,lead,isEgo){
  const R=game.route,e=a;const look=Math.max(70,a.v*a.v/(2*2.2)+50);let target=1e9,reason='';
  const [,,idx]=routeLLnh(a.s);
@@ -2214,8 +2217,8 @@ function plan(a,dt,lead,isEgo){
  for(let i=idx+1;i<R.nodes.length&&R.cum[i]-a.s<look&&!chase;i++){const c=CONTROLS.get(R.nodes[i]);if(!c)continue;const d=R.cum[i]-a.s;
   const p0=R.pts[Math.max(0,i-1)],p1=R.pts[i];const ax=axisOf(p1[0]-p0[0],-(p1[1]-p0[1]));
   if(c.type==='signal'){const st=signalState(c.id,ax,game.simTime);if(isEgo)up.push({x:c.x,z:c.z,type:'signal',state:st});
-   if(st==='R'||(st==='Y'&&d>a.v*a.v/(2*3.5)+3)){const v=allow(0,d-7);if(v<target){target=v;reason=st==='R'?'Stopping: red light':'Stopping: yellow light'}}}
-  else if(c.type==='stop'&&!a.handled.has(c.id)){if(isEgo)up.push({x:c.x,z:c.z,type:'stop'});const v=allow(0,d-6);if(v<target){target=v;reason='Stop sign ahead'}
+   if(st==='R'||(st==='Y'&&d>a.v*a.v/(2*3.5)+3)){const v=allow(0,d-stopOff(c));if(v<target){target=v;reason=st==='R'?'Stopping: red light':'Stopping: yellow light'}}}
+  else if(c.type==='stop'&&!a.handled.has(c.id)){if(isEgo)up.push({x:c.x,z:c.z,type:'stop'});const v=allow(0,d-stopOff(c)+1);if(v<target){target=v;reason='Stop sign ahead'}
    if(d<9&&a.v<0.3){a.stopT+=dt;reason='Full stop at stop sign';if(window.ISECT)ISECT.arrive(c,a);if(a.stopT>2.2){if(!window.ISECT||ISECT.mayGo(c,a)){a.handled.add(c.id);a.stopT=0;if(window.ISECT)ISECT.go(c,a)}else reason=ISECT.why(c,a)}}}
   else if(c.type==='give_way'){const v=allow(4.5,d-6);if(v<target){target=v;reason='Yield'}}}
  if(isEgo)game.upcoming=up;
