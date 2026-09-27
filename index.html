@@ -2504,7 +2504,7 @@ function expressToggle(){if(!game||!game.route)return;EXPRESS.on=!EXPRESS.on;if(
    of closing distance — swing out early and hard, hold it until past, then tuck back in. Both blocked → follow and wait for a gap. */
 function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego||smartOn())return;const G=game,e=G.ego;CHASE.pass=Math.max(0,(CHASE.pass||0)-dt);
  if(CHASE.pass>0){CHASE.sideT=(CHASE.sideT||0)-dt;if(CHASE.sideT<=0){CHASE.sideT=0.4;const fx=Math.cos(e.head),fz=-Math.sin(e.head),cur=CHASE.evade||0;
-   const free=side=>{const o=side*3.4;for(const b of G.agents){if(!b.mesh)continue;const dx=b.mesh.position.x-e.x,dz=b.mesh.position.z-e.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;
+   const free=side=>{const o=side*3.4-cur; /* target line relative to where the car is now */for(const b of G.agents){if(!b.mesh)continue;const dx=b.mesh.position.x-e.x,dz=b.mesh.position.z-e.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;
      const rel=(b.kind==='oncoming'?-1:1)*((b.mesh.rotation.y-e.head+9.42)%6.283-3.14<1.6?1:1);if(f>-12&&f<Math.max(45,e.v*4)&&Math.abs(l-(o))<2.6)return false;
      if(side<0&&b.kind==='oncoming'&&f>0&&f<(e.v+b.v)*5+30&&Math.abs(l-o)<3.2)return false}return true};
    const ow=typeof routeOnewayAt==='function'&&routeOnewayAt(e.s),nl=window.LANES?LANES.count(e.s):1,sb=d=>window.ENVELOPE&&ENVELOPE.sideBlocked(d);const L=free(-1)&&!sb(-1)&&(ow?nl>1:true),Rt=free(1)&&!sb(1)&&nl>1; /* passing only where there is paved lane: another lane our way, or a clear oncoming lane – legal or not, but never onto the kerb / parked cars */CHASE.passSide=(cur>0.5&&Rt)?1:(cur<-0.5&&L)?-1:L?-1:Rt?1:0}}else{CHASE.passSide=0;CHASE.sideT=0}
