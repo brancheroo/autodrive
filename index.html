@@ -6569,6 +6569,59 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  setTimeout(()=>{applyA11y();translatePage()},100);
 })();
 </script>
+<script>/* mods/82-upkeep.js */
+/* Upkeep pack: (94) Web Worker for route geometry, (96) offline route pre-cache, (97) visual-regression snapshots,
+   (98) debug log, (99) performance profiler overlay, (100) versioned releases with changelog.
+   94: projecting points onto the route (used by delivery stops, school zones, crossings, landmarks, rivals…) scans
+       the whole route polyline; long routes have 50k+ points. A worker holds the route and answers projections off
+       the main thread; OSMX.onRoute caches asynchronously through it (falls back to the main thread if needed).
+   96: "📥 Save route for offline" pre-downloads every map tile, terrain tile, Overpass extras cell and route/elevation
+       response along the planned route into the local cache (the persistent network cache is enabled for this).
+       Rides on that route then work without a connection.
+   97: SELFTEST.visual(): renders every car in the showroom, stores a 160×90 baseline per car and reports % of pixels
+       that changed since the baseline (catches model/material regressions).
+   98: every module failure, uncaught error and the recent status history is kept; "💾 Save debug log" (⚙️ panel or
+       ❓ menu) downloads it as JSON for bug reports.
+   99: ` (backtick) toggles a live profiler: per-system milliseconds per frame (render, perception, grass, tiles,
+       traffic, every feature module), FPS, draw calls and triangles.
+   100: version + build date in the start-screen corner; "What's new" lists the changelog. */
+(function(){
+ const VERSION='2.8.0',BUILD='2026-09-27';window.AUTODRIVE_VERSION=VERSION;
+ const CHANGELOG=[['2.8.0','Audio pack: spatial traffic & sirens, road sounds, navigation voice, local radio with DJs, indicator tick, seatbelt chime, sing-along. Interface pack: pause menu, shortcuts, touch & gamepad, trip summary, save/resume, rear-view mirror, cinema mode, accessibility, 5 languages. Offline route cache, profiler, debug log.'],
+  ['2.7.0','Game modes: robotaxi business, career, daily challenge, Cannonball Run, rush hour, eco challenge, scavenger hunt, hurricane evacuation, rally, driver\'s test; scenario editor; split-screen; leaderboards; road-trip journal; chase helicopter searchlight.'],
+  ['2.6.0','Cabin: passengers who chat & rate the ride, kids, moods, nap/movie/video call, motion sickness, cat & parrot, waving, face details. Garage: paint shop, wraps, decals, upgrades, persistent damage. New cars: Ravion R2, Volvoh EX90, Porsh Taycan, Hyundie Ioniq Fyve, VeeDub ID. Buzzz, Cruiserline Starfire \'62. Traffic: autonomous semis, city & articulated buses, delivery robots, motorhomes, trams & cable cars.'],
+  ['2.5.0','World: seasons, sunrise colours, stars & moon, tunnels, toll plazas & express lanes, rail crossings with trains, drawbridges, wildlife, landmarks, local billboards, stadium game days, street fairs, accidents, dust storms, wildfire smoke, floods.'],
+  ['2.4.0','Crash fixes: curved collision bodies for long vehicles, oncoming-lane lock-up, safer overtakes, length-aware lane changes, stable lane positions. Driving style selector (Normal / Comfort / Express). Frame-rate work: merged car meshes, off-screen perception camera.'],
+  ['2.3.0','Driving & sensors: lane choice, merging, 4-way stops, left-turn gaps, school zones, roundabouts, construction, cyclists, jaywalkers, human drivers, failures; lidar/radar views, blind spots, occlusion reasoning, thermal camera; Predictacar self-learning.']];
+ /* ---------- 100 version & changelog ---------- */
+ const tag=document.createElement('div');tag.style.cssText='position:fixed;left:10px;bottom:6px;z-index:5;font:11px system-ui;color:#8aa0b8;cursor:pointer';tag.textContent=`Autodrive v${VERSION} · ${BUILD} · What's new`;tag.onclick=()=>{let d=document.getElementById('clBox');if(d){d.remove();return}d=UIX.banner('clBox','left:10px;bottom:26px;width:420px;max-height:60vh;overflow:auto;background:#0e141df7;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:12px 14px;pointer-events:auto;font:12px system-ui;z-index:9999');d.innerHTML='<b>What\'s new</b>'+CHANGELOG.map(([v,t])=>`<div style="margin-top:8px"><b>v${v}</b> – ${t}</div>`).join('')};document.body.appendChild(tag);
+ if(UIX.load('seenVersion','')!==VERSION){setTimeout(()=>{tag.click();UIX.save('seenVersion',VERSION)},1500)}
+ /* ---------- 98 debug log ---------- */
+ const LOG={errors:[],status:[]};window.DEBUGLOG=LOG;addEventListener('error',e=>{LOG.errors.push({t:Date.now(),msg:e.message,src:(e.filename||'').split('/').pop()+':'+e.lineno});if(LOG.errors.length>200)LOG.errors.shift()});
+ const _mf=window.modFail;window.modFail=function(w,e){LOG.errors.push({t:Date.now(),module:w,msg:String(e&&e.message),stack:String(e&&e.stack).slice(0,400)});return _mf(w,e)};
+ LOG.save=()=>{const G=game,o={version:VERSION,build:BUILD,ua:navigator.userAgent,car:G&&G.spec&&G.spec.name,trip:G&&G.A?G.A.short+' → '+G.B.short:null,s:G&&G.ego?Math.round(G.ego.s):null,weather:WX.key,modErr:Object.keys(MODERR),errors:LOG.errors,status:LOG.status,settings:{gfx:window.GFX&&GFX.get(),style:UIX.load('style',''),modsOff:UIX.load('modsOff',[])}};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}));a.download=`autodrive-debug-${Date.now()}.json`;document.body.appendChild(a);a.click();a.remove()};
+ /* ---------- 99 profiler ---------- */
+ const PR={on:false,acc:{},frames:0,t0:0,wrapped:false};function wrapAll(){if(PR.wrapped)return;PR.wrapped=true;const w=(name,obj,key)=>{const f=obj[key];if(typeof f!=='function'||f.__prof)return;const g=function(){if(!PR.on)return f.apply(this,arguments);const t=performance.now();try{return f.apply(this,arguments)}finally{PR.acc[name]=(PR.acc[name]||0)+performance.now()-t}};g.__prof=1;obj[key]=g};
+  for(const m of MODS)for(const h of ['frame','sim','preRender','postRender'])if(m[h])w(m.id,m,h);for(const n of ['renderPerception','updateGrass','manageTiles','buildTile','manageTraffic','updateCamera','updateCollisions','drawMini','updateHUD','updateWeather','hyperPlan','plan'])w(n,window,n);const rr=renderer.render;renderer.render=function(s,c){if(!PR.on)return rr.call(this,s,c);const t=performance.now();rr.call(this,s,c);PR.acc['render '+(c===camera?'main':'aux')]=(PR.acc['render '+(c===camera?'main':'aux')]||0)+performance.now()-t;if(c===camera){PR.calls=renderer.info.render.calls;PR.tris=renderer.info.render.triangles}}}
+ const pbox=UIX.banner('profBox','left:280px;top:60px;width:300px;background:#000c;color:#cfe;font:11px ui-monospace,monospace;padding:8px;border-radius:8px;display:none;z-index:70');
+ addEventListener('keydown',ev=>{if(ev.key==='`'){PR.on=!PR.on;wrapAll();PR.acc={};PR.frames=0;PR.t0=performance.now();pbox.style.display=PR.on?'block':'none'}});
+ /* ---------- 94 route worker ---------- */
+ const WK=`let pts=null,cum=null;onmessage=e=>{const m=e.data;if(m.route){pts=m.route.pts;cum=m.route.cum;return}if(!pts)return;const out=m.q.map(([id,lat,lon])=>{const k=Math.cos(lat*Math.PI/180);let best=0,bd=1e18;for(let i=0;i<pts.length;i+=2){const p=pts[i],dx=(p[0]-lon)*k,dy=p[1]-lat,d=dx*dx+dy*dy;if(d<bd){bd=d;best=i}}return [id,cum[best],Math.sqrt(bd)*111000]});postMessage({gen:m.gen,out})}`;
+ let worker=null,wRoute=null,gen=0;try{worker=new Worker(URL.createObjectURL(new Blob([WK],{type:'text/javascript'})))}catch(e){worker=null}
+ const pending=new Map();if(worker)worker.onmessage=e=>{if(e.data.gen!==gen)return;for(const [id,s,off] of e.data.out){const f=pending.get(id);if(f){f._rs=s;f._ro=off;f._r=game.route;f._wq=false;pending.delete(id)}}};
+ if(window.OSMX&&worker){const _on=OSMX.onRoute;OSMX.onRoute=(f,tol=12)=>{const G=game;if(f._r===G.route)return f._ro<tol?f._rs:null;if(wRoute!==G.route){wRoute=G.route;gen++;pending.clear();worker.postMessage({route:{pts:G.route.pts,cum:G.route.cum}})}if(!f._wq){f._wq=true;pending.set(f.id,f);worker.postMessage({gen,q:[[f.id,f.lat,f.lon]]})}return null}} /* answer arrives a frame later; callers re-poll */
+ /* ---------- 96 offline pre-cache ---------- */
+ async function prefetch(btn){const G=game;if(!G||!G.route){alert('Start the ride first, then save its route for offline use.');return}localStorage.setItem('netCache','1');UIX.save('offlineOn',true);const R=G.route,keys=new Set(),cells=new Set();for(let s=0;s<R.total;s+=800){const p=routeLLnh(s);for(let di=-1;di<=1;di++)for(let dj=-1;dj<=1;dj++){const la=p[1]+di*TS*0.9,lo=p[0]+dj*TS*0.9;keys.add(tileKey(la,lo))}cells.add(Math.floor(p[1]/0.03)+'_'+Math.floor(p[0]/0.03))}
+  let n=0;const all=[...keys];btn.disabled=true;for(const k of all){if(!RAW.has(k))try{await Promise.race([fetchTile(k),sleep(15000)])}catch(e){}n++;btn.textContent=`📥 Saving… ${n}/${all.length} tiles`}for(const c of cells){const [i,j]=c.split('_').map(Number);try{OSMX.ensure((i+0.5)*0.03,(j+0.5)*0.03,0)}catch(e){}}btn.textContent='📥 Route saved for offline ✓';btn.disabled=false}
+ MODS.push({id:'upkeep',
+  start(){UIX.btn('offBtn','📥','Save this route for offline use',function(){prefetch(this)});UIX.btn('logBtn','🐞','Save debug log',LOG.save)},
+  frame(){const G=game;if(G&&G.status){const s=G.status;if(LOG.status[LOG.status.length-1]!==s){LOG.status.push(s);if(LOG.status.length>80)LOG.status.shift()}}
+   if(PR.on){PR.frames++;if(performance.now()-PR.t0>1000){const f=PR.frames,rows=Object.entries(PR.acc).map(([k,v])=>[k,v/f]).sort((a,b)=>b[1]-a[1]).slice(0,18);pbox.innerHTML=`<b>Profiler</b> · ${f} fps · ${PR.calls||0} calls · ${Math.round((PR.tris||0)/1000)}k tris<br>`+rows.map(([k,v])=>`<div style="display:flex;gap:6px"><span style="width:130px;overflow:hidden">${k}</span><span style="width:${Math.min(140,v*14)}px;background:${v>4?'#ff5a5a':v>1.5?'#ffd166':'#3fd18a'}"></span><span>${v.toFixed(2)} ms</span></div>`).join('');PR.acc={};PR.frames=0;PR.t0=performance.now()}}}});
+ /* 97 visual regression */
+ if(window.SELFTEST)SELFTEST.visual=async()=>{const base=UIX.load('visBase',{}),res=[],cam=new THREE.PerspectiveCamera(35,16/9,0.1,100),rt=new THREE.WebGLRenderTarget(160,90),px=new Uint8Array(160*90*4);for(const c of CARS){const m=buildCar(c,c.colors[0][1]);const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight(0xffffff,0x444444,1.2));const dl=new THREE.DirectionalLight(0xffffff,1);dl.position.set(5,8,4);sc.add(dl);sc.add(m);cam.position.set(c.L*0.9,c.H*1.1,c.L*0.9);cam.lookAt(0,c.H*0.45,0);renderer.setRenderTarget(rt);renderer.render(sc,cam);renderer.readRenderTargetPixels(rt,0,0,160,90,px);renderer.setRenderTarget(null);
+   let sig='';for(let i=0;i<px.length;i+=4*37)sig+=String.fromCharCode(65+(px[i]>>4));if(!base[c.id]){base[c.id]=sig;res.push([c.name,'baseline stored'])}else{let d=0;for(let i=0;i<sig.length;i++)if(sig[i]!==base[c.id][i])d++;res.push([c.name,(d/sig.length*100).toFixed(1)+' % changed'])}}UIX.save('visBase',base);rt.dispose();return res};
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
