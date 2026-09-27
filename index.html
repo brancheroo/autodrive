@@ -3445,7 +3445,7 @@ $('go').onclick=async()=>{
   game=null;startGame(selCar,selColor,addrA,addrB,route2);buildTile(k);
   $('load').style.display='none'}
  catch(err){$('load').style.display='none';$('msg').textContent='Could not start: '+err.message}};
-renderCars();renderInfo();refreshShowcar();socPreview();
+renderCars();renderInfo();setTimeout(refreshShowcar,0);socPreview(); /* showroom car after the feature modules (bobblehead etc.) have loaded */
 {const n=new Date(Date.now()-new Date().getTimezoneOffset()*60000);$('depAt').value=n.toISOString().slice(0,16);$('depAt').oninput=()=>{document.querySelector('input[name=dep][value=custom]').checked=true}}
 requestAnimationFrame(step);
 </script>
