@@ -4615,7 +4615,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  const box=UIX.banner('rivalBox','right:8px;top:232px;font:11px ui-monospace,monospace;color:#ffd6a8;background:#0008;padding:2px 6px;border-radius:6px;display:none');
  let R=null,shift=0;window.RIVAL=()=>R;
  function drop(){if(R){scene.remove(R.mesh);R=null}box.style.display='none'}
- MODS.push({id:'rival',disable:drop,
+ MODS.push({id:'rival',reroute(){if(R&&R.mesh){const p=R.mesh.position,pr=projectOnRoute(game.route,toLat(p.z),toLon(p.x));R.s=pr.s}},disable:drop,
   start(){drop();const id=sel.value;const spec=CARS.find(c=>c.id===id);if(!spec)return;const col=spec.colors[Math.min(1,spec.colors.length-1)][1];
    R=newAgent(spec,col,0,0);R.kind='rival';R.rival=true;R.fin=null;box.style.display='block'},
   sim(dt){const G=game;if(!R||!G.route)return;const lead=G.agents.filter(a=>a.kind==='route'&&!a.loose&&a.s>R.s).sort((a,b)=>a.s-b.s)[0]||null;
@@ -4704,7 +4704,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  const clock=t=>{const G=game;try{return new Intl.DateTimeFormat('en-US',{timeZone:G.tz,hour:'numeric',minute:'2-digit'}).format(new Date(t*1000))}catch(e){return ''}};
  function deadline(st){const G=game;if(st.h==null)return null;const day=new Intl.DateTimeFormat('en-CA',{timeZone:G.tz}).format(new Date(G.t0*1000));let t=zonedToUtc(`${day}T${String(st.h).padStart(2,'0')}:${String(st.mi).padStart(2,'0')}`,G.tz)/1000;if(t<G.t0-3600)t+=86400;return t}
  function draw(){const G=game;panel.innerHTML='<b>📦 Deliveries</b><br>'+D.run.map(s=>`${s.done?(s.late>0?'🔴':'🟢'):s===D.cur?'🚚':'⬜'} ${s.name.slice(0,28)}${s.dl?` <span style="opacity:.7">by ${clock(s.dl)}</span>`:''}${s.done?` <span style="opacity:.8">${s.late>0?Math.round(s.late/60)+' min late':'on time'}</span>`:''}`).join('<br>')}
- MODS.push({id:'delivery',disable(){capSet('deliv',null);D.cur=null},
+ MODS.push({id:'delivery',reroute(){},disable(){capSet('deliv',null);D.cur=null},
   start(){const G=game;D.run=[];panel.style.display='none';if(!D.stops.length||!(ta.value||'').trim())return;for(const st of D.stops){D.run.push({...st,rs:projectOnRoute(G.route,st.lat,st.lon).s,dl:deadline(st),done:false})}D.run.sort((a,b)=>a.rs-b.rs);D.cur=D.run[0];panel.style.display='block';draw()},
   sim(dt){const G=game,e=G.ego,c=D.cur;if(!c){capSet('deliv',null);return}if(D.rref!==G.route){D.rref=G.route;for(const s of D.run)if(!s.done&&s.hold==null)s.rs=projectOnRoute(G.route,s.lat,s.lon).s;draw()} /* after a reroute, re-find the remaining stops on the new route */const gap=c.rs-e.s;
    if(c.hold!=null){c.hold-=dt;capSet('deliv',0);if(c.hold<=0){c.done=true;c.hold=null;const i=D.run.indexOf(c);D.cur=D.run[i+1]||null;capSet('deliv',null);draw()}return}
@@ -4935,7 +4935,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  window.ONC_HOOK=(a,dt)=>{if(!A.list.length)return;const c=A.conflict(a.s-(a.spec.L||4.6)/2,a.v,-1,-1.9+(a.offAdd||0),a.spec.W||1.9);if(c){const v=Math.sqrt(Math.max(0,c.vo*c.vo+2*4*c.d));if(v<a.v)a.v=Math.max(0,a.v-Math.min(7,(a.v-v)*2)*dt)}};
  MODS.push({id:'actors',
   start(){for(const o of A.list.slice())A.remove(o);for(const k in XB)delete XB[k]},
-  sim(dt){const G=game,e=G.ego;if(!G.route)return;for(const o of A.list.slice()){o.t+=dt;try{o.update&&o.update(o,dt)}catch(err){console.error(err);A.remove(o);continue}
+  sim(dt){const G=game,e=G.ego;if(!G.route)return;if(A.route!==G.route){const first=!A.route;A.route=G.route;if(!first){for(const o of A.list.slice())A.remove(o);modCall('reroute')}} /* route changed: route-relative things are invalid – every pack rebuilds */
+   for(const o of A.list.slice()){o.t+=dt;try{o.update&&o.update(o,dt)}catch(err){console.error(err);A.remove(o);continue}
    if(o.dead||(o.s!=null&&o.s<e.s-(o.keepBehind||200)&&!o.keep)||(o.ttl&&o.t>o.ttl)){A.remove(o)}}}});
 })();
 </script>
@@ -5162,7 +5163,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   for(const b of SC.buses){if(b===a||!b.bus||b.bus.state==='drive'||b.bus.state==='closing')continue;const d=b.s-a.s-(b.spec.L+(a.spec.L||4.6))/2;if(d>-2&&d<70){const lat=isEgo?(a.off??0):(a.off??1.85)+(a.offAdd||0);const same=Math.abs(lat-((b.off??1.85)+(b.offAdd||0)))<6;if(same||!routeOnewayAt(a.s)){if(isEgo)G.overtakeT=0;return {v:allow(0,Math.max(0,d-5)),reason:'🚌 School bus stopped with its stop arm out – waiting'}}}}return null});
  const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);for(const b of SC.buses){if(!b.bus||b.bus.state==='drive'||b.bus.state==='closing')continue;if(routeOnewayAt(b.s))continue;const d=a.s-b.s-(b.spec.L+a.spec.L)/2;if(d>-2&&d<70){a.v=Math.max(0,a.v-Math.min(8,a.v*1.5)*dt);if(d<8)a.v=0}}};
  SC.spawnBus=spawnBus;
- MODS.push({id:'school',disable(){for(const z of SC.zones)for(const s of z.signs)scene.remove(s)},
+ MODS.push({id:'school',reroute(){for(const z of SC.zones)for(const s of z.signs)scene.remove(s);SC.zones=[];for(const f of OSMX.feat)delete f._z;SC.buses=[]},disable(){for(const z of SC.zones)for(const s of z.signs)scene.remove(s)},
   start(){for(const z of SC.zones)for(const s of z.signs)scene.remove(s);SC.zones=[];SC.buses=[];SC.next=rnd(60,200);for(const f of OSMX.feat)delete f._z},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;SC.chk=(SC.chk||0)-dt;if(SC.chk<0){SC.chk=5;buildZones()}
    const on=active();SC.on=on;let cap=null;for(const z of SC.zones){if(z.s1<e.s-300)continue;if(z.s0-e.s<600)dressZone(z);if(on&&z.s0-e.s<400)guard(z);if(on&&e.s>z.s0-5&&e.s<z.s1){cap=20/MPH;SC.msg=`🏫 School zone (${z.name}) · 20 mph while the lights flash`}}
@@ -5219,8 +5220,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    if(a.s>z.s0-120){const v=d>0?allow(z.limit,d):z.limit;if(!r||v<r.v)r={v,reason:r?r.reason:`🚧 Work zone · ${Math.round(z.limit*MPH)} mph`}}
    if(r)return r}return null});
  const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);for(const z of CZ.zones){if(z.type!=='flag')continue;const d=a.s-z.s1;if(z.phase!=='theirs'&&d>-2&&d<60){a.v=Math.max(0,a.v-Math.min(8,a.v)*dt*1.5);if(d<16)a.v=0}if(a.s>z.s0&&a.s<z.s1+2)a.v=Math.min(a.v,z.limit)}};
- CZ.make=makeZone;
- MODS.push({id:'construction',disable(){for(const z of CZ.zones)remZone(z);CZ.zones=[]},
+ CZ.make=makeZone;const _czr=()=>{for(const z of CZ.zones)remZone(z);CZ.zones=[]};
+ MODS.push({id:'construction',reroute(){_czr()},disable(){for(const z of CZ.zones)remZone(z);CZ.zones=[]},
   start(){for(const z of CZ.zones)remZone(z);CZ.zones=[];CZ.next=rnd(90,300);XB.work=0},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;CZ.next-=dt;if(CZ.next<0){CZ.next=rnd(500,1100);if(!CZ.zones.length&&!(typeof CHASE!=='undefined'&&CHASE.on))makeZone()}
    let xb=0;for(const z of CZ.zones.slice()){if(z.s1<e.s-150){remZone(z);CZ.zones.splice(CZ.zones.indexOf(z),1);continue}
@@ -5507,7 +5508,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  function banks(){const G=game,e=G.ego;const snowy=S.cur==='winter'&&(toLat(e.z)>40||WX.snowCover);if(!snowy){if(bankG){scene.remove(bankG);bankG=null}return}if(bankG&&Math.abs(e.s-lastBank)<250)return;lastBank=e.s;if(bankG)scene.remove(bankG);bankG=new THREE.Group();
   for(let s=Math.max(0,e.s-150);s<Math.min(G.route.total,e.s+500);s+=4){const n=window.LANES?LANES.count(s):1,half=(routeOnewayAt(s)?n*3.6/2:n*3.6)+1.6;for(const side of [1,-1]){const lat=side>0?ACT.lane(s)+half-ACT.lane(s)+ (routeOnewayAt(s)?0:0):-half;const p=ACT.pose(s,side>0?half:-half);if(bAt(p.x,p.z))continue;const m=new THREE.Mesh(new THREE.SphereGeometry(1,8,6,0,Math.PI*2,0,Math.PI/2),bankMat);m.scale.set(2.4,0.55+Math.random()*0.45,1.1);m.position.set(p.x,p.y-0.1,p.z);m.rotation.y=p.h;bankG.add(m)}}scene.add(bankG)}
  let chk=0;
- MODS.push({id:'seasons',disable(){apply('summer');for(const f of fallen)f.m.visible=false;if(bankG){scene.remove(bankG);bankG=null}},
+ MODS.push({id:'seasons',reroute(){lastBank=-1e9},disable(){apply('summer');for(const f of fallen)f.m.visible=false;if(bankG){scene.remove(bankG);bankG=null}},
   start(){S.cur=null;lastBank=-1e9},
   frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;chk-=1/60;if(chk<0){chk=5;const se=season();if(se!==S.cur)apply(se);banks()}leafFall(1/60*(G.paused?0:1))}});
 })();
@@ -5542,7 +5543,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  let conv=null,wet=null;function echo(on){try{const C=audio.ctx;if(!C||!audio.master)return;if(!conv){conv=C.createConvolver();const L=C.sampleRate*2.2,b=C.createBuffer(2,L,C.sampleRate);for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);for(let i=0;i<L;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/L,2.6)*(i<C.sampleRate*0.012?0:1)}conv.buffer=b;wet=C.createGain();wet.gain.value=0;audio.master.connect(conv);conv.connect(wet);wet.connect(C.destination)}wet.gain.setTargetAtTime(on?0.55:0,C.currentTime,0.4)}catch(e){}}
  const lights=[new THREE.PointLight(0xffd9a0,0,28,1.6),new THREE.PointLight(0xffd9a0,0,28,1.6)];for(const l of lights)scene.add(l);
  let chk=0;
- MODS.push({id:'tunnels',disable(){for(const r of TN.list)if(r.g)scene.remove(r.g);TN.list=[];echo(false);for(const l of lights)l.intensity=0},
+ MODS.push({id:'tunnels',reroute(){for(const r of TN.list)if(r.g)scene.remove(r.g);TN.list=[]},disable(){for(const r of TN.list)if(r.g)scene.remove(r.g);TN.list=[];echo(false);for(const l of lights)l.intensity=0},
   start(){for(const r of TN.list)if(r.g)scene.remove(r.g);TN.list=[];TN.inside=false},
   frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;const e=G.ego;chk-=1/60;if(chk<0){chk=3;const found=scan();for(const f of found)if(!TN.list.some(r=>Math.abs(r.s0-f.s0)<30))TN.list.push(build(f));for(const r of TN.list.slice())if(r.s1<e.s-300){scene.remove(r.g);TN.list.splice(TN.list.indexOf(r),1)}}
    const inT=TN.list.some(r=>e.s>r.s0-3&&e.s<r.s1+3);if(inT!==TN.inside){TN.inside=inT;echo(inT)}window.INTUNNEL=inT;
@@ -5617,7 +5618,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   toll(d=300){const e=game.ego,rs=e.s+d,q=routeXZ(rs,0);const T=makeToll({kind:'toll',lat:toLat(q[1]),lon:toLon(q[0]),tags:{}},rs);IN.tolls.push(T);return T},
   bridge(d=400){const e=game.ego,rs=e.s+d,q=routeXZ(rs,0);const B=makeBridge({lat:toLat(q[1]),lon:toLon(q[0])},rs);B.state='up';B.t=40;IN.bridges.push(B);return B}};
  function clearAll(){for(const L of [IN.xings,IN.tolls,IN.bridges,IN.deco])for(const o of L){for(const m of o.objs)scene.remove(m);if(o.train)scene.remove(o.train.T.g)}IN.xings=[];IN.tolls=[];IN.bridges=[];IN.deco=[];if(exG){scene.remove(exG);exG=null}}
- MODS.push({id:'infra',disable:clearAll,
+ MODS.push({id:'infra',disable:clearAll,reroute:clearAll,
   start(){clearAll();IN.tollTotal=0;IN.express=false;for(const f of OSMX.feat)delete f._inf},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;chk-=dt;if(chk<0){chk=2;
     for(const f of OSMX.feat){if(f._inf===G.route)continue;if(!/levelx|toll|drivethru|garage|drawbridge/.test(f.kind))continue;const d=Math.hypot(toX(f.lon)-e.x,toZ(f.lat)-e.z);if(d>1600)continue;f._inf=G.route;
@@ -5772,7 +5773,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  const _bp=window.blockedPts;window.blockedPts=function(){const o=_bp();if(EV.fest&&EV.fest.pt)o.push(EV.fest.pt);return o};
  function clearFest(){const F=EV.fest;if(!F)return;for(const m of F.objs)scene.remove(m);if(F.bar)ACT.remove(F.bar);EV.crowd=[];EV.fest=null}
  let chk=0,festT=rnd(120,300);
- MODS.push({id:'events',disable(){clearFest();if(EV.stadium&&EV.stadium.lights)scene.remove(EV.stadium.lights);EV.stadium=null;crowdNoise(false)},
+ MODS.push({id:'events',reroute(){const F=EV.fest;if(!F)return;F.bar=null;const pr=projectOnRoute(game.route,F.pt[1],F.pt[0]);if(pr.off<14)F.bar=ACT.add({kind:'closure',s:pr.s-6,lat:0,r:8,clear:0,gap:6,hazard:true,keep:true,why:`🎪 Road closed for ${F.name}`,update(){}})},disable(){clearFest();if(EV.stadium&&EV.stadium.lights)scene.remove(EV.stadium.lights);EV.stadium=null;crowdNoise(false)},
   start(){clearFest();if(EV.stadium&&EV.stadium.lights)scene.remove(EV.stadium.lights);EV.stadium=null;festT=rnd(120,300)},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;chk-=dt;
    if(chk<0){chk=4;/* stadiums */let best=null;if(window.OSMX)for(const f of OSMX.feat){if(f.kind!=='stadium')continue;const d=Math.hypot(toX(f.lon)-e.x,toZ(f.lat)-e.z);if(d<1600&&(!best||d<best.d))best={f,d}}
