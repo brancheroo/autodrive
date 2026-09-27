@@ -2240,10 +2240,10 @@ function vegAt(lat,lon){let best=null,bz=-1;for(const [k,t] of SAT.tiles){const 
 function roadQAt(x,z){const key=Math.floor(toLat(z)/TS)+'_'+Math.floor(toLon(x)/TS);let q=GRASS.rq.get(key);if(!q){if(!RAW.has(key))return null;q=roadIndex(tileRoads(key));GRASS.rq.set(key,q);if(GRASS.rq.size>40)GRASS.rq.delete(GRASS.rq.keys().next().value)}return q}
 function updateGrass(dt){const G=game;if(!G||!G.ego)return;GRASS.uni.time.value+=dt;GRASS.uni.wind.value=clamp(0.25+(WX.wind+WX.gust)/25,0.2,2.5);if(!GRASS.mesh)grassInit();const im=GRASS.mesh;
  if(G.fast||!HIGH&&Q.pr<0.8){im.visible=false;return}im.visible=true;const cx=camera.position.x,cz=camera.position.z;GRASS.t+=dt;
- if(GRASS.at&&Math.hypot(cx-GRASS.at[0],cz-GRASS.at[1])<10&&GRASS.t<3)return;if(GRASS.at&&GRASS.t<0.4)return;GRASS.at=[cx,cz];GRASS.t=0;
+ if(GRASS.at&&Math.hypot(cx-GRASS.at[0],cz-GRASS.at[1])<20&&GRASS.t<4)return;if(GRASS.at&&GRASS.t<0.8)return;GRASS.at=[cx,cz];GRASS.t=0;
  const M=new THREE.Matrix4(),q=new THREE.Quaternion(),sc=new THREE.Vector3(),p=new THREE.Vector3(),col=new THREE.Color(),rnd=mulberry(Math.floor(cx/10)*7919+Math.floor(cz/10));
  const urban=(()=>{const T=TILES.get(Math.floor(toLat(cz)/TS)+'_'+Math.floor(toLon(cx)/TS));return T&&T.group&&T.group.children.length>60})();const hBase=urban?0.1:0.36,hVar=urban?0.05:0.18,snow=WX.snow>0.3;
- let n=0;const MAX=60000,R1=25,R2=75;
+ let n=0;const MAX=({ultra:60000,high:32000,low:12000})[window.GFX?GFX.get():'high']||32000,R1=25,R2=75; /* blade budget by graphics quality */
  /* route corridor near the camera: grass never grows on the carriageway even where only the route ribbon is drawn (rural, no OSM tile yet) */
  const segs=[];for(const c of routeRoads()){if(!c.bb||c.bb[1]<cx-R2-20||c.bb[0]>cx+R2+20||c.bb[3]<cz-R2-20||c.bb[2]>cz+R2+20)continue;for(let k=0;k<c.pts.length-1;k++){const a=c.pts[k],b=c.pts[k+1];if(Math.min(Math.hypot(a[0]-cx,a[1]-cz),Math.hypot(b[0]-cx,b[1]-cz))<R2+30)segs.push([a,b,(c.w/2)+0.9])}}
  const onRoute=(x,z)=>{for(const [a,b,h] of segs){const dx=b[0]-a[0],dz=b[1]-a[1],L2=dx*dx+dz*dz||1,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/L2,0,1);if(Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t)<h)return true}return false};
