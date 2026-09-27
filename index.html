@@ -2610,7 +2610,7 @@ function speedLimitAt(idx){
    (same one-way status & road class, within 400 m), so lane positions and lane choice don't flicker on patchy tagging */
 function routeLanes(idx){const R=game.route;if(!R._lanes||R._lanesN!==NODEINFO.size){const N=R.nodes,n=N.length,val=new Array(n).fill(null),src=N.map(id=>NODEINFO.get(id)||null);
   for(let i=0;i<n;i++){const x=src[i];if(x&&x.lanes!=null)val[i]=x.lanes}
-  const fill=new Array(n).fill(null);for(let i=0;i<n;i++){if(val[i]!=null){fill[i]=val[i];continue}const me=src[i];let best=null,bd=401;for(const dir of [-1,1]){for(let j=i+dir;j>=0&&j<n;j+=dir){const d=Math.abs(R.cum[j]-R.cum[i]);if(d>=bd)break;const x=src[j];if(val[j]!=null&&(!me||!x||(x.oneway===me.oneway&&x.hw===me.hw))){best=val[j];bd=d;break}}}fill[i]=best}
+  const fill=new Array(n).fill(null);for(let i=0;i<n;i++){if(val[i]!=null){fill[i]=val[i];continue}const me=src[i];if(!me||!me.oneway){fill[i]=null;continue} /* only one-way roads / freeways inherit lane counts; a two-way street is never widened by a neighbour's tag (that put cars into the oncoming lane) */let best=null,bd=401;for(const dir of [-1,1]){for(let j=i+dir;j>=0&&j<n;j+=dir){const d=Math.abs(R.cum[j]-R.cum[i]);if(d>=bd)break;const x=src[j];if(val[j]!=null&&x&&x.oneway&&x.hw===me.hw){best=best==null?val[j]:Math.min(best,val[j]);bd=d;break}}}fill[i]=best}
   R._lanes=fill;R._lanesN=NODEINFO.size}return R._lanes[clamp(idx,0,R._lanes.length-1)]}
 function laneOffsetAt(idx){let ni=NODEINFO.get(game.route.nodes[idx]);const fl=routeLanes(idx);if(ni&&ni.lanes==null&&fl!=null)ni={...ni,lanes:fl};else if(!ni&&fl!=null)ni={lanes:fl};if(!ni)return 1.85;if(ni.oneway){const l=ni.lanes||2;return l>=2?(l*3.6)/2-1.8-0.3:0}return 1.85+(ni.lanes>=4?3.6:0)}
 function plan(a,dt,lead,isEgo){
