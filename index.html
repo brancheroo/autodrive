@@ -4922,6 +4922,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  const blocked=(k,s0,s1)=>L.blocks.find(b=>b.k===k&&b.s1>s0&&b.s0<s1);
  const latOf=a=>(a.off??1.85)+(a.offAdd||0),egoLat=()=>laneOffsetAt(routeLLnh(game.ego.s)[2])+(window.LANEBIAS||0);
  function laneOfLat(s,lat){const base=laneOffsetAt(routeLLnh(clamp(s,0,game.route.total))[2]);return Math.round((base-lat)/L.laneW)}
+ const egoLanes=()=>{const G=game,e=G.ego,base=laneOffsetAt(routeLLnh(e.s)[2]),x=(base-(e.off??base))/L.laneW;return new Set([Math.floor(x+0.35),Math.ceil(x-0.35)])}; /* lanes the ride's body actually occupies */
+ const laneFree=(a,k,d)=>!game.agents.some(b=>b!==a&&b.kind==='route'&&!b.loose&&laneOfLat(b.s,latOf(b))===k&&Math.abs(b.s-a.s)<d)&&!(egoLanes().has(k)&&Math.abs(game.ego.s-a.s)<d+2);
  function gapOK(k,dir){const G=game,e=G.ego;for(const a of G.agents){if(a.kind!=='route'||a.loose)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;const d=a.s-e.s,need=d>0?8+Math.max(0,e.v-a.v)*1.5:10+Math.max(0,a.v-e.v)*3;if(Math.abs(d)<need)return false}
   if(window.ACT)for(const o of ACT.list)if(o.kind==='moto'&&Math.abs(o.s-e.s)<25)return false;return true}
  function upcomingTurn(prep){const G=game,e=G.ego;for(const st of G.route.steps){const d=st.s-e.s;if(d<0)continue;if(d>prep)break;if(st.type==='arrive'||st.type==='depart')continue;const m=st.mod||'';if(/left/.test(m)&&!/slight/.test(m))return {side:-1,d,st};if(/right/.test(m)&&!/slight/.test(m))return {side:1,d,st};if(/off ramp|fork/.test(st.type)&&/slight left/.test(m))return {side:-1,d,st};if(/off ramp|fork/.test(st.type)&&/slight right/.test(m))return {side:1,d,st}}return null}
@@ -4936,8 +4938,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    /* traffic lanes: spread new route cars across lanes; they pass slower cars; keep offsets inside the road */
    for(const a of G.agents){if(a.kind==='route'&&!a.loose){const na=L.count(a.s);if(a.laneK==null)a.laneK=Math.floor(Math.random()*na);
      if(a.merge){const m=a.merge,d=m.sM-a.s;if(m.state==='ramp'){a.laneK=-1;if(d<70){const ok=!G.agents.some(b=>b!==a&&b.kind==='route'&&(b.laneK||0)===0&&Math.abs(b.s-a.s)<9)&&!(L.k===0&&Math.abs(e.s-a.s)<9);if(ok){m.state='in';a.laneK=0}else if(d<15)a.v=Math.max(0,a.v-4*dt)}}}
-     else if(a.laneK>na-1)a.laneK=na-1;
-     if(!a.merge&&na>1&&Math.random()<dt*0.03){const lead=G.agents.find(b=>b!==a&&b.kind==='route'&&b.laneK===a.laneK&&b.s>a.s&&b.s-a.s<40&&b.v<a.v-2);if(lead){const tk=a.laneK+1<na?a.laneK+1:a.laneK-1;if(tk>=0&&!G.agents.some(b=>b!==a&&b.kind==='route'&&b.laneK===tk&&Math.abs(b.s-a.s)<14)&&!(L.k===tk&&Math.abs(e.s-a.s)<14))a.laneK=tk}}
+     else{const nAhead=L.count(a.s+Math.max(60,a.v*5));if(a.laneK>nAhead-1){const tk=a.laneK-1;if(laneFree(a,tk,10))a.laneK=tk;else{a.dropWait=true}}else a.dropWait=false;if(a.laneK>na-1){if(laneFree(a,na-1,7))a.laneK=na-1;else a.v=Math.max(0,a.v-5*dt)}}
+     if(!a.merge&&na>1&&Math.random()<dt*0.03){const lead=G.agents.find(b=>b!==a&&b.kind==='route'&&b.laneK===a.laneK&&b.s>a.s&&b.s-a.s<40&&b.v<a.v-2);if(lead){const tk=a.laneK+1<na?a.laneK+1:a.laneK-1;if(tk>=0&&laneFree(a,tk,14))a.laneK=tk}}
      const tgt=-a.laneK*L.laneW+(a.wobble||0);a.offAdd=a.offAdd==null?tgt:lerp(a.offAdd,tgt,Math.min(1,dt*0.9))}
     else if(a.kind==='oncoming')a.offAdd=(a.wobble||0)}
    /* merge points ahead on freeways */
@@ -4957,7 +4959,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    L.tk=clamp(want,0,n-1);L.why=why;
    if(L.tk!==L.k&&L.cool<=0&&!(window.DRV&&DRV.manual)){const nk=L.k+Math.sign(L.tk-L.k);if(gapOK(nk)){L.k=nk;L.cool=4;L.chg=3}else if(why)L.why=why+' · waiting for a gap'}
    let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;const tgt=-L.k*L.laneW+xb;window.LANEBIAS=lerp(window.LANEBIAS||0,tgt,Math.min(1,dt*0.7));L.chg-=dt;window.SIGOVR=L.chg>0||L.tk!==L.k?(L.tk>L.k||L.chg>0&&tgt<(window.LANEBIAS||0)-0.3?-1:1):0;if(Math.abs(tgt-window.LANEBIAS)<0.3&&L.tk===L.k)window.SIGOVR=0},
-  preRender(){if(L.why&&game&&game.route&&(L.tk!==L.k||Math.abs(-L.k*L.laneW-(window.LANEBIAS||0))>0.4)&&!/🛡|✋|🚸|🚌|👷/.test(game.status||''))game.status='↔️ '+L.why}});
+  preRender(){const st=game&&game.status||'';if(L.why&&game&&game.route&&(L.tk!==L.k||Math.abs(-L.k*L.laneW-(window.LANEBIAS||0))>0.4)&&(/^(Cruising|Following vehicle)/.test(st)||!st))game.status='↔️ '+L.why}});
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(isEgo||!a.dropWait)return null;let d=40;for(let x=10;x<200;x+=10)if(L.count(a.s+x)<=a.laneK){d=x;break}return {v:allow(0,Math.max(0,d-8))}}); /* lane ends and no gap yet: stop short of the end rather than squeeze */
  /* courtesy for mergers + stay out of the ramp car's way */
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!isEgo||!L.letIn)return null;const m=L.letIn,gap=m.s-a.s-(m.spec.L+a.spec.L)/2-6;if(gap>-6)return {v:allow(Math.max(0,m.v-1),Math.max(0,gap)),reason:'🤝 Easing off to let a car merge in'};return null});
 })();
