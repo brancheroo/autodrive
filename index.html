@@ -4978,6 +4978,39 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    const ah=routeLL(Math.min(G.route.total,e.s+Math.max(1500,e.v*90)));X.ensure(ah[1],ah[0],0)}});
 })();
 </script>
+<script>/* mods/28b-envelope.js */
+/* Universal safety envelope – the last-resort layer under all driving logic, for every vehicle (not only the
+   Predictacar). Each vehicle sweeps its own footprint forward along its heading for the next few seconds and checks
+   every other body (your car, route / oncoming / cross traffic, pedestrians, cyclists, animals, trams, wrecks) at its
+   predicted position (constant-velocity prediction). If anything will be inside the swept corridor it caps speed to
+   what lets it stop short of it (1.5 m buffer, reaction latency). It can only slow vehicles down – it never makes
+   anything faster. The ride also never moves sideways into a space already occupied alongside it. */
+(function(){
+ const EN={bodies:[],t:-1};window.ENVELOPE=EN;
+ function collect(){const G=game;if(EN.t===G.simTime)return EN.bodies;EN.t=G.simTime;const B=[],e=G.ego;
+  const add=(ref,x,z,h,v,L,W,kind)=>{if(!isFinite(x)||!isFinite(z))return;B.push({ref,x,z,vx:Math.cos(h)*v,vz:-Math.sin(h)*v,h,L,W,kind})};
+  if(e&&e.mesh)add(e,e.mesh.position.x,e.mesh.position.z,e.mesh.rotation.y,e.v,G.spec.L,G.spec.W,'ego');
+  for(const a of G.agents){if(!a.mesh)continue;const h=a.loose?a.loose.h:a.mesh.rotation.y,v=a.loose?Math.hypot(a.loose.vx,a.loose.vz):a.v;add(a,a.mesh.position.x,a.mesh.position.z,h,v,a.spec.L||4.6,a.spec.W||1.9,a.kind)}
+  for(const p of G.peds)add(p,p.x,p.z,0,0,0.5,0.5,'ped');
+  if(window.ACT)for(const o of ACT.list){if(!o.mesh||o.hazard===false&&o.kind!=='tram')continue;const q=o.mesh.position;add(o,q.x,q.z,o.mesh.rotation.y,0,o.kind==='cyclist'?1.8:o.kind==='tram'?14:o.kind==='wreck'?4.8:0.6,o.kind==='cyclist'?0.6:o.kind==='tram'?2.6:o.kind==='wreck'?2:0.6,o.kind)}
+  EN.bodies=B;return B}
+ /* speed cap for vehicle `me` (body) from everything in its swept path */
+ function cap(me,decel){const B=collect(),fx=Math.cos(me.h),fz=-Math.sin(me.h),v=Math.max(me.vx*fx+me.vz*fz,0);let best=null;
+  for(const b of B){if(b.ref===me.ref)continue;const dx=b.x-me.x,dz=b.z-me.z;if(Math.abs(dx)>90||Math.abs(dz)>90)continue;const f0=dx*fx+dz*fz;if(f0<-2)continue;
+   const rvf=(b.vx*fx+b.vz*fz),rvl=(-b.vx*fz+b.vz*fx),l0=-dx*fz+dz*fx,halfW=(me.W+b.W)/2+0.35,halfL=(me.L+b.L)/2;
+   const tHit=Math.min(4,Math.max(0,(f0-halfL))/Math.max(0.5,v-Math.min(rvf,v*0.5)));const lPred=l0+rvl*tHit,lMin=Math.min(Math.abs(l0),Math.abs(lPred),Math.sign(l0)!==Math.sign(lPred)?0:99);
+   if(lMin>halfW)continue;const gap=f0-halfL-1.5-v*0.25,vb=Math.max(0,rvf);const allowV=Math.sqrt(Math.max(0,vb*vb+2*decel*Math.max(0,gap)));if(!best||allowV<best.v)best={v:allowV,b}}
+  return best}
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(isEgo&&smartOn())return null; /* the Predictacar/satellite planner has its own, stronger envelope */
+  const G=game;if(!a.mesh)return null;const me={ref:a,x:a.mesh.position.x,z:a.mesh.position.z,h:a.mesh.rotation.y,vx:Math.cos(a.mesh.rotation.y)*a.v,vz:-Math.sin(a.mesh.rotation.y)*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};
+  const c=cap(me,isEgo?5.5:4.5);if(!c)return null;return {v:c.v,reason:isEgo?`🛡 Safety envelope: ${c.b.kind==='ped'?'pedestrian':c.b.kind==='way'?'crossing car':c.b.kind==='oncoming'?'oncoming car':c.b.kind==='ego'?'your car':c.b.kind} in our path`:''}});
+ const _oh=window.ONC_HOOK;window.ONC_HOOK=(a,dt)=>{if(_oh)_oh(a,dt);if(!a.mesh)return;const me={ref:a,x:a.mesh.position.x,z:a.mesh.position.z,h:a.mesh.rotation.y,vx:Math.cos(a.mesh.rotation.y)*a.v,vz:-Math.sin(a.mesh.rotation.y)*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};const c=cap(me,5);if(c&&c.v<a.v)a.v=Math.max(0,a.v-Math.min(8,(a.v-c.v)*3)*dt)};
+ const _wh=window.WAY_HOOK;window.WAY_HOOK=(a,p,fx,fz,dt)=>{let v=_wh?_wh(a,p,fx,fz,dt):null;if(!a.mesh)return v;const h=Math.atan2(-fz,fx),me={ref:a,x:a.mesh.position.x,z:a.mesh.position.z,h,vx:fx*a.v,vz:fz*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};const c=cap(me,5);if(c)v=v==null?c.v:Math.min(v,c.v);return v};
+ /* sideways moves: hold the ride's lateral target while something occupies the space alongside on that side */
+ EN.sideBlocked=dir=>{const G=game,e=G.ego;if(!e||!e.mesh)return false;const B=collect(),h=e.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h);for(const b of B){if(b.ref===e)continue;const dx=b.x-e.mesh.position.x,dz=b.z-e.mesh.position.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;if(Math.abs(f)>(G.spec.L+b.L)/2+2)continue;if(Math.sign(l)!==Math.sign(dir))continue;if(Math.abs(l)<(G.spec.W+b.W)/2+1.4)return true}return false};
+ MODS.push({id:'envelope'});
+})();
+</script>
 <script>/* mods/29-actors.js */
 /* Road actors shared by the feature packs: cyclists, jaywalkers, school buses, cones, workers, trains…
    Each actor lives on the route frame (o.s along the route, o.lat lateral offset, optional o.vs / o.vl
@@ -5097,7 +5130,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    for(let k=want,step=0;step<n;step++){if(!blocked(k,e.s-10,e.s+250))break;const b=blocked(k,e.s-10,e.s+250);why=b.why||'Lane closed ahead';k=k>0?k-1:k+1;if(k<0||k>=n)break;want=k}
    L.tk=clamp(want,0,n-1);L.why=why;
    if(L.tk!==L.k&&L.cool<=0&&!(window.DRV&&DRV.manual)){const nk=L.k+Math.sign(L.tk-L.k);if(gapOK(nk)){L.k=nk;L.cool=8;L.chg=3;L.slowT=0;L.clearT=0}else if(why)L.why=why+' · waiting for a gap'}
-   let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;const tgt=-L.k*L.laneW+xb;window.LANEBIAS=lerp(window.LANEBIAS||0,tgt,Math.min(1,dt*(DRIVE.profile==='Comfort'?0.4:0.7))); /* comfort: slower, gentler lane changes */L.chg-=dt;window.SIGOVR=L.chg>0||L.tk!==L.k?(L.tk>L.k||L.chg>0&&tgt<(window.LANEBIAS||0)-0.3?-1:1):0;if(Math.abs(tgt-window.LANEBIAS)<0.3&&L.tk===L.k)window.SIGOVR=0},
+   let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;const tgt=-L.k*L.laneW+xb;{const cur=window.LANEBIAS||0,dir=tgt-cur;if(!(Math.abs(dir)>0.05&&window.ENVELOPE&&ENVELOPE.sideBlocked(-dir)))window.LANEBIAS=lerp(cur,tgt,Math.min(1,dt*(DRIVE.profile==='Comfort'?0.4:0.7)))} /* never slide sideways into an occupied space (lateral + is right; body frame left is +l) */ /* comfort: slower, gentler lane changes */L.chg-=dt;window.SIGOVR=L.chg>0||L.tk!==L.k?(L.tk>L.k||L.chg>0&&tgt<(window.LANEBIAS||0)-0.3?-1:1):0;if(Math.abs(tgt-window.LANEBIAS)<0.3&&L.tk===L.k)window.SIGOVR=0},
   preRender(){const st=game&&game.status||'';if(L.why&&game&&game.route&&(L.tk!==L.k||Math.abs(-L.k*L.laneW-(window.LANEBIAS||0))>0.4)&&(/^(Cruising|Following vehicle)/.test(st)||!st))game.status='↔️ '+L.why}});
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(isEgo){if(L.k>0&&L.tk<L.k){for(let x=10;x<200;x+=10)if(L.count(a.s+x)<=L.k)return {v:allow(0,Math.max(0,x-8)),reason:'↔️ Our lane ends – waiting for a gap to merge'}}return null}if(!a.dropWait)return null;let d=40;for(let x=10;x<200;x+=10)if(L.count(a.s+x)<=a.laneK){d=x;break}return {v:allow(0,Math.max(0,d-8))}}); /* lane ends and no gap yet: stop short of the end rather than squeeze */
  /* courtesy for mergers + stay out of the ramp car's way */
