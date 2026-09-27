@@ -5330,7 +5330,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   sim(dt){if(!game||!game.route||!game.ego||!game.ego.mesh)return;const G=game,e=G.ego;if(!active()){capSet('aeb',null);return}
    F.t+=dt;if(F.t>0.1||!F.objs.length){perceive(F.t);F.t=0}
    /* 28 · independent monitor overrides everything */
-   const need=aebMonitor();if(need>6){F.aeb++;capSet('aeb',Math.max(0,e.v-need*dt*1.2));G.status='🚨 Emergency brake (independent monitor)'}else capSet('aeb',null);
+   const need=aebMonitor();if(need>6){if(!F.aebOn)F.aeb++;F.aebOn=true;capSet('aeb',Math.max(0,e.v-need*dt*1.2));G.status='🚨 Emergency brake (independent monitor)'}else{F.aebOn=false;capSet('aeb',null)}
    /* 29 · hazard→brake latency: a hazard is 'seen' when TTC<3 s to a perceived object; latency ends at the first braking command */
    for(const o of F.objs){if(o.ghost)continue;const dx=o.x-e.mesh.position.x,dz=o.z-e.mesh.position.z,h=e.mesh.rotation.y,f=dx*Math.cos(h)-dz*Math.sin(h),s=dx*Math.sin(h)+dz*Math.cos(h);
     if(f>0&&Math.abs(s)<2&&e.v>2&&f/e.v<3&&!F.lat.pending.has(o.ref))F.lat.pending.set(o.ref,G.simTime)}
