@@ -5713,6 +5713,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;chk-=1/60;
    if(chk<0){chk=3;const e=G.ego,lat=toLat(e.z),lon=toLon(e.x);
     for(const D of DEFS){const d=Math.hypot((D.lat-lat)*110574,(D.lon-lon)*111320*Math.cos(lat*Math.PI/180));const have=L.built.get(D.id);if(d<25000&&!have)L.built.set(D.id,place(D));else if(d>32000&&have){scene.remove(have);L.built.delete(D.id)}else if(have&&have.userData.ox!==ORIGIN.lon){have.position.set(toX(D.lon),groundY(toX(D.lon),toZ(D.lat)),toZ(D.lat))}if(have)have.userData.ox=ORIGIN.lon}
+    if(L.ox!==ORIGIN.lon){for(const s of L.labels.values())scene.remove(s);L.labels.clear();L.ox=ORIGIN.lon} /* floating origin moved: rebuild labels */
     if(window.OSMX)for(const f of OSMX.feat){if(f.kind!=='landmark'||!f.name)continue;const x=toX(f.lon),z=toZ(f.lat),d=Math.hypot(x-e.x,z-e.z);const have=L.labels.get(f.id);if(d<450&&!have){const s=labelSprite(f.name.slice(0,34));s.position.set(x,groundY(x,z)+14,z);scene.add(s);L.labels.set(f.id,s)}else if(d>700&&have){scene.remove(have);L.labels.delete(f.id)}}}
    const lx=L.built.get('luxor');if(lx&&lx.userData.beam)lx.userData.beam.visible=!!G.dark}});
 })();
