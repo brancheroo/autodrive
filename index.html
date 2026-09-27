@@ -4981,7 +4981,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  MODS.push({id:'actors',
   start(){for(const o of A.list.slice())A.remove(o);for(const k in XB)delete XB[k];A.route=null},
   sim(dt){const G=game,e=G.ego;if(!G.route)return;if(!smartOn()&&G.dodgeT>0)G.dodgeT=Math.max(0,G.dodgeT-dt); /* only the smart planner decayed this before – a stuck timer froze the car in whatever lateral offset it had */
-   if(G.overtakeT>0&&!smartOn()&&!routeOnewayAt(e.s)){const clear=Math.max(90,(e.v+15)*7);if(G.agents.some(a=>a.kind==='oncoming'&&!a.loose&&a.s>e.s-8&&a.s-e.s<clear)){G.overtakeT=0;G.status='↩️ Oncoming traffic – abandoning the overtake'}}
+   if(G.overtakeT>0&&!smartOn()&&!routeOnewayAt(e.s)){const clear=Math.max(90,(e.v+15)*7);if(Math.abs(CHASE.evade||0)<1.2&&G.agents.some(a=>a.kind==='oncoming'&&!a.loose&&a.s>e.s-8&&a.s-e.s<clear)){G.overtakeT=0; /* only before pulling out – never swing back into the queue mid-pass */G.status='↩️ Oncoming traffic – abandoning the overtake'}}
    if(A.route!==G.route){const first=!A.route;A.route=G.route;if(!first){for(const o of A.list.slice())A.remove(o);modCall('reroute')}} /* route changed: route-relative things are invalid – every pack rebuilds */
    for(const o of A.list.slice()){o.t+=dt;try{o.update&&o.update(o,dt)}catch(err){console.error(err);A.remove(o);continue}
    if(o.dead||(o.s!=null&&o.s<e.s-(o.keepBehind||200)&&!o.keep)||(o.ttl&&o.t>o.ttl)){A.remove(o)}}}});
