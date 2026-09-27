@@ -2228,7 +2228,7 @@ function plan(a,dt,lead,isEgo){
  const [,,idx]=routeLLnh(a.s);
  const lim=speedLimitAt(idx)/MPH;
  target=Math.min(lim*WX.speedF,WX.cap/MPH);reason=WX.key==='clear'?'Cruising':'Cruising · '+WX.label.toLowerCase()+' mode';if(isEgo)game.limitMph=speedLimitAt(idx);
- const chase=isEgo&&fastOn();if(chase){target=(a.spec.hyper||CHASE.on?Math.max(lim*2.4+12,38):Math.max(lim*1.5+4,20))*Math.min(1,WX.speedF+0.25); /* Express in an ordinary car: brisk, not reckless */if(a.spec.hyper)target=Math.max(target,lim>24?447:lim*3.4); /* full rockets: 1000 mph where the road allows */ /* rockets: 500 mph where the road allows */reason=CHASE.on?'CHASE · flat out':'EXPRESS · flat out'} // chase: well over the limit, ignores lights & signs (never other cars)
+ const chase=isEgo&&fastOn();if(chase){target=Math.max(lim*2.4+12,38)*Math.min(1,WX.speedF+0.25); /* Express ignores every traffic law (limits, lights, signs, passing rules) – only other road users and physics hold it back */if(a.spec.hyper)target=Math.max(target,lim>24?447:lim*3.4); /* full rockets: 1000 mph where the road allows */ /* rockets: 500 mph where the road allows */reason=CHASE.on?'CHASE · flat out':'EXPRESS · flat out'} // chase: well over the limit, ignores lights & signs (never other cars)
  const brake=WX.brake*(isEgo&&fastOn()?1.8:1)*(isEgo&&!fastOn()?(DRIVE_P[DRIVE.profile].brk||1):1);
  const allow=(vc,d)=>Math.sqrt(Math.max(0,vc*vc+2*brake*Math.max(0,d)));
  // curvature
@@ -2507,7 +2507,7 @@ function updateExpress(dt){if(!EXPRESS.on||CHASE.on||!game||!game.ego||smartOn()
    const free=side=>{const o=side*3.4;for(const b of G.agents){if(!b.mesh)continue;const dx=b.mesh.position.x-e.x,dz=b.mesh.position.z-e.z,f=dx*fx+dz*fz,l=-dx*fz+dz*fx;
      const rel=(b.kind==='oncoming'?-1:1)*((b.mesh.rotation.y-e.head+9.42)%6.283-3.14<1.6?1:1);if(f>-12&&f<Math.max(45,e.v*4)&&Math.abs(l-(o))<2.6)return false;
      if(side<0&&b.kind==='oncoming'&&f>0&&f<(e.v+b.v)*5+30&&Math.abs(l-o)<3.2)return false}return true};
-   const ow=typeof routeOnewayAt==='function'&&routeOnewayAt(e.s),nl=window.LANES?LANES.count(e.s):1,sb=d=>window.ENVELOPE&&ENVELOPE.sideBlocked(d);const L=free(-1)&&!sb(-1)&&(ow?nl>1:true),Rt=free(1)&&!sb(1)&&ow&&nl>1; /* passing only where there is a real lane: another lane of a one-way road, or a clear oncoming lane – never the kerb / parking side */CHASE.passSide=(cur>0.5&&Rt)?1:(cur<-0.5&&L)?-1:L?-1:Rt?1:0}}else{CHASE.passSide=0;CHASE.sideT=0}
+   const ow=typeof routeOnewayAt==='function'&&routeOnewayAt(e.s),nl=window.LANES?LANES.count(e.s):1,sb=d=>window.ENVELOPE&&ENVELOPE.sideBlocked(d);const L=free(-1)&&!sb(-1)&&(ow?nl>1:true),Rt=free(1)&&!sb(1)&&nl>1; /* passing only where there is paved lane: another lane our way, or a clear oncoming lane – legal or not, but never onto the kerb / parked cars */CHASE.passSide=(cur>0.5&&Rt)?1:(cur<-0.5&&L)?-1:L?-1:Rt?1:0}}else{CHASE.passSide=0;CHASE.sideT=0}
  if(CHASE.pass<=0&&Math.abs(CHASE.evade)>0.5&&window.ENVELOPE&&ENVELOPE.sideBlocked(-Math.sign(CHASE.evade))){CHASE.pass=0.3;CHASE.passSide=Math.sign(CHASE.evade)} /* still alongside: hold the passing line */
  CHASE.evade=lerp(CHASE.evade,CHASE.pass>0?CHASE.passSide*3.4:0,Math.min(1,dt*(CHASE.pass>0?2.5:1.2)))}
 function chaseToggle(){if(!game||!game.route)return;CHASE.on?chaseStop():chaseStart()}
