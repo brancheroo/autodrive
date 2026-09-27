@@ -2606,7 +2606,7 @@ function speedLimitAt(idx){
  const R=game.route,nid=R.nodes[idx],ni=NODEINFO.get(nid);
  if(ni&&ni.spd)return ni.spd;
  const sp=R.speed[Math.min(idx,R.speed.length-1)]||11;return clamp(Math.round(sp*MPH*1.15/5)*5,20,75)}
-function laneOffsetAt(idx){const ni=NODEINFO.get(game.route.nodes[idx]);if(!ni)return 1.85;if(ni.oneway){const l=ni.lanes||2;return l>=2?(l*3.6)/2-1.8-0.3:0}return 1.85+(ni.lanes>=4?3.6:0)}
+function laneOffsetAt(idx){let ni=NODEINFO.get(game.route.nodes[idx]);if(!ni||ni.lanes==null){const N=game.route.nodes;for(let d=1;d<=4;d++){const x=NODEINFO.get(N[idx+d])||NODEINFO.get(N[idx-d]);if(x&&x.lanes!=null&&(!ni||x.oneway===ni.oneway)){ni=x;break}}} /* untagged node (often an intersection): borrow the nearest tagged neighbour's lanes so the lane position doesn't jump */if(!ni)return 1.85;if(ni.oneway){const l=ni.lanes||2;return l>=2?(l*3.6)/2-1.8-0.3:0}return 1.85+(ni.lanes>=4?3.6:0)}
 function plan(a,dt,lead,isEgo){
  const R=game.route,e=a;const look=Math.max(70,a.v*a.v/(2*2.2)+50);let target=1e9,reason='';
  const [,,idx]=routeLLnh(a.s);
