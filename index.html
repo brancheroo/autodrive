@@ -4552,7 +4552,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
    the sky along the road. Scales with the weather's wetness. */
 (function(){
  let wip=null,ph=0;const spray=[],pud=[];const sprayMat=new THREE.SpriteMaterial({map:glowTex(),color:0xc8d2dc,transparent:true,opacity:0,depthWrite:false});
- function wipers(){const G=game,spec=G.spec,m=G.ego.mesh;if(wip&&wip.parent===m)return wip;const pc=profCache[spec.id];if(!pc||!pc.P||!pc.P.sh)return null;const P=pc.P,sh=P.sh;
+ function wipers(){const G=game,spec=G.spec,m=G.ego.mesh;if(spec.hyper)return null; /* open roadster: no windscreen wipers to add */if(wip&&wip.parent===m)return wip;const pc=profCache[spec.id];if(!pc||!pc.P||!pc.P.sh)return null;const P=pc.P,sh=P.sh;
   const x0=P.xOf(sh.cowl),y0=P.belt(sh.cowl),x1=P.xOf(sh.roofF),y1=P.top(sh.roofF),u=new THREE.Vector3(x1-x0,y1-y0,0).normalize(),grp=new THREE.Group(),arms=[];
   const mat=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.6}),len=Math.min(0.62,spec.W*0.32);
   for(const z of [-spec.W*0.22,spec.W*0.12]){const piv=new THREE.Group();piv.position.set(x0-u.x*0.06,y0+0.02,z);piv.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),u);const arm=new THREE.Group();piv.add(arm);
