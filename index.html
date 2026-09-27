@@ -4301,7 +4301,7 @@ window.CAPS={};window.capSet=(id,v)=>{CAPS[id]=v;let m=null;for(const k in CAPS)
  /* persistent local cache for test runs: on the local dev server every successful outside response (GET, and
     POST queries like Overpass keyed by their body) is stored in IndexedDB and reused forever, so repeated
     test drives on the same route make almost no third-party calls. localStorage netCache='0' turns it off. */
- const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&localStorage.getItem('netCache')!=='0';let dbp=null;
+ const LOCAL=(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&localStorage.getItem('netCache')!=='0')||localStorage.getItem('netCache')==='1'; /* dev server, or the player saved a route for offline */let dbp=null;
  const db=()=>dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('autodrive-netcache',1);r.onupgradeneeded=()=>r.result.createObjectStore('r');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}));
  async function dget(k){try{const d=await db();return await new Promise(res=>{const q=d.transaction('r').objectStore('r').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null)})}catch(e){return null}}
  async function dput(k,v){try{const d=await db();d.transaction('r','readwrite').objectStore('r').put(v,k)}catch(e){}}
@@ -5669,7 +5669,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  MODS.push({id:'infra',disable:clearAll,reroute:clearAll,
   start(){clearAll();IN.tollTotal=0;IN.express=false;for(const f of OSMX.feat)delete f._inf},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;chk-=dt;if(chk<0){chk=2;
-    for(const f of OSMX.feat){if(f._inf===G.route)continue;if(!/levelx|toll|drivethru|garage|drawbridge/.test(f.kind))continue;const d=Math.hypot(toX(f.lon)-e.x,toZ(f.lat)-e.z);if(d>1600)continue;f._inf=G.route;
+    for(const f of OSMX.feat){if(f._inf===G.route)continue;if(!/levelx|toll|drivethru|garage|drawbridge/.test(f.kind))continue;const d=Math.hypot(toX(f.lon)-e.x,toZ(f.lat)-e.z);if(d>1600)continue;if(f.kind!=='drawbridge'){OSMX.onRoute(f,25);if(f._r!==G.route)continue}f._inf=G.route; /* wait for the (async) route projection */
      if(f.kind==='levelx'){const rs=OSMX.onRoute(f,12);if(rs!=null&&rs>e.s)IN.xings.push(makeCrossing(f,rs))}else if(f.kind==='toll'){const rs=OSMX.onRoute(f,25);if(rs!=null&&rs>e.s)IN.tolls.push(makeToll(f,rs))}else if(f.kind==='drawbridge'&&f.geom){const mid=f.geom[Math.floor(f.geom.length/2)],ff={lat:mid[0],lon:mid[1]},rs=OSMX.onRoute(ff,15);if(rs!=null&&rs>e.s)IN.bridges.push(makeBridge(ff,rs))}else if(d<600)decoFor(f)}
     for(const L of [IN.xings,IN.tolls,IN.bridges,IN.deco])for(const o of L.slice())if(o.rs<e.s-300){for(const m of o.objs)scene.remove(m);if(o.train)scene.remove(o.train.T.g);L.splice(L.indexOf(o),1)}
     IN.express=window.LANES?expressDeco():false}
