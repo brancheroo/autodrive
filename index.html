@@ -5558,6 +5558,10 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    if(Math.round(s)%60<6){const dm=new THREE.Mesh(new THREE.PlaneGeometry(2.4,1),white);const p=ACT.pose(s,base-kL*3.6);dm.rotation.set(-Math.PI/2,0,p.h+Math.PI/4);dm.position.set(p.x,p.y+0.04,p.z);exG.add(dm)}}
   const sg=new THREE.Mesh(new THREE.PlaneGeometry(4,1.4),new THREE.MeshBasicMaterial({map:ACT.signTex('EXPRESS LANE\nFasTrak $'+(2+Math.floor(Math.random()*6))+'.50','#1b5e20','#fff',512,180),side:THREE.DoubleSide}));const p=ACT.pose(e.s+300,ACT.lane(e.s+300)-(n-1)*3.6);sg.position.set(p.x,p.y+6.5,p.z);sg.rotation.y=p.h-Math.PI/2;exG.add(sg);scene.add(exG);return true}
  let chk=0,bellT=0;
+ /* test hooks: place a crossing (with a synthetic rail line across the road), toll plaza or drawbridge d metres ahead */
+ IN.test={crossing(d=300){const e=game.ego,rs=e.s+d,q=routeXZ(rs,0),rx=q[3],rz=-q[2],g=[];for(let k=-400;k<=400;k+=20)g.push([toLat(q[1]+rz*k),toLon(q[0]+rx*k)]);const rail={kind:'rail',geom:g,lat:toLat(q[1]),lon:toLon(q[0])};OSMX.feat.push(rail);const f={kind:'levelx',lat:toLat(q[1]),lon:toLon(q[0])};const X=makeCrossing(f,rs);X.next=0;IN.xings.push(X);return X},
+  toll(d=300){const e=game.ego,rs=e.s+d,q=routeXZ(rs,0);const T=makeToll({kind:'toll',lat:toLat(q[1]),lon:toLon(q[0]),tags:{}},rs);IN.tolls.push(T);return T},
+  bridge(d=400){const e=game.ego,rs=e.s+d,q=routeXZ(rs,0);const B=makeBridge({lat:toLat(q[1]),lon:toLon(q[0])},rs);B.state='up';B.t=40;IN.bridges.push(B);return B}};
  function clearAll(){for(const L of [IN.xings,IN.tolls,IN.bridges,IN.deco])for(const o of L){for(const m of o.objs)scene.remove(m);if(o.train)scene.remove(o.train.T.g)}IN.xings=[];IN.tolls=[];IN.bridges=[];IN.deco=[];if(exG){scene.remove(exG);exG=null}}
  MODS.push({id:'infra',disable:clearAll,
   start(){clearAll();IN.tollTotal=0;IN.express=false;for(const f of OSMX.feat)delete f._inf},
