@@ -5337,7 +5337,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    if((e.acc??0)<-2||(F.plan&&F.plan.ac<-1)){for(const [r,t0] of F.lat.pending){const L=G.simTime-t0;F.lat.n++;F.lat.sum+=L;F.lat.max=Math.max(F.lat.max,L);if(L>0.6&&!F.slowWarn){F.slowWarn=true;console.warn('FSD: slow hazard→brake latency',L.toFixed(2),'s')}}F.lat.pending.clear()}
    for(const [r,t0] of F.lat.pending)if(G.simTime-t0>4)F.lat.pending.delete(r);
    /* 5 · minimal-risk manoeuvre: degraded sensors, or no collision-free plan for 2 s → pull to the kerb and stop, hazards on */
-   const deg=(window.SENSOR_FAULT??1)<0.45||(window.CAMQ??1)<0.2;F.badT=F.plan&&F.plan.col>0.5?(F.badT||0)+dt:0;
+   const deg=(window.SENSOR_FAULT??1)<0.45||(window.CAMQ??1)<0.2;F.badT=F.plan&&F.plan.col>2&&e.v>8?(F.badT||0)+dt:0; /* only a real, moving no-safe-path situation – never a normal queue */
    if(!F.mrm&&(deg||F.badT>2)&&e.v>1){const d2=D(),hi=d2?d2.edges(e.s)[1]:1.85;F.mrm={why:deg?'sensors degraded':'no safe path',lat:hi,stopS:e.s+Math.max(25,e.v*e.v/(2*3)+10),t:G.simTime};window.SIGOVR=1}
    if(F.mrm){G.hazards=true;if(e.v<0.2&&G.simTime-F.mrm.t>8&&!deg&&F.badT===0){F.mrm=null;G.hazards=false;G.status='✅ Conditions OK – resuming'}}}});
 })();
@@ -5408,7 +5408,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  /* ---------- 21 · reverse out when there is no room to turn ---------- */
  B.reverse=(m=25)=>{const G=game;G.reverse={left:m};G.status='⏪ No room to turn – reversing out'};
  function reversing(dt){const G=game,e=G.ego,Rv=G.reverse;capSet('rev',0);e.v=0;const st=Math.min(Rv.left,2.2*dt);e.s=Math.max(2,e.s-st);Rv.left-=st;G.status='⏪ Reversing out';if(e.mesh.userData.wheels)spinWheels(e,dt,0);
-  if(Rv.left<=0||e.s<=2){G.reverse=null;capSet('rev',null);G.status='⏪ Reversed out – finding another way';try{rerouteNow()}catch(err){}}}
+  if(Rv.left<=0||e.s<=2){G.reverse=null;capSet('rev',null);G.status='⏪ Reversed out – finding another way';try{G.noUturnT=G.simTime;rerouteNow({noUturn:true})}catch(err){}}}
  /* ---------- learning (23, 26) ---------- */
  let LR={};try{LR=JSON.parse(localStorage.getItem('fsdFleet')||'{}')}catch(err){}LR.curve=LR.curve||{};LR.imit=LR.imit||{};B.imit=LR.imit;B.fleet=LR;
  B.hw=()=>{const G=game,n=NODEINFO.get(G.route.nodes[routeLLnh(G.ego.s)[2]]);return (n&&n.hw||'road').replace(/_link$/,'')};
