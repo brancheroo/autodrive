@@ -7149,7 +7149,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   ['2.3.0','Driving & sensors: lane choice, merging, 4-way stops, left-turn gaps, school zones, roundabouts, construction, cyclists, jaywalkers, human drivers, failures; lidar/radar views, blind spots, occlusion reasoning, thermal camera; Predictacar self-learning.']];
  /* ---------- 100 version & changelog ---------- */
  const tag=document.createElement('div');tag.style.cssText='position:fixed;left:10px;bottom:6px;z-index:5;font:11px system-ui;color:#8aa0b8;cursor:pointer';tag.textContent=`Autodrive v${VERSION} · ${BUILD} · What's new`;tag.onclick=()=>{let d=document.getElementById('clBox');if(d){d.remove();return}d=UIX.banner('clBox','left:10px;bottom:26px;width:420px;max-height:60vh;overflow:auto;background:#0e141df7;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:12px 14px;pointer-events:auto;font:12px system-ui;z-index:9999');d.innerHTML='<b>What\'s new</b>'+CHANGELOG.map(([v,t])=>`<div style="margin-top:8px"><b>v${v}</b> – ${t}</div>`).join('')};document.body.appendChild(tag);
- if(UIX.load('seenVersion','')!==VERSION){setTimeout(()=>{tag.click();UIX.save('seenVersion',VERSION)},1500)}
+ /* What's new stays closed by default – click the version tag to open it */
  /* ---------- 98 debug log ---------- */
  const LOG={errors:[],status:[]};window.DEBUGLOG=LOG;addEventListener('error',e=>{LOG.errors.push({t:Date.now(),msg:e.message,src:(e.filename||'').split('/').pop()+':'+e.lineno});if(LOG.errors.length>200)LOG.errors.shift()});
  const _mf=window.modFail;window.modFail=function(w,e){LOG.errors.push({t:Date.now(),module:w,msg:String(e&&e.message),stack:String(e&&e.stack).slice(0,400)});return _mf(w,e)};
