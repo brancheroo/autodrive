@@ -4433,7 +4433,7 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
     else{float l=dot(c,vec3(.3,.59,.11));c=ironbow(l*1.15);}
     gl_FragColor=vec4(c,1.);}`}); /* perception blit: tone-map + sRGB here (the render target is linear), or night-vision / ironbow thermal for the Predictacar's vision modes */bscene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bmat));
  window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const wrap=document.getElementById('cvWrap');if(wrap&&(getComputedStyle(wrap).visibility==='hidden'||wrap.style.display==='none'))return; /* hidden (photo mode etc.) */const r=area.getBoundingClientRect();if(r.width<10||r.height<10)return;
-  const t=tier(),every=t==='ultra'?2:t==='high'?4:6,scale=t==='ultra'?0.85:t==='high'?0.7:0.5,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
+  const t=tier(),every=t==='ultra'?2:t==='high'?4:6,scale=1,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
   if(!rt||rt.width!==W||rt.height!==H){if(rt)rt.dispose();rt=new THREE.WebGLRenderTarget(W,H,{samples:0});bmat.uniforms.map.value=rt.texture;fr=0}
   const realRender=renderer.render;fr++;if(t!=='ultra'&&cvCam.far>300){cvCam.far=300;cvCam.updateProjectionMatrix()} /* perception view: nothing past 300 m (cuts draw calls) */
   if(fr%every===1||every===1){const au=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;const prev=renderer.getRenderTarget();
@@ -4798,7 +4798,7 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
  const at=(tr,t)=>{let lo=0,hi=tr.length-1;if(t<=tr[0][0])return tr[0][1];if(t>=tr[hi][0])return null;while(hi-lo>1){const m=(lo+hi)>>1;if(tr[m][0]<t)lo=m;else hi=m}const a=tr[lo],b=tr[hi];return a[1]+(b[1]-a[1])*(t-a[0])/((b[0]-a[0])||1)};
  const tAt=(tr,s)=>{let lo=0,hi=tr.length-1;if(s>tr[hi][1])return null;while(hi-lo>1){const m=(lo+hi)>>1;if(tr[m][1]<s)lo=m;else hi=m}const a=tr[lo],b=tr[hi];return a[0]+(b[0]-a[0])*(s-a[1])/((b[1]-a[1])||1)};
  const sel=UIX.section('Time trial',`<select id="ghostSel" style="width:100%;${UIX.sel}"><option value="best">Race my best run on this trip (ghost car)</option><option value="off">No ghost</option>${CARS.map(c=>`<option value="${c.id}">Race the best ${c.name} run</option>`).join('')}</select><div id="ghostInfo" style="font-size:11px;color:var(--dim);margin-top:3px">Each run is recorded; a ghost appears once you have driven this trip before.</div>`);
- {const s=document.getElementById('ghostSel');s.value=UIX.load('ghostPick','best');s.onchange=()=>UIX.save('ghostPick',s.value)}
+ {const s=document.getElementById('ghostSel');s.value=UIX.load('ghostPick2','off');s.onchange=()=>UIX.save('ghostPick2',s.value)}
  const box=UIX.banner('ghostBox','right:8px;top:212px;font:11px ui-monospace,monospace;color:#d8c8ff;background:#0008;padding:2px 6px;border-radius:6px;display:none');
  function ghostMesh(run){const spec=CARS.find(c=>c.id===run.car)||game.spec,g=buildCar(spec,run.color||'#88aaff');g.traverse(o=>{if(o.isMesh||o.isSprite){const f=m=>{m=m.clone();m.transparent=true;m.opacity=0.28;m.depthWrite=false;return m};o.material=Array.isArray(o.material)?o.material.map(f):f(o.material);o.castShadow=false;o.receiveShadow=false}if(o.isLight)o.visible=false});g.userData.spec=spec;return g}
  MODS.push({id:'ghost',disable(){if(GH.mesh)GH.mesh.visible=false},
