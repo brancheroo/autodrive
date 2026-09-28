@@ -2260,7 +2260,7 @@ function plan(a,dt,lead,isEgo){
  if(isEgo)game.upcoming=up;
  // lead (in a chase the car overtakes while swerving away from a cruiser)
  if(chase&&lead&&lead.s-a.s<90&&lead.s-a.s>0&&lead.v<a.v+3){CHASE.pass=2.5;reason=(CHASE.on?'CHASE':'EXPRESS')+(CHASE.passSide>0?' · passing on the right':CHASE.passSide<0?' · passing on the left':' · boxed in, waiting for a gap')}
- if(lead&&!(isEgo&&smartOn())&&(!chase||(EXPRESS.on&&!CHASE.on&&!smartOn()&&(CHASE.passSide===0||Math.abs(CHASE.evade)<2.8)))&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=((TUNE.gap0??2.5)+(TUNE.gapT??1.6)*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap*(window.LEARN_GAP?LEARN_GAP():1):1)*(isEgo&&a.spec.basicAD&&!smartOn()?1.6:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
+ if(lead&&!(isEgo&&smartOn())&&(!chase||(EXPRESS.on&&!CHASE.on&&!smartOn()&&(CHASE.passSide===0||Math.abs(CHASE.evade)<2.8)))&&!(isEgo&&game.overtakeT>0)){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2;const want=(((window.TUNE||{}).gap0??2.5)+((window.TUNE||{}).gapT??1.6)*a.v)*WX.gap*(isEgo?DRIVE_P[DRIVE.profile].gap*(window.LEARN_GAP?LEARN_GAP():1):1)*(isEgo&&a.spec.basicAD&&!smartOn()?1.6:1);const v=allow(lead.v,gap-want);if(v<target){target=Math.max(0,v);reason=lead.v<0.5&&gap<15?'Queued behind vehicle':'Following vehicle'}}
  // planned charging / fuel stop
  if(isEgo&&game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const v=allow(0,d-1.5);if(v<target){target=v;reason=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):reason}}}
  // chase roadblocks: stop short unless the detour has been taken
@@ -4302,7 +4302,7 @@ function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.pause
  if(G.overtakeT>0&&smartOn()){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
  const waitOK=/merg|lane closed|lane ends|closed lane|waiting|yield|gap|work zone|flagger|officer|creeping|junction|driveway|crossing|unprotected|roundabout|pedestrian|school bus|train|gates|drawbridge|stop sign|queue|ambulance|fire engine|police|emergency|pulling over|toll/i.test(G.status||''); /* ordinary waits: allowed ~1 min before counting as stuck */
  if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=waitOK?dt/6:dt;
- if(W.t>(TUNE.stuckT??10)){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
+ if(W.t>((window.TUNE||{}).stuckT??10)){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
   /* no pulling out around stopped traffic and no squeezing through it (both caused side-swipes): a queue is waited out; after ~40 s of no progress the ride detours */
   if(/Queued|Following|vehicle/i.test(G.status||'')&&W.n<4){G.status='⏱️ Waiting in the queue'}
   else if(W.cd<=0){W.cd=20;W.n=0;G.status='⏱️ No progress · detouring';rerouteNow({noUturn:true})}}} /* a detour turns off ahead – no mid-street U-turns */
@@ -5080,7 +5080,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   for(const b of B){if(b.ref===me.ref)continue;if(me.y!=null&&b.y!=null&&Math.abs(me.y-b.y)>3)continue; /* other level */const dx=b.x-me.x,dz=b.z-me.z;if(Math.abs(dx)>90||Math.abs(dz)>90)continue;const f0=dx*fx+dz*fz;if(f0<-2)continue;
    const rvf=(b.vx*fx+b.vz*fz),rvl=(-b.vx*fz+b.vz*fx),l0=-dx*fz+dz*fx,halfW=(me.W+b.W)/2+0.35,halfL=(me.L+b.L)/2;
    const tHit=Math.min(4,Math.max(0,(f0-halfL))/Math.max(0.5,v-Math.min(rvf,v*0.5)));const lPred=l0+rvl*tHit,lMin=Math.min(Math.abs(l0),Math.abs(lPred),Math.sign(l0)!==Math.sign(lPred)?0:99);
-   if(lMin>halfW)continue;const gap=f0-halfL-(TUNE.envBuf??1.5)-v*(TUNE.envReact??0.25),vb=Math.max(0,rvf);const allowV=Math.sqrt(Math.max(0,vb*vb+2*decel*Math.max(0,gap)));if(!best||allowV<best.v)best={v:allowV,b}}
+   if(lMin>halfW)continue;const gap=f0-halfL-((window.TUNE||{}).envBuf??1.5)-v*((window.TUNE||{}).envReact??0.25),vb=Math.max(0,rvf);const allowV=Math.sqrt(Math.max(0,vb*vb+2*decel*Math.max(0,gap)));if(!best||allowV<best.v)best={v:allowV,b}}
   return best}
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(isEgo&&smartOn())return null; /* the Predictacar/satellite planner has its own, stronger envelope */
   const G=game;if(!a.mesh)return null;const me={ref:a,y:a.mesh.position.y,x:a.mesh.position.x,z:a.mesh.position.z,h:a.mesh.rotation.y,vx:Math.cos(a.mesh.rotation.y)*a.v,vz:-Math.sin(a.mesh.rotation.y)*a.v,L:a.spec.L||4.6,W:a.spec.W||1.9};
@@ -5340,7 +5340,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
      for(const [o,Hs] of P){for(const h of Hs){const p=h.pts[k],dx=p[0]-q[0],dz=p[1]-q[1],f=dx*qx+dz*qz,sd=-dx*qz+dz*qx;const mW=(W+o.W)/2+0.3+(o.ref.aggro||o.ref.drunk?0.5:0),mL=(L+o.L)/2+0.5;
        if(Math.abs(sd)<mW&&Math.abs(f)<mL){col+=h.w*(7-t)*(o.ghost?0.6:1);break}
        if(k<4&&f>0&&Math.abs(sd)<mW&&o.kind!=='ped'){const T=D()&&D().trk.get(o.ref);const vf=T&&T.onR?Math.max(0,T.sd):0;const need=F.rss(vv,vf,0.5,aMax,Math.min(4,bMax*0.5),bMax);const gap=f-mL;if(gap<need)rssv+=h.w*(need-gap)/Math.max(need,1)}}}}
-    cost=col*(TUNE.wCol??400)+rssv*(TUNE.wRss??40)-(ss-s)/Math.max(1,lim*6)*(TUNE.wProg??25)+Math.abs(ac)*(ac<-4?2.2:0.8)+Math.abs(Lt-cur)*0.8+Math.abs(Lt-want)*2.2+(ac>0&&vv>lim*1.02&&!fastOn()?30:0);
+    cost=col*((window.TUNE||{}).wCol??400)+rssv*((window.TUNE||{}).wRss??40)-(ss-s)/Math.max(1,lim*6)*((window.TUNE||{}).wProg??25)+Math.abs(ac)*(ac<-4?2.2:0.8)+Math.abs(Lt-cur)*0.8+Math.abs(Lt-want)*2.2+(ac>0&&vv>lim*1.02&&!fastOn()?30:0);
     cands.push({Lt,ac,cost,col,path});if(!best||cost<best.cost)best={Lt,ac,cost,col,rssv}}}
   F.dbg.cands=cands.sort((a,b)=>a.cost-b.cost).slice(0,6);return best}
  /* ================= SAFETY ================= */
@@ -5370,7 +5370,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   sim(dt){if(!game||!game.route||!game.ego||!game.ego.mesh)return;const G=game,e=G.ego;if(!active()){capSet('aeb',null);return}
    F.t+=dt;if(F.t>0.25||!F.objs.length){perceive(F.t);F.t=0} /* 4 Hz perception keeps the frame budget small */
    /* 28 · independent monitor overrides everything */
-   const need=aebMonitor();if(need>(TUNE.aeb??6)){if(!F.aebOn)F.aeb++;F.aebOn=true;capSet('aeb',Math.max(0,e.v-need*dt*1.2));G.status='🚨 Emergency brake (independent monitor)'}else{F.aebOn=false;capSet('aeb',null)}
+   const need=aebMonitor();if(need>((window.TUNE||{}).aeb??6)){if(!F.aebOn)F.aeb++;F.aebOn=true;capSet('aeb',Math.max(0,e.v-need*dt*1.2));G.status='🚨 Emergency brake (independent monitor)'}else{F.aebOn=false;capSet('aeb',null)}
    /* 29 · hazard→brake latency: a hazard is 'seen' when TTC<3 s to a perceived object; latency ends at the first braking command */
    for(const o of F.objs){if(o.ghost)continue;const dx=o.x-e.mesh.position.x,dz=o.z-e.mesh.position.z,h=e.mesh.rotation.y,f=dx*Math.cos(h)-dz*Math.sin(h),s=dx*Math.sin(h)+dz*Math.cos(h);
     if(f>0&&Math.abs(s)<2&&e.v>2&&f/e.v<3&&!F.lat.pending.has(o.ref))F.lat.pending.set(o.ref,G.simTime)}
@@ -5532,7 +5532,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  function laneOfLat(s,lat){const base=laneOffsetAt(routeLLnh(clamp(s,0,game.route.total))[2]);return Math.round((base-lat)/L.laneW)}
  const egoLanes=()=>{const G=game,e=G.ego,base=laneOffsetAt(routeLLnh(e.s)[2]),x=(base-(e.off??base))/L.laneW;return new Set([Math.floor(x+0.35),Math.ceil(x-0.35)])}; /* lanes the ride's body actually occupies */
  const laneFree=(a,k,d)=>!game.agents.some(b=>b!==a&&b.kind==='route'&&!b.loose&&laneOfLat(b.s,latOf(b))===k&&Math.abs(b.s-a.s)<d+((b.spec.L||4.6)+(a.spec.L||4.6))/2)&&!(egoLanes().has(k)&&Math.abs(game.ego.s-a.s)<d+2+((game.spec.L||4.6)+(a.spec.L||4.6))/2); /* bumper-to-bumper, not centre-to-centre */
- function gapOK(k,dir){const G=game,e=G.ego;if(window.DRIVE2&&!DRIVE2.laneClear(laneOffsetAt(routeLLnh(e.s)[2])-k*L.laneW,3.5))return false; /* the shared pass / lane check */for(const a of G.agents){if(a.kind!=='route'||a.loose)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;const d=a.s-e.s,need=(d>0?(TUNE.lcAhead??8)+Math.max(0,e.v-a.v)*1.5:(TUNE.lcBehind??10)+Math.max(0,a.v-e.v)*3)+((a.spec.L||4.6)+(G.spec.L||4.6))/2;if(Math.abs(d)<need)return false}
+ function gapOK(k,dir){const G=game,e=G.ego;if(window.DRIVE2&&!DRIVE2.laneClear(laneOffsetAt(routeLLnh(e.s)[2])-k*L.laneW,3.5))return false; /* the shared pass / lane check */for(const a of G.agents){if(a.kind!=='route'||a.loose)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;const d=a.s-e.s,need=(d>0?((window.TUNE||{}).lcAhead??8)+Math.max(0,e.v-a.v)*1.5:((window.TUNE||{}).lcBehind??10)+Math.max(0,a.v-e.v)*3)+((a.spec.L||4.6)+(G.spec.L||4.6))/2;if(Math.abs(d)<need)return false}
   if(window.ACT)for(const o of ACT.list)if(o.kind==='moto'&&Math.abs(o.s-e.s)<25)return false;const bsz=window.BLINDSPOT&&BLINDSPOT();if(bsz&&(k>L.k?bsz.L:bsz.R))return false;return true} /* never change into an occupied blind spot */
  function upcomingTurn(prep){const G=game,e=G.ego;for(const st of G.route.steps){const d=st.s-e.s;if(d<0)continue;if(d>prep)break;if(st.type==='arrive'||st.type==='depart')continue;const m=st.mod||'';if(/left/.test(m)&&!/slight/.test(m))return {side:-1,d,st};if(/right/.test(m)&&!/slight/.test(m))return {side:1,d,st};if(/off ramp|fork/.test(st.type)&&/slight left/.test(m))return {side:-1,d,st};if(/off ramp|fork/.test(st.type)&&/slight right/.test(m))return {side:1,d,st}}return null}
  function leadIn(k,range){const G=game,e=G.ego;let best=null;for(const a of G.agents){if(a.kind!=='route'||a.loose||a.s<=e.s||a.s-e.s>range)continue;if(laneOfLat(a.s,latOf(a))!==k)continue;if(!best||a.s<best.s)best=a}return best}
