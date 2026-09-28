@@ -1457,8 +1457,9 @@ let CSHTEX=null,CSHGEO=null;
 function contactShadow(obj,L,W,op=0.62){if(!CSHTEX){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),g=x.createRadialGradient(64,64,6,64,64,63);g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(0.55,'rgba(0,0,0,.75)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,128,128);CSHTEX=new THREE.CanvasTexture(c);CSHGEO=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2)}
  const m=new THREE.Mesh(CSHGEO,new THREE.MeshBasicMaterial({map:CSHTEX,transparent:true,opacity:op,depthWrite:false,color:0x000000,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4,fog:true}));m.scale.set(L,1,W);m.position.y=0.035;m.renderOrder=1;m.userData.cshadow=1;obj.add(m);return m}
 function buildCar(spec,colorHex,opts={}){
- const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=spec.id||spec.style+L+W+H;
- if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,undefined,undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P),hood:loftLower(P,P.sh.cowl-0.02,1,40)}}
+ const lod=!opts.interior&&opts.lod!==false&&!(window.GFX&&GFX.get()==='ultra'); /* traffic / parked cars on Low & High: ~7× fewer body triangles */
+ const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=(spec.id||spec.style+L+W+H)+(lod?':lod':'');
+ if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
  const {P,lo,gh}=profCache[pk],sh=P.sh;
  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.6,roughness:0.38,clearcoat:1,clearcoatRoughness:0.04,normalMap:FLAKE,normalScale:new THREE.Vector2(0.12,0.12)});ENVMATS.push(paint);if(ENVMATS.length>400)ENVMATS.splice(5,100);
  const glass=new THREE.MeshPhysicalMaterial({color:0x3b4a58,metalness:0.0,roughness:0.02,transparent:true,opacity:0.38,depthWrite:false,envMapIntensity:1.6,clearcoat:1,clearcoatRoughness:0.02,reflectivity:0.9,side:THREE.FrontSide});
