@@ -1837,7 +1837,7 @@ function vegAt(lat,lon){let best=null,bz=-1;for(const [k,t] of SAT.tiles){const 
  const green=g>r*1.04&&g>b*1.08&&g>45&&g<225;return green?[r/255,g/255,b/255]:null}
 function roadQAt(x,z){const key=Math.floor(toLat(z)/TS)+'_'+Math.floor(toLon(x)/TS);let q=GRASS.rq.get(key);if(!q){if(!RAW.has(key))return null;q=roadIndex(tileRoads(key));GRASS.rq.set(key,q);if(GRASS.rq.size>40)GRASS.rq.delete(GRASS.rq.keys().next().value)}return q}
 function updateGrass(dt){const G=game;if(!G||!G.ego)return;GRASS.uni.time.value+=dt;GRASS.uni.wind.value=clamp(0.25+(WX.wind+WX.gust)/25,0.2,2.5);if(!GRASS.mesh)grassInit();const im=GRASS.mesh;
- if(G.fast||!HIGH&&Q.pr<0.8){im.visible=false;return}im.visible=true;const cx=camera.position.x,cz=camera.position.z;GRASS.t+=dt;
+ if(G.fast||!HIGH&&Q.pr<0.8||window.GFX&&GFX.get()==='low'){im.visible=false;return} /* Low graphics: no grass (its rebuild spiked frames) */im.visible=true;const cx=camera.position.x,cz=camera.position.z;GRASS.t+=dt;
  if(GRASS.at&&Math.hypot(cx-GRASS.at[0],cz-GRASS.at[1])<20&&GRASS.t<4)return;if(GRASS.at&&GRASS.t<0.8)return;GRASS.at=[cx,cz];GRASS.t=0;
  const M=new THREE.Matrix4(),q=new THREE.Quaternion(),sc=new THREE.Vector3(),p=new THREE.Vector3(),col=new THREE.Color(),rnd=mulberry(Math.floor(cx/10)*7919+Math.floor(cz/10));
  const urban=(()=>{const T=TILES.get(Math.floor(toLat(cz)/TS)+'_'+Math.floor(toLon(cx)/TS));return T&&T.group&&T.group.children.length>60})();const hBase=urban?0.1:0.36,hVar=urban?0.05:0.18,snow=WX.snow>0.3;
