@@ -2252,7 +2252,7 @@ function plan(a,dt,lead,isEgo){
  const up=[];
  for(let i=idx+1;i<R.nodes.length&&R.cum[i]-a.s<look&&!chase;i++){const c=CONTROLS.get(R.nodes[i]);if(!c)continue;const d=R.cum[i]-a.s;
   const p0=R.pts[Math.max(0,i-1)],p1=R.pts[i];const ax=axisOf(p1[0]-p0[0],-(p1[1]-p0[1]));
-  if(c.type==='signal'){const st=signalState(c.id,ax,game.simTime);if(isEgo)up.push({x:c.x,z:c.z,type:'signal',state:st});
+  if(c.type==='signal'){if(isEgo&&window.ALLGREEN)ALLGREEN.ax.set(c.id,ax); /* remember which approach is ours */const st=signalState(c.id,ax,game.simTime);if(isEgo)up.push({x:c.x,z:c.z,type:'signal',state:st});
    if(st==='R'||(st==='Y'&&d>a.v*a.v/(2*3.5)+3)){const v=allow(0,d-stopOff(c));if(v<target){target=v;reason=st==='R'?'Stopping: red light':'Stopping: yellow light'}}}
   else if(c.type==='stop'&&!a.handled.has(c.id)){if(isEgo)up.push({x:c.x,z:c.z,type:'stop'});const v=allow(0,d-stopOff(c)+1);if(v<target){target=v;reason='Stop sign ahead'}
    if(d<stopOff(c)+3&&a.v<0.3){a.stopT+=dt;reason='Full stop at stop sign';if(window.ISECT)ISECT.arrive(c,a);if(a.stopT>2.2){if(!window.ISECT||ISECT.mayGo(c,a)){a.handled.add(c.id);a.stopT=0;if(window.ISECT)ISECT.go(c,a)}else reason=ISECT.why(c,a)}}}
@@ -7250,6 +7250,26 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  MODS.push({id:'f1wheel',
   frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh||!G.ego.mesh.userData.f1)return;const dt=1/60,e=G.ego;let dh=e.head-lastH;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const al=(e.v-lastV)/dt/Math.max(1,G.scale),at=e.v*dh/dt/Math.max(1,G.scale);lastV=e.v;lastH=e.head;if(Math.abs(al)<60)gl=lerp(gl,al/9.81,0.1);if(Math.abs(at)<60)gt=lerp(gt,at/9.81,0.1);
    const heat=Math.abs(gl)+Math.abs(gt);tt=tt.map((c,i)=>lerp(c,55+e.v*0.9+heat*18+(G.fans?G.fans[i]*4:0),0.004));t+=dt;if(t>1/12){t=0;draw()}}});
+})();
+</script>
+<script>/* mods/84-qol.js */
+/* Quality-of-life:
+   • All green lights (🟢): every signal on your route shows green for you; cross traffic at those junctions gets red
+     (the lights stay consistent, so nothing drives through the junction into you)
+   • Button tooltips: hovering any control-bar button for 1 s shows what it does */
+(function(){
+ const AG={on:false,ax:new Map()};window.ALLGREEN=AG;
+ const _ss=window.signalState;window.signalState=function(id,axis,t){if(AG.on){const a=AG.ax.get(id);if(a!=null)return axis===a?'G':'R'}return _ss.apply(this,arguments)};
+ function toggle(){AG.on=!AG.on;const b=document.getElementById('greenBtn');if(b)b.classList.toggle('on',AG.on);if(typeof game!=='undefined'&&game)game.status=AG.on?'🟢 All green lights: on':'🚦 Traffic lights: normal'}
+ /* tooltips */
+ let tip=null,timer=null,cur=null;
+ function show(el){const txt=el.dataset.tip;if(!txt)return;if(!tip){tip=document.createElement('div');tip.style.cssText='position:fixed;z-index:200;pointer-events:none;background:#0b111a;color:#e8eef5;border:1px solid #2a3a52;border-radius:6px;padding:4px 8px;font:12px system-ui;max-width:260px;box-shadow:0 4px 14px #0008';document.body.appendChild(tip)}
+  tip.textContent=txt;tip.style.display='block';const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;tip.style.left=Math.max(6,Math.min(innerWidth-w-6,r.left+r.width/2-w/2))+'px';tip.style.top=Math.max(6,r.top-h-8)+'px'}
+ function hide(){clearTimeout(timer);timer=null;cur=null;if(tip)tip.style.display='none'}
+ document.addEventListener('mouseover',ev=>{const el=ev.target.closest&&ev.target.closest('#ctrl button,#ctrl select,#hudCtl button');if(!el||el===cur)return;hide();cur=el;if(el.title){el.dataset.tip=el.title;el.removeAttribute('title')} /* our own tooltip replaces the slow native one */timer=setTimeout(()=>show(el),1000)},true);
+ document.addEventListener('mouseout',ev=>{if(cur&&!(ev.relatedTarget&&cur.contains(ev.relatedTarget)))hide()},true);
+ document.addEventListener('mousedown',hide,true);
+ MODS.push({id:'qol',start(){AG.ax.clear();if(!document.getElementById('greenBtn'))UIX.btn('greenBtn','🟢','All green lights on your route (on/off)',toggle)}});
 })();
 </script>
 <script>/* mods/90-selftest.js */
