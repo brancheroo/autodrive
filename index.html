@@ -3591,8 +3591,8 @@ function techStart(){if(AIFM.on)aifmStop();if(RADIO.playing)radioStop();techInit
 function techStop(){TECH.on=false;clearInterval(TECH.timer);if(TECH.ctx)TECH.ctx.suspend();const b=document.getElementById('techBtn');if(b)b.textContent='📡 Off'}
 /* trip / data-status panel toggle (remembered per browser) */
 function tripApply(on){const el=document.getElementById('trip'),b=document.getElementById('tripBtn');if(el)el.style.display=on?'':'none';if(b)b.textContent='ℹ️ '+(on?'On':'Off')}
-function tripToggle(){let on=true;try{on=localStorage.getItem('tripPanel')!=='off'}catch(e){}on=!on;try{localStorage.setItem('tripPanel',on?'on':'off')}catch(e){}tripApply(on)}
-setTimeout(()=>{let on=true;try{on=localStorage.getItem('tripPanel')!=='off'}catch(e){}tripApply(on)},0);
+function tripToggle(){let on=true;try{on=localStorage.getItem('tripPanel')==='on'}catch(e){}on=!on;try{localStorage.setItem('tripPanel',on?'on':'off')}catch(e){}tripApply(on)}
+setTimeout(()=>{let on=true;try{on=localStorage.getItem('tripPanel')==='on'}catch(e){}tripApply(on)},0);
 function techToggle(){TECH.on?techStop():techStart()}
 function aifmStop(){AIFM.on=false;clearInterval(AIFM.timer);try{speechSynthesis.cancel()}catch(e){}if(AIFM.ctx)AIFM.ctx.suspend();aifmUI()}
 function aifmToggle(){if(!AIFM.on&&TECH.on)techStop();if(RADIO.playing&&!AIFM.on)radioStop();AIFM.on?aifmStop():aifmStart();try{if(window.UIX)UIX.save('aiRadio',AIFM.on)}catch(e){}}
