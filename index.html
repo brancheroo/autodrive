@@ -4433,9 +4433,9 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
     else{float l=dot(c,vec3(.3,.59,.11));c=ironbow(l*1.15);}
     gl_FragColor=vec4(c,1.);}`}); /* perception blit: tone-map + sRGB here (the render target is linear), or night-vision / ironbow thermal for the Predictacar's vision modes */bscene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bmat));
  window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const wrap=document.getElementById('cvWrap');if(wrap&&(getComputedStyle(wrap).visibility==='hidden'||wrap.style.display==='none'))return; /* hidden (photo mode etc.) */const r=area.getBoundingClientRect();if(r.width<10||r.height<10)return;
-  const t=tier(),every=t==='ultra'?2:t==='high'?4:6,scale=1,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
+  const t=tier(),every=t==='ultra'?2:t==='high'?4:6,scale=t==='ultra'?0.85:1,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
   if(!rt||rt.width!==W||rt.height!==H){if(rt)rt.dispose();rt=new THREE.WebGLRenderTarget(W,H,{samples:0});bmat.uniforms.map.value=rt.texture;fr=0}
-  const realRender=renderer.render;fr++;if(cvCam.far>300){cvCam.far=300;cvCam.updateProjectionMatrix()} /* perception view: nothing past 300 m (cuts draw calls) */
+  const realRender=renderer.render;fr++;if(t!=='ultra'&&cvCam.far>300){cvCam.far=300;cvCam.updateProjectionMatrix()} /* perception view: nothing past 300 m (cuts draw calls) */
   if(fr%every===1||every===1){const au=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;const prev=renderer.getRenderTarget();
    renderer.render=function(sc,cam){if(cam===cvCam){renderer.setRenderTarget(rt);renderer.setScissorTest(false);renderer.setViewport(0,0,W,H);const rr=(a,b)=>realRender.call(renderer,a,b);if(window.THERMAL)THERMAL.render(rr,sc,cam);else rr(sc,cam);renderer.setRenderTarget(prev)}else realRender.call(renderer,sc,cam)};
    try{_rp()}finally{renderer.render=realRender;renderer.shadowMap.autoUpdate=au}}
