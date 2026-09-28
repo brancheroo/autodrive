@@ -4443,8 +4443,11 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
   bmat.uniforms.mode.value=window.THERMAL?THERMAL.shaderMode():0;bmat.uniforms.t.value=performance.now()/1000%100;const y=innerHeight-r.bottom;renderer.setScissorTest(true);renderer.setViewport(r.left,y,r.width,r.height);renderer.setScissor(r.left,y,r.width,r.height);const ac=renderer.autoClear;renderer.autoClear=false;renderer.render(bscene,bcam);renderer.autoClear=ac;renderer.setScissorTest(false);renderer.setViewport(0,0,innerWidth,innerHeight)};
  /* ---------- 3. shadow map cadence ---------- */
  let sf=0;
+ /* new tiles: reveal their meshes a few per frame so GPU uploads are spread out instead of one long hitch */
+ const RQ=[];const _bt=window.buildTile;if(_bt)window.buildTile=function(k){const r=_bt.apply(this,arguments);try{const T=TILES.get(k);if(T&&T.group){for(const m of T.group.children)if(m.visible){m.visible=false;RQ.push(m)}}}catch(e){}return r};
+ function reveal(){let n=0,t0=performance.now();while(RQ.length&&n<40&&performance.now()-t0<3){const m=RQ.shift();if(m.parent)m.visible=true;n++}}
  MODS.push({id:'perf',
-  preRender(){renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true}}); /* shadows refresh every frame (skipping frames made moving shadows lag); only the perception pass reuses the main shadow map */
+  preRender(){reveal();renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true}}); /* shadows refresh every frame (skipping frames made moving shadows lag); only the perception pass reuses the main shadow map */
 })();
 </script>
 <script>/* mods/02c-gc.js */
