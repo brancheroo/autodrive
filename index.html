@@ -7272,6 +7272,8 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  document.addEventListener('mousedown',hide,true);
  MODS.push({id:'qol',start(){AG.ax.clear();if(!document.getElementById('greenBtn'))UIX.btn('greenBtn','🟢','All green lights on your route (on/off)',toggle)}});
 })();
+/* local development only: ?opt=1 on localhost loads the (unpublished) test kit so the optimiser can resume after a reload */
+if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(location.search))addEventListener('load',()=>{const s=document.createElement('script');s.src='testkit.js?'+Date.now();document.body.appendChild(s)});
 </script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
