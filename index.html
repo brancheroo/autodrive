@@ -5378,7 +5378,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    for(const [r,t0] of F.lat.pending)if(G.simTime-t0>4)F.lat.pending.delete(r);
    /* 5 · minimal-risk manoeuvre: degraded sensors, or no collision-free plan for 2 s → pull to the kerb and stop, hazards on */
    const deg=(window.SENSOR_FAULT??1)<0.45; /* only a real sensor failure stops the car – poor light / weather (low camera quality) just slows it (below) */F.badT=F.plan&&F.plan.col>2&&e.v>8?(F.badT||0)+dt:0; /* only a real, moving no-safe-path situation – never a normal queue */
-   if(!F.mrm&&(deg||F.badT>2)&&e.v>1){const d2=D(),hi=d2?d2.edges(e.s)[1]:1.85;F.mrm={why:deg?'sensors degraded':'no safe path',lat:hi,stopS:e.s+Math.max(25,e.v*e.v/(2*3)+10),t:G.simTime};window.SIGOVR=1}
+   if(!F.mrm&&(deg&&!F.degraded||F.badT>2)&&e.v>1){const d2=D(),hi=d2?d2.edges(e.s)[1]:1.85;F.mrm={why:deg?'sensors degraded':'no safe path',lat:hi,stopS:e.s+Math.max(25,e.v*e.v/(2*3)+10),t:G.simTime};window.SIGOVR=1}
    if(F.mrm){G.hazards=true;const waited=G.simTime-F.mrm.t;if(e.v<0.2&&(waited>8&&!deg&&F.badT===0||waited>20)){F.degraded=deg;F.mrm=null;G.hazards=false;G.status=deg?'🐢 Continuing slowly in degraded mode':'✅ Conditions OK – resuming'}}
    if(F.degraded&&!deg)F.degraded=false;capSet('degr',F.degraded||(window.CAMQ??1)<0.2&&!sensorsOf().lidar&&!sensorsOf().radar?11:null)}}); /* degraded / camera-only in poor light: ≤25 mph instead of stopping */
 })();
