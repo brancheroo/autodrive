@@ -1082,7 +1082,7 @@ function btAbort(){const T=BT.T;if(T&&!TILES.has(T.key))for(const id of T.ids)BU
 function btFinish(){if(!BT.gen)return;if(ORIGIN.lon!==BT.ox||ORIGIN.lat!==BT.oy){btAbort();return}const g=BT.gen;BT.gen=null;BT_DEADLINE=Infinity;try{while(!g.next().done){}}catch(e){console.warn('tile build failed',e)}BT.key=null}
 function buildTile(key){btFinish();BT_DEADLINE=Infinity;const g=buildTileGen(key);try{while(!g.next().done){}}catch(e){console.warn('tile build failed',e)}}
 function btStart(key){if(BT.gen)return false;BT.gen=buildTileGen(key);BT.key=key;BT.ox=ORIGIN.lon;BT.oy=ORIGIN.lat;BT.T=null;return true}
-function btStep(ms){if(!BT.gen)return;if(ORIGIN.lon!==BT.ox||ORIGIN.lat!==BT.oy){btAbort();return}BT_DEADLINE=performance.now()+ms;let r;try{r=BT.gen.next()}catch(e){console.warn('tile build failed',e);r={done:true}}BT_DEADLINE=Infinity;if(r.done){BT.gen=null;BT.key=null}}
+function btStep(ms){if(!BT.gen)return;if(ORIGIN.lon!==BT.ox||ORIGIN.lat!==BT.oy){btAbort();return}BT_DEADLINE=performance.now()+ms;let r;try{r=BT.gen.next()}catch(e){console.warn('tile build failed',e);r={done:true}}BT_DEADLINE=Infinity;if(r.done){const k=BT.key;BT.gen=null;BT.key=null;if(window.onTileBuilt)try{onTileBuilt(k)}catch(e){}}}
 
 function* buildTileGen(key){
  if(TILES.has(key)||!RAW.has(key)||TERR.ref===null||!tileTerrReady(key))return;
@@ -4457,7 +4457,7 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
  /* ---------- 3. shadow map cadence ---------- */
  let sf=0;
  /* new tiles: reveal their meshes a few per frame so GPU uploads are spread out instead of one long hitch */
- const RQ=[];const _bt=window.buildTile;if(_bt)window.buildTile=function(k){const r=_bt.apply(this,arguments);try{const T=TILES.get(k);if(T&&T.group){for(const m of T.group.children)if(m.visible){m.visible=false;RQ.push(m)}}}catch(e){}return r};
+ const RQ=[];const hideNew=k=>{try{const T=TILES.get(k);if(T&&T.group){for(const m of T.group.children)if(m.visible){m.visible=false;RQ.push(m)}}}catch(e){}};window.onTileBuilt=hideNew;const _bt=window.buildTile;if(_bt)window.buildTile=function(k){const r=_bt.apply(this,arguments);hideNew(k);return r};
  function reveal(){let n=0,t0=performance.now();while(RQ.length&&n<6){const m=RQ.shift();if(m.parent)m.visible=true;n++}}
  MODS.push({id:'perf',
   preRender(){if(typeof btStep==='function')btStep(window.GFX&&GFX.get()==='ultra'?7:5); /* a few ms of tile building per frame */reveal();const lit=typeof sun!=='undefined'&&sun.intensity>0.03;if(typeof sun!=='undefined'&&sun.castShadow!==lit)sun.castShadow=lit;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=lit} /* night: the sun casts nothing – skip the whole shadow pass */}); /* shadows refresh every frame (skipping frames made moving shadows lag); only the perception pass reuses the main shadow map */
