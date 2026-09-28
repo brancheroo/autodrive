@@ -4446,6 +4446,27 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
   preRender(){renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true}}); /* shadows refresh every frame (skipping frames made moving shadows lag); only the perception pass reuses the main shadow map */
 })();
 </script>
+<script>/* mods/02c-gc.js */
+/* GPU memory cleanup: traffic, actors, emergency vehicles etc. are removed from the scene in many places without
+   freeing their GPU buffers – three.js keeps every undisposed geometry/texture alive (renderer holds them), so long
+   drives grew to 10k+ geometries and gigabytes of memory. Every 3 s this sweeps anything we have seen as a road
+   user that is now gone (not in the game lists, not in the scene) and disposes its geometries, materials and
+   textures. Shared cached shapes (car bodies, wheels, contact shadows) are skipped; anything else shared is simply
+   re-uploaded by three.js if it is used again. */
+(function(){
+ const seen=new Set();let T=null;const GC={freed:0};window.GC=GC;
+ function live(){const G=window.game,L=new Set();if(!G)return L;for(const a of G.agents||[])if(a.mesh)L.add(a.mesh);if(G.ego&&G.ego.mesh)L.add(G.ego.mesh);
+  if(window.ACT)for(const o of ACT.list){if(o.mesh)L.add(o.mesh);if(o.extra)for(const m of o.extra)L.add(m)}
+  if(window.CHASE&&CHASE.cops)for(const c of CHASE.cops)if(c.mesh)L.add(c.mesh);if(window.CHAOS&&CHAOS.cars)for(const c of CHAOS.cars)if(c.mesh)L.add(c.mesh);return L}
+ function keepGeo(){const K=new Set();if(typeof profCache!=='undefined')for(const k in profCache){const v=profCache[k];for(const g of [v.lo,v.gh,v.hood])if(g)K.add(g)}if(typeof CSHGEO!=='undefined'&&CSHGEO)K.add(CSHGEO);
+  if(typeof wheelCache!=='undefined')for(const k in wheelCache){const w=wheelCache[k];const walk=x=>{if(!x)return;if(x.isBufferGeometry)K.add(x);else if(Array.isArray(x))x.forEach(walk);else if(typeof x==='object')for(const y of Object.values(x))if(y&&(y.isBufferGeometry||Array.isArray(y)))walk(y)};walk(w)}return K}
+ function free(root,K){root.traverse(o=>{if(o.geometry&&!K.has(o.geometry)&&!(o.geometry.userData&&o.geometry.userData.shared))o.geometry.dispose();const ms=Array.isArray(o.material)?o.material:o.material?[o.material]:[];
+   for(const m of ms){if(m.userData&&m.userData.shared)continue;for(const k of ['map','normalMap','emissiveMap','roughnessMap','alphaMap'])if(m[k]&&m[k].isCanvasTexture&&!(m[k].userData&&m[k].userData.shared))m[k].dispose();m.dispose()}});GC.freed++}
+ function sweep(){try{const L=live();for(const m of L)seen.add(m);let K=null;for(const m of [...seen]){if(L.has(m))continue;if(m.parent)continue;K=K||keepGeo();free(m,K);seen.delete(m)}}catch(e){}}
+ T=setInterval(sweep,3000);
+ MODS.push({id:'gc'});
+})();
+</script>
 <script>/* mods/03-quality.js */
 /* Graphics quality setting (Low / High / Ultra) on the start screen and HUD, plus a small FPS readout. */
 (function(){
