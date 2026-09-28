@@ -567,8 +567,8 @@ async function fetchTileLocal(key){const [i,j]=key.split('_').map(Number),lat=(i
  return data?{data,r}:null}
 async function fetchTile(key){
  if(RAW.has(key)||PENDING.has(key))return;PENDING.add(key);netBusy++;
- {const L=await fetchTileLocal(key);if(L&&L.data){if(L.sfb)L.data.sfb=L.sfb;RAW.set(key,L.data);roadsArrived(key);PENDING.delete(key);netBusy--;LOCAL_USED++;if(game&&game.route)buildTile(key);return}if(L&&L.sfb)SFB.set(key,L.sfb)}
- const cached=await IDB.get('v5_'+key);if(cached&&Date.now()-cached.t<30*86400000){RAW.set(key,cached.v);roadsArrived(key);PENDING.delete(key);netBusy--;if(game&&game.route)buildTile(key);return}
+ {const L=await fetchTileLocal(key);if(L&&L.data){if(L.sfb)L.data.sfb=L.sfb;RAW.set(key,L.data);roadsArrived(key);PENDING.delete(key);netBusy--;LOCAL_USED++;if(game&&game.route&&!TILES.size)buildTile(key);return} /* later tiles: built one per frame by manageTiles */if(L&&L.sfb)SFB.set(key,L.sfb)}
+ const cached=await IDB.get('v5_'+key);if(cached&&Date.now()-cached.t<30*86400000){RAW.set(key,cached.v);roadsArrived(key);PENDING.delete(key);netBusy--;if(game&&game.route&&!TILES.size)buildTile(key);return}
  if(Date.now()<opBackoff)await sleep(opBackoff-Date.now());
  const [i,j]=key.split('_').map(Number),s=i*TS,w=j*TS,n=s+TS,e=w+TS,bb=`${s},${w},${n},${e}`;
  const q=`[out:json][timeout:25];(way["highway"](${bb});way["building"](${bb});way["building:part"](${bb});way["amenity"="fuel"](${bb});node["name"]["shop"](${bb});node["name"]["amenity"~"^(restaurant|cafe|fast_food|bank|pharmacy|bar|pub|fuel|cinema|ice_cream|post_office|library|clinic|dentist)$"](${bb});node["name"]["tourism"~"hotel|motel"](${bb});way["leisure"~"park|garden|pitch|golf_course|playground"](${bb});way["landuse"~"grass|forest|meadow|village_green|recreation_ground|cemetery"](${bb});way["natural"~"wood|water|scrub|tree_row"](${bb});way["barrier"~"^(wall|fence|hedge|retaining_wall|guard_rail|jersey_barrier|city_wall)$"](${bb});node["natural"="tree"](${bb});node["traffic_sign"](${bb});node["highway"~"traffic_signals|stop|give_way|street_lamp|crossing"](${bb});node["railway"="level_crossing"](${bb});node["traffic_calming"](${bb}););out geom qt;`;
@@ -580,7 +580,7 @@ async function fetchTile(key){
    if(attempt>=0){try{const j=await fetchTileOFM(key);if(j.elements.length){RAW.set(key,j);roadsArrived(key);OFM_USED++;break}}catch(e2){}}
    await sleep(1000+attempt*1500)}}
  PENDING.delete(key);netBusy--;
- if(RAW.has(key)&&game&&game.route)buildTile(key);
+ if(RAW.has(key)&&game&&game.route&&!TILES.size)buildTile(key);
 }
 function parseH(v){if(!v)return null;const f=parseFloat(v);if(isNaN(f))return null;return /ft|'/.test(v)?f*0.3048:f}
 function parseSpeed(v){if(!v)return null;const f=parseFloat(v);if(isNaN(f))return null;return /mph/.test(v)?f:Math.round(f/1.609)}
@@ -913,7 +913,8 @@ function roadsArrived(key){const rr=rawRoads(key);if(!rr||!rr.length)return;
  for(const TT of [...TILES.values()]){if(!TT.missing||!TT.missing.includes(key))continue;TT.missing=TT.missing.filter(k=>k!==key);
   const [ti,tj]=TT.key.split('_').map(Number),ax=toX(tj*TS),bx=toX((tj+1)*TS),az=toZ((ti+1)*TS),bz=toZ(ti*TS),X0=Math.min(ax,bx)-25,X1=Math.max(ax,bx)+25,Z0=Math.min(az,bz)-25,Z1=Math.max(az,bz)+25;
   if(!rr.some(w=>w.pts.some((a,i)=>{const b=w.pts[i+1]||a;return Math.max(a[0],b[0])>X0&&Math.min(a[0],b[0])<X1&&Math.max(a[1],b[1])>Z0&&Math.min(a[1],b[1])<Z1})))continue;
-  const k2=TT.key;setTimeout(()=>{if(TILES.get(k2)===TT){unloadTile(k2);buildTile(k2)}},0)}}
+  if(!REBUILDQ.includes(TT.key))REBUILDQ.push(TT.key)}} /* rebuilt one at a time from manageTiles, never several in one frame */
+const REBUILDQ=[];
 // ---- roadside billboards: fictional products, deterministic per tile (same world every drive)
 const ADS=[
  ['SAD SALAD','The only salad that sighs back.','Now 40% more wilted','#5b7d3a','🥬'],
@@ -2861,7 +2862,7 @@ function manageTiles(){
  for(const k of [...TILES.keys()])if(!want.has(k)){const [i,j]=k.split('_').map(Number);if(Math.abs(i-ci)>2||Math.abs(j-cj)>2)unloadTile(k)}
  // order by distance
  const order=[...want].sort((a,b)=>{const [ai,aj]=a.split('_').map(Number),[bi,bj]=b.split('_').map(Number);return (Math.abs(ai-ci)+Math.abs(aj-cj))-(Math.abs(bi-ci)+Math.abs(bj-cj))});
- let built=false;for(const k of order){if(RAW.has(k)){if(!TILES.has(k)&&!built){const nb=neighbourKeys(k).filter(n=>want.has(n));const ready=nb.every(n=>RAW.has(n));const w0=RAW.get(k)._wait||(RAW.get(k)._wait=performance.now());if(ready||performance.now()-w0>6000){buildTile(k);built=true}}}else if(netBusy<3)fetchTile(k)} /* at most one tile build per pass (nearest first) so arriving tiles don't stack into one long hitch */
+ let built=false;if(REBUILDQ.length&&!(G.rebT>performance.now())){const k2=REBUILDQ.shift();if(TILES.has(k2)){unloadTile(k2);buildTile(k2);built=true;G.rebT=performance.now()+400}}for(const k of order){if(RAW.has(k)){if(!TILES.has(k)&&!built){const nb=neighbourKeys(k).filter(n=>want.has(n));const ready=nb.every(n=>RAW.has(n));const w0=RAW.get(k)._wait||(RAW.get(k)._wait=performance.now());if(ready||performance.now()-w0>6000){buildTile(k);built=true}}}else if(netBusy<3)fetchTile(k)} /* at most one tile build per pass (nearest first) so arriving tiles don't stack into one long hitch */
  // route road ribbon (guarantees a road even before/without OSM tiles, e.g. at 100x on interstates)
  if(!G.rr||Math.abs(G.rr.s-e.s)>300||G.rr.ox!==ORIGIN.lon||G.rr.tv!==TERR.ver&&Math.abs(G.rr.s-e.s)>40){if(G.rr)scene.remove(G.rr.mesh);const b=new Buf(),pts=[];for(let s=Math.max(0,e.s-400);s<Math.min(G.route.total,e.s+1200);s+=4){const p=routeXZ(s,0);pts.push([p[0],p[1],routeY(s,0)+0.05])}ribbon(b,pts,7.6,0.03,1.9);const g=b.geo();const m=new THREE.Mesh(g,MAT.road2);m.receiveShadow=true;scene.add(m);G.rr={s:e.s,mesh:m,ox:ORIGIN.lon,tv:TERR.ver}}
 }
