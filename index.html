@@ -5290,7 +5290,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   const lats=[...new Set([want,base,cur,(want+base)/2,want-1.2,want+1.2,cur-1.8,cur+1.8].map(x=>Math.round(cl(x)*10)/10))];
   const accs=[aMax*0.6,0,-1.5,-3.5,-bMax];
   const objs=F.objs.filter(o=>{const dx=o.x-e.mesh.position.x,dz=o.z-e.mesh.position.z;return dx*dx+dz*dz<130*130});
-  for(const o of objs){if(!F.hyps.has(o.ref)||F.hypT!==G.simTime)F.hyps.set(o.ref,hyps(o))}F.hypT=G.simTime;
+  F.hyps.clear();for(const o of objs)F.hyps.set(o.ref,hyps(o));F.hypT=G.simTime; /* rebuilt each plan – no stale entries for removed road users */
   const P=new Map();for(const o of objs)P.set(o,F.hyps.get(o.ref).map(h=>({w:h.w,pts:TT.map(t=>h.f(t))})));
   let best=null;const cands=[];
   for(const Lt of lats){if(d2&&typeof bAt==='function'){const q=routeXZ(Math.min(G.route.total,s+8),Lt);if(bAt(q[0],q[1]))continue}
