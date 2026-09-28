@@ -4433,9 +4433,9 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
     else{float l=dot(c,vec3(.3,.59,.11));c=ironbow(l*1.15);}
     gl_FragColor=vec4(c,1.);}`}); /* perception blit: tone-map + sRGB here (the render target is linear), or night-vision / ironbow thermal for the Predictacar's vision modes */bscene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bmat));
  window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const wrap=document.getElementById('cvWrap');if(wrap&&(getComputedStyle(wrap).visibility==='hidden'||wrap.style.display==='none'))return; /* hidden (photo mode etc.) */const r=area.getBoundingClientRect();if(r.width<10||r.height<10)return;
-  const t=tier(),every=t==='ultra'?2:t==='high'?3:4,scale=t==='ultra'?0.85:t==='high'?0.7:0.5,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
+  const t=tier(),every=t==='ultra'?2:t==='high'?4:6,scale=t==='ultra'?0.85:t==='high'?0.7:0.5,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
   if(!rt||rt.width!==W||rt.height!==H){if(rt)rt.dispose();rt=new THREE.WebGLRenderTarget(W,H,{samples:0});bmat.uniforms.map.value=rt.texture;fr=0}
-  const realRender=renderer.render;fr++;
+  const realRender=renderer.render;fr++;if(t!=='ultra'&&cvCam.far>300){cvCam.far=300;cvCam.updateProjectionMatrix()} /* perception view: nothing past 300 m (cuts draw calls) */
   if(fr%every===1||every===1){const au=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;const prev=renderer.getRenderTarget();
    renderer.render=function(sc,cam){if(cam===cvCam){renderer.setRenderTarget(rt);renderer.setScissorTest(false);renderer.setViewport(0,0,W,H);const rr=(a,b)=>realRender.call(renderer,a,b);if(window.THERMAL)THERMAL.render(rr,sc,cam);else rr(sc,cam);renderer.setRenderTarget(prev)}else realRender.call(renderer,sc,cam)};
    try{_rp()}finally{renderer.render=realRender;renderer.shadowMap.autoUpdate=au}}
@@ -4461,7 +4461,7 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
   if(typeof wheelCache!=='undefined'){const walk=(x,d)=>{if(!x||d>4)return;if(x.isBufferGeometry){K.add(x);return}if(Array.isArray(x)){x.forEach(y=>walk(y,d+1));return}if(typeof x==='object'&&!x.isObject3D&&!x.isMaterial)for(const y of Object.values(x))walk(y,d+1)};for(const k in wheelCache)walk(wheelCache[k],0)}
   if(typeof grassGeo==='function'){}return K}
  function free(root,K){root.traverse(o=>{if(o.geometry&&!K.has(o.geometry)&&!(o.geometry.userData&&o.geometry.userData.shared))o.geometry.dispose();const ms=Array.isArray(o.material)?o.material:o.material?[o.material]:[];
-   for(const m of ms){if(m.userData&&m.userData.shared)continue;for(const k of ['map','normalMap','emissiveMap','roughnessMap','alphaMap'])if(m[k]&&m[k].isCanvasTexture&&!(m[k].userData&&m[k].userData.shared))m[k].dispose();m.dispose()}});GC.freed++}
+   for(const m of ms){if(m.userData&&m.userData.shared)continue;for(const k of ['map','normalMap','emissiveMap','roughnessMap','alphaMap'])if(m[k]&&m[k].isCanvasTexture&&!(m[k].userData&&m[k].userData.shared))m[k].dispose()} /* materials are NOT disposed: they are shared, and disposing forces shader recompiles (long freezes) */});GC.freed++}
  function sweep(){try{const now=performance.now();let K=null;for(const o of tracked){if(o.parent){o.__detT=0;continue}if(!o.__detT){o.__detT=now;continue}if(now-o.__detT<10000)continue;K=K||keepGeo();free(o,K);tracked.delete(o)}GC.tracked=tracked.size}catch(e){}}
  setInterval(sweep,3000);
  MODS.push({id:'gc'});
