@@ -1430,18 +1430,18 @@ function loftGreen(P,N=HIGH?200:110){
 // find the body surface x at a given end, lateral offset z and height y
 function surfX(P,front,z,y){if(front){for(let u=1;u>0.6;u-=0.002)if(P.half(u)>=Math.abs(z)+0.01&&P.bottom(u)<=y&&P.top(u)>=y)return P.xOf(u)}else{for(let u=0;u<0.4;u+=0.002)if(P.half(u)>=Math.abs(z)+0.01&&P.bottom(u)<=y&&P.top(u)>=y)return P.xOf(u)}return front?P.xOf(0.97):P.xOf(0.03)}
 const wheelCache={};
-function wheelSet(spec,rim,cal){
- const key=spec.wr+rim.style+rim.n+rim.col+cal;if(wheelCache[key])return wheelCache[key];
+function wheelSet(spec,rim,cal,lod){
+ const key=spec.wr+rim.style+rim.n+rim.col+cal+(lod?':lod':'');if(wheelCache[key])return wheelCache[key];
  const wr=spec.wr,tw=0.25,rr=wr*0.66;
  const prof=[[rr*0.98,-tw/2],[wr-0.04,-tw/2],[wr-0.008,-tw/2+0.03],[wr,-tw/2+0.06],[wr,tw/2-0.06],[wr-0.008,tw/2-0.03],[wr-0.04,tw/2],[rr*0.98,tw/2]].map(p=>new THREE.Vector2(p[0],p[1]));
- const tireG=new THREE.LatheGeometry(prof,HIGH?72:48).rotateX(Math.PI/2);
+ const tireG=new THREE.LatheGeometry(prof,lod?16:HIGH?72:48).rotateX(Math.PI/2);
  const tireM=new THREE.MeshStandardMaterial({color:0xffffff,map:TREAD,roughness:0.92});
  const rimM=new THREE.MeshStandardMaterial({color:rim.col,metalness:0.85,roughness:0.28});
  const dark=new THREE.MeshStandardMaterial({color:0x151515,metalness:0.4,roughness:0.5});
  const parts=[];const face=tw/2-0.035;
  parts.push([new THREE.CylinderGeometry(rr,rr,tw-0.04,32,1,true).rotateX(Math.PI/2),dark]); // barrel
  parts.push([new THREE.CylinderGeometry(rr*0.97,rr*0.97,0.01,32).rotateX(Math.PI/2).translate(0,0,-0.02),dark]); // inner shadow disc
- parts.push([new THREE.TorusGeometry(rr*0.97,0.012,6,40).translate(0,0,face),rimM]); // lip
+ parts.push([new THREE.TorusGeometry(rr*0.97,0.012,lod?3:6,lod?14:40).translate(0,0,face),rimM]); // lip
  parts.push([new THREE.CylinderGeometry(rr*0.2,rr*0.22,0.05,20).rotateX(Math.PI/2).translate(0,0,face-0.01),rimM]); // hub
  if(rim.style==='disc'||rim.style==='aero'){parts.push([new THREE.CylinderGeometry(rr*0.95,rr*0.95,0.02,40).rotateX(Math.PI/2).translate(0,0,face-0.015),rimM]);
   if(rim.style==='aero')for(let i=0;i<Math.max(5,rim.n);i++){const a=i/Math.max(5,rim.n)*Math.PI*2;parts.push([new THREE.BoxGeometry(rr*0.42,rr*0.14,0.012).translate(rr*0.55,0,face-0.002).rotateZ(a),dark])}}
