@@ -1439,11 +1439,11 @@ function wheelSet(spec,rim,cal,lod){
  const rimM=new THREE.MeshStandardMaterial({color:rim.col,metalness:0.85,roughness:0.28});
  const dark=new THREE.MeshStandardMaterial({color:0x151515,metalness:0.4,roughness:0.5});
  const parts=[];const face=tw/2-0.035;
- parts.push([new THREE.CylinderGeometry(rr,rr,tw-0.04,32,1,true).rotateX(Math.PI/2),dark]); // barrel
- parts.push([new THREE.CylinderGeometry(rr*0.97,rr*0.97,0.01,32).rotateX(Math.PI/2).translate(0,0,-0.02),dark]); // inner shadow disc
+ parts.push([new THREE.CylinderGeometry(rr,rr,tw-0.04,lod?12:32,1,true).rotateX(Math.PI/2),dark]); // barrel
+ parts.push([new THREE.CylinderGeometry(rr*0.97,rr*0.97,0.01,lod?12:32).rotateX(Math.PI/2).translate(0,0,-0.02),dark]); // inner shadow disc
  parts.push([new THREE.TorusGeometry(rr*0.97,0.012,lod?3:6,lod?14:40).translate(0,0,face),rimM]); // lip
- parts.push([new THREE.CylinderGeometry(rr*0.2,rr*0.22,0.05,20).rotateX(Math.PI/2).translate(0,0,face-0.01),rimM]); // hub
- if(rim.style==='disc'||rim.style==='aero'){parts.push([new THREE.CylinderGeometry(rr*0.95,rr*0.95,0.02,40).rotateX(Math.PI/2).translate(0,0,face-0.015),rimM]);
+ parts.push([new THREE.CylinderGeometry(rr*0.2,rr*0.22,0.05,lod?8:20).rotateX(Math.PI/2).translate(0,0,face-0.01),rimM]); // hub
+ if(rim.style==='disc'||rim.style==='aero'){parts.push([new THREE.CylinderGeometry(rr*0.95,rr*0.95,0.02,lod?14:40).rotateX(Math.PI/2).translate(0,0,face-0.015),rimM]);
   if(rim.style==='aero')for(let i=0;i<Math.max(5,rim.n);i++){const a=i/Math.max(5,rim.n)*Math.PI*2;parts.push([new THREE.BoxGeometry(rr*0.42,rr*0.14,0.012).translate(rr*0.55,0,face-0.002).rotateZ(a),dark])}}
  else{const n=rim.n,sw=rim.style==='multi'?0.035:rim.style==='spoke'?0.1:0.05;
   for(let i=0;i<n;i++){const a=i/n*Math.PI*2;const offs=rim.style==='split'?[-0.028,0.028]:[0];for(const o of offs){const b=new THREE.BoxGeometry(rr*0.8,sw,0.03).translate(rr*0.55,o,face-0.02).rotateZ(a);parts.push([b,rimM])}}}
