@@ -4287,11 +4287,12 @@ function impasseWatch(dt){const G=game,e=G.ego;if(!G.route||G.uturn||G.rerouting
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
  const legit=G.charging||G.tow||G.pullOver||G.rerouting||G.uturn||(G.protest&&G.protest.state==='rerouting')||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
  if(G.overtakeT>0&&smartOn()){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
- if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=dt;
+ const waitOK=/merg|lane closed|lane ends|closed lane|waiting|yield|gap|work zone|flagger|officer|creeping|junction|driveway|crossing|unprotected|roundabout|pedestrian|school bus|train|gates|drawbridge|stop sign|queue|ambulance|fire engine|police|emergency|pulling over|toll/i.test(G.status||''); /* ordinary waits: allowed ~1 min before counting as stuck */
+ if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=waitOK?dt/6:dt;
  if(W.t>10){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
   /* no pulling out around stopped traffic and no squeezing through it (both caused side-swipes): a queue is waited out; after ~40 s of no progress the ride detours */
   if(/Queued|Following|vehicle/i.test(G.status||'')&&W.n<4){G.status='⏱️ Waiting in the queue'}
-  else if(W.cd<=0){W.cd=20;W.n=0;G.status='⏱️ No progress · detouring';rerouteNow()}}}
+  else if(W.cd<=0){W.cd=20;W.n=0;G.status='⏱️ No progress · detouring';rerouteNow({noUturn:true})}}} /* a detour turns off ahead – no mid-street U-turns */
 /* points no new route may pass through (within 14 m): an active protest and any police roadblocks */
 function blockedPts(){const G=game,o=[];if(G.protest&&G.protest.state!=='dispersing')o.push([toLon(G.protest.x),toLat(G.protest.z)]);if(CHASE.on)for(const B of CHASE.blocks)o.push([toLon(B.x),toLat(B.z)]);if(G.impasse&&G.simTime-G.impasse.t<120)o.push([toLon(G.impasse.x),toLat(G.impasse.z)]);return o}
 function routeHitsBlock(r,bl){if(!bl.length)return false;for(let k=0;k<r.pts.length;k++){if(r.cum[k]<30)continue;for(const b of bl)if(hav(r.pts[k],b)<14)return true}return false} /* passes through the crowd/roadblock itself (not just a parallel carriageway nearby) */
