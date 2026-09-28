@@ -1495,7 +1495,7 @@ function buildCar(spec,colorHex,opts={}){
   if(!opts.interior)for(const z of [-1,1]){const seat=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.45,0.42),tub);seat.position.set(xs-0.25,yt+0.05,z*W*0.22);seat.rotation.z=0.25;g.add(seat)}}
  if(opts.interior){const hood=new THREE.Mesh(profCache[pk].hood,paint);hood.visible=false;g.add(hood);g.userData.hood=hood}
  // wheels
- const rim=md.rim||{n:5,style:'split',col:0xaaaaaa},WS=wheelSet(spec,rim,md.cal),wheels=[];
+ const rim=md.rim||{n:5,style:'split',col:0xaaaaaa},WS=wheelSet(spec,rim,md.cal,lod),wheels=[];
  for(const [ai,fz] of [[0,1],[0,-1],[1,1],[1,-1]]){
   const piv=new THREE.Group();piv.position.set(P.axles[ai],wr,fz*(W/2-0.14));
   const spin=new THREE.Group();const t=new THREE.Mesh(WS.tireG,WS.tireM);t.castShadow=true;spin.add(t);for(const [pg,pm] of WS.parts)spin.add(new THREE.Mesh(pg,pm));
