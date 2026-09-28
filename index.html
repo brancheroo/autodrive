@@ -5237,7 +5237,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  /* ================= PERCEPTION ================= */
  function blockedLine(x0,z0,x1,z1,skip){const G=game,d=Math.hypot(x1-x0,z1-z0),n=Math.max(2,Math.ceil(d/3));
   for(let k=1;k<n;k++){const x=x0+(x1-x0)*k/n,z=z0+(z1-z0)*k/n;if(typeof bAt==='function'&&bAt(x,z))return 'building'}
-  for(const b of G.agents){if(!b.mesh||b===skip)continue;const P=b.mesh.position,r=Math.max(1,(b.spec.W||1.9)/2+(b.spec.L>8?0.6:0));const dx=x1-x0,dz=z1-z0,t=clamp(((P.x-x0)*dx+(P.z-z0)*dz)/(d*d||1),0,1);if(t<0.04||t>0.96)continue;
+  for(const b of G.agents){if(!b.mesh||b===skip)continue;const P=b.mesh.position;if(Math.abs(P.x-(x0+x1)/2)>d/2+6||Math.abs(P.z-(z0+z1)/2)>d/2+6)continue;const r=Math.max(1,(b.spec.W||1.9)/2+(b.spec.L>8?0.6:0));const dx=x1-x0,dz=z1-z0,t=clamp(((P.x-x0)*dx+(P.z-z0)*dz)/(d*d||1),0,1);if(t<0.04||t>0.96)continue;
    if(Math.hypot(x0+dx*t-P.x,z0+dz*t-P.z)<r&&(b.spec.H||1.5)>1.2)return 'vehicle'}
   return null}
  function sensorP(rel,d,occl){const S=sensorsOf(),W=S.wedges||[[0,120,120,'cam']];const q=[];const perc=(WX.perc||1)*(window.SENSOR_FAULT??1);
@@ -5249,7 +5249,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  F.fuse=q=>1-q.reduce((m,[,p])=>m*(1-p),1);
  function perceive(dt){const G=game,e=G.ego,E=e.mesh.position,h=e.mesh.rotation.y,fx=Math.cos(h),fz=-Math.sin(h),now=G.simTime,out=[];
   const see=(ref,x,z,kind,L,W)=>{const dx=x-E.x,dz=z-E.z,d=Math.hypot(dx,dz);if(d>220||d<0.5)return;const f=dx*fx+dz*fz,l=-dx*fz+dz*fx,rel=Math.atan2(l,f)*180/Math.PI;
-   const occ=d>6?blockedLine(E.x,E.z,x,z,ref):null,q=sensorP(rel,d,occ),P=F.fuse(q);let T=F.ghosts.get(ref);
+   const occ=d>6&&d<120?blockedLine(E.x,E.z,x,z,ref):null,q=sensorP(rel,d,occ),P=F.fuse(q);let T=F.ghosts.get(ref);
    const hit=rnd()<P*(1-Math.min(0.5,dt*2))+Math.min(0.5,dt*2)*P; /* per-frame miss chance ≈ 1-P */
    if(hit){const sig=0.05+d*(q.some(([t])=>t==='lidar')?0.003:q.some(([t])=>t==='radar')?0.006:0.012);if(!T){T={nx:0,nz:0};F.ghosts.set(ref,T)}T.nx=lerp(T.nx,gauss()*sig,0.2);T.nz=lerp(T.nz,gauss()*sig,0.2);T.last=now;T.x=x;T.z=z;T.seen=true;
     out.push({ref,kind,x:x+T.nx,z:z+T.nz,L,W,conf:P,occ,ghost:false})}
@@ -5261,8 +5261,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   for(const [r,T] of F.ghosts)if(now-T.last>6)F.ghosts.delete(r);
   F.objs=out;
   /* 12 · occluded zones along the road edges ahead (where someone could step out unseen) */
-  const zones=[];if(D()){const [lo,hi]=D().edges(e.s);for(let f=8;f<=44;f+=6){for(const side of [lo-1.8,hi+1.8]){const q=routeXZ(Math.min(G.route.total,e.s+f),side);const ob=blockedLine(E.x,E.z,q[0],q[1],null);if(ob==='vehicle')zones.push({f,lat:side,x:q[0],z:q[1]})}}}
-  F.dbg.zones=zones;F.zones=zones;
+  const zones=[];F.zT=(F.zT||0)+1;if(F.zT%2===0)F.zones=F.zones||[];else if(D()){const [lo,hi]=D().edges(e.s);for(let f=8;f<=44;f+=6){for(const side of [lo-1.8,hi+1.8]){const q=routeXZ(Math.min(G.route.total,e.s+f),side);const ob=blockedLine(E.x,E.z,q[0],q[1],null);if(ob==='vehicle')zones.push({f,lat:side,x:q[0],z:q[1]})}}}
+  if(F.zT%2){F.dbg.zones=zones;F.zones=zones}
   /* 13 · speed limits read from signs: the camera picks up a new limit where a sign stands (tagged maxspeed); without a working camera, the map */
   const S=sensorsOf(),cam=(S.wedges||[]).some(w=>w[3]==='cam')&&(window.CAMQ??1)>0.3&&(window.SENSOR_FAULT??1)>0.4;const i=routeLLnh(e.s)[2],ni=NODEINFO.get(G.route.nodes[i]);
   const rk=ni?ni.hw+'|'+ni.name:'';if(!cam||F.limSeen==null||rk!==F.roadKey){F.limSeen=speedLimitAt(i);F.roadKey=rk}else if(ni&&ni.ms&&(!F.limAt||Math.abs(F.limAt-e.s)>30)){F.limSeen=speedLimitAt(i);F.limAt=e.s} /* new road → its default limit until a sign says otherwise */
@@ -5289,7 +5289,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   const bMax=9.81*grip()*0.9,aMax=Math.min(3,(G.spec.hp||300)/120);const lim=(F.limSeen||speedLimitAt(routeLLnh(s)[2]))/MPH;
   const lats=[...new Set([want,base,cur,(want+base)/2,want-1.2,want+1.2,cur-1.8,cur+1.8].map(x=>Math.round(cl(x)*10)/10))];
   const accs=[aMax*0.6,0,-1.5,-3.5,-bMax];
-  const objs=F.objs.filter(o=>{const dx=o.x-e.mesh.position.x,dz=o.z-e.mesh.position.z;return dx*dx+dz*dz<130*130});
+  const objs=F.objs.map(o=>{const dx=o.x-e.mesh.position.x,dz=o.z-e.mesh.position.z;return [dx*dx+dz*dz,o]}).filter(q=>q[0]<130*130).sort((a,b)=>a[0]-b[0]).slice(0,16).map(q=>q[1]); /* nearest 16 only */
   F.hyps.clear();for(const o of objs)F.hyps.set(o.ref,hyps(o));F.hypT=G.simTime; /* rebuilt each plan – no stale entries for removed road users */
   const P=new Map();for(const o of objs)P.set(o,F.hyps.get(o.ref).map(h=>({w:h.w,pts:TT.map(t=>h.f(t))})));
   let best=null;const cands=[];
@@ -5328,7 +5328,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  MODS.push({id:'fsd',
   start(){F.objs=[];F.ghosts.clear();F.hyps.clear();F.plan=null;F.mrm=null;smooth.v=null;smooth.r=0;F.aeb=0;F.limSeen=null;F.lat={n:0,sum:0,max:0,pending:new Map()};capSet('aeb',null)},
   sim(dt){if(!game||!game.route||!game.ego||!game.ego.mesh)return;const G=game,e=G.ego;if(!active()){capSet('aeb',null);return}
-   F.t+=dt;if(F.t>0.1||!F.objs.length){perceive(F.t);F.t=0}
+   F.t+=dt;if(F.t>0.25||!F.objs.length){perceive(F.t);F.t=0} /* 4 Hz perception keeps the frame budget small */
    /* 28 · independent monitor overrides everything */
    const need=aebMonitor();if(need>6){if(!F.aebOn)F.aeb++;F.aebOn=true;capSet('aeb',Math.max(0,e.v-need*dt*1.2));G.status='🚨 Emergency brake (independent monitor)'}else{F.aebOn=false;capSet('aeb',null)}
    /* 29 · hazard→brake latency: a hazard is 'seen' when TTC<3 s to a perceived object; latency ends at the first braking command */
