@@ -4539,6 +4539,34 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
  MODS.push({id:'gc'});
 })();
 </script>
+<script>/* mods/02d-janitor.js */
+/* Memory janitor. Map data was never released: every tile the car passed kept its raw OSM data (RAW, RAWROADS,
+   SFB), and every node kept its entries in NODEINFO / NODEH / CONTROLS / BRPROF; the Overpass extras (OSMX.feat)
+   grew the same way. At Express speeds that is dozens of tiles a minute (hundreds of MB). Every 5 s this drops
+   everything belonging to tiles more than KEEP tiles from the car that are not coming up on the route; nodes of the
+   current route are always kept. Dropped tiles are simply fetched again (usually from the local cache) if needed. */
+(function(){
+ const KEEP=3,AHEAD=3000,J={runs:0,raw:0,nodes:0,feat:0};window.JANITOR=J;
+ let routeSet=null,routeRef=null;
+ function routeNodes(G){if(routeRef!==G.route){routeRef=G.route;routeSet=new Set(G.route.nodes)}return routeSet}
+ function keepKeys(G){const e=G.ego,K=new Set(),ci=Math.floor(toLat(e.z)/TS),cj=Math.floor(toLon(e.x)/TS);
+  for(let i=-KEEP;i<=KEEP;i++)for(let j=-KEEP;j<=KEEP;j++)K.add((ci+i)+'_'+(cj+j));
+  for(let d=0;d<=AHEAD;d+=250){const p=routeLLnh(Math.min(G.route.total,e.s+d));const a=Math.floor(p[1]/TS),b=Math.floor(p[0]/TS);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)K.add((a+i)+'_'+(b+j))}
+  for(const k of TILES.keys())K.add(k);if(typeof PENDING!=='undefined')for(const k of PENDING)K.add(k);if(typeof BT!=='undefined'&&BT.key)K.add(BT.key);return K}
+ function sweep(){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego||!G.ego.mesh)return;J.runs++;
+  const K=keepKeys(G),RN=new Set(routeNodes(G)),gone=new Set();for(const [k,d] of RAW)if(K.has(k))for(const el of (d&&d.elements)||[])if(el.nodes)for(const n of el.nodes)RN.add(n); /* nodes still referenced by a kept tile stay */
+  for(const [k,d] of RAW){if(K.has(k))continue;for(const el of (d&&d.elements)||[])if(el.nodes)for(const n of el.nodes)if(!RN.has(n))gone.add(n);
+   RAW.delete(k);if(typeof RAWROADS!=='undefined')RAWROADS.delete(k);if(typeof SFB!=='undefined')SFB.delete(k);J.raw++}
+  if(gone.size){for(const n of gone){NODEINFO.delete(n);NODEH.delete(n);CONTROLS.delete(n)}J.nodes+=gone.size;
+   if(typeof BRPROF!=='undefined')for(const key of BRPROF.keys()){const u=key.indexOf('_'),a=+key.slice(0,u),b=+key.slice(u+1);if(gone.has(a)||gone.has(b))BRPROF.delete(key)}}
+  /* Overpass extras: keep features within ~6 km of the car (and their dedupe ids / cells, so they can come back) */
+  if(window.OSMX&&OSMX.feat&&OSMX.feat.length>200){const la=toLat(G.ego.z),lo=toLon(G.ego.x),k=Math.cos(la*Math.PI/180),keep=[];
+   for(const f of OSMX.feat){const d=Math.hypot((f.lat-la)*111,(f.lon-lo)*111*k);if(d<6)keep.push(f);else{if(OSMX.byId)OSMX.byId.delete(f.id);J.feat++}}
+   if(keep.length<OSMX.feat.length){OSMX.feat.length=0;OSMX.feat.push(...keep);if(OSMX.cells)for(const [c,st] of OSMX.cells){if(st==='loading')continue;const [ci,cj]=c.split('_').map(Number),cs=OSMX.CELL||0.03;const d=Math.hypot(((ci+0.5)*cs-la)*111,((cj+0.5)*cs-lo)*111*k);if(d>6)OSMX.cells.delete(c)}}}}
+ setInterval(()=>{try{sweep()}catch(e){console.warn('janitor',e)}},5000);
+ MODS.push({id:'janitor'});
+})();
+</script>
 <script>/* mods/03-quality.js */
 /* Graphics quality setting (Low / High / Ultra) on the start screen and HUD, plus a small FPS readout. */
 (function(){
@@ -6567,7 +6595,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  let CM={};try{CM=JSON.parse(localStorage.getItem('hyxCorners')||'{}')}catch(e){}
  const ckey=(x,z)=>Math.round(toLat(z)*2000)+':'+Math.round(toLon(x)*2000); /* ~50 m cells */
  X.cf=(x,z)=>{const c=CM[ckey(x,z)];return c?c.f:1};
- const saveM=()=>{try{localStorage.setItem('hyxCorners',JSON.stringify(CM));localStorage.setItem('hyxBrake',JSON.stringify(BR))}catch(e){}};
+ const saveM=()=>{{const ks=Object.keys(CM);if(ks.length>4000){ks.sort((a,b)=>CM[a].n-CM[b].n);for(const k of ks.slice(0,ks.length-3000))delete CM[k]}} /* bounded: keep the 3,000 most-visited corners */try{localStorage.setItem('hyxCorners',JSON.stringify(CM));localStorage.setItem('hyxBrake',JSON.stringify(BR))}catch(e){}};
  /* ---------- 2 · lateral grip with downforce ---------- */
  const mu=()=>(({clear:1,rain:0.7,blizzard:0.35,hurricane:0.5,fog:0.95,dust:0.85,smoke:0.95})[WX.key]??0.8)*(window.UPG_GRIP||1);
  X.latA=v=>{const fans=((game.fans)||[0,0,0,0]).reduce((q,x)=>q+x,0)/4,down=1+2*Math.min(4,0.5+fans)+Math.min(6,v*v/9000); /* fan suction + aero downforce ~v² */
