@@ -6656,7 +6656,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  let bT=0,sT=0;
  MODS.push({id:'hyperx',
   start(){X.prof=null;X.target=null;X.seg=[];X.eff=null;ySm=null;prevV=null;prevH=null;seg={s0:game&&game.ego?game.ego.s:0,t:0,tt:0}},
-  sim(dt){if(!act()){X.target=null;return}const G=game,e=G.ego;bT-=dt;if(!X.prof||bT<=0||e.s-X.prof.s0>Math.max(200,e.v*1.5)){bT=clamp(0.25*30/Math.max(30,e.v),0.05,0.25);build()}
+  sim(dt){if(!act()){X.target=null;return}const G=game,e=G.ego;bT-=dt;if(!X.prof||bT<=0||e.s-X.prof.s0>Math.max(200,e.v*1.5)){bT=0.5;build() /* twice a second is plenty; faster rebuilds only churned memory */}
    X.lineOff=racingLine();X.lineW=G.dodgeT>0?0:0.6;X.tBrake=tBrake();learn(dt);sT+=dt;if(sT>30){sT=0;saveM()}},
   postPlan(dt){if(act())smoothY(dt)},
   postRender(){try{trace()}catch(e){}}});
