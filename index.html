@@ -3257,7 +3257,7 @@ function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,
  leg.forEach((t,i)=>{const k=t.startsWith('Lidar')?'lidar':t.startsWith('Radar')?'radar':'cam';x.fillStyle=col[k]+'1)';x.fillText('● '+t,6*dpr,(12+i*11)*dpr)});
  x.fillStyle='rgba(200,210,225,.8)';x.textAlign='right';x.fillText(`${dets.length} tracked`,W-6*dpr,12*dpr);x.textAlign='left'}
 
-function drawMini(){const c=$('mini'),wrap=$('miniWrap');const W=c.width=Math.round(wrap.clientWidth*devicePixelRatio),H=c.height=Math.round(wrap.clientHeight*devicePixelRatio);const x=c.getContext('2d'),G=game,e=G.ego,dpr=devicePixelRatio;
+function drawMini(){const c=$('mini'),wrap=$('miniWrap');const W=Math.round(wrap.clientWidth*devicePixelRatio),H=Math.round(wrap.clientHeight*devicePixelRatio);if(c.width!==W)c.width=W;if(c.height!==H)c.height=H; /* only resize when it changes: every assignment reallocated the canvas backing store (~1–2 MB per frame of garbage) */const x=c.getContext('2d'),G=game,e=G.ego,dpr=devicePixelRatio;
  const lat=toLat(e.z),lon=toLon(e.x),z=MINI.z,zi=Math.min(16,Math.floor(z)),sc=2**(z-zi)*dpr,cx=mercX(lon,zi),cy=mercY(lat,zi);
  x.fillStyle='#0e1116';x.fillRect(0,0,W,H);x.save();x.translate(W/2,H/2);if(MINI.headingUp)x.rotate(-(Math.PI/2-e.head));x.scale(sc,sc);
  const rad=Math.hypot(W,H)/2/sc,tx0=Math.floor((cx-rad)/256),tx1=Math.floor((cx+rad)/256),ty0=Math.floor((cy-rad)/256),ty1=Math.floor((cy+rad)/256);
