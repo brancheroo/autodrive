@@ -1504,7 +1504,7 @@ function buildGargantua(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}
   const dome=new THREE.Mesh(new THREE.SphereGeometry(0.5,24,12,0,Math.PI*2,0,Math.PI/2),rm);dome.position.set(cx+0.55,roofY+0.12,cz);dome.castShadow=true;g.add(dome);ud.radome=dome}
  for(const sd of [1,-1]){box(0.05,0.14,0.34,lamp,L/2+0.44,deckY+0.12,sd*(bodyW/2-0.3));box(0.05,0.12,0.3,red,-L/2-0.08,deckY+0.1,sd*(bodyW/2-0.25))}
  for(let k=0;k<6;k++)box(0.18,0.05,bodyW*0.98,k%2?dark:new THREE.MeshStandardMaterial({color:0xffd000}),-L*0.45+k*0.18,deckY+deckH/2+0.01,0);
- box(3.6,0.05,0.05,steel,L*0.05,deckY+deckH/2+0.35,-(bodyW/2-0.08));
+ box(3.2,0.05,0.05,steel,-L*0.22,deckY+deckH/2+0.35,-(bodyW/2-0.08));
  /* six wheels: three axles, double width / double height, all steerable (front pair steers most, rear counter-steers) */
  const tw=0.5,tire=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),hub=steel,wheels=[];
  const tg=new THREE.CylinderGeometry(wr,wr,tw,lodSeg(opts),1).rotateX(Math.PI/2),hg=new THREE.CylinderGeometry(wr*0.55,wr*0.55,tw+0.02,lodSeg(opts)).rotateX(Math.PI/2),lugG=new THREE.CylinderGeometry(wr*0.08,wr*0.08,tw+0.04,8).rotateX(Math.PI/2);
