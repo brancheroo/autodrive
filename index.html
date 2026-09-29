@@ -219,6 +219,9 @@ const CARS=[
 {id:'hyper',name:'Morrows Predictacar',sub:'Open-air electric hyper-roadster',style:'coupe',L:4.78,W:2.06,H:1.12,wb:2.75,wr:0.36,hp:2100,z60:1.7,top:300,range:'~6,200 mi (est.) · 2,400 kWh',weight:'4,300 lb',drive:'Quad motor torque-vectoring AWD · 1,000 V',level:'SAE Level 4 · track-capable autonomy (fictional)',
  tech:'An invented 2,100 hp quad-motor hypercar. There is no steering wheel. Instead, a wall of active screens shows telemetry, a g-meter, battery temps, mirror cams and the route. An active rear wing flattens for top speed, tilts up in corners and flips vertical as an airbrake. In Express or Chase mode it runs flat out to 300 mph where the road allows. Its planner forecasts every moving thing ahead 4 s and tests 35 escape plans ten times a second. If a crash is unavoidable, it protects pedestrians first, then steers away from the heaviest vehicles.',
  colors:[['Toxic Lime','#9dff00'],['Hyper Magenta','#ff1fb4'],['Volt Orange','#ff6a00'],['Ultraviolet','#6b2cff'],['Cyber Teal','#00e5d4'],['Acid Yellow','#f4ff2e']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',driver:true,hyper:true,roadster:true},
+{id:'gargantua',name:'Gargantua',sub:'Six-wheel street-legal super-tug',style:'van',L:7.4,W:2.1,H:1.9,wb:5.4,wr:0.72,hp:9000,z60:1.4,top:250,range:'~1,500,000 mi (est.) · 1 GWh',weight:'~14,000 lb',drive:'6 independent 1,500 ehp hub motors · 6-wheel steer',level:'SAE Level 4 · supervised (fictional)',
+ tech:'Shaped like a giant airport aircraft tug but built to normal road width and fully street legal. Six independent wheels, each twice the normal width and height, carry their own 1,500 ehp hub motor (9,000 ehp in total) and steer independently. A 1 GWh battery pack fills the flat chassis between the axles. The low wedge nose, towbar hitch and offset cab come straight from the airport apron.',
+ colors:[['Apron Yellow','#f2c200'],['Tug Orange','#ff7a00'],['Runway White','#eef0f2'],['Hangar Grey','#5b6168']],dash:'waymo',wheel:'round',sensors:'waymo6',sound:'ev',driver:true,gargantua:true},
 ];
 
 // ============================================================ UTIL
@@ -1469,7 +1472,44 @@ const profCache={};
 let CSHTEX=null,CSHGEO=null;
 function contactShadow(obj,L,W,op=0.62){if(!CSHTEX){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d'),g=x.createRadialGradient(64,64,6,64,64,63);g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(0.55,'rgba(0,0,0,.75)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,128,128);CSHTEX=new THREE.CanvasTexture(c);CSHGEO=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2)}
  const m=new THREE.Mesh(CSHGEO,new THREE.MeshBasicMaterial({map:CSHTEX,transparent:true,opacity:op,depthWrite:false,color:0x000000,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4,fog:true}));m.scale.set(L,1,W);m.position.y=0.035;m.renderOrder=1;m.userData.cshadow=1;obj.add(m);return m}
-function buildCar(spec,colorHex,opts={}){
+/* Gargantua: aircraft-tug body – flat armoured deck, low wedge nose with towbar hitch, offset glass cab, amber beacon –
+   on six independent double-width, double-height wheels (three axles, all steerable). Normal road width. */
+function buildGargantua(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}=spec,ud=g.userData;
+ const paint=new THREE.MeshStandardMaterial({color:colorHex,metalness:0.35,roughness:0.45}),dark=new THREE.MeshStandardMaterial({color:0x1b1d21,roughness:0.8}),steel=new THREE.MeshStandardMaterial({color:0x9aa1a8,metalness:0.8,roughness:0.3}),
+  glass=new THREE.MeshPhysicalMaterial({color:0x2a3a48,roughness:0.05,transparent:true,opacity:0.45,depthWrite:false}),lamp=new THREE.MeshBasicMaterial({color:0xfff4d0}),amber=new THREE.MeshBasicMaterial({color:0xffa000}),red=new THREE.MeshBasicMaterial({color:0xc01818});
+ const box=(w,h,d,m,x,y,z,par=g)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;par.add(o);return o};
+ const deckY=wr*1.25,deckH=0.62,bodyW=W-0.12;
+ /* chassis deck between and over the wheels (tug fenders run the full length) */
+ const body=box(L*0.94,deckH,bodyW,paint,0,deckY,0);ud.body=body;
+ box(L*0.94,0.18,bodyW*0.8,dark,0,deckY-deckH/2-0.09,0);
+ /* wedge nose (front = +x) */
+ const nose=new THREE.Shape();nose.moveTo(0,0);nose.lineTo(0.9,0);nose.lineTo(0,deckH);nose.lineTo(0,0);const ng=new THREE.ExtrudeGeometry(nose,{depth:bodyW,bevelEnabled:false});ng.translate(0,0,-bodyW/2);const nm=new THREE.Mesh(ng,paint);nm.position.set(L*0.47,deckY-deckH/2,0);nm.castShadow=true;g.add(nm);
+ /* bumpers, hitch, towbar pin */
+ box(0.25,0.3,bodyW*0.9,dark,L/2+0.3,deckY-0.18,0);box(0.25,0.3,bodyW*0.9,dark,-L/2+0.05,deckY-0.18,0);
+ box(0.5,0.12,0.4,steel,L/2+0.6,deckY-0.2,0);const pin=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.35,10),steel);pin.position.set(L/2+0.72,deckY-0.1,0);g.add(pin);
+ /* offset cab at the rear-left, low glass box with a flat roof */
+ const cabL=1.9,cabW=1.25,cabH=H-(deckY+deckH/2),cx=-L*0.26,cz=W/2-cabW/2-0.08,cy=deckY+deckH/2+cabH/2;
+ const cab=new THREE.Group();g.add(cab);ud.cab=cab;box(cabL,0.14,cabW,paint,cx,deckY+deckH/2+cabH-0.07,cz,cab);
+ for(const [dx,dz] of [[1,1],[1,-1],[-1,1],[-1,-1]])box(0.08,cabH-0.1,0.08,dark,cx+dx*(cabL/2-0.05),cy-0.05,cz+dz*(cabW/2-0.05),cab);
+ const gl=box(cabL-0.1,cabH-0.2,cabW-0.1,glass,cx,cy-0.02,cz,cab);gl.castShadow=false;
+ /* beacon, headlights, tail lights, grab rails, warning stripes */
+ const bc=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,0.18,12),amber);bc.position.set(cx,deckY+deckH/2+cabH+0.1,cz);g.add(bc);ud.beacon=bc;
+ for(const sd of [1,-1]){box(0.05,0.14,0.34,lamp,L/2+0.44,deckY+0.12,sd*(bodyW/2-0.3));box(0.05,0.12,0.3,red,-L/2-0.08,deckY+0.1,sd*(bodyW/2-0.25))}
+ for(let k=0;k<6;k++)box(0.18,0.05,bodyW*0.98,k%2?dark:new THREE.MeshStandardMaterial({color:0xffd000}),L*0.3+k*0.18,deckY+deckH/2+0.01,0);
+ box(3.6,0.05,0.05,steel,L*0.05,deckY+deckH/2+0.35,-(bodyW/2-0.08));
+ /* six wheels: three axles, double width / double height, all steerable (front pair steers most, rear counter-steers) */
+ const tw=0.5,tire=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),hub=steel,wheels=[];
+ const tg=new THREE.CylinderGeometry(wr,wr,tw,lodSeg(opts),1).rotateX(Math.PI/2),hg=new THREE.CylinderGeometry(wr*0.55,wr*0.55,tw+0.02,lodSeg(opts)).rotateX(Math.PI/2),lugG=new THREE.CylinderGeometry(wr*0.08,wr*0.08,tw+0.04,8).rotateX(Math.PI/2);
+ const axX=[L/2-1.05,0,-L/2+1.05];
+ axX.forEach((ax,ai)=>{for(const fz of [1,-1]){const piv=new THREE.Group();piv.position.set(ax,wr,fz*(W/2-tw/2-0.02));const spin=new THREE.Group();const t=new THREE.Mesh(tg,tire);t.castShadow=true;spin.add(t);spin.add(new THREE.Mesh(hg,hub));
+   for(let k=0;k<6;k++){const l=new THREE.Mesh(lugG,dark);l.position.set(Math.cos(k*1.047)*wr*0.33,Math.sin(k*1.047)*wr*0.33,0);spin.add(l)}
+   const holder=new THREE.Group();if(fz<0)holder.rotation.y=Math.PI;holder.add(spin);piv.add(holder);g.add(piv);wheels.push({piv,spin,front:ai===0,rear:ai===2,sign:fz<0?-1:1})}});
+ ud.wheels=wheels;ud.gargantua=true;
+ if(typeof contactShadow==='function')contactShadow(g,L*1.05,W*1.15);
+ if(opts&&opts.interior){const d=buildDriver(spec,'rider','driver');d.position.set(cx,deckY+deckH/2+0.05,cz);d.scale.setScalar(1);g.add(d);ud.driver=d}
+ return g}
+function lodSeg(opts){return opts&&opts.interior?40:(window.GFX&&GFX.get()==='ultra'?32:18)}
+function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);
  const lod=!opts.interior&&opts.lod!==false&&!(window.GFX&&GFX.get()==='ultra'); /* traffic / parked cars on Low & High: ~7× fewer body triangles */
  const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=(spec.id||spec.style+L+W+H)+(lod?':lod':'');
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
@@ -2096,6 +2136,7 @@ const ENERGY={
  'mache':{epa:260,kwh:91,kg:2230,cda:0.70,crr:0.009,dc:150,port:'NACS'},
  'lucid':{epa:512,kwh:112,kg:2375,cda:0.45,crr:0.008,dc:300,port:'NACS'},
  'hyper':{epa:6200,kwh:2400,kg:2150,cda:0.55,crr:0.008,dc:5000,port:'CCS'},
+ 'gargantua':{epa:1500000,kwh:1000000,kg:6350,cda:1.9,crr:0.011,dc:50000,port:'CCS'},
  'ezpt':{epa:185,kwh:220,kg:15000,cda:3.4,crr:0.016,dc:150,port:'CCS'},
  'r1s':{epa:410,kwh:140,kg:3150,cda:0.98,crr:0.011,dc:220,port:'NACS'},
 };
