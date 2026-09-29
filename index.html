@@ -1488,7 +1488,7 @@ function buildGargantua(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}
  box(0.25,0.3,bodyW*0.9,dark,L/2+0.3,deckY-0.18,0);box(0.25,0.3,bodyW*0.9,dark,-L/2+0.05,deckY-0.18,0);
  box(0.5,0.12,0.4,steel,L/2+0.6,deckY-0.2,0);const pin=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.35,10),steel);pin.position.set(L/2+0.72,deckY-0.1,0);g.add(pin);
  /* six-person cab: full-width glass cab over the rear half of the deck, three rows of two seats */
- const cabL=3.4,cabW=bodyW-0.1,cabH=H-(deckY+deckH/2),cx=-L/2+cabL/2+0.35,cz=0,floorY=deckY+deckH/2,cy=floorY+cabH/2;
+ const cabL=3.4,cabW=bodyW-0.1,cabH=H-(deckY+deckH/2),cx=L*0.47-cabL/2-0.1,cz=0,floorY=deckY+deckH/2, /* cab at the front, behind the wedge nose */cy=floorY+cabH/2;
  const cab=new THREE.Group();g.add(cab);ud.cab=cab;box(cabL,0.14,cabW,paint,cx,floorY+cabH-0.07,cz,cab);
  for(const [dx,dz] of [[1,1],[1,-1],[-1,1],[-1,-1],[0,1],[0,-1]])box(0.08,cabH-0.1,0.08,dark,cx+dx*(cabL/2-0.05),cy-0.05,cz+dz*(cabW/2-0.05),cab);
  const gl=box(cabL-0.1,cabH-0.2,cabW-0.1,glass,cx,cy-0.02,cz,cab);gl.castShadow=false;
@@ -1503,7 +1503,7 @@ function buildGargantua(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}
  {const rm=new THREE.MeshStandardMaterial({color:0xf2f3f4,roughness:0.35,metalness:0.05});const base=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.55,0.12,24),dark);base.position.set(cx+0.55,roofY+0.06,cz);base.castShadow=true;g.add(base);
   const dome=new THREE.Mesh(new THREE.SphereGeometry(0.5,24,12,0,Math.PI*2,0,Math.PI/2),rm);dome.position.set(cx+0.55,roofY+0.12,cz);dome.castShadow=true;g.add(dome);ud.radome=dome}
  for(const sd of [1,-1]){box(0.05,0.14,0.34,lamp,L/2+0.44,deckY+0.12,sd*(bodyW/2-0.3));box(0.05,0.12,0.3,red,-L/2-0.08,deckY+0.1,sd*(bodyW/2-0.25))}
- for(let k=0;k<6;k++)box(0.18,0.05,bodyW*0.98,k%2?dark:new THREE.MeshStandardMaterial({color:0xffd000}),L*0.3+k*0.18,deckY+deckH/2+0.01,0);
+ for(let k=0;k<6;k++)box(0.18,0.05,bodyW*0.98,k%2?dark:new THREE.MeshStandardMaterial({color:0xffd000}),-L*0.45+k*0.18,deckY+deckH/2+0.01,0);
  box(3.6,0.05,0.05,steel,L*0.05,deckY+deckH/2+0.35,-(bodyW/2-0.08));
  /* six wheels: three axles, double width / double height, all steerable (front pair steers most, rear counter-steers) */
  const tw=0.5,tire=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),hub=steel,wheels=[];
@@ -1697,7 +1697,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
 // ============================================================ INTERIOR / DASHBOARD SCREENS
 const SCREENS=[];let wheelMesh=null;
 function screenMesh(w,h,px,kind){px=Math.round(px*(HIGH?1.5:1));const c=document.createElement('canvas');c.width=Math.round(px*w/h);c.height=px;const tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,toneMapped:false}));SCREENS.push({c,ctx:c.getContext('2d'),tex,kind,mesh:m});return m}
-function eyePos(spec){if(spec.gargantua){const L=spec.L,H=spec.H,wr=spec.wr,floorY=wr*1.25+0.305+0.31,cx=-L/2+1.7+0.35;return new THREE.Vector3(cx+1.7-0.75+0.05,floorY+1.12,-0.45)}const P=(profCache[spec.id]||{}).P||mkProfile(spec),sh=P.sh;if(spec.style==='pod')return new THREE.Vector3(-0.45,Math.min(spec.H-0.2,P.belt(0.5)+0.45),0);const x=P.xOf(sh.roofF)-0.6;const y=Math.min(spec.H-0.14,P.belt(0.5)+0.36);return new THREE.Vector3(x,y,(spec.driver?-1:1)*spec.W*0.2)}
+function eyePos(spec){if(spec.gargantua){const L=spec.L,H=spec.H,wr=spec.wr,floorY=wr*1.25+0.305+0.31,cx=L*0.47-1.7-0.1;return new THREE.Vector3(cx+1.7-0.75+0.05,floorY+1.12,-0.45)}const P=(profCache[spec.id]||{}).P||mkProfile(spec),sh=P.sh;if(spec.style==='pod')return new THREE.Vector3(-0.45,Math.min(spec.H-0.2,P.belt(0.5)+0.45),0);const x=P.xOf(sh.roofF)-0.6;const y=Math.min(spec.H-0.14,P.belt(0.5)+0.36);return new THREE.Vector3(x,y,(spec.driver?-1:1)*spec.W*0.2)}
 /* ---- interior realism helpers ---- */
 let PERFTEX=null;function perfTex(){if(PERFTEX)return PERFTEX;const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,256,256);x.fillStyle='rgba(0,0,0,.45)';for(let i=0;i<16;i++)for(let j=0;j<16;j++){x.beginPath();x.arc(8+i*16+(j%2)*8,8+j*16,3,0,7);x.fill()}
  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(9,9);t.anisotropy=ANISO;return PERFTEX=t}
