@@ -1487,6 +1487,12 @@ function buildGargantua(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}
  /* bumpers, hitch, towbar pin */
  box(0.25,0.3,bodyW*0.9,dark,L/2+0.3,deckY-0.18,0);box(0.25,0.3,bodyW*0.9,dark,-L/2+0.05,deckY-0.18,0);
  box(0.5,0.12,0.4,steel,L/2+0.6,deckY-0.2,0);const pin=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.35,10),steel);pin.position.set(L/2+0.72,deckY-0.1,0);g.add(pin);
+ /* front grille: thick steel bars in a heavy frame, standing ahead of the wedge nose */
+ {const gx=L/2+0.48,y0=deckY-0.32,y1=deckY+0.62,gw=bodyW*0.9,bar=new THREE.MeshStandardMaterial({color:0x7c848c,metalness:0.85,roughness:0.28});
+  box(0.14,0.14,gw+0.14,bar,gx,y1,0);box(0.14,0.14,gw+0.14,bar,gx,y0,0);box(0.1,0.1,gw,bar,gx,(y0+y1)/2,0);
+  for(const sd of [1,-1])box(0.14,y1-y0+0.14,0.14,bar,gx,(y0+y1)/2,sd*gw/2);
+  const n=9;for(let k=1;k<n;k++){const z=-gw/2+gw*k/n,b=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,y1-y0,12),bar);b.position.set(gx,(y0+y1)/2,z);b.castShadow=true;g.add(b)}
+  for(const sd of [1,-1])box(0.5,0.1,0.1,bar,gx-0.25,y1-0.05,sd*(gw/2-0.05));ud.grille=true}
  /* six-person cab: full-width glass cab over the rear half of the deck, three rows of two seats */
  const cabL=3.4,cabW=bodyW-0.1,cabH=H-(deckY+deckH/2),cx=L*0.47-cabL/2-0.1,cz=0,floorY=deckY+deckH/2, /* cab at the front, behind the wedge nose */cy=floorY+cabH/2;
  const cab=new THREE.Group();g.add(cab);ud.cab=cab;box(cabL,0.14,cabW,paint,cx,floorY+cabH-0.07,cz,cab);
