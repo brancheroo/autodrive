@@ -416,16 +416,22 @@ const limitMats={};function limitMat(m){return limitMats[m]||(limitMats[m]=new T
 function nameTex(txt){const c=document.createElement('canvas');c.width=256;c.height=48;const x=c.getContext('2d');x.fillStyle='#0b6b3a';x.fillRect(0,0,256,48);x.strokeStyle='#fff';x.lineWidth=3;x.strokeRect(3,3,250,42);x.fillStyle='#fff';x.font='bold 26px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(txt.slice(0,18),128,26);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t}
 
 // ============================================================ GEOMETRY BUILDER
-class Buf{constructor(){this.p=[];this.n=[];this.uv=[];this.c=[]}
+/* geometry builder: growable typed arrays written in place (the old version grew plain JS arrays with spread pushes
+   and then copied them – several times the memory per tile, all of it garbage right after) */
+class Buf{constructor(){this.np=0;this.p=null;this.n=null;this.uv=null;this.c=null}
+ grow(v){const cap=this.p?this.p.length/9:0;if(this.np+1<=cap)return;const nc=Math.max(64,cap*2);const g=(a,k)=>{const b=new Float32Array(nc*k);if(a)b.set(a);return b};this.p=g(this.p,9);this.n=g(this.n,9);this.uv=g(this.uv,6);if(this.c||v)this.c=g(this.c,9)}
  tri(a,b,c,nd,uva,uvb,uvc,col){
   const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
   let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
   if(nd&&(nx*nd[0]+ny*nd[1]+nz*nd[2])<0){[b,c]=[c,b];[uvb,uvc]=[uvc,uvb];nx=-nx;ny=-ny;nz=-nz}
   const l=Math.hypot(nx,ny,nz)||1;nx/=l;ny/=l;nz/=l;
-  this.p.push(...a,...b,...c);for(let i=0;i<3;i++)this.n.push(nx,ny,nz);
-  this.uv.push(...(uva||[0,0]),...(uvb||[0,0]),...(uvc||[0,0]));
-  if(col)for(let i=0;i<3;i++)this.c.push(col.r,col.g,col.b)}
- geo(){if(!this.p.length)return null;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(this.p,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(this.n,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(this.uv,2));if(this.c.length)g.setAttribute('color',new THREE.Float32BufferAttribute(this.c,3));g.computeBoundingSphere();return g}}
+  this.grow(!!col);const k=this.np,P=this.p,N=this.n,U=this.uv,o=k*9;
+  P[o]=a[0];P[o+1]=a[1];P[o+2]=a[2];P[o+3]=b[0];P[o+4]=b[1];P[o+5]=b[2];P[o+6]=c[0];P[o+7]=c[1];P[o+8]=c[2];
+  for(let q=0;q<3;q++){N[o+q*3]=nx;N[o+q*3+1]=ny;N[o+q*3+2]=nz}
+  const u=k*6;if(uva){U[u]=uva[0];U[u+1]=uva[1]}if(uvb){U[u+2]=uvb[0];U[u+3]=uvb[1]}if(uvc){U[u+4]=uvc[0];U[u+5]=uvc[1]}
+  if(col){if(!this.c)this.c=new Float32Array(this.p.length);const C=this.c;for(let q=0;q<3;q++){C[o+q*3]=col.r;C[o+q*3+1]=col.g;C[o+q*3+2]=col.b}}
+  this.np++}
+ geo(){if(!this.np)return null;const n=this.np,g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(this.p.slice(0,n*9),3));g.setAttribute('normal',new THREE.BufferAttribute(this.n.slice(0,n*9),3));g.setAttribute('uv',new THREE.BufferAttribute(this.uv.slice(0,n*6),2));if(this.c)g.setAttribute('color',new THREE.BufferAttribute(this.c.slice(0,n*9),3));g.computeBoundingSphere();return g}}
 const UP=[0,1,0];
 // ============================================================ TERRAIN ELEVATION (AWS Terrain Tiles · Terrarium encoding · ~10 m)
 const TERR={z:HIGH?15:14,tiles:new Map(),ref:null,ver:0};
