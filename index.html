@@ -4552,7 +4552,7 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
    everything belonging to tiles more than KEEP tiles from the car that are not coming up on the route; nodes of the
    current route are always kept. Dropped tiles are simply fetched again (usually from the local cache) if needed. */
 (function(){
- const KEEP=3,AHEAD=3000,J={runs:0,raw:0,nodes:0,feat:0};window.JANITOR=J;
+ const KEEP=2,AHEAD=3000,J={runs:0,raw:0,nodes:0,feat:0};window.JANITOR=J;
  let routeSet=null,routeRef=null;
  function routeNodes(G){if(routeRef!==G.route){routeRef=G.route;routeSet=new Set(G.route.nodes)}return routeSet}
  function keepKeys(G){const e=G.ego,K=new Set(),ci=Math.floor(toLat(e.z)/TS),cj=Math.floor(toLon(e.x)/TS);
