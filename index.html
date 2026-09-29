@@ -4359,7 +4359,7 @@ function impasseWatch(dt){const G=game,e=G.ego;if(!G.route||G.uturn||G.rerouting
  if(hit&&(!G.impasse||Math.hypot(G.impasse.x-hit.x,G.impasse.z-hit.z)>30||G.simTime-G.impasse.t>60)){G.impasse={...hit,t:G.simTime};G.status='⛔ '+hit.why+' ahead · turning around';
   if(hit.why==='protest'&&G.protest.state==='blocking')protestReroute();else rerouteNow({preferUturn:true})}}
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
- const legit=G.charging||G.tow||G.pullOver||G.rerouting||G.uturn||(G.protest&&G.protest.state==='rerouting')||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
+ const legit=G.charging||G.tow||G.pullOver||G.sickStop||G.rerouting||G.uturn||(G.protest&&G.protest.state==='rerouting')||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
  if(G.overtakeT>0&&smartOn()){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
  const waitOK=/merg|lane closed|lane ends|closed lane|waiting|yield|gap|work zone|flagger|officer|creeping|junction|driveway|crossing|unprotected|roundabout|pedestrian|school bus|train|gates|drawbridge|stop sign|queue|ambulance|fire engine|police|emergency|pulling over|toll/i.test(G.status||''); /* ordinary waits: allowed ~1 min before counting as stuck */
  if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=waitOK?dt/6:dt;
@@ -6911,7 +6911,8 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;
    /* sickness */
    if(lastV!=null){const al=(e.v-lastV)/dt;let dh=e.head-lastH;dh=Math.atan2(Math.sin(dh),Math.cos(dh));const at=e.v*dh/dt;if(Math.abs(al)<14&&Math.abs(at)<14){const rear=/rear/.test(mySeat())?1.3:1,screenF=act==='movie'||act==='call'?1.8:act==='nap'?0.4:1,moodF=C.mood==='nervous'?1.4:C.mood==='thrill'?0.6:1;sick=clamp(sick+(Math.max(0,Math.abs(al)-1.2)*0.35+Math.max(0,Math.abs(at)-1.5)*0.45)*dt*rear*screenF*moodF-dt*0.12,0,100)}}lastV=e.v;lastH=e.head;
-   if(sick>90&&pullT<=0&&e.v>2){pullT=35;say(PASS[0]||{name:'You'},'I\'m going to be sick… pull over!')}if(pullT>0){pullT-=dt;capSet('sick',pullT>5?0:null);XB.sick=pullT>5?2.2:0;window.SIGOVR=pullT>5?1:window.SIGOVR;sick=Math.max(0,sick-dt*3);G.status='🤢 Pulling over so the passenger can get some air'}else{capSet('sick',null);XB.sick=0}
+   if(sick>90&&pullT<=0&&e.v>2&&!fastOn()&&!(G.sickLast&&G.simTime-G.sickLast<600)){pullT=25;G.sickLast=G.simTime;say(PASS[0]||{name:'You'},'I\'m going to be sick… pull over!')} /* no sickness stops in Express / Chase (the rider chose flat-out); at most one stop per 10 min */
+   if(pullT>0){pullT-=dt;capSet('sick',pullT>5?0:null);XB.sick=pullT>5?2.2:0;window.SIGOVR=pullT>5?1:window.SIGOVR;sick=Math.max(0,sick-dt*3);G.sickStop=pullT>0;G.status='🤢 Pulling over so the passenger can get some air'}else{capSet('sick',null);XB.sick=0;G.sickStop=false}
    /* chat */
    chatT-=dt;if(chatT<0&&!pullT){chatT=rnd(35,80);const p=PASS.length?pick(PASS.filter(q=>!q.kid).length?PASS.filter(q=>!q.kid):PASS):null;if(p)say(p,pick([L.place(),L.weather(),L.speed(e.v)]))}
    if(C.kids&&PASS.some(p=>p.kid)){areT-=dt;if(areT<0){areT=rnd(70,160);const k=PASS.find(p=>p.kid);k.asked=(k.asked||0)+1;say(k,L.kid(k.asked));setTimeout(()=>bubble('You',pick(['Almost!','Soon, sweetie.','Look out the window!','The screen says '+(G.etaStr||'not long')+'.'])),2500)}}
