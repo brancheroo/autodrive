@@ -5584,6 +5584,42 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   postRender(){try{drawDebug()}catch(err){}if(Math.random()<0.1)try{dash()}catch(err){}}});
 })();
 </script>
+<script>/* mods/29e-looptrip.js */
+/* Loop breaker + trip black box.
+   LOOP BREAKER: every automatic reroute (stuck detour, impasse U-turn, closures, floods, festivals…) goes through here.
+   The car's path is tracked in ~60 m cells. If it passes the same cell a 3rd time within 10 min, or reroutes more
+   than 4 times in 3 min, rerouting locks for 3 min: the car keeps its current route and waits instead of detouring
+   (the stuck watchdog then only waits). Manual reroutes (button / N) are never blocked.
+   BLACK BOX: every 3 s the trip state (position, speed, status, reroutes, memory, fps) is appended to a ring of 300
+   entries in localStorage 'autodriveBlackbox', with every error and reroute. It survives a crash; 🧾 copies it. */
+(function(){
+ const LB={cells:new Map(),rr:[],lockUntil:0,why:''};window.LOOPBRK=LB;
+ const cellOf=(x,z)=>Math.round(toLat(z)*1800)+':'+Math.round(toLon(x)*1800);
+ const _rr=window.rerouteNow;
+ window.rerouteNow=function(opt){opt=opt||{};const G=typeof game!=='undefined'?game:null;const now=G?G.simTime:0;
+  if(!opt.manual&&G){if(now<LB.lockUntil){G.status='🔁 Loop guard: staying on this route ('+LB.why+')';bb('reroute-blocked',{why:LB.why});return Promise.resolve()}
+   LB.rr=LB.rr.filter(t=>now-t<180);LB.rr.push(now);if(LB.rr.length>4){lock('too many reroutes');G.status='🔁 Loop guard: staying on this route';bb('reroute-blocked',{why:LB.why});return Promise.resolve()}}
+  bb('reroute',{manual:!!opt.manual,opt:Object.keys(opt).join(','),status:G&&G.status});return _rr.apply(this,arguments)};
+ function lock(why){const G=game;LB.lockUntil=G.simTime+180;LB.why=why;bb('loop-lock',{why})}
+ LB.locked=()=>typeof game!=='undefined'&&game&&game.simTime<LB.lockUntil;
+ /* ---------- black box ---------- */
+ const KEY='autodriveBlackbox';let BB=[];try{BB=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){BB=[]}
+ let dirty=false;function bb(ev,d){const G=typeof game!=='undefined'?game:null;BB.push({t:new Date().toISOString().slice(11,19),ev,s:G&&G.ego?Math.round(G.ego.s):null,...d});if(BB.length>300)BB.splice(0,BB.length-300);dirty=true}
+ window.BLACKBOX={log:bb,get:()=>BB,clear:()=>{BB=[];try{localStorage.removeItem(KEY)}catch(e){}}};
+ addEventListener('error',e=>bb('error',{msg:String(e.message).slice(0,160),line:e.lineno}));
+ let fr=0,fT=performance.now();(function tick(){fr++;requestAnimationFrame(tick)})();
+ setInterval(()=>{const G=typeof game!=='undefined'?game:null;const dt=(performance.now()-fT)/1000,fps=Math.round(fr/Math.max(0.5,dt));fr=0;fT=performance.now();
+  if(G&&G.route&&G.ego&&G.ego.mesh)bb('tick',{km:+(G.ego.s/1000).toFixed(2),of:+(G.route.total/1000).toFixed(1),mph:Math.round(G.ego.v*2.237),st:(G.status||'').slice(0,60),car:G.spec.id,mb:performance.memory?Math.round(performance.memory.usedJSHeapSize/1e6):null,fps,tiles:TILES.size,lock:LB.locked()});
+  if(dirty){dirty=false;try{localStorage.setItem(KEY,JSON.stringify(BB))}catch(e){}}},3000);
+ function copy(){const txt=JSON.stringify(BB);try{navigator.clipboard.writeText(txt).then(()=>{if(game)game.status='🧾 Trip log copied – paste it to Claude'})}catch(e){}}
+ MODS.push({id:'looptrip',
+  start(){LB.cells.clear();LB.rr=[];LB.lockUntil=0;LB.why='';const G=game;bb('trip-start',{car:G.spec&&G.spec.id,from:G.A&&G.A.label,to:G.B&&G.B.label});if(!document.getElementById('bbBtn'))UIX.btn('bbBtn','🧾','Copy trip log (for bug reports)',copy)},
+  arrive(){bb('arrived',{})},
+  sim(dt){const G=game;if(!G||!G.ego||!G.ego.mesh||G.uturn)return;const k=cellOf(G.ego.mesh.position.x,G.ego.mesh.position.z),now=G.simTime;let c=LB.cells.get(k);
+   if(!c){c={n:0,last:-1e9};LB.cells.set(k,c)}if(now-c.last>45){c.n=now-c.last<600?c.n+1:1;c.last=now;if(c.n>=3&&!LB.locked()){lock('drove the same spot 3 times');G.status='🔁 Loop detected – staying on the current route'}}else c.last=now;
+   if(LB.cells.size>4000){for(const [kk,v] of LB.cells)if(now-v.last>900)LB.cells.delete(kk)}}});
+})();
+</script>
 <script>/* mods/30-isect.js */
 /* (3) Four-way stop negotiation. Every stop-controlled node keeps an arrival queue shared by your car, route
    traffic and cross-street traffic. After the legal full stop a vehicle may only go when it is first in the
