@@ -3240,7 +3240,7 @@ function satIcon(x,W,H,dpr){const on=SATL.useT>0,bl=SATL.flash>0,cx=W-16*dpr,cy=
   x.beginPath();x.moveTo(0,-2.5*dpr);x.lineTo(0,-5.5*dpr);x.stroke();if(on||bl){x.beginPath();x.arc(0,-5.5*dpr,3.5*dpr,Math.PI*1.1,Math.PI*1.9);x.stroke()}x.restore();
   if(on){x.font=`${6.5*dpr}px system-ui`;x.textAlign='right';x.fillStyle='#ffd23a';x.fillText(`SAT ${SATL.n}`,cx-12*dpr,cy-4*dpr);x.textAlign='left'}}
 function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,W=Math.round(c.clientWidth*dpr),H=Math.round(c.clientHeight*dpr),_rs=(c.width!==W&&(c.width=W),c.height!==H&&(c.height=H)),x=c.getContext('2d');
- x.fillStyle='#070a0f';x.fillRect(0,0,W,H);{const wxs=WX.perc;S={...S,wedges:S.wedges.map(w=>[w[0],w[1],w[2]*wxs,w[3]]),lidar:S.lidar&&Math.round(S.lidar*wxs),radar:S.radar&&Math.round(S.radar*Math.max(wxs,0.7)),cam:S.cam&&Math.round(S.cam*wxs)}}const view=Math.min(maxRange(S),320),sc=(H*0.8)/view,cx=W/2,cy=H*0.86;
+ x.setTransform(1,0,0,1,0,0);x.globalAlpha=1;x.fillStyle='#070a0f';x.fillRect(0,0,W,H);{const wxs=WX.perc;S={...S,wedges:S.wedges.map(w=>[w[0],w[1],w[2]*wxs,w[3]]),lidar:S.lidar&&Math.round(S.lidar*wxs),radar:S.radar&&Math.round(S.radar*Math.max(wxs,0.7)),cam:S.cam&&Math.round(S.cam*wxs)}}const view=Math.min(maxRange(S),320),sc=(H*0.8)/view,cx=W/2,cy=H*0.86;
  const col={lidar:'rgba(62,166,255,',cam:'rgba(53,208,127,',radar:'rgba(255,174,42,',thermal:'rgba(255,90,40,',sonic:'rgba(200,120,255,'};
  // coverage wedges
  for(const [dir,fov,rng,t] of S.wedges){x.fillStyle=col[t]+'0.10)';x.strokeStyle=col[t]+'0.45)';x.lineWidth=dpr;x.beginPath();x.moveTo(cx,cy);const a0=(-90-dir-fov/2)*Math.PI/180,a1=(-90-dir+fov/2)*Math.PI/180;x.arc(cx,cy,Math.min(rng,view*1.3)*sc,a0,a1);x.closePath();x.fill();x.stroke()}
@@ -3257,7 +3257,7 @@ function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,
  leg.forEach((t,i)=>{const k=t.startsWith('Lidar')?'lidar':t.startsWith('Radar')?'radar':'cam';x.fillStyle=col[k]+'1)';x.fillText('● '+t,6*dpr,(12+i*11)*dpr)});
  x.fillStyle='rgba(200,210,225,.8)';x.textAlign='right';x.fillText(`${dets.length} tracked`,W-6*dpr,12*dpr);x.textAlign='left'}
 
-function drawMini(){const c=$('mini'),wrap=$('miniWrap');const W=Math.round(wrap.clientWidth*devicePixelRatio),H=Math.round(wrap.clientHeight*devicePixelRatio);if(c.width!==W)c.width=W;if(c.height!==H)c.height=H; /* only resize when it changes: every assignment reallocated the canvas backing store (~1–2 MB per frame of garbage) */const x=c.getContext('2d'),G=game,e=G.ego,dpr=devicePixelRatio;
+function drawMini(){const c=$('mini'),wrap=$('miniWrap');const W=Math.round(wrap.clientWidth*devicePixelRatio),H=Math.round(wrap.clientHeight*devicePixelRatio);if(c.width!==W)c.width=W;if(c.height!==H)c.height=H; /* only resize when it changes: every assignment reallocated the canvas backing store (~1–2 MB per frame of garbage) */const x=c.getContext('2d'),G=game,e=G.ego,dpr=devicePixelRatio;x.setTransform(1,0,0,1,0,0);x.globalAlpha=1;
  const lat=toLat(e.z),lon=toLon(e.x),z=MINI.z,zi=Math.min(16,Math.floor(z)),sc=2**(z-zi)*dpr,cx=mercX(lon,zi),cy=mercY(lat,zi);
  x.fillStyle='#0e1116';x.fillRect(0,0,W,H);x.save();x.translate(W/2,H/2);if(MINI.headingUp)x.rotate(-(Math.PI/2-e.head));x.scale(sc,sc);
  const rad=Math.hypot(W,H)/2/sc,tx0=Math.floor((cx-rad)/256),tx1=Math.floor((cx+rad)/256),ty0=Math.floor((cy-rad)/256),ty1=Math.floor((cy+rad)/256);
