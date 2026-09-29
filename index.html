@@ -3200,7 +3200,7 @@ function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cv
  renderer.setScissorTest(false);renderer.setViewport(0,0,innerWidth,innerHeight);G.ego.mesh.visible=vis;
  if(G.cvT&&performance.now()-G.cvT<80)return;G.cvT=performance.now();
  // overlay: planned path + boxes
- const ov=$('cvOv'),dpr=devicePixelRatio,W=ov.width=Math.round(r.width*dpr),H=ov.height=Math.round(r.height*dpr),x=ov.getContext('2d');
+ const ov=$('cvOv'),dpr=devicePixelRatio,W=Math.round(r.width*dpr),H=Math.round(r.height*dpr);if(ov.width!==W)ov.width=W;if(ov.height!==H)ov.height=H;const x=ov.getContext('2d');x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,W,H); /* resize only on change (every resize reallocated the canvas) */
  const proj=(px,py,pz)=>{_v.set(px,py,pz).project(cvCam);return _v.z<1&&_v.z>-1?[(_v.x+1)/2*W,(1-_v.y)/2*H]:null};
  x.fillStyle='rgba(53,208,127,.18)';x.strokeStyle=CVCOL.lane;x.lineWidth=1.5*dpr;const L=[],Rr=[];
  for(let s=e.s+3;s<Math.min(G.route.total,e.s+90);s+=3){const p=routeXZ(s,e.off||1.85),a=proj(p[0]+p[3]*1.6,0.05,p[1]-p[2]*1.6),b=proj(p[0]-p[3]*1.6,0.05,p[1]+p[2]*1.6);if(a&&b){L.push(a);Rr.push(b)}}
@@ -3239,7 +3239,7 @@ function satIcon(x,W,H,dpr){const on=SATL.useT>0,bl=SATL.flash>0,cx=W-16*dpr,cy=
   x.translate(cx,cy);x.rotate(-0.6);x.fillRect(-2.5*dpr,-2.5*dpr,5*dpr,5*dpr);for(const s2 of [-1,1]){x.fillRect(s2>0?3.5*dpr:-9.5*dpr,-2*dpr,6*dpr,4*dpr);x.beginPath();x.moveTo(s2*2.5*dpr,0);x.lineTo(s2*3.5*dpr,0);x.stroke()}
   x.beginPath();x.moveTo(0,-2.5*dpr);x.lineTo(0,-5.5*dpr);x.stroke();if(on||bl){x.beginPath();x.arc(0,-5.5*dpr,3.5*dpr,Math.PI*1.1,Math.PI*1.9);x.stroke()}x.restore();
   if(on){x.font=`${6.5*dpr}px system-ui`;x.textAlign='right';x.fillStyle='#ffd23a';x.fillText(`SAT ${SATL.n}`,cx-12*dpr,cy-4*dpr);x.textAlign='left'}}
-function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,W=c.width=Math.round(c.clientWidth*dpr),H=c.height=Math.round(c.clientHeight*dpr),x=c.getContext('2d');
+function drawBEV(dets,S){const G=game,e=G.ego,c=$('cvBev'),dpr=devicePixelRatio,W=Math.round(c.clientWidth*dpr),H=Math.round(c.clientHeight*dpr),_rs=(c.width!==W&&(c.width=W),c.height!==H&&(c.height=H)),x=c.getContext('2d');
  x.fillStyle='#070a0f';x.fillRect(0,0,W,H);{const wxs=WX.perc;S={...S,wedges:S.wedges.map(w=>[w[0],w[1],w[2]*wxs,w[3]]),lidar:S.lidar&&Math.round(S.lidar*wxs),radar:S.radar&&Math.round(S.radar*Math.max(wxs,0.7)),cam:S.cam&&Math.round(S.cam*wxs)}}const view=Math.min(maxRange(S),320),sc=(H*0.8)/view,cx=W/2,cy=H*0.86;
  const col={lidar:'rgba(62,166,255,',cam:'rgba(53,208,127,',radar:'rgba(255,174,42,',thermal:'rgba(255,90,40,',sonic:'rgba(200,120,255,'};
  // coverage wedges
