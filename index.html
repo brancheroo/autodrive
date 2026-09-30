@@ -4439,7 +4439,7 @@ function impasseWatch(dt){const G=game,e=G.ego;if(!G.route||G.uturn||G.rerouting
 function stuckWatch(dt){const G=game;if(!G||!G.ego||!G.route||G.arrived||G.paused||G.fast)return;const e=G.ego,W=G.stuck||(G.stuck={s:e.s,t:0,cd:0});W.cd=Math.max(0,W.cd-dt);
  const legit=G.charging||G.tow||G.pullOver||G.sickStop||G.rerouting||G.uturn||(G.protest&&G.protest.state==='rerouting')||/red light|yellow light|Full stop at stop sign|Pulling into|charg|fuel/i.test(G.status||'');
  if(G.overtakeT>0&&smartOn()){G.overtakeT=0}if(G.overtakeT>0){G.overtakeT-=dt;CHASE.evade=lerp(CHASE.evade,-3.4,Math.min(1,dt*2.5));if(G.overtakeT>0)G.status='↪️ Overtaking stopped traffic'}else if(!fastOn()&&!(G.dodgeT>0))CHASE.evade=lerp(CHASE.evade,0,Math.min(1,dt*0.8));
- const waitOK=/merg|lane closed|lane ends|closed lane|waiting|yield|gap|work zone|flagger|officer|creeping|junction|driveway|crossing|unprotected|roundabout|pedestrian|school bus|train|gates|drawbridge|stop sign|queue|ambulance|fire engine|police|emergency|pulling over|toll/i.test(G.status||''); /* ordinary waits: allowed ~1 min before counting as stuck */
+ const waitOK=/merg|lane closed|lane ends|closed lane|waiting|yield|gap|tight|boxed|keeping stopping|holding line|easing off|work zone|flagger|officer|creeping|junction|driveway|crossing|unprotected|roundabout|pedestrian|school bus|train|gates|drawbridge|stop sign|queue|ambulance|fire engine|police|emergency|pulling over|toll/i.test(G.status||''); /* ordinary waits: allowed ~1 min before counting as stuck */
  if(e.s>W.s+3||legit){if(e.s>W.s+60)W.n=0;W.s=e.s;W.t=0;return}W.t+=waitOK?dt/6:dt;
  if(W.t>((window.TUNE||{}).stuckT??10)){W.t=0;W.s=e.s;W.n=(W.n||0)+1;if(e.loose&&typeof recoverEgo==='function')recoverEgo();
   /* no pulling out around stopped traffic and no squeezing through it (both caused side-swipes): a queue is waited out; after ~40 s of no progress the ride detours */
@@ -5649,14 +5649,15 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
     coming up in the open lane eases off and leaves a gap (the merge itself still passes the normal gap checks) ---------- */
  const Z={car:null,t:0,wait:0};B.zip=Z;
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(isEgo||a!==Z.car)return null;const G=game,gap=G.ego.s-a.s-((a.spec.L||4.6)+G.spec.L)/2-6;return {v:Math.max(0,allow(Math.max(0,G.ego.v-1),Math.max(0,gap))),reason:''}});
- function zipper(dt){const G=game,e=G.ego,L=window.LANES;const blocked=/closed lane|lane ends|Our lane ends|waiting for a gap|Merging/i.test(G.status||'')&&e.v<3;Z.wait=blocked?Z.wait+dt:0;
+ function zipper(dt){const G=game,e=G.ego,L=window.LANES;const cones=window.ACT&&ACT.list.some(o=>o.kind==='cone'&&o.s>e.s&&o.s-e.s<45);const blocked=(/closed lane|lane ends|Our lane ends|waiting for a gap|Merging/i.test(G.status||'')||cones&&/Yielding|Tight gap|boxed in|Keeping stopping|holding line/i.test(G.status||''))&&e.v<3;Z.wait=blocked?Z.wait+dt:0;
+  const base=laneOffsetAt(routeLLnh(e.s)[2]),myK=L&&!smartOn()?L.k:Math.round((base-(e.off??base))/3.6); /* the lane we are really in (satellite cars don't use the lane module) */
   if(Z.car){Z.t+=dt;const c=Z.car;if(!c.mesh||!G.agents.includes(c)||c.s>e.s||Z.t>14||!blocked&&Z.t>3){Z.car=null;Z.t=0}return}
-  if(Z.wait>4&&L){let best=null;for(const a of G.agents){if(a.kind!=='route'||a.loose||a.aggro||a.s==null||a.s>e.s||e.s-a.s>45)continue;if(a.laneK===L.k)continue;if(!best||a.s>best.s)best=a}if(best){Z.car=best;Z.t=0;G.status='🤝 Zipper merge – a driver is letting us in'}}}
+  if(Z.wait>4&&L){let best=null;for(const a of G.agents){if(a.kind!=='route'||a.loose||a.aggro||a.s==null||a.s>e.s||e.s-a.s>45)continue;if((a.laneK||0)===myK)continue;if(!best||a.s>best.s)best=a}if(best){Z.car=best;Z.t=0;G.status='🤝 Zipper merge – a driver is letting us in'}}}
  MODS.push({id:'fsd-behave',
   start(){OFF.list.forEach(o=>scene.remove(o.mesh));OFF.list=[];OFF.seen=new Set();B.rorT=0;XB.park=0;const G=game;S.km0=G.odo||0;S.t0=G.simTime||0;S.inter=0;S.mrm=0;S.progSum=0;S.limN=0;G.reverse=null;capSet('rev',null);
    if(!document.getElementById('dashBtn')){UIX.btn('dashBtn','📊','Safety dashboard',()=>B.toggleDash());UIX.btn('dbgBtn','🧠','Planner debug view',()=>B.toggleDebug())}
    if(!B.crashHook){B.crashHook=true;const pp=CRASH.log.push;CRASH.log.push=function(o){try{snap(o)}catch(err){}return pp.apply(this,arguments)}}},
-  sim(dt){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;if(G.reverse){reversing(dt);return}if(!on())return;officers(dt);learn(dt);zipper(dt);
+  sim(dt){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;if(G.reverse){reversing(dt);return}try{zipper(dt)}catch(err){}if(!on())return;officers(dt);learn(dt);
    const man=/Manual driving/.test(G.status||'');if(man&&!S.man)S.inter++;S.man=man;if(window.FSD&&FSD.mrm&&!S.mrmOn){S.mrm++;S.mrmOn=true}if(window.FSD&&!FSD.mrm)S.mrmOn=false;
    const lim=speedLimitAt(routeLLnh(G.ego.s)[2])/MPH;if(lim>2){S.progSum+=Math.min(1.2,G.ego.v/lim)*dt;S.limN+=dt}},
   postRender(){try{drawDebug()}catch(err){}if(Math.random()<0.1)try{dash()}catch(err){}}});
