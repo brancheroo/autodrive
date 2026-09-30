@@ -925,6 +925,7 @@ function roadsArrived(key){const rr=rawRoads(key);if(!rr||!rr.length)return;
  for(const TT of [...TILES.values()]){if(!TT.missing||!TT.missing.includes(key))continue;TT.missing=TT.missing.filter(k=>k!==key);
   const [ti,tj]=TT.key.split('_').map(Number),ax=toX(tj*TS),bx=toX((tj+1)*TS),az=toZ((ti+1)*TS),bz=toZ(ti*TS),X0=Math.min(ax,bx)-25,X1=Math.max(ax,bx)+25,Z0=Math.min(az,bz)-25,Z1=Math.max(az,bz)+25;
   if(!rr.some(w=>w.pts.some((a,i)=>{const b=w.pts[i+1]||a;return Math.max(a[0],b[0])>X0&&Math.min(a[0],b[0])<X1&&Math.max(a[1],b[1])>Z0&&Math.min(a[1],b[1])<Z1})))continue;
+  {const now=performance.now();TT._rb=(TT._rb||[]).filter(t=>now-t<60000);if(TT._rb.length>=2)continue; /* a tile is rebuilt at most twice a minute – a neighbour arriving and being dropped again can never loop */TT._rb.push(now);window.RBN=(window.RBN||0)+1}
   if(!REBUILDQ.includes(TT.key))REBUILDQ.push(TT.key)}} /* rebuilt one at a time from manageTiles, never several in one frame */
 const REBUILDQ=[];
 // ---- roadside billboards: fictional products, deterministic per tile (same world every drive)
@@ -1093,7 +1094,7 @@ let BT_DEADLINE=Infinity;const BT={gen:null,key:null,ox:0,oy:0,T:null};
 function btAbort(){const T=BT.T;if(T&&!TILES.has(T.key))for(const id of T.ids)BUILTWAYS.delete(id);BT.gen=null;BT.key=null;BT.T=null;BT_DEADLINE=Infinity}
 function btFinish(){if(!BT.gen)return;if(ORIGIN.lon!==BT.ox||ORIGIN.lat!==BT.oy){btAbort();return}const g=BT.gen;BT.gen=null;BT_DEADLINE=Infinity;try{while(!g.next().done){}}catch(e){console.warn('tile build failed',e)}BT.key=null}
 function buildTile(key){btFinish();BT_DEADLINE=Infinity;const g=buildTileGen(key);try{while(!g.next().done){}}catch(e){console.warn('tile build failed',e)}}
-function btStart(key){if(BT.gen)return false;BT.gen=buildTileGen(key);BT.key=key;BT.ox=ORIGIN.lon;BT.oy=ORIGIN.lat;BT.T=null;return true}
+function btStart(key){if(BT.gen)return false;window.BTN=(window.BTN||0)+1;BT.gen=buildTileGen(key);BT.key=key;BT.ox=ORIGIN.lon;BT.oy=ORIGIN.lat;BT.T=null;return true}
 function btStep(ms){if(!BT.gen)return;if(ORIGIN.lon!==BT.ox||ORIGIN.lat!==BT.oy){btAbort();return}BT_DEADLINE=performance.now()+ms;let r;try{r=BT.gen.next()}catch(e){console.warn('tile build failed',e);r={done:true}}BT_DEADLINE=Infinity;if(r.done){const k=BT.key;BT.gen=null;BT.key=null;if(window.onTileBuilt)try{onTileBuilt(k)}catch(e){}}}
 
 function* buildTileGen(key){
@@ -5693,7 +5694,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  /* ---------- memory-spike recorder: 1 Hz sizes of every major structure; a jump > 800 MB (or > 1.5 GB) is saved to the log with the last 12 readings, > 2 GB pauses the game instead of freezing ---------- */
  const RING=[];let prevH=0,spiked=false;const flush=()=>{try{localStorage.setItem(KEY,JSON.stringify(BB))}catch(e){}};
  const cnt=()=>{const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.route)return null;const n=f=>{try{return f()}catch(e){return -1}};
-  return {mb:Math.round(performance.memory.usedJSHeapSize/1e6),km:+(G.ego.s/1000).toFixed(2),tiles:TILES.size,raw:RAW.size,node:NODEINFO.size,feat:n(()=>OSMX.feat.length),kids:scene.children.length,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures,ag:G.agents.length,peds:G.peds.length,act:n(()=>ACT.list.length),gc:n(()=>GC.tracked),rebq:n(()=>REBUILDQ.length),bt:n(()=>BT.key||'-'),hyps:n(()=>FSD.hyps.size),trk:n(()=>DRIVE2.trk.size),xing:n(()=>INFRA.xings.length),park:n(()=>PARKQ.length),st:(G.status||'').slice(0,40)}};
+  return {mb:Math.round(performance.memory.usedJSHeapSize/1e6),km:+(G.ego.s/1000).toFixed(2),tiles:TILES.size,raw:RAW.size,node:NODEINFO.size,feat:n(()=>OSMX.feat.length),kids:scene.children.length,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures,ag:G.agents.length,peds:G.peds.length,act:n(()=>ACT.list.length),gc:n(()=>GC.tracked),rebq:n(()=>REBUILDQ.length),btn:window.BTN||0,rbn:window.RBN||0,bt:n(()=>BT.key||'-'),hyps:n(()=>FSD.hyps.size),trk:n(()=>DRIVE2.trk.size),xing:n(()=>INFRA.xings.length),park:n(()=>PARKQ.length),st:(G.status||'').slice(0,40)}};
  setInterval(()=>{if(!performance.memory)return;const c=cnt();if(!c)return;RING.push(c);if(RING.length>30)RING.shift();
   if((c.mb>1500||c.mb-prevH>800)&&!spiked){spiked=true;bb('memory-spike',{ring:RING.slice(-12)});flush();if(c.mb>2000&&game){game.paused=true;game.status='⚠️ Memory spike – paused. Press 🧾 and send the log.'}}
   if(c.mb<900)spiked=false;prevH=c.mb},1000);
