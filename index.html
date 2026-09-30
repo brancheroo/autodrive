@@ -5711,6 +5711,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    if(!AT.on&&d>120e6&&AT.frame>120){AT.on=true;AT.left=120;AT.rec={};bb('alloc-frame',{mb:Math.round(d/1e6),st:(game&&game.status||'').slice(0,50)})}
    else if(AT.on&&--AT.left<=0){AT.on=false;const top=Object.entries(AT.rec).sort((x,y)=>y[1].sum-x[1].sum).slice(0,10).map(([k,v])=>k+' n'+v.n+' max'+v.mb+'MB sum'+v.sum+'MB');bb('alloc-spike',{top,peak:Math.round(AT.peak/1e6)});flush();AT.peak=0;AT.frame=0}
    AT.frame++;return r};st.__at=1;window.step=st}
+ /* ---------- long-frame attribution (Chrome): any frame over 400 ms is logged with the callbacks that ran in it ---------- */
+ try{new PerformanceObserver(l=>{for(const e of l.getEntries()){if(e.duration<400)continue;bb('long-frame',{ms:Math.round(e.duration),block:Math.round(e.blockingDuration||0),scripts:(e.scripts||[]).slice(0,5).map(x=>({fn:x.sourceFunctionName||x.invoker||'',type:x.invokerType,pos:x.sourceCharPosition,ms:Math.round(x.duration),gc:Math.round(x.forcedStyleAndLayoutDuration||0)})),mb:performance.memory?Math.round(performance.memory.usedJSHeapSize/1e6):null});flush()}}).observe({type:'long-animation-frame',buffered:false})}catch(e){}
  function copy(){const txt=JSON.stringify(BB);try{navigator.clipboard.writeText(txt).then(()=>{if(game)game.status='🧾 Trip log copied – paste it to Claude'})}catch(e){}}
  MODS.push({id:'looptrip',
   start(){LB.cells.clear();LB.rr=[];LB.lockUntil=0;LB.why='';const G=game;bb('trip-start',{car:G.spec&&G.spec.id,from:G.A&&G.A.label,to:G.B&&G.B.label});if(!document.getElementById('bbBtn'))UIX.btn('bbBtn','🧾','Copy trip log (for bug reports)',copy)},
