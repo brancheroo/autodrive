@@ -7429,6 +7429,67 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
 /* local development only: ?opt=1 on localhost loads the (unpublished) test kit so the optimiser can resume after a reload */
 if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(location.search))addEventListener('load',()=>{const s=document.createElement('script');s.src='testkit.js?'+Date.now();document.body.appendChild(s)});
 </script>
+<script>/* mods/85-optpage.js */
+/* Options page: the big control bar is replaced by one small ⚙ button. It opens a full-page options screen where every
+   control of the old bar (and every button other modules add to it) appears as a labelled card with a search box.
+   The real elements are moved into the page (not copied), so all handlers, keyboard shortcuts and module lookups
+   by id keep working; closing puts them back into the (hidden) bar in their original order. */
+(function(){
+ const css=document.createElement('style');css.textContent=`
+#ctrl.gearMode{display:none!important}
+#gearBtn{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);z-index:46;width:40px;height:40px;border-radius:50%;border:1px solid var(--line,#2a3a52);background:rgba(14,20,29,.88);color:var(--text,#e8eef5);font-size:20px;line-height:1;cursor:pointer;padding:0;display:none;backdrop-filter:blur(6px)}
+#gearBtn:hover{background:rgba(32,46,66,.95)}
+#optPage{position:fixed;inset:0;z-index:70;display:none;flex-direction:column;background:rgba(8,12,18,.97);color:var(--text,#e8eef5);font:14px system-ui}
+#optPage.open{display:flex}
+#optPage header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line,#2a3a52);flex:0 0 auto}
+#optPage header h1{font-size:20px;margin:0;font-weight:700}
+#optPage header input[type=search]{flex:1;max-width:380px;padding:8px 12px;border-radius:9px;border:1px solid var(--line,#2a3a52);background:#0e141d;color:inherit;font:inherit}
+#optPage header .note{color:#8fa3bb;font-size:12px;flex:1}
+#optPage header .close{margin-left:auto;padding:8px 14px;border-radius:9px;border:1px solid var(--line,#2a3a52);background:#16202d;color:inherit;font:inherit;cursor:pointer}
+#optGrid{flex:1;overflow:auto;padding:20px 22px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;align-content:start}
+.optCard{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line,#2a3a52);border-radius:12px;background:#0f1722}
+.optCard .ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.optCard .ctl button,.optCard .ctl select{padding:8px 12px;font-size:14px;border-radius:9px}
+.optCard .ctl input[type=range]{flex:1;min-width:120px;width:auto}
+.optCard .d{font-size:12px;line-height:1.35;color:#9fb1c6}
+#optPage ::-webkit-scrollbar{width:10px}#optPage ::-webkit-scrollbar-thumb{background:#2a3a52;border-radius:6px}
+`;document.head.appendChild(css);
+ const O={open:false,moved:[]};window.OPTPAGE=O;
+ const ctrl=()=>document.getElementById('ctrl');
+ const clean=t=>(t||'').replace(/\s*\((?:[A-Za-z0-9 \/.,+\-]{1,18})\)\s*$/,'').replace(/\s+/g,' ').trim();
+ function desc(el){return clean(el.dataset.tip||el.getAttribute('data-title')||el.title||el.getAttribute('aria-label')||'')}
+ let gear=null,page=null,grid=null,search=null;
+ function build(){
+  gear=document.createElement('button');gear.id='gearBtn';gear.textContent='⚙';gear.title='Options';gear.onclick=()=>toggle();document.body.appendChild(gear);
+  page=document.createElement('div');page.id='optPage';
+  page.innerHTML='<header><h1>⚙ Options</h1><input type="search" placeholder="Search options…" id="optSearch"><span class="note">The game keeps running behind this page · Esc to close</span><button class="close" id="optClose">✕ Close</button></header><div id="optGrid"></div>';
+  document.body.appendChild(page);grid=page.querySelector('#optGrid');search=page.querySelector('#optSearch');
+  page.querySelector('#optClose').onclick=()=>toggle(false);
+  search.oninput=()=>{const q=search.value.trim().toLowerCase();for(const c of grid.children)c.style.display=!q||c.textContent.toLowerCase().includes(q)||(c.dataset.k||'').includes(q)?'':'none'};
+  addEventListener('keydown',ev=>{if(ev.key==='Escape'&&O.open){toggle(false);ev.preventDefault();ev.stopPropagation()}},true);
+  addEventListener('keydown',ev=>{if((ev.key==='o'||ev.key==='O')&&!ev.ctrlKey&&!ev.metaKey&&!/^(INPUT|SELECT|TEXTAREA)$/.test((ev.target||{}).tagName||''))toggle()});
+  ctrl().classList.add('gearMode');gear.style.display='block'}
+ function open(){const c=ctrl();if(!c||O.open)return;O.open=true;O.moved=[];grid.innerHTML='';search.value='';
+  const kids=[...c.children];
+  for(let i=0;i<kids.length;i++){const el=kids[i];
+   if(el.id==='dogSay'||el.tagName==='DIV')continue; /* speech bubble etc. stay behind */
+   const card=document.createElement('div');card.className='optCard';const ctl=document.createElement('div');ctl.className='ctl';let d='';const parts=[el];
+   if(el.tagName==='LABEL'&&kids[i+1]&&kids[i+1].tagName==='INPUT'){parts.push(kids[i+1]);d=desc(kids[i+1])||desc(el);i++}else d=desc(el);
+   for(const p of parts){O.moved.push(p);ctl.appendChild(p)}
+   card.appendChild(ctl);if(d){const dd=document.createElement('div');dd.className='d';dd.textContent=d;card.appendChild(dd)}card.dataset.k=(parts.map(p=>p.id).join(' ')).toLowerCase();grid.appendChild(card)}
+  page.classList.add('open');search.focus()}
+ function close(){if(!O.open)return;O.open=false;const c=ctrl();
+  /* put the real elements back into the bar, in their original order, ahead of any non-control children */
+  const first=c.firstChild;for(const el of O.moved)c.insertBefore(el,first&&first.parentNode===c?first:null);
+  /* preserve original relative order: moved elements were appended in order before 'first' (non-controls) */
+  O.moved=[];grid.innerHTML='';page.classList.remove('open')}
+ function toggle(force){const want=force==null?!O.open:force;want?open():close()}
+ O.toggle=toggle;
+ function boot(){if(document.getElementById('gearBtn'))return;if(!ctrl()){setTimeout(boot,300);return}build()}
+ boot();
+ MODS.push({id:'optpage',start(){boot();if(gear)gear.style.display='block'}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
