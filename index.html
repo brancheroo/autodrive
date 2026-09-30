@@ -222,6 +222,9 @@ const CARS=[
 {id:'gargantua',name:'Gargantua',sub:'Six-wheel street-legal super-tug',style:'van',L:7.4,W:2.1,H:2.955,wb:5.4,wr:0.72,hp:9000,z60:1.4,top:250,range:'~1,500,000 mi (est.) · 1 GWh',weight:'~14,000 lb',drive:'6 independent 1,500 ehp hub motors · 360° omni-directional wheels',level:'SAE Level 4 · full Predictacar autonomy stack + tracking satellite (fictional)',
  tech:'Shaped like a giant airport aircraft tug but built to normal road width and fully street legal. Six independent wheels, each twice the normal width and height, carry their own 1,500 ehp hub motor (9,000 ehp in total) and can point and drive in any direction: it crabs sideways, moves diagonally and spins on the spot. A 1 GWh battery pack fills the flat chassis between the axles. It carries every self-driving technology in the game: the Predictacar OmniSense suite (1 km see-through lidar, radar, cameras, thermal, ultrasonics) and the tracking satellite, always on. The low wedge nose and towbar hitch come straight from the airport apron; the full-width glass cab seats six in three rows.',
  colors:[['Apron Yellow','#f2c200'],['Tug Orange','#ff7a00'],['Runway White','#eef0f2'],['Hangar Grey','#5b6168']],dash:'waymo',wheel:'round',sensors:'hyper',sound:'ev',driver:true,gargantua:true,omni:true},
+{id:'ecosemi',name:'Voltex Bolt Semi',sub:'Angular electric semi-truck',style:'van',L:20.0,W:2.55,H:4.1,wb:5.0,wr:0.52,hp:2400,z60:4.2,top:100,range:'500 mi (est.) · 900 kWh',weight:'~64,000 lb gross',drive:'Tri-motor EV · 26,000 lb-ft at the wheels',level:'SAE Level 2+ · supervised (fictional)',
+ tech:'A faceted stainless-steel-look electric tractor with a wedge nose, a steeply raked windshield and a full-width LED bar, pulling a 48 ft trailer wrapped in a different piece of random art every time it is built. Three motors give it huge low-speed torque: 26,000 lb-ft at the wheels, enough to pull away with a full load as quickly as a sports sedan. A 900 kWh pack under the frame gives about 500 miles at highway speed.',
+ colors:[['Bolt Silver','#b9c0c7'],['Obsidian','#16181c'],['Signal Orange','#ff6a1a'],['Forest Green','#1f4d36']],dash:'waymo',wheel:'round',sensors:'tesla',sound:'ev',driver:true,ecosemi:true},,
 ];
 
 // ============================================================ UTIL
@@ -1529,7 +1532,81 @@ function buildGargantua(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}
  
  return g}
 function lodSeg(opts){return opts&&opts.interior?40:(window.GFX&&GFX.get()==='ultra'?32:18)}
-function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);
+/* random trailer art: one of eight painted themes, different every time the truck is built */
+function semiArt(){const W=1536,H=384,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+ const R=(a,b)=>a+Math.random()*(b-a),P=a=>a[Math.floor(Math.random()*a.length)],hsl=(h,s,l,a=1)=>`hsla(${Math.round(h)},${Math.round(s)}%,${Math.round(l)}%,${a})`;
+ const theme=Math.floor(Math.random()*8),h0=R(0,360);
+ const grad=(y0,y1,c0,c1)=>{const g=x.createLinearGradient(0,y0,0,y1);g.addColorStop(0,c0);g.addColorStop(1,c1);x.fillStyle=g;x.fillRect(0,0,W,H)};
+ if(theme===0){grad(0,H,hsl(R(10,40),90,62),hsl(R(300,340),70,40));x.fillStyle='rgba(255,240,200,.95)';x.beginPath();x.arc(R(300,1200),R(120,200),R(50,90),0,7);x.fill();
+  for(let L=0;L<4;L++){x.fillStyle=hsl(h0+L*12,35,30-L*6,1);x.beginPath();x.moveTo(0,H);let y=R(180,260)+L*28;for(let px=0;px<=W;px+=48){y=Math.max(110+L*26,Math.min(H-40,y+R(-46,46)));x.lineTo(px,y)}x.lineTo(W,H);x.fill()}
+  x.strokeStyle='rgba(20,10,30,.8)';x.lineWidth=3;for(let i=0;i<9;i++){const bx=R(100,W-100),by=R(40,160);x.beginPath();x.moveTo(bx-14,by);x.quadraticCurveTo(bx-6,by-10,bx,by);x.quadraticCurveTo(bx+6,by-10,bx+14,by);x.stroke()}}
+ else if(theme===1){x.fillStyle=hsl(h0,30,92);x.fillRect(0,0,W,H);for(let i=0;i<70;i++){const k=Math.floor(R(0,5)),cx=R(0,W),cy=R(0,H),r=R(20,90);x.fillStyle=hsl(R(0,360),85,R(45,65));x.strokeStyle=hsl(R(0,360),80,30);x.lineWidth=R(4,9);
+   if(k===0){x.beginPath();x.arc(cx,cy,r,0,7);x.fill()}else if(k===1){x.beginPath();x.moveTo(cx,cy-r);x.lineTo(cx+r,cy+r);x.lineTo(cx-r,cy+r);x.closePath();x.fill()}else if(k===2){x.fillRect(cx,cy,r*1.4,r*0.5)}else if(k===3){x.beginPath();x.moveTo(cx,cy);for(let t=0;t<8;t++)x.quadraticCurveTo(cx+t*16+8,cy+(t%2?-26:26),cx+(t+1)*16,cy);x.stroke()}else{for(let a=0;a<5;a++)for(let b=0;b<5;b++){x.beginPath();x.arc(cx+a*16,cy+b*16,4,0,7);x.fill()}}}}
+ else if(theme===2){grad(0,H,hsl(205,70,22),hsl(215,80,48));x.fillStyle='rgba(255,250,225,.9)';x.beginPath();x.arc(R(250,1300),R(80,130),R(40,70),0,7);x.fill();
+  for(let L=0;L<8;L++){x.fillStyle=hsl(200+L*4,70,22+L*7,0.95);x.beginPath();x.moveTo(0,H);const ph=R(0,6),amp=R(14,30),fr=R(0.004,0.009),by=150+L*32;for(let px=0;px<=W;px+=8)x.lineTo(px,by+Math.sin(px*fr+ph)*amp);x.lineTo(W,H);x.fill();
+   x.fillStyle='rgba(255,255,255,.75)';for(let i=0;i<14;i++){const px=R(0,W);x.beginPath();x.arc(px,by+Math.sin(px*fr+ph)*amp,R(2,5),0,7);x.fill()}}}
+ else if(theme===3){grad(0,H,hsl(250,50,8),hsl(280,50,22));x.fillStyle='rgba(255,255,255,.9)';for(let i=0;i<120;i++)x.fillRect(R(0,W),R(0,200),2,2);x.fillStyle='rgba(255,250,220,.95)';x.beginPath();x.arc(R(200,1300),R(70,120),R(28,50),0,7);x.fill();
+  for(let px=0;px<W;){const w=R(40,100),h=R(90,260);x.fillStyle=hsl(250+R(-20,20),30,R(8,16));x.fillRect(px,H-h,w,h);for(let wy=H-h+10;wy<H-8;wy+=16)for(let wx=px+6;wx<px+w-8;wx+=14){if(Math.random()<0.55){x.fillStyle=Math.random()<0.8?'rgba(255,220,120,.9)':'rgba(120,220,255,.9)';x.fillRect(wx,wy,7,9)}}px+=w+R(0,8)}}
+ else if(theme===4){x.fillStyle=hsl(h0,15,95);x.fillRect(0,0,W,H);for(let i=0;i<34;i++){const cx=R(0,W),cy=R(0,H),r=R(25,120),col=hsl(R(0,360),90,R(45,62));x.fillStyle=col;x.beginPath();x.arc(cx,cy,r,0,7);x.fill();for(let d=0;d<14;d++){const a=R(0,6.283),dd=R(r*0.9,r*2.2);x.beginPath();x.arc(cx+Math.cos(a)*dd,cy+Math.sin(a)*dd,R(3,16),0,7);x.fill()}
+   x.strokeStyle=col;x.lineWidth=R(6,16);x.lineCap='round';x.beginPath();x.moveTo(cx,cy);x.quadraticCurveTo(cx+R(-200,200),cy+R(-120,120),cx+R(-300,300),cy+R(-150,150));x.stroke()}}
+ else if(theme===5){x.fillStyle=hsl(h0,80,55);x.fillRect(0,0,W,H);for(let i=-6;i<16;i++){x.fillStyle=hsl(h0+i*23,85,i%2?35:62);x.beginPath();x.moveTo(i*120,0);x.lineTo(i*120+70,0);x.lineTo(i*120-140,H);x.lineTo(i*120-210,H);x.fill()}
+  const cx=R(400,1100),cy=H/2;x.fillStyle='rgba(255,255,255,.92)';x.beginPath();for(let a=0;a<24;a++){const r=a%2?60:140,t=a/24*6.283;x.lineTo(cx+Math.cos(t)*r*1.6,cy+Math.sin(t)*r)}x.closePath();x.fill();x.fillStyle=hsl(h0+180,85,45);x.beginPath();x.arc(cx,cy,48,0,7);x.fill()}
+ else if(theme===6){grad(0,H,hsl(200,60,78),hsl(40,70,86));x.fillStyle='rgba(255,245,200,.95)';x.beginPath();x.arc(R(200,1300),R(70,110),R(40,65),0,7);x.fill();
+  for(let m=0;m<3;m++){const mx=R(100,1300),mw=R(120,260),mh=R(70,130);x.fillStyle=hsl(18,50,48-m*3);x.fillRect(mx,H-150-mh,mw,mh);x.fillRect(mx-18,H-150-mh+mh*0.4,mw+36,mh*0.6)}
+  for(let L=0;L<3;L++){x.fillStyle=hsl(32-L*4,65,62-L*10);x.beginPath();x.moveTo(0,H);for(let px=0;px<=W;px+=10)x.lineTo(px,H-90+L*26-Math.sin(px*0.006+L*2)*34-Math.sin(px*0.019+L)*10);x.lineTo(W,H);x.fill()}
+  for(let i=0;i<6;i++){const cx=R(60,W-60),cy=H-R(40,110),h=R(60,120);x.fillStyle='#2e6a3b';x.beginPath();x.roundRect?x.roundRect(cx-9,cy-h,18,h,9):x.rect(cx-9,cy-h,18,h);x.fill();x.fillRect(cx-28,cy-h*0.62,19,8);x.fillRect(cx-28,cy-h*0.62-26,8,30);x.fillRect(cx+9,cy-h*0.45,19,8);x.fillRect(cx+20,cy-h*0.45-24,8,28)}}
+ else{grad(0,H,hsl(260,60,6),hsl(235,50,14));for(let i=0;i<260;i++){x.fillStyle=`rgba(255,255,255,${R(0.3,1)})`;x.fillRect(R(0,W),R(0,H),R(1,3),R(1,3))}
+  for(let i=0;i<4;i++){const cx=R(0,W),cy=R(0,H),g=x.createRadialGradient(cx,cy,0,cx,cy,R(120,260));g.addColorStop(0,hsl(R(0,360),80,50,0.35));g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,W,H)}
+  for(let i=0;i<4;i++){const cx=R(120,W-120),cy=R(90,H-90),r=R(28,86),g=x.createRadialGradient(cx-r*0.4,cy-r*0.4,r*0.1,cx,cy,r),hu=R(0,360);g.addColorStop(0,hsl(hu,80,78));g.addColorStop(1,hsl(hu+30,70,28));x.fillStyle=g;x.beginPath();x.arc(cx,cy,r,0,7);x.fill();
+   if(Math.random()<0.6){x.strokeStyle=hsl(hu+60,60,75,0.8);x.lineWidth=5;x.beginPath();x.ellipse(cx,cy,r*1.7,r*0.4,-0.35,0,6.283);x.stroke()}}}
+ x.fillStyle='rgba(0,0,0,.28)';x.fillRect(0,H-14,W,14);return c}
+/* Voltex Bolt Semi: faceted electric tractor + 48 ft trailer on a kingpin pivot (the trailer articulates behind it).
+   Vehicle centre at x = 0, front = +x; tractor front bumper at +10 m, trailer rear at -10 m. */
+function buildEcoSemi(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}=spec,ud=g.userData,seg=(window.GFX&&GFX.get()==='ultra')?28:18;
+ const paint=new THREE.MeshStandardMaterial({color:colorHex,metalness:0.85,roughness:0.34,flatShading:true}),dark=new THREE.MeshStandardMaterial({color:0x1a1c20,roughness:0.8}),steel=new THREE.MeshStandardMaterial({color:0x9aa1a8,metalness:0.85,roughness:0.3}),
+  glass=new THREE.MeshPhysicalMaterial({color:0x10161d,roughness:0.05,metalness:0.2,transparent:true,opacity:0.72,depthWrite:false,side:THREE.DoubleSide}),lamp=new THREE.MeshBasicMaterial({color:0xf4fbff}),red=new THREE.MeshBasicMaterial({color:0xc01818}),amber=new THREE.MeshBasicMaterial({color:0xffa000});
+ const box=(w,h,d,m,x,y,z,par=g)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;par.add(o);return o};
+ const bw=W-0.2;
+ /* faceted cab: a side profile extruded across the truck – wedge nose, steeply raked windshield, flat roof */
+ const prof=new THREE.Shape();[[6.7,0.95],[10.0,0.95],[10.0,1.75],[9.25,2.1],[8.05,3.4],[6.8,3.45],[6.7,3.3]].forEach((p,i)=>i?prof.lineTo(p[0],p[1]):prof.moveTo(p[0],p[1]));prof.lineTo(6.7,0.95);
+ const cg=new THREE.ExtrudeGeometry(prof,{depth:bw,bevelEnabled:false});cg.translate(0,0,-bw/2);const cabBody=new THREE.Mesh(cg,paint);cabBody.castShadow=true;cabBody.receiveShadow=true;g.add(cabBody);ud.body=cabBody;
+ const cab=new THREE.Group();g.add(cab);ud.cab=cab;
+ /* windshield (on the raked face) and side windows */
+ {const dx=-1.2,dy=1.3,len=Math.hypot(dx,dy),d=[dx/len,dy/len],n=[d[1],-d[0]];const ws=new THREE.Mesh(new THREE.PlaneGeometry(len,bw-0.35),glass);ws.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(d[0],d[1],0),new THREE.Vector3(0,0,1),new THREE.Vector3(n[0],n[1],0)));ws.position.set(8.65+n[0]*0.012,2.75+n[1]*0.012,0);cab.add(ws);
+  const sh=new THREE.Shape();[[7.0,2.3],[9.05,2.3],[8.3,3.25],[7.05,3.3]].forEach((p,i)=>i?sh.lineTo(p[0],p[1]):sh.moveTo(p[0],p[1]));sh.lineTo(7.0,2.3);
+  for(const sd of [1,-1]){const sw=new THREE.Mesh(new THREE.ShapeGeometry(sh),glass);sw.position.set(0,0,sd*(bw/2+0.012));cab.add(sw)}}
+ /* nose details: full-width LED bar, lower intake, bumper wedge */
+ box(0.05,0.1,bw-0.5,lamp,10.03,1.62,0,cab);box(0.3,0.36,bw-0.6,dark,9.92,1.12,0,cab);box(0.5,0.16,bw,steel,10.05,0.98,0,cab);
+ for(const sd of [1,-1]){box(0.06,0.14,0.22,amber,10.03,1.9,sd*(bw/2-0.1),cab);box(0.08,0.06,0.5,lamp,9.9,3.47,sd*0.6,cab)}
+ box(0.06,0.08,1.4,amber,8.2,3.5,0,cab);
+ /* angular arches over the steer wheels, side skirts, mirrors */
+ for(const sd of [1,-1]){const a=box(1.6,0.1,0.5,paint,7.9,1.68,sd*(W/2-0.3));a.rotation.z=sd>0?0.12:0.12;box(3.0,0.32,0.07,paint,5.1,0.92,sd*(bw/2+0.02));
+  box(0.07,0.55,0.3,dark,8.4,2.7,sd*(W/2+0.12),cab);box(0.35,0.06,0.06,dark,8.4,2.98,sd*(W/2-0.02),cab)}
+ /* frame, battery slab, fifth wheel */
+ box(4.4,0.22,1.0,dark,4.55,1.0,0);box(4.2,0.42,bw-0.5,dark,5.0,0.72,0);const fw=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.08,seg),steel);fw.position.set(3.55,1.14,0);g.add(fw);
+ /* interior: dash, two seats */
+ const interior=new THREE.Group();g.add(interior);ud.interior=interior;const seatM=new THREE.MeshStandardMaterial({color:0x2b2f36,roughness:0.85});ud.seats=[];
+ box(0.3,0.42,bw-0.3,dark,9.0,1.85,0,interior);const whl=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.03,8,24),dark);whl.position.set(8.75,2.1,-0.55);whl.rotation.y=Math.PI/2;whl.rotation.x=0.5;interior.add(whl);
+ for(const sz of [-0.55,0.55]){box(0.55,0.14,0.55,seatM,8.05,1.5,sz,interior);box(0.12,0.75,0.55,seatM,7.78,1.9,sz,interior);ud.seats.push(new THREE.Vector3(8.05,1.58,sz))}
+ ud.hood=new THREE.Group();g.add(ud.hood);
+ /* trailer on the kingpin pivot */
+ const tr=new THREE.Group();tr.position.set(3.55,0,0);g.add(tr);ud.trailer=tr;const TL=14.4,TH=2.95,TB=1.15,tcx=-TL/2+0.9;
+ box(TL,TH,W,new THREE.MeshStandardMaterial({color:0xe9ebed,roughness:0.6,metalness:0.1}),tcx,TB+TH/2,0,tr);
+ const tex=new THREE.CanvasTexture(semiArt());tex.encoding=THREE.sRGBEncoding;tex.anisotropy=4;const am=new THREE.MeshStandardMaterial({map:tex,roughness:0.55,metalness:0.05});
+ for(const sd of [1,-1]){const pl=new THREE.Mesh(new THREE.PlaneGeometry(TL-0.35,TH-0.22),am);pl.position.set(tcx,TB+TH/2,sd*(W/2+0.009));pl.rotation.y=sd>0?0:Math.PI;tr.add(pl)}
+ /* rear doors, tail lights, underride bar, skirts, landing gear */
+ const rx=tcx-TL/2;box(0.06,TH-0.1,W-0.12,dark,rx-0.02,TB+TH/2,0,tr);for(const z of [-0.6,0,0.6])box(0.03,TH-0.2,0.04,steel,rx-0.06,TB+TH/2,z,tr);
+ for(const sd of [1,-1]){box(0.07,0.3,0.14,red,rx-0.05,TB+0.3,sd*(W/2-0.12),tr);box(0.07,0.14,0.14,amber,rx-0.05,TB+0.55,sd*(W/2-0.12),tr);box(TL*0.6,0.5,0.05,dark,tcx-TL*0.12,TB-0.3,sd*(W/2-0.02),tr);box(0.12,0.9,0.08,steel,tcx+TL/2-1.2,TB-0.5,sd*0.9,tr)}
+ box(0.14,0.16,W-0.1,steel,rx-0.1,TB-0.35,0,tr);box(0.25,0.06,0.9,dark,tcx+TL/2-0.1,TB-0.03,0,tr);
+ for(const x of [rx+0.3,rx+TL*0.35,tcx+TL/2-0.3])box(0.05,0.1,W-0.1,amber,x,TB+TH+0.0,0,tr);
+ /* wheels: steer axle, drive tandem, trailer tandem – single wide tyres */
+ const tw=0.42,tire=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),tg=new THREE.CylinderGeometry(wr,wr,tw,seg,1).rotateX(Math.PI/2),hg=new THREE.CylinderGeometry(wr*0.55,wr*0.55,tw+0.02,seg).rotateX(Math.PI/2),wheels=[];
+ const addWheel=(par,x,fz,front)=>{const piv=new THREE.Group();piv.position.set(x,wr,fz*(W/2-tw/2-0.05));const spin=new THREE.Group();const t=new THREE.Mesh(tg,tire);t.castShadow=true;spin.add(t);spin.add(new THREE.Mesh(hg,steel));const holder=new THREE.Group();if(fz<0)holder.rotation.y=Math.PI;holder.add(spin);piv.add(holder);par.add(piv);wheels.push({piv,spin,front,sign:fz<0?-1:1})};
+ for(const fz of [1,-1]){addWheel(g,7.9,fz,true);addWheel(g,4.2,fz,false);addWheel(g,2.9,fz,false);addWheel(tr,-11.55,fz,false);addWheel(tr,-12.85,fz,false)}
+ ud.wheels=wheels;ud.ecosemi=true;
+ if(typeof contactShadow==='function'){const c1=contactShadow(g,7.4,W*1.1);if(c1&&c1.position)c1.position.x=6.6;const c2=contactShadow(tr,TL*1.04,W*1.1);if(c2&&c2.position)c2.position.x=tcx}
+ return g}
+function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
  const lod=!opts.interior&&opts.lod!==false&&!(window.GFX&&GFX.get()==='ultra'); /* traffic / parked cars on Low & High: ~7× fewer body triangles */
  const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=(spec.id||spec.style+L+W+H)+(lod?':lod':'');
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
@@ -1709,7 +1786,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
 // ============================================================ INTERIOR / DASHBOARD SCREENS
 const SCREENS=[];let wheelMesh=null;
 function screenMesh(w,h,px,kind){px=Math.round(px*(HIGH?1.5:1));const c=document.createElement('canvas');c.width=Math.round(px*w/h);c.height=px;const tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,toneMapped:false}));SCREENS.push({c,ctx:c.getContext('2d'),tex,kind,mesh:m});return m}
-function eyePos(spec){if(spec.gargantua){const L=spec.L,H=spec.H,wr=spec.wr,floorY=wr*1.25+0.305+0.31,cx=L*0.47-1.7-0.1;return new THREE.Vector3(cx+1.7-0.75+0.05,floorY+1.12,-0.45)}const P=(profCache[spec.id]||{}).P||mkProfile(spec),sh=P.sh;if(spec.style==='pod')return new THREE.Vector3(-0.45,Math.min(spec.H-0.2,P.belt(0.5)+0.45),0);const x=P.xOf(sh.roofF)-0.6;const y=Math.min(spec.H-0.14,P.belt(0.5)+0.36);return new THREE.Vector3(x,y,(spec.driver?-1:1)*spec.W*0.2)}
+function eyePos(spec){if(spec.ecosemi)return new THREE.Vector3(8.65,2.5,-0.55);if(spec.gargantua){const L=spec.L,H=spec.H,wr=spec.wr,floorY=wr*1.25+0.305+0.31,cx=L*0.47-1.7-0.1;return new THREE.Vector3(cx+1.7-0.75+0.05,floorY+1.12,-0.45)}const P=(profCache[spec.id]||{}).P||mkProfile(spec),sh=P.sh;if(spec.style==='pod')return new THREE.Vector3(-0.45,Math.min(spec.H-0.2,P.belt(0.5)+0.45),0);const x=P.xOf(sh.roofF)-0.6;const y=Math.min(spec.H-0.14,P.belt(0.5)+0.36);return new THREE.Vector3(x,y,(spec.driver?-1:1)*spec.W*0.2)}
 /* ---- interior realism helpers ---- */
 let PERFTEX=null;function perfTex(){if(PERFTEX)return PERFTEX;const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,256,256);x.fillStyle='rgba(0,0,0,.45)';for(let i=0;i<16;i++)for(let j=0;j<16;j++){x.beginPath();x.arc(8+i*16+(j%2)*8,8+j*16,3,0,7);x.fill()}
  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(9,9);t.anisotropy=ANISO;return PERFTEX=t}
@@ -2157,6 +2234,7 @@ const ENERGY={
  'lucid':{epa:512,kwh:112,kg:2375,cda:0.45,crr:0.008,dc:300,port:'NACS'},
  'hyper':{epa:6200,kwh:2400,kg:2150,cda:0.55,crr:0.008,dc:5000,port:'CCS'},
  'gargantua':{epa:1500000,kwh:1000000,kg:6350,cda:1.9,crr:0.011,dc:50000,port:'CCS'},
+ 'ecosemi':{epa:500,kwh:900,kg:29000,cda:4.0,crr:0.0055,dc:1000,port:'NACS'},
  'ezpt':{epa:185,kwh:220,kg:15000,cda:3.4,crr:0.016,dc:150,port:'CCS'},
  'r1s':{epa:410,kwh:140,kg:3150,cda:0.98,crr:0.011,dc:220,port:'NACS'},
 };
@@ -2528,7 +2606,7 @@ const hp=new THREE.Vector3();d.head.getWorldPosition(hp); // head position in do
  {car.updateMatrixWorld(true);const hw=new THREE.Vector3();d.head.getWorldPosition(hw);car.worldToLocal(hw);const uu=clamp((hw.x+Lh/2)/Lh,0,1),hz=P?P.half(uu):spec.W/2,want=d.hd*sz*1.1+0.05,outBy=-hw.z-hz,dl=want-outBy;
   if(dl>0){const n0=d.neck.position.clone();d.neck.position.z-=dl/sz;const ext=new THREE.Mesh(new THREE.CylinderGeometry(d.B.g*0.55,d.B.g*0.65,dl/sz+d.B.g,10),d.neck.children[0].material);ext.rotation.x=Math.PI/2;ext.position.set(n0.x+0.02,n0.y+d.B.g*0.45,n0.z-dl/sz/2);d.body.add(ext);d.ext=ext}
   for(let it=0;it<3;it++){let lift=0;car.updateMatrixWorld(true);d.neck.traverse(o=>{if(!o.isMesh)return;const pos=o.geometry.attributes.position;for(let i=0;i<pos.count;i+=2){v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld);car.worldToLocal(v);const u2=clamp((v.x+Lh/2)/Lh,0,1);if(-v.z>(P?P.half(u2):spec.W/2))lift=Math.max(lift,(P?P.belt(u2):spec.H*0.6)+0.02-v.y)}});if(lift<=0.005)break;dog.position.y+=lift}}
- car.userData.wdogH=holder;car.userData.wdog=dog;if(G.spec.gargantua&&car.userData.seats){dog.position.set(0,0,0);holder.position.copy(car.userData.seats[2]);holder.position.y+=0.08} /* Gargantua: the dog rides in the cab, middle row right seat */Object.assign(dog.userData,{barkT:0,next:2,seen:new Map(),look:0,lookT:0})}
+ car.userData.wdogH=holder;car.userData.wdog=dog;if((G.spec.gargantua||G.spec.ecosemi)&&car.userData.seats){dog.position.set(0,0,0);holder.position.copy(car.userData.seats[Math.min(2,car.userData.seats.length-1)]);holder.position.y+=0.08} /* Gargantua: the dog rides in the cab, middle row right seat */Object.assign(dog.userData,{barkT:0,next:2,seen:new Map(),look:0,lookT:0})}
 function wdogUpdate(rdt){const G=game;if(!G||!G.ego)return;const dog=G.ego.mesh.userData.wdog;if(!dog)return;const d=dog.userData.dog,U=dog.userData,v=G.ego.v,t=performance.now()/1000,dt=Math.min(0.05,rdt);
  const wind=Math.min(1,v/25);d.ears.forEach((e,i)=>{e.rotation.x=(i?-1:1)*(0.3+wind*1.1+Math.sin(t*(18+i*3))*0.25*wind);e.rotation.z=wind*0.9+Math.sin(t*23+i)*0.15*wind});
  d.head.rotation.z=0.12+Math.sin(t*1.7)*0.05-(G.ego.acc||0)*0.02;d.body.position.y=d.by+Math.sin(t*9)*0.004+Math.abs(Math.sin(t*2.1))*0.004*wind;
