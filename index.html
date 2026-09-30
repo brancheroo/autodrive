@@ -3974,13 +3974,30 @@ function aifmLyric(key,li){const S=AIFM.S;if(key==='ch'){const H=S.blues?[S.hook
  if(S.blues){if(li===0){AIFM.cpl=aifmCouplet()}return li<2?AIFM.cpl[0]:AIFM.cpl[1]} // AAB
  if(li%2===0)AIFM.cpl=aifmCouplet();return AIFM.cpl[li%2]}
 // live vocal: meSpeak (open-source eSpeak in the browser) → autotune onto the melody (voxAnalyse / voxRender)
-const MES={state:'idle'};
-function mespeakLoad(){if(MES.state!=='idle')return;MES.state='loading';const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/mespeak@1.9.6/mespeak.js';
- sc.onload=()=>{try{meSpeak.loadConfig('https://cdn.jsdelivr.net/npm/mespeak@1.9.6/mespeak_config.json');meSpeak.loadVoice('https://cdn.jsdelivr.net/npm/mespeak@1.9.6/voices/en/en-us.json',ok=>{MES.state=ok!==false?'ready':'failed'})}catch(e){MES.state='failed'}};sc.onerror=()=>MES.state='failed';document.head.appendChild(sc)}
-function mesReady(){return MES.state==='ready'&&window.meSpeak&&meSpeak.isConfigLoaded&&meSpeak.isConfigLoaded()}
+const MES={state:'idle',w:null,id:0,calls:0};
+/* The eSpeak engine (meSpeak) runs in a Web Worker. On the main thread it corrupted its own memory after a few minutes of
+   singing and then froze the whole page for ~1.7 s per line while allocating gigabytes (found with the browser's profiler:
+   "RangeError: Invalid array length" inside meSpeak's snprintf). Now a bad call can only ever stall the worker: it is
+   given 2.5 s, then the worker is thrown away and replaced, and the line falls back to the formant voice. The worker is also
+   replaced every 25 lines so its memory never gets the chance to go bad. */
+const MESBASE='https://cdn.jsdelivr.net/npm/mespeak@1.9.6/';
+async function mesMakeWorker(){if(!MES.lib)MES.lib=await fetch(MESBASE+'mespeak.js').then(r=>{if(!r.ok)throw new Error('mespeak '+r.status);return r.text()});
+ const src='var window=self;var document={createElement:function(){return {canPlayType:function(){return ""},play:function(){},addEventListener:function(){},setAttribute:function(){},style:{}}},getElementsByTagName:function(){return []}};\n'+MES.lib+
+  '\n;onmessage=function(e){var m=e.data;try{if(m.init){meSpeak.loadConfig(m.cfg);meSpeak.loadVoice(m.voice,function(ok){postMessage({ready:ok!==false})});return}var d=meSpeak.speak(m.text,m.opts);var ab=d instanceof ArrayBuffer?d:new Uint8Array(d).buffer;postMessage({id:m.id,ab:ab},[ab])}catch(err){postMessage({id:m.id,err:String(err)})}}';
+ const w=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));w.pend=new Map();
+ w.onmessage=e=>{const d=e.data;if(d.ready!==undefined){if(w.onready)w.onready(d.ready);return}const f=w.pend.get(d.id);if(f){w.pend.delete(d.id);f(d)}};
+ w.onerror=()=>{for(const f of w.pend.values())f({err:'worker error'});w.pend.clear()};
+ await new Promise((res,rej)=>{w.onready=ok=>ok?res():rej(new Error('voice failed'));setTimeout(()=>rej(new Error('voice timeout')),15000);w.postMessage({init:1,cfg:MESBASE+'mespeak_config.json',voice:MESBASE+'voices/en/en-us.json'})});return w}
+function mespeakLoad(){if(MES.state!=='idle')return;MES.state='loading';mesMakeWorker().then(w=>{MES.w=w;MES.calls=0;MES.state='ready'}).catch(()=>{MES.state='failed'})}
+function mesReady(){return MES.state==='ready'&&!!MES.w}
+function mesRecycle(){const old=MES.w;if(MES.recycling)return;MES.recycling=true;mesMakeWorker().then(w=>{MES.w=w;MES.calls=0;MES.recycling=false;if(old)old.terminate()}).catch(()=>{MES.recycling=false;if(old)old.terminate();MES.w=null;MES.state='failed'})}
+/* speak(text, opts) → ArrayBuffer (WAV). Rejects on error or after 2.5 s (and replaces the worker). */
+function mesSpeak(text,opts){return new Promise((res,rej)=>{const w=MES.w;if(!w||MES.state!=='ready'){rej(new Error('no voice'));return}const id=++MES.id;let done=false;
+  const t=setTimeout(()=>{if(done)return;done=true;w.pend.delete(id);rej(new Error('voice timeout'));mesRecycle()},2500);
+  w.pend.set(id,d=>{if(done)return;done=true;clearTimeout(t);if(d.err){rej(new Error(d.err));mesRecycle()}else{res(d.ab);if(++MES.calls>=25)mesRecycle()}});w.postMessage({id,text,opts})})}
 async function aifmLiveVox(text,t,span,secT){const S=AIFM.S,V=VSTY[S.st]||{},C=AIFM.ctx,fem=(V.reg||0)>=5,sd=AIFM.stepDur;
- let data=meSpeak.speak(text.replace(/[’']/g,''),{rawdata:'buffer',variant:S.variant||(fem?'f2':'m3'),pitch:fem?62:42,speed:165,amplitude:120});
- if(!data)throw new Error('no audio');const ab=data instanceof ArrayBuffer?data:new Uint8Array(data).buffer;const buf=await C.decodeAudioData(ab.slice(0));const A=voxAnalyse(buf.getChannelData(0),buf.sampleRate);
+ const ab=await mesSpeak(text.replace(/[’']/g,''),{rawdata:'buffer',variant:S.variant||(fem?'f2':'m3'),pitch:fem?62:42,speed:165,amplitude:120});
+ if(!ab)throw new Error('no audio');const buf=await C.decodeAudioData(ab.slice(0));const A=voxAnalyse(buf.getChannelData(0),buf.sampleRate);
  const notes=singMelody(text,syllables(text).length,span,secT),ctr=fem?60:50,mean=notes.reduce((a,n)=>a+n.m,0)/notes.length,sh=Math.round((ctr-mean)/12)*12;notes.forEach(n=>n.m+=sh);
  const out={main:voxRender(C,A,notes,sd,buf.sampleRate,0,S,0),dbl:secT==='ch'?voxRender(C,A,notes,sd,buf.sampleRate,0,S,1):null,harm:V.choir&&secT==='ch'?voxRender(C,A,notes,sd,buf.sampleRate,4,S,2):null};
  const play=(b,gain,pan)=>{const s=C.createBufferSource();s.buffer=b;const g=C.createGain();g.gain.value=gain;s.connect(g);if(pan&&C.createStereoPanner){const p=C.createStereoPanner();p.pan.value=pan;g.connect(p);p.connect(AIFM.voxT)}else g.connect(AIFM.voxT);s.start(Math.max(C.currentTime,t-VOX_PRE))};
@@ -4286,7 +4303,7 @@ function protestSoundStart(){const C=audio.ctx;if(!C||!audio.master)return;const
  const mz=C.createBufferSource();mz.buffer=audio.noiseBuf;mz.loop=true;const bp=C.createBiquadFilter();bp.type='bandpass';bp.frequency.value=700;bp.Q.value=0.6;const mg=C.createGain();mg.gain.value=0.12;const lfo=C.createOscillator(),lg=C.createGain();lfo.frequency.value=0.35;lg.gain.value=0.05;lfo.connect(lg);lg.connect(mg.gain);mz.connect(bp);bp.connect(mg);mg.connect(out);mz.start();lfo.start();P.snd.nodes=[mz,lfo];
  protestTakes(P)}
 async function protestTakes(P){for(let k=0;k<40&&!mesReady();k++)await new Promise(r=>setTimeout(r,250));if(!mesReady()||!game.protest)return;const C=audio.ctx,takes=[];
- for(const [v,pt,sp] of [['m3',38,190],['f2',60,185],['m1',45,200],['f5',66,190],['m7',30,180],['f4',55,195],['m2',48,185],['f1',70,200]]){try{const d=meSpeak.speak('just stop oil',{rawdata:'buffer',variant:v,pitch:pt,speed:sp,amplitude:140,wordgap:1});const ab=d instanceof ArrayBuffer?d:new Uint8Array(d).buffer;takes.push(await C.decodeAudioData(ab.slice(0)))}catch(e){}}
+ for(const [v,pt,sp] of [['m3',38,190],['f2',60,185],['m1',45,200],['f5',66,190],['m7',30,180],['f4',55,195],['m2',48,185],['f1',70,200]]){try{const ab=await mesSpeak('just stop oil',{rawdata:'buffer',variant:v,pitch:pt,speed:sp,amplitude:140,wordgap:1});takes.push(await C.decodeAudioData(ab.slice(0)))}catch(e){}}
  if(P.snd)P.snd.takes=takes}
 function protestSoundUpdate(P){const C=audio.ctx,S=P.snd;if(!C||!S)return;const e=game.ego,d=Math.hypot(P.x-e.x,P.z-e.z),inside=game.cam==='in';
  const g=P.state==='dispersing'?0:Math.pow(clamp(1-d/260,0,1),1.6)*(inside?0.55:1);S.out.gain.setTargetAtTime(g,C.currentTime,0.2);S.lp.frequency.setTargetAtTime(inside?1800:6000-Math.min(4000,d*15),C.currentTime,0.3);
