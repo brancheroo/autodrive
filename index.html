@@ -581,20 +581,20 @@ async function fetchTileOFMSync(key){const [i,j]=key.split('_').map(Number),clat
 /* ---- OpenFreeMap vector tiles are decoded in a Web Worker: a z14 tile (thousands of roads / buildings) used to be
    decoded on the main thread in one block, freezing the page for up to seconds each time the car entered a new ~2.4 km
    region. The worker decodes + caches the region; the main thread only receives the elements of the one game tile. */
-const OFMW={w:null,id:0,wait:new Map(),inflight:new Map()};
+const OFMW={w:null,id:0,wait:new Map(),inflight:new Map(),known:new Map()};
 function ofmWorker(){if(OFMW.w||OFMW.bad)return OFMW.w;try{const src=[pbfDecode.toString(),mvtGeom.toString(),ofmConvert.toString(),
   "const OFMC=new Map();onmessage=e=>{const m=e.data;try{if(m.op==='load'){const layers=pbfDecode(m.buf);OFMC.set(m.tk,ofmConvert(layers,m.tx,m.ty,m.n));if(OFMC.size>24)OFMC.delete(OFMC.keys().next().value);postMessage({id:m.id,ok:1});return}"+
   "const els=OFMC.get(m.tk);if(!els){postMessage({id:m.id,miss:1});return}const b=m.b,inside=p=>p.lat>=b.s&&p.lat<=b.nn&&p.lon>=b.w&&p.lon<=b.e;postMessage({id:m.id,els:els.filter(el=>el.type==='node'?inside(el):el.geometry.some(inside))})}catch(err){postMessage({id:m.id,err:String(err)})}}"].join('\n');
   OFMW.w=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));OFMW.w.onmessage=e=>{const f=OFMW.wait.get(e.data.id);OFMW.wait.delete(e.data.id);if(f)f(e.data)};OFMW.w.onerror=()=>{OFMW.bad=true;OFMW.w=null;for(const f of OFMW.wait.values())f({err:'worker failed'});OFMW.wait.clear()}}catch(err){OFMW.bad=true;OFMW.w=null}return OFMW.w}
 function ofmAsk(msg,transfer){return new Promise(res=>{const w=ofmWorker();if(!w){res({err:'no worker'});return}const id=++OFMW.id;OFMW.wait.set(id,res);w.postMessage({...msg,id},transfer||[])})}
-async function ofmEnsure(tk,tx,ty,n,Z){if(OFM.cache.has(tk))return;let p=OFMW.inflight.get(tk);
+async function ofmEnsure(tk,tx,ty,n,Z){if(OFMW.known.has(tk))return;let p=OFMW.inflight.get(tk);
  if(!p){p=(async()=>{const u=(await ofmTemplate()).replace('{z}',Z).replace('{x}',tx).replace('{y}',ty);const resp=await fetchT(u,{},12000);if(!resp.ok)throw new Error('ofm '+resp.status);const buf=await resp.arrayBuffer();
-   const r=await ofmAsk({op:'load',tk,tx,ty,n,buf},[buf]);if(r.err)throw new Error(r.err);OFM.cache.set(tk,1);if(OFM.cache.size>24)OFM.cache.delete(OFM.cache.keys().next().value)})();OFMW.inflight.set(tk,p);p.then(()=>OFMW.inflight.delete(tk),()=>OFMW.inflight.delete(tk))}
+   const r=await ofmAsk({op:'load',tk,tx,ty,n,buf},[buf]);if(r.err)throw new Error(r.err);OFMW.known.set(tk,1);if(OFMW.known.size>24)OFMW.known.delete(OFMW.known.keys().next().value)})();OFMW.inflight.set(tk,p);p.then(()=>OFMW.inflight.delete(tk),()=>OFMW.inflight.delete(tk))}
  await p}
 async function fetchTileOFM(key){const [i,j]=key.split('_').map(Number),clat=(i+0.5)*TS,clon=(j+0.5)*TS,Z=14,n=2**Z,tx=Math.floor((clon+180)/360*n),r=clat*Math.PI/180,ty=Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n),tk=tx+'/'+ty;
  if(!ofmWorker())return fetchTileOFMSync(key);
  const b={s:i*TS-0.001,w:j*TS-0.001,nn:(i+1)*TS+0.001,e:(j+1)*TS+0.001};
- for(let attempt=0;attempt<2;attempt++){await ofmEnsure(tk,tx,ty,n,Z);const r2=await ofmAsk({op:'get',tk,b});if(r2.miss){OFM.cache.delete(tk);continue}if(r2.err)return fetchTileOFMSync(key);return{elements:r2.els,source:'OpenFreeMap'}}
+ for(let attempt=0;attempt<2;attempt++){await ofmEnsure(tk,tx,ty,n,Z);const r2=await ofmAsk({op:'get',tk,b});if(r2.miss){OFMW.known.delete(tk);continue}if(r2.err)return fetchTileOFMSync(key);return{elements:r2.els,source:'OpenFreeMap'}}
  return fetchTileOFMSync(key)}
 
 // ============================================================ OFFLINE REGION PACKS (regions/index.json → per-region manifest)
