@@ -546,7 +546,20 @@ function pbfDecode(buf){let p=0;const u=new Uint8Array(buf);const varint=()=>{le
   layers.push(L)});return layers}
 function mvtGeom(F){const rings=[];let x=0,y=0,cur=null,i=0;const z=n=>(n>>>1)^-(n&1);
  while(i<F.geom.length){const c=F.geom[i++],cmd=c&7,cnt=c>>3;if(cmd===7){if(cur&&cur.length)cur.push(cur[0]);continue}for(let k=0;k<cnt;k++){x+=z(F.geom[i++]);y+=z(F.geom[i++]);if(cmd===1){cur=[[x,y]];rings.push(cur)}else cur.push([x,y])}}return rings}
-async function fetchTileOFM(key){const [i,j]=key.split('_').map(Number),clat=(i+0.5)*TS,clon=(j+0.5)*TS,Z=14,n=2**Z,tx=Math.floor((clon+180)/360*n),r=clat*Math.PI/180,ty=Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n),tk=tx+'/'+ty;
+function ofmConvert(layers,tx,ty,n){const els=[];let seq=1;
+  const ll=(ext,px,py)=>{const fx=tx+px/ext,fy=ty+py/ext,lon=fx/n*360-180,lat=180/Math.PI*Math.atan(Math.sinh(Math.PI-2*Math.PI*fy/n));return{lat,lon}};
+  const HW={motorway:'motorway',trunk:'trunk',primary:'primary',secondary:'secondary',tertiary:'tertiary',minor:'residential',service:'service',track:'track',path:'footway',raceway:'service',busway:'service'};
+  for(const L of layers){if(!['transportation','building','water','park','landcover','poi'].includes(L.name))continue;
+   for(const F of L.features){const t={};for(let k=0;k<F.tags.length;k+=2)t[L.keys[F.tags[k]]]=L.values[F.tags[k+1]];const rings=mvtGeom(F);if(!rings.length)continue;
+    const id=-(tx*1e7+ty*1e3)*1000-(seq++);const geo=rg=>rg.map(p=>ll(L.extent,p[0],p[1]));
+    if(L.name==='transportation'&&F.type===2){const hw=HW[t.class];if(!hw)continue;const tags={highway:t.class==='minor'&&/residential|living/.test(t.subclass||'')?'residential':t.class==='minor'?'unclassified':hw};
+     if(t.subclass==='footway'||t.subclass==='sidewalk')tags.footway=t.subclass==='sidewalk'?'sidewalk':undefined;if(t.oneway===1)tags.oneway='yes';if(t.brunnel==='bridge')tags.bridge='yes';if(t.brunnel==='tunnel')tags.tunnel='yes';if(t.layer)tags.layer=String(t.layer);if(t.surface==='unpaved')tags.surface='unpaved';if(t.ramp===1&&/motorway|trunk|primary/.test(hw))tags.highway=hw+'_link';
+     for(const rg of rings)if(rg.length>1)els.push({type:'way',id:id-rings.indexOf(rg)*0.1,tags,geometry:geo(rg)})}
+    else if(L.name==='building'&&F.type===3){const tags={building:'yes'};if(t.render_height)tags.height=String(t.render_height);if(t.render_min_height)tags.min_height=String(t.render_min_height);if(t.colour)tags['building:colour']=t.colour;els.push({type:'way',id,tags,geometry:geo(rings[0])})}
+    else if(L.name==='water'&&F.type===3)els.push({type:'way',id,tags:{natural:'water'},geometry:geo(rings[0])});
+    else if((L.name==='park'||L.name==='landcover'&&/wood|forest/.test(t.class||''))&&F.type===3)els.push({type:'way',id,tags:L.name==='park'?{leisure:'park'}:{natural:'wood'},geometry:geo(rings[0])});
+    else if(L.name==='poi'&&F.type===1&&t.name&&/fast_food|restaurant|cafe|fuel|shop|bank|pharmacy|supermarket|hotel/.test((t.class||'')+' '+(t.subclass||''))){const p=ll(L.extent,rings[0][0][0],rings[0][0][1]);els.push({type:'node',id,lat:p.lat,lon:p.lon,tags:{name:t.name,amenity:t.subclass==='fast_food'?'fast_food':t.class==='fuel'?'fuel':t.subclass||t.class,shop:t.class==='shop'?t.subclass:undefined}})}}} return els}
+async function fetchTileOFMSync(key){const [i,j]=key.split('_').map(Number),clat=(i+0.5)*TS,clon=(j+0.5)*TS,Z=14,n=2**Z,tx=Math.floor((clon+180)/360*n),r=clat*Math.PI/180,ty=Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n),tk=tx+'/'+ty;
  let els=OFM.cache.get(tk);
  if(!els){const u=(await ofmTemplate()).replace('{z}',Z).replace('{x}',tx).replace('{y}',ty);const resp=await fetchT(u,{},12000);if(!resp.ok)throw new Error('ofm '+resp.status);const layers=pbfDecode(await resp.arrayBuffer());els=[];let seq=1;
   const ll=(ext,px,py)=>{const fx=tx+px/ext,fy=ty+py/ext,lon=fx/n*360-180,lat=180/Math.PI*Math.atan(Math.sinh(Math.PI-2*Math.PI*fy/n));return{lat,lon}};
@@ -565,6 +578,25 @@ async function fetchTileOFM(key){const [i,j]=key.split('_').map(Number),clat=(i+
  // keep only elements touching this tile (plus margin) so neighbouring tiles don't duplicate everything
  const s=i*TS-0.001,w=j*TS-0.001,nn=(i+1)*TS+0.001,e=(j+1)*TS+0.001;const inside=p=>p.lat>=s&&p.lat<=nn&&p.lon>=w&&p.lon<=e;
  return{elements:els.filter(el=>el.type==='node'?inside(el):el.geometry.some(inside)),source:'OpenFreeMap'}}
+/* ---- OpenFreeMap vector tiles are decoded in a Web Worker: a z14 tile (thousands of roads / buildings) used to be
+   decoded on the main thread in one block, freezing the page for up to seconds each time the car entered a new ~2.4 km
+   region. The worker decodes + caches the region; the main thread only receives the elements of the one game tile. */
+const OFMW={w:null,id:0,wait:new Map(),inflight:new Map()};
+function ofmWorker(){if(OFMW.w||OFMW.bad)return OFMW.w;try{const src=[pbfDecode.toString(),mvtGeom.toString(),ofmConvert.toString(),
+  "const OFMC=new Map();onmessage=e=>{const m=e.data;try{if(m.op==='load'){const layers=pbfDecode(m.buf);OFMC.set(m.tk,ofmConvert(layers,m.tx,m.ty,m.n));if(OFMC.size>24)OFMC.delete(OFMC.keys().next().value);postMessage({id:m.id,ok:1});return}"+
+  "const els=OFMC.get(m.tk);if(!els){postMessage({id:m.id,miss:1});return}const b=m.b,inside=p=>p.lat>=b.s&&p.lat<=b.nn&&p.lon>=b.w&&p.lon<=b.e;postMessage({id:m.id,els:els.filter(el=>el.type==='node'?inside(el):el.geometry.some(inside))})}catch(err){postMessage({id:m.id,err:String(err)})}}"].join('\n');
+  OFMW.w=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));OFMW.w.onmessage=e=>{const f=OFMW.wait.get(e.data.id);OFMW.wait.delete(e.data.id);if(f)f(e.data)};OFMW.w.onerror=()=>{OFMW.bad=true;OFMW.w=null;for(const f of OFMW.wait.values())f({err:'worker failed'});OFMW.wait.clear()}}catch(err){OFMW.bad=true;OFMW.w=null}return OFMW.w}
+function ofmAsk(msg,transfer){return new Promise(res=>{const w=ofmWorker();if(!w){res({err:'no worker'});return}const id=++OFMW.id;OFMW.wait.set(id,res);w.postMessage({...msg,id},transfer||[])})}
+async function ofmEnsure(tk,tx,ty,n,Z){if(OFM.cache.has(tk))return;let p=OFMW.inflight.get(tk);
+ if(!p){p=(async()=>{const u=(await ofmTemplate()).replace('{z}',Z).replace('{x}',tx).replace('{y}',ty);const resp=await fetchT(u,{},12000);if(!resp.ok)throw new Error('ofm '+resp.status);const buf=await resp.arrayBuffer();
+   const r=await ofmAsk({op:'load',tk,tx,ty,n,buf},[buf]);if(r.err)throw new Error(r.err);OFM.cache.set(tk,1);if(OFM.cache.size>24)OFM.cache.delete(OFM.cache.keys().next().value)})();OFMW.inflight.set(tk,p);p.then(()=>OFMW.inflight.delete(tk),()=>OFMW.inflight.delete(tk))}
+ await p}
+async function fetchTileOFM(key){const [i,j]=key.split('_').map(Number),clat=(i+0.5)*TS,clon=(j+0.5)*TS,Z=14,n=2**Z,tx=Math.floor((clon+180)/360*n),r=clat*Math.PI/180,ty=Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n),tk=tx+'/'+ty;
+ if(!ofmWorker())return fetchTileOFMSync(key);
+ const b={s:i*TS-0.001,w:j*TS-0.001,nn:(i+1)*TS+0.001,e:(j+1)*TS+0.001};
+ for(let attempt=0;attempt<2;attempt++){await ofmEnsure(tk,tx,ty,n,Z);const r2=await ofmAsk({op:'get',tk,b});if(r2.miss){OFM.cache.delete(tk);continue}if(r2.err)return fetchTileOFMSync(key);return{elements:r2.els,source:'OpenFreeMap'}}
+ return fetchTileOFMSync(key)}
+
 // ============================================================ OFFLINE REGION PACKS (regions/index.json → per-region manifest)
 const REGIONS=[];
 (async()=>{try{const idx=await (await fetch('regions/index.json')).json();for(const [id,r] of Object.entries(idx)){try{const m=await (await fetch(r.path+'manifest.json')).json();REGIONS.push({id,...r,m,osm:new Set(m.osm||[]),bldg:new Set(m.bldg||[])});if(m.photos){try{const ph=await (await fetch(r.path+'photos.json')).json();ph.forEach(p=>p.url=r.path+p.file);PHOTOS.push(...ph)}catch(e){}}}catch(e){}}}catch(e){/* no packs (or opened from file://) */}})();
