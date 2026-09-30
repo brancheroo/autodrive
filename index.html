@@ -5708,7 +5708,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   {const f=window[n];if(typeof f!=='function'||f.__at)continue;const g=function(){if(!AT.on)return f.apply(this,arguments);const h0=HP();try{return f.apply(this,arguments)}finally{const d=HP()-h0;if(d>15e6){const r=AT.rec[n]||(AT.rec[n]={n:0,mb:0,sum:0});r.n++;r.mb=Math.max(r.mb,Math.round(d/1e6));r.sum+=Math.round(d/1e6)}}};g.__at=1;try{window[n]=g}catch(e){}}
  const _step=window.step;
  if(typeof _step==='function'&&!_step.__at){const st=function(){const h0=HP();const r=_step.apply(this,arguments);const d=HP()-h0;if(d>AT.peak)AT.peak=d;
-   if(!AT.on&&d>40e6&&AT.frame>120){AT.on=true;AT.left=120;AT.rec={};bb('alloc-frame',{mb:Math.round(d/1e6),st:(game&&game.status||'').slice(0,50)})}
+   if(!AT.on&&d>120e6&&AT.frame>120){AT.on=true;AT.left=120;AT.rec={};bb('alloc-frame',{mb:Math.round(d/1e6),st:(game&&game.status||'').slice(0,50)})}
    else if(AT.on&&--AT.left<=0){AT.on=false;const top=Object.entries(AT.rec).sort((x,y)=>y[1].sum-x[1].sum).slice(0,10).map(([k,v])=>k+' n'+v.n+' max'+v.mb+'MB sum'+v.sum+'MB');bb('alloc-spike',{top,peak:Math.round(AT.peak/1e6)});flush();AT.peak=0;AT.frame=0}
    AT.frame++;return r};st.__at=1;window.step=st}
  function copy(){const txt=JSON.stringify(BB);try{navigator.clipboard.writeText(txt).then(()=>{if(game)game.status='🧾 Trip log copied – paste it to Claude'})}catch(e){}}
