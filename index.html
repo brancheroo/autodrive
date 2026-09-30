@@ -5611,6 +5611,13 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  setInterval(()=>{const G=typeof game!=='undefined'?game:null;const dt=(performance.now()-fT)/1000,fps=Math.round(fr/Math.max(0.5,dt));fr=0;fT=performance.now();
   if(G&&G.route&&G.ego&&G.ego.mesh)bb('tick',{km:+(G.ego.s/1000).toFixed(2),of:+(G.route.total/1000).toFixed(1),mph:Math.round(G.ego.v*2.237),st:(G.status||'').slice(0,60),car:G.spec.id,mb:performance.memory?Math.round(performance.memory.usedJSHeapSize/1e6):null,fps,tiles:TILES.size,lock:LB.locked()});
   if(dirty){dirty=false;try{localStorage.setItem(KEY,JSON.stringify(BB))}catch(e){}}},3000);
+ /* ---------- memory-spike recorder: 1 Hz sizes of every major structure; a jump > 800 MB (or > 1.5 GB) is saved to the log with the last 12 readings, > 2 GB pauses the game instead of freezing ---------- */
+ const RING=[];let prevH=0,spiked=false;const flush=()=>{try{localStorage.setItem(KEY,JSON.stringify(BB))}catch(e){}};
+ const cnt=()=>{const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.route)return null;const n=f=>{try{return f()}catch(e){return -1}};
+  return {mb:Math.round(performance.memory.usedJSHeapSize/1e6),km:+(G.ego.s/1000).toFixed(2),tiles:TILES.size,raw:RAW.size,node:NODEINFO.size,feat:n(()=>OSMX.feat.length),kids:scene.children.length,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures,ag:G.agents.length,peds:G.peds.length,act:n(()=>ACT.list.length),gc:n(()=>GC.tracked),rebq:n(()=>REBUILDQ.length),bt:n(()=>BT.key||'-'),hyps:n(()=>FSD.hyps.size),trk:n(()=>DRIVE2.trk.size),xing:n(()=>INFRA.xings.length),park:n(()=>PARKQ.length),st:(G.status||'').slice(0,40)}};
+ setInterval(()=>{if(!performance.memory)return;const c=cnt();if(!c)return;RING.push(c);if(RING.length>30)RING.shift();
+  if((c.mb>1500||c.mb-prevH>800)&&!spiked){spiked=true;bb('memory-spike',{ring:RING.slice(-12)});flush();if(c.mb>2000&&game){game.paused=true;game.status='⚠️ Memory spike – paused. Press 🧾 and send the log.'}}
+  if(c.mb<900)spiked=false;prevH=c.mb},1000);
  function copy(){const txt=JSON.stringify(BB);try{navigator.clipboard.writeText(txt).then(()=>{if(game)game.status='🧾 Trip log copied – paste it to Claude'})}catch(e){}}
  MODS.push({id:'looptrip',
   start(){LB.cells.clear();LB.rr=[];LB.lockUntil=0;LB.why='';const G=game;bb('trip-start',{car:G.spec&&G.spec.id,from:G.A&&G.A.label,to:G.B&&G.B.label});if(!document.getElementById('bbBtn'))UIX.btn('bbBtn','🧾','Copy trip log (for bug reports)',copy)},
