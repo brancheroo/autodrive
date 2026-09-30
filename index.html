@@ -4637,7 +4637,7 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
  function keepKeys(G){const e=G.ego,K=new Set(),ci=Math.floor(toLat(e.z)/TS),cj=Math.floor(toLon(e.x)/TS);
   for(let i=-KEEP;i<=KEEP;i++)for(let j=-KEEP;j<=KEEP;j++)K.add((ci+i)+'_'+(cj+j));
   for(let d=0;d<=AHEAD;d+=250){const p=routeLLnh(Math.min(G.route.total,e.s+d));const a=Math.floor(p[1]/TS),b=Math.floor(p[0]/TS);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)K.add((a+i)+'_'+(b+j))}
-  for(const k of TILES.keys())K.add(k);if(typeof PENDING!=='undefined')for(const k of PENDING)K.add(k);if(typeof BT!=='undefined'&&BT.key)K.add(BT.key);return K}
+  for(const k of TILES.keys()){K.add(k);for(const nb of neighbourKeys(k))K.add(nb)} /* a built tile's neighbours stay: dropping them makes the tile want a rebuild when they come back */if(typeof PENDING!=='undefined')for(const k of PENDING)K.add(k);if(typeof BT!=='undefined'&&BT.key)K.add(BT.key);return K}
  function sweep(){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego||!G.ego.mesh)return;J.runs++;
   const K=keepKeys(G),RN=new Set(routeNodes(G)),gone=new Set();for(const [k,d] of RAW)if(K.has(k))for(const el of (d&&d.elements)||[])if(el.nodes)for(const n of el.nodes)RN.add(n); /* nodes still referenced by a kept tile stay */
   for(const [k,d] of RAW){if(K.has(k))continue;for(const el of (d&&d.elements)||[])if(el.nodes)for(const n of el.nodes)if(!RN.has(n))gone.add(n);
