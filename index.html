@@ -5697,6 +5697,19 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  setInterval(()=>{if(!performance.memory)return;const c=cnt();if(!c)return;RING.push(c);if(RING.length>30)RING.shift();
   if((c.mb>1500||c.mb-prevH>800)&&!spiked){spiked=true;bb('memory-spike',{ring:RING.slice(-12)});flush();if(c.mb>2000&&game){game.paused=true;game.status='⚠️ Memory spike – paused. Press 🧾 and send the log.'}}
   if(c.mb<900)spiked=false;prevH=c.mb},1000);
+ /* ---------- adaptive allocation tracer: normally only one heap read per frame. When a single frame allocates > 40 MB it
+    measures every module hook and the main subsystems for the next 120 frames and logs who allocated what ('alloc-spike') ---------- */
+ const AT={on:false,left:0,rec:{},frame:0,peak:0};const HP=()=>performance.memory?performance.memory.usedJSHeapSize:0;
+ const _mc=window.modCall;
+ window.modCall=function(h,a,b){if(!AT.on)return _mc.apply(this,arguments);
+  for(const m of MODS){const f=m[h];if(!f||m.off)continue;const h0=HP();try{f(a,b)}catch(e){modFail(m.id+'.'+h,e)}const d=HP()-h0;if(d>15e6){const k=m.id+'.'+h,r=AT.rec[k]||(AT.rec[k]={n:0,mb:0,sum:0});r.n++;r.mb=Math.max(r.mb,Math.round(d/1e6));r.sum+=Math.round(d/1e6)}}};
+ for(const n of ['updateCamera','plan','hyperPlan','hyperPredict','senseHorizon','impasseWatch','stuckWatch','manageTiles','manageTraffic','detections','renderPerception','drawMini','drawBEV','updateHUD','updateCollisions','riderView','updateWeather','spawnWayCar'])
+  {const f=window[n];if(typeof f!=='function'||f.__at)continue;const g=function(){if(!AT.on)return f.apply(this,arguments);const h0=HP();try{return f.apply(this,arguments)}finally{const d=HP()-h0;if(d>15e6){const r=AT.rec[n]||(AT.rec[n]={n:0,mb:0,sum:0});r.n++;r.mb=Math.max(r.mb,Math.round(d/1e6));r.sum+=Math.round(d/1e6)}}};g.__at=1;try{window[n]=g}catch(e){}}
+ const _step=window.step;
+ if(typeof _step==='function'&&!_step.__at){const st=function(){const h0=HP();const r=_step.apply(this,arguments);const d=HP()-h0;if(d>AT.peak)AT.peak=d;
+   if(!AT.on&&d>40e6&&AT.frame>120){AT.on=true;AT.left=120;AT.rec={};bb('alloc-frame',{mb:Math.round(d/1e6),st:(game&&game.status||'').slice(0,50)})}
+   else if(AT.on&&--AT.left<=0){AT.on=false;const top=Object.entries(AT.rec).sort((x,y)=>y[1].sum-x[1].sum).slice(0,10).map(([k,v])=>k+' n'+v.n+' max'+v.mb+'MB sum'+v.sum+'MB');bb('alloc-spike',{top,peak:Math.round(AT.peak/1e6)});flush();AT.peak=0;AT.frame=0}
+   AT.frame++;return r};st.__at=1;window.step=st}
  function copy(){const txt=JSON.stringify(BB);try{navigator.clipboard.writeText(txt).then(()=>{if(game)game.status='🧾 Trip log copied – paste it to Claude'})}catch(e){}}
  MODS.push({id:'looptrip',
   start(){LB.cells.clear();LB.rr=[];LB.lockUntil=0;LB.why='';const G=game;bb('trip-start',{car:G.spec&&G.spec.id,from:G.A&&G.A.label,to:G.B&&G.B.label});if(!document.getElementById('bbBtn'))UIX.btn('bbBtn','🧾','Copy trip log (for bug reports)',copy)},
