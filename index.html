@@ -6176,7 +6176,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    const st=(G.upcoming||[]).find(u=>u.type==='stop');if(st){const d=Math.hypot(st.x-e.x,st.z-e.z);if(d<70)readSign('stop'+Math.round(st.x),'STOP','Stop sign ahead',clamp(0.99-d/200,0.5,0.99))}
    if(window.SCHOOL&&SCHOOL.msg)readSign('school','SCHOOL ZONE 20','School zone',0.95);if(window.WORK&&WORK.zones.some(z=>z.s0-e.s<400&&z.s0-e.s>0))readSign('work'+Math.round(WORK.zones[0].s0),'ROAD WORK AHEAD','Road work ahead',0.96);
    draw()},
-  preRender(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;bsZones();const ext=G.cam!=='in';for(const s of ['L','R']){bs[s].material.opacity=ext?(SL.bs&&SL.bs[s]?0.45:0.08):0}const h=hud();for(const s of ['L','R']){const el=document.getElementById('bs'+s);if(el)el.style.opacity=SL.bs&&SL.bs[s]?'1':'.15'}
+  preRender(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;bsZones();const ext=G.cam!=='in';for(const s of ['L','R']){bs[s].material.opacity=0;bs[s].visible=false /* the blind-spot warning lives in the HUD (◀🚗 / 🚗▶); no rectangles painted on the road */}const h=hud();for(const s of ['L','R']){const el=document.getElementById('bs'+s);if(el)el.style.opacity=SL.bs&&SL.bs[s]?'1':'.15'}
    if(SL.occ&&!/🛡|✋|🚸|🚌|👷|red|Stop/.test(G.status||'')&&G.ego.v>=SL.occ.v-0.5)G.status=SL.occ.why}});
  /* lane changes wait for clear blind spots */
  const _gap=()=>SL.bs;window.BLINDSPOT=_gap;
