@@ -3615,7 +3615,7 @@ function aifmStart(){if(!AIFM.ctx)AIFM.ctx=new (window.AudioContext||window.webk
  AIFM.on=true;mespeakLoad();aifmLoad();clearInterval(AIFM.timer);AIFM.timer=setInterval(aifmTick,25);aifmUI()}
 // game pause freezes the music: the AI station's audio clock is suspended (resumes mid-bar), the stream radio is paused
 // buttons must not keep keyboard focus: Space (pause) would otherwise re-press the last clicked button (e.g. switch the radio off)
-document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.closest('#ctrl button,#aifmBox button');if(b)setTimeout(()=>b.blur(),0)},true);
+document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.closest('#ctrl button,#aifmBox button,#optPage button');if(b)setTimeout(()=>b.blur(),0)},true);
 document.addEventListener('keydown',ev=>{if((ev.key===' '||ev.key==='Enter')&&ev.target&&ev.target.tagName==='BUTTON'&&game&&game.route){ev.preventDefault();ev.target.blur()}},true);
 document.addEventListener('keyup',ev=>{if(ev.key===' '&&ev.target&&ev.target.tagName==='BUTTON'&&game&&game.route)ev.preventDefault()},true);
 function syncMusicPause(){const p=!!(game&&game.paused);if(TECH.on&&TECH.ctx){if(p&&TECH.ctx.state==='running')TECH.ctx.suspend();else if(!p&&TECH.ctx.state==='suspended')TECH.ctx.resume()}if(AIFM.on&&AIFM.ctx){if(p&&AIFM.ctx.state==='running'){AIFM.ctx.suspend();try{speechSynthesis.pause()}catch(e){}}else if(!p&&AIFM.ctx.state==='suspended'){AIFM.ctx.resume();try{speechSynthesis.resume()}catch(e){}}}
