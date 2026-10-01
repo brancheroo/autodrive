@@ -4479,8 +4479,8 @@ function updateUturn(dt){const G=game,e=G.ego,U=G.uturn;G.sig=-1;
    else{G.uturn=null;e.s=12;e.off=laneOffsetAt(0);G.sig=0;G.status='U-turn complete (pivot + crab)'}}
   return}
  if(U.phase==='stop'){e.v=Math.max(0,e.v-6*dt);G.status='↩️ Preparing to U-turn';if(e.v<0.3){e.v=0;U.phase='wait'}return}
- if(U.phase==='wait'){const fx=Math.cos(e.mesh.rotation.y),fz=-Math.sin(e.mesh.rotation.y);const busy=G.agents.some(a=>{if(!a.mesh)return false;const dx=a.mesh.position.x-U.P0[0],dz=a.mesh.position.z-U.P0[1],d=Math.hypot(dx,dz);return d<70&&a.v>1&&(dx*fx+dz*fz)>-10&&d>3});
-  U.wait+=dt;G.status=busy&&U.wait<12?'↩️ Waiting for a gap to U-turn':'↩️ Making a U-turn';if(!busy||U.wait>=12)U.phase='turn';return}
+ if(U.phase==='wait'){const fx=Math.cos(e.mesh.rotation.y),fz=-Math.sin(e.mesh.rotation.y);const busy=G.agents.some(a=>{if(!a.mesh)return false;const dx=a.mesh.position.x-U.P0[0],dz=a.mesh.position.z-U.P0[1],d=Math.hypot(dx,dz);return a.v>1&&d>3&&((d<70&&(dx*fx+dz*fz)>-10)||d<35)}); /* anything moving close by counts – cross traffic and cars coming up from behind too, not only what is ahead */
+  U.wait+=dt;G.status=busy&&U.wait<25?'↩️ Waiting for a gap to U-turn':'↩️ Making a U-turn';if(!busy||U.wait>=25)U.phase='turn';return}
  const pz=uturnPose(U,U.u);e.v=Math.min(5.5,e.v+2*dt);U.u=Math.min(1,U.u+e.v*dt/Math.max(1,pz.sp));const p=uturnPose(U,U.u);
  e.mesh.position.set(p.x,Math.max(groundY(p.x,p.z),(roadSurfaceY(p.x,p.z,groundY(p.x,p.z))??-1e9))+0.03,p.z);e.mesh.rotation.y=p.h;e.x=p.x;e.z=p.z;e.head=p.h;spinWheels(e,dt,0.55);G.status='↩️ Making a U-turn';
  if(U.u>=1){G.uturn=null;e.s=12;e.off=laneOffsetAt(0);G.sig=0;G.status='U-turn complete · on the new route'}}
