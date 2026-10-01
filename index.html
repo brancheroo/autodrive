@@ -5747,7 +5747,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  addEventListener('error',e=>bb('error',{msg:String(e.message).slice(0,160),line:e.lineno}));
  let fr=0,fT=performance.now();(function tick(){fr++;requestAnimationFrame(tick)})();
  setInterval(()=>{const G=typeof game!=='undefined'?game:null;const dt=(performance.now()-fT)/1000,fps=Math.round(fr/Math.max(0.5,dt));fr=0;fT=performance.now();
-  if(G&&G.route&&G.ego&&G.ego.mesh)bb('tick',{km:+(G.ego.s/1000).toFixed(2),of:+(G.route.total/1000).toFixed(1),mph:Math.round(G.ego.v*2.237),st:(G.status||'').slice(0,60),car:G.spec.id,mb:performance.memory?Math.round(performance.memory.usedJSHeapSize/1e6):null,fps,tiles:TILES.size,lock:LB.locked()});
+  if(G&&G.route&&G.ego&&G.ego.mesh)bb('tick',{km:+(G.ego.s/1000).toFixed(2),of:+(G.route.total/1000).toFixed(1),mph:Math.round(G.ego.v*2.237),st:(G.status||'').slice(0,60),car:G.spec.id,mb:performance.memory?Math.round(performance.memory.usedJSHeapSize/1e6):null,fps,tiles:TILES.size,lock:LB.locked(),hb:window.COMFORTM&&COMFORTM.hard,pk:window.COMFORTM&&+COMFORTM.peak.toFixed(1)});
   if(dirty){dirty=false;try{localStorage.setItem(KEY,JSON.stringify(BB))}catch(e){}}},3000);
  /* ---------- memory-spike recorder: 1 Hz sizes of every major structure; a jump > 800 MB (or > 1.5 GB) is saved to the log with the last 12 readings, > 2 GB pauses the game instead of freezing ---------- */
  const RING=[];let prevH=0,spiked=false;const flush=()=>{try{localStorage.setItem(KEY,JSON.stringify(BB))}catch(e){}};
@@ -5789,14 +5789,14 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    overlap it caps the speed to zero (the planner brakes at its hardest) for 0.6 s (braking up to 0.9 g on dry road). Skipped in Cannonball (all safety off). */
 (function(){
  const A={on:true,hits:0,hold:0,last:'',tick:0};window.AEBSAT=A;
- const SW=[0.2,0.45,0.7,0.95,1.2];
+ const sweep=v=>{const H=Math.max(0.9,Math.min(1.6,0.7+v/30));return [0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6].filter(t=>t<=H+0.01)}; /* look-ahead grows with speed: 1.0 s in town, 1.6 s at highway speed */
  function foot(a){const s=a.spec||{};return {L:s.L||4.6,W:s.W||1.9}}
- function scan(G){const e=G.ego,fx=Math.cos(e.head),fz=-Math.sin(e.head),Le=G.spec.L,We=G.spec.W,v=e.v;let hit=null;
+ function scan(G){const e=G.ego,fx=Math.cos(e.head),fz=-Math.sin(e.head),Le=G.spec.L,We=G.spec.W,v=e.v;let hit=null;const SW=sweep(v);
   const test=(x,z,vx,vz,L,W,tag)=>{const dx=x-e.x,dz=z-e.z,f=dx*fx+dz*fz;if(f<-L||f>v*1.3+L+8)return;const lat=-dx*fz+dz*fx;if(Math.abs(lat)>We/2+W/2+Math.abs(vx*-fz+vz*fx)*1.3+3)return;
    const ov=vx*fx+vz*fz,lv=-vx*fz+vz*fx;
    for(const t of SW){const fe=v*t,fo=f+ov*t,la=lat+lv*t;if(Math.abs(fo-fe)<(Le+L)/2+0.3&&Math.abs(la)<(We+W)/2-0.1){if(!hit||t<hit.t)hit={t,tag,gap:f-(Le+L)/2};return}}};
   for(const a of G.agents){if(!a.mesh||a.loose)continue;const h=a.mesh.rotation.y,sp=a.v||0,F=foot(a);test(a.mesh.position.x,a.mesh.position.z,Math.cos(h)*sp,-Math.sin(h)*sp,F.L,F.W,a.kind)}
-  for(const p of G.peds||[]){if(p.x===undefined)continue;test(p.x,p.z,0,0,0.6,0.7,'ped')}
+  for(const p of G.peds||[]){if(p.x===undefined)continue;let vx=0,vz=0;try{if(p.w&&p.v&&typeof wayPos==='function'){const q0=wayPos(p.w,p.s,1.0*p.dir),q1=wayPos(p.w,p.s+p.dir*0.5,1.0*p.dir);vx=(q1[0]-q0[0])/0.5*p.v;vz=(q1[1]-q0[1])/0.5*p.v}}catch(err){} /* walking velocity along the footpath */test(p.x,p.z,vx,vz,0.6,0.7,'ped')}
   return hit}
  MODS.push({id:'aebsat',
   start(){A.hits=0;A.hold=0;if(window.capSet)capSet('aebsat',null)},
@@ -5806,6 +5806,20 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    if(A.hold>0){A.hold-=dt;if(A.hold<=0)capSet('aebsat',null);else return}
    A.tick-=dt;if(A.tick>0)return;A.tick=0.05;if(G.ego.v<2.5)return;
    const h=scan(G);if(h){A.hold=0.6;A.hits++;A.last=h.tag+' in '+h.t.toFixed(2)+' s';capSet('aebsat',0);G.status='🛑 Emergency braking · '+h.tag+' ahead'}}});
+})();
+</script>
+<script>/* mods/29g-driveplus.js */
+/* Extra driving polish: (a) longer following gap behind big vehicles (trucks, buses) that hide the road ahead and at night;
+   (b) comfort metrics (hard-brake count, peak decel, peak jerk) in the black-box tick so changes can be compared with numbers. */
+(function(){
+ const CM={hard:0,peak:0,jerk:0,prevA:0,cd:0};window.COMFORTM=CM;
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{
+  if(!isEgo||!lead||smartOn()||fastOn()||(window.CANNON&&CANNON.on)||!a.mesh)return null;const G=game,big=(lead.spec&&lead.spec.L||4.6)>8,dark=!!G.dark;if(!big&&!dark)return null;
+  const gap=lead.s-a.s-((lead.spec&&lead.spec.L||4.6)+a.spec.L)/2,want=(2.5+1.6*a.v)*((window.WX&&WX.gap)||1),extra=(big?4+0.4*a.v:0)+(dark?0.4*a.v:0);
+  return {v:allow(lead.v,gap-want-extra),reason:big?'Extra gap behind a large vehicle':'Extra gap at night'}});
+ MODS.push({id:'driveplus',
+  start(){CM.hard=0;CM.peak=0;CM.jerk=0;CM.prevA=0;CM.cd=0},
+  sim(dt){const G=game;if(!G||!G.ego||dt<=0)return;const a=G.ego.acc||0;CM.cd-=dt;if(a<-4&&CM.cd<=0){CM.hard++;CM.cd=3}if(a<CM.peak)CM.peak=a;const j=Math.abs(a-CM.prevA)/dt;if(j>CM.jerk&&j<200)CM.jerk=j;CM.prevA=a}});
 })();
 </script>
 <script>/* mods/30-isect.js */
