@@ -5461,7 +5461,11 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   /* nothing fits: drive on and loop round the block */
   G.uturn=null;G.noUturnT=G.simTime;if(window.FSDB&&FSDB.reverse){FSDB.reverse(25)}else{G.status='🔁 No room to turn – looping around the block';setTimeout(()=>{try{if(typeof rerouteNow==='function')rerouteNow()}catch(err){}},1500)}}; /* 21 · back out, then find another way */
  const _uu=window.updateUturn;
- window.updateUturn=function(dt){const G=game,U=G.uturn;if(!U||!U.kt||U.phase!=='turn')return _uu.apply(this,arguments);const e=G.ego,K=U.kt,S=K.S[K.i];
+ window.updateUturn=function(dt){const G=game,U=G.uturn;
+  if(U&&U.phase==='turn'&&G.ego&&G.ego.mesh){ /* hold the turn while any vehicle is close to the sweep (max 20 s, then carry on) */
+   const P=G.ego.mesh.position;let near=false;if(!(U.hold>=20))for(const a of G.agents){if(!a.mesh||a.loose)continue;const d=Math.hypot(a.mesh.position.x-P.x,a.mesh.position.z-P.z);if(d<(G.spec.L+((a.spec&&a.spec.L)||4.6))/2+3.5){near=true;break}}
+   if(near){U.hold=(U.hold||0)+dt;G.ego.v=0;G.status='↩️ U-turn paused – vehicle in the way';return}}
+  if(!U||!U.kt||U.phase!=='turn')return _uu.apply(this,arguments);const e=G.ego,K=U.kt,S=K.S[K.i];
   const pz=uturnPose(S,K.u);e.v=Math.min(3.5,e.v+2*dt);K.u=Math.min(1,K.u+e.v*dt/Math.max(1,pz.sp));const p=uturnPose(S,K.u),h=S.rev?p.h+Math.PI:p.h;
   e.mesh.position.set(p.x,Math.max(groundY(p.x,p.z),(roadSurfaceY(p.x,p.z,groundY(p.x,p.z))??-1e9))+0.03,p.z);e.mesh.rotation.y=h;e.x=p.x;e.z=p.z;e.head=h;spinWheels(e,dt,S.rev?-0.6:0.6);
   G.status=`↩️ Three-point turn · ${K.i+1}/3${S.rev?' (reversing)':''}`;
