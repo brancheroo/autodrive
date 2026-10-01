@@ -2470,7 +2470,7 @@ function plan(a,dt,lead,isEgo){
  const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){if(!chase)target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
  const fanG=isEgo&&a.spec.hyper?1+2*((game.fans||[0,0,0,0]).reduce((q,v)=>q+v,0)/4):1;
  const amax=isEgo&&a.spec.hyper?Math.min(26.8/1.7*(chase?1:0.35)*DP.acc,WX.mu*9.81*(chase?1.6:0.6)*fanG):Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc))*(chase?2.3:1):1.8,WX.mu*9.81*(chase?0.7:0.35)); // traction-limited on wet/snow/ice
- let acc=target>a.v?amax*(1-Math.pow(a.v/Math.max(target,0.1),4)):clamp((target-a.v)*1.6*(isEgo&&!chase?(DP.dg||1):1),(isEgo&&a.spec.hyper?-(hyperBrakeCap(a.v)*1.2):-6.5)*(isEgo&&window.EGO_DECEL?EGO_DECEL:1),0);
+ let acc=target>a.v?amax*(1-Math.pow(a.v/Math.max(target,0.1),4)):clamp((target-a.v)*1.6*(isEgo&&!chase?(DP.dg||1):1),(isEgo&&a.spec.hyper?-(hyperBrakeCap(a.v)*1.2):isEgo&&window.AEBSAT&&AEBSAT.hold>0?-Math.min(8.8,WX.mu*9.81*0.9):-6.5)*(isEgo&&window.EGO_DECEL?EGO_DECEL:1),0);
  if(isEgo&&a.spec.plim&&acc>0){const E=ES(),vv=Math.max(a.v,2.5),Pw=a.spec.hp*745.7*0.85,drag=0.5*1.2*E.cda*vv*vv+E.crr*E.kg*9.81,gr=(a.grade||0)*E.kg*9.81;acc=Math.min(acc,Math.max(0,(Pw/vv-drag-gr)/E.kg),2.6)} // power-limited: slow 0–60, runs out of breath near 86 mph
  if(target>a.v&&target-a.v<0.2)acc=0;
  if(isEgo&&a.spec.hyper){ /* VACUUM FANS: per-wheel suction sized to the grip actually needed (lateral + longitudinal, with weight transfer) */
@@ -5786,7 +5786,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
 /* Last-resort emergency braking for satellite / Predictacar cars. The Drive2 + FSD stack (which has its own AEB) stands down
    when the satellite planner is in charge, so this is the independent safety net under it: every 50 ms of sim time it
    projects the ego car and every nearby vehicle / pedestrian 1.2 s ahead on straight-line paths, and if any footprints
-   overlap it caps the speed to zero (the planner brakes at its hardest) for 0.4 s. Skipped in Cannonball (all safety off). */
+   overlap it caps the speed to zero (the planner brakes at its hardest) for 0.6 s (braking up to 0.9 g on dry road). Skipped in Cannonball (all safety off). */
 (function(){
  const A={on:true,hits:0,hold:0,last:'',tick:0};window.AEBSAT=A;
  const SW=[0.2,0.45,0.7,0.95,1.2];
@@ -5805,7 +5805,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    if(!smartOn()||(window.CANNON&&CANNON.on)||G.ego.loose||G.charging||G.tow||G.uturn){if(A.hold>0){A.hold=0;capSet('aebsat',null)}return}
    if(A.hold>0){A.hold-=dt;if(A.hold<=0)capSet('aebsat',null);else return}
    A.tick-=dt;if(A.tick>0)return;A.tick=0.05;if(G.ego.v<2.5)return;
-   const h=scan(G);if(h){A.hold=0.4;A.hits++;A.last=h.tag+' in '+h.t.toFixed(2)+' s';capSet('aebsat',0);G.status='🛑 Emergency braking · '+h.tag+' ahead'}}});
+   const h=scan(G);if(h){A.hold=0.6;A.hits++;A.last=h.tag+' in '+h.t.toFixed(2)+' s';capSet('aebsat',0);G.status='🛑 Emergency braking · '+h.tag+' ahead'}}});
 })();
 </script>
 <script>/* mods/30-isect.js */
