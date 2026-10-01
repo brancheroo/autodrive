@@ -3305,7 +3305,7 @@ function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cv
   const lab=`${d.cls==='animal'?d.extra:d.cls==='light'?'light '+d.extra:d.cls==='stop'?'stop sign':d.cls==='ped'?'pedestrian':'vehicle'} ${d.conf.toFixed(2)} · ${Math.round(d.d)}m`;x.font=`${9*dpr}px system-ui`;const tw=x.measureText(lab).width+4*dpr;x.fillStyle=col;x.fillRect(x0,y0-11*dpr,tw,11*dpr);x.fillStyle='#000';x.fillText(lab,x0+2*dpr,y0-2.5*dpr)}
  if(G.spec.hyper)hyperOverlay(x,W,H,dpr,proj,dets);else if(satActive())satIcon(x,W,H,dpr);
  {const G=game,e=G.ego,mph=Math.round(e.v*MPH),acc=e.acc||0,verb=G.charging?'':acc>0.3?'accelerating':acc<-0.8?'braking':acc<-0.2?'easing off':'holding speed';const sig=G.sig<0?' · signalling left':G.sig>0?' · signalling right':'';
-  $('cvExp').style.display=EXPRESS.on?'block':'none';$('cvAct').textContent=`▶ ${G.status||'Cruising'}${verb&&mph>0?' · '+verb:''} · ${mph} mph${sig}`}
+  $('cvExp').style.display=EXPRESS.on?'block':'none';$('cvExp').textContent=window.CANNON&&CANNON.on?'CANNONBALL':'EXPRESS MODE';$('cvAct').textContent=`▶ ${G.status||'Cruising'}${verb&&mph>0?' · '+verb:''} · ${mph} mph${sig}`}
  game.seen={...counts};$('cvStats').textContent=`${counts.car} veh · ${counts.ped} ped${counts.animal?` · ${counts.animal} animal`:''} · ${counts.light} lights · ${counts.stop} stop`;$('cvTitle').textContent='PERCEPTION';
  drawBEV(dets,S)}
 /* HYPER perception: overwhelming data — per-object IDs, velocity vectors, 4 s predicted trajectories with TTC, threat lock,
