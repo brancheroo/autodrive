@@ -1522,7 +1522,18 @@ function buildGargantua(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}
  /* radar dome: white radome on a short plinth, front half of the cab roof */
  {const rm=new THREE.MeshStandardMaterial({color:0xf2f3f4,roughness:0.35,metalness:0.05});const base=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.55,0.12,24),dark);base.position.set(cx+0.55,roofY+0.06,cz);base.castShadow=true;g.add(base);
   const dome=new THREE.Mesh(new THREE.SphereGeometry(0.5,24,12,0,Math.PI*2,0,Math.PI/2),rm);dome.position.set(cx+0.55,roofY+0.12,cz);dome.castShadow=true;g.add(dome);ud.radome=dome}
- for(const sd of [1,-1]){box(0.05,0.14,0.34,lamp,L/2+0.44,deckY+0.12,sd*(bodyW/2-0.3));box(0.05,0.12,0.3,red,-L/2-0.08,deckY+0.1,sd*(bodyW/2-0.25))}
+ /* lighting rig driven by setLights: quad headlights + DRL, wide brake bar and tail clusters, amber indicators front/rear/side, reverse lamps, and a giant roof light bar */
+ {const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00),rev=mk(0xcfd6dc),hz=bodyW/2,fx=L/2+0.42,rx=-L/2-0.09,hy=deckY+0.16,fr=new THREE.MeshStandardMaterial({color:0x14171a,metalness:0.6,roughness:0.5});
+  for(const sd of [1,-1]){const sg=sd<0?sigL:sigR;
+   box(0.08,0.3,0.62,fr,fx-0.02,hy,sd*(hz-0.52));box(0.06,0.16,0.26,head,fx+0.03,hy+0.05,sd*(hz-0.38));box(0.06,0.16,0.26,head,fx+0.03,hy+0.05,sd*(hz-0.68));
+   box(0.06,0.05,0.62,head,fx+0.03,hy-0.11,sd*(hz-0.52));box(0.06,0.12,0.16,sg,fx+0.03,hy+0.02,sd*(hz-0.14));
+   box(0.1,0.34,0.5,fr,rx+0.03,deckY+0.08,sd*(hz-0.4));box(0.05,0.28,0.4,tail,rx-0.02,deckY+0.08,sd*(hz-0.4));box(0.05,0.1,0.14,sg,rx-0.02,deckY+0.3,sd*(hz-0.14));box(0.05,0.1,0.14,rev,rx-0.02,deckY-0.1,sd*(hz-0.14));
+   box(0.5,0.08,0.05,sg,L*0.3,deckY-0.12,sd*(hz+0.02))}
+  box(0.05,0.07,bodyW-1.7,tail,rx-0.02,deckY+0.3,0);
+  const barL=cabW-0.1,by=roofY+0.1,bxx=cx+cabL/2-0.35;box(0.3,0.2,barL,fr,bxx,by,0);box(0.05,0.2,barL+0.1,steel,bxx-0.17,by,0);
+  for(let k=0;k<12;k++){const z=-barL/2+0.12+k*(barL-0.24)/11;box(0.04,0.13,(barL-0.4)/12-0.02,head,bxx+0.16,by,z);box(0.16,0.03,0.12,steel,bxx+0.04,by+0.115,z)}
+  for(const sd of [1,-1])box(0.04,0.12,0.14,sd<0?sigL:sigR,bxx+0.16,by,sd*(barL/2-0.05));
+  ud.lights={head,tail,sigL,sigR};ud.lightBar=true}
  for(let k=0;k<6;k++)box(0.18,0.05,bodyW*0.98,k%2?dark:new THREE.MeshStandardMaterial({color:0xffd000}),-L*0.45+k*0.18,deckY+deckH/2+0.01,0);
  box(3.2,0.05,0.05,steel,-L*0.22,deckY+deckH/2+0.35,-(bodyW/2-0.08));
  /* six wheels: three axles, double width / double height, all steerable (front pair steers most, rear counter-steers) */
