@@ -2437,7 +2437,7 @@ function plan(a,dt,lead,isEgo){
  if(!isEgo&&game.protest&&game.protest.state!=='dispersing'&&a.kind!=='way'){const P=game.protest,d=a.dir>0?P.s-6-a.s:a.s-(P.s+6);if(d>-3&&d<70){const v=allow(0,Math.max(0,d));if(v<target)target=v}}
 // acceleration
  if(window.PLAN_HOOKS)for(const hk of PLAN_HOOKS){try{const r=hk(a,isEgo,lead,allow,look,idx,dt,chase);if(r&&(r.v<target||r.force)){target=Math.max(0,r.v);if(r.reason)reason=r.reason}}catch(err){}} /* feature modules: cyclists, school buses, roundabouts, gap acceptance… */
- if(isEgo&&a.spec.basicAD&&!smartOn()){target=Math.min(target,55/MPH)}if(isEgo&&window.EGO_CAP!=null)target=Math.min(target,window.EGO_CAP); /* modules (emergency pull-over, delivery stops) */ /* dashcam autopilot: 55 mph max */
+ if(isEgo&&window.CANNON&&CANNON.on){const ar=allow(0,Math.max(0,rem-1));target=Math.min(ar,a.spec.hyper?447:(typeof a.spec.top==='number'?a.spec.top:85)/MPH);reason=ar<447&&target===ar&&rem<200?'Arriving':'💣 CANNONBALL · flat out, no safety'}if(isEgo&&a.spec.basicAD&&!smartOn()&&!(window.CANNON&&CANNON.on)){target=Math.min(target,55/MPH)}if(isEgo&&window.EGO_CAP!=null&&!(window.CANNON&&CANNON.on))target=Math.min(target,window.EGO_CAP); /* modules (emergency pull-over, delivery stops) */ /* dashcam autopilot: 55 mph max */
  const top=(isEgo&&a.spec.hyper&&chase?1000:(typeof a.spec.top==='number'?a.spec.top:85))/MPH;target=Math.min(target,top);
  const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){if(!chase)target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
  const fanG=isEgo&&a.spec.hyper?1+2*((game.fans||[0,0,0,0]).reduce((q,v)=>q+v,0)/4):1;
@@ -2666,7 +2666,7 @@ function sirenStop(c){if(!c.siren)return;try{c.siren.g.gain.setTargetAtTime(0,au
 function trailLen(){const T=CHASE.trail;return T.length?T[T.length-1].d:0}
 function trailAt(d){const T=CHASE.trail;if(!T.length)return null;let lo=0,hi=T.length-1;if(d<=T[0].d)return T[0];if(d>=T[hi].d)return T[hi];while(hi-lo>1){const m=(lo+hi)>>1;if(T[m].d<d)lo=m;else hi=m}const a=T[lo],b=T[hi],k=(d-a.d)/((b.d-a.d)||1);return{x:lerp(a.x,b.x,k),z:lerp(a.z,b.z,k),y:lerp(a.y,b.y,k),h:Math.atan2(-(b.z-a.z),b.x-a.x)}}
 // Express: the chase driving brain (flat out, lights & signs ignored, threads traffic, hard corners/brakes, fast crash recovery) without police
-const EXPRESS={on:false};function fastOn(){return CHASE.on||EXPRESS.on}
+const EXPRESS={on:false};window.CANNON={on:false}; /* Cannonball: Express flat out with every safety system bypassed */function fastOn(){return CHASE.on||EXPRESS.on}
 function expressToggle(){if(!game||!game.route)return;EXPRESS.on=!EXPRESS.on;if(!fastOn()){CHASE.evade=0;CHASE.pass=0}const b=document.getElementById('expBtn');if(b)b.classList.toggle('on',EXPRESS.on);game.status=EXPRESS.on?'⚡ Express mode · flat out':'Express off · normal driving'}
 /* Express overtaking (non-hypercar): pick whichever side is actually free — right lane, or the oncoming lane only when it's clear for 5 s
    of closing distance — swing out early and hard, hold it until past, then tuck back in. Both blocked → follow and wait for a gap. */
@@ -2763,7 +2763,7 @@ function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;c
  for(let i=0;i<bodies.length;i++){const A=bodies[i];for(let j=i+1;j<bodies.length;j++){const B=bodies[j];const R=(A.L+B.L)/2+0.5;if(Math.abs(A.x-B.x)>R||Math.abs(A.z-B.z)>R)continue;if(A.y!=null&&B.y!=null&&Math.abs(A.y-B.y)>3)continue; /* different levels: overpass above / road below */
    if(A.kind!=='ego'&&B.kind!=='ego'&&A.kind===B.kind&&A.kind!=='chaos'&&A.kind!=='cop')continue; // same scripted lane stream: they queue, they don't overlap by design
    if((A.ref._age??9)<1.5||(B.ref._age??9)<1.5)continue;const c=satOverlap(A,B);if(!c)continue;
-   if(G.spec.hyper&&(A.kind==='ego'||B.kind==='ego')&&!G.ego.loose){ /* Predictacar guardian: it is never in a collision – whatever touches its shield field is deflected softly, no impact, no damage */
+   if(G.spec.hyper&&!(window.CANNON&&CANNON.on)&&(A.kind==='ego'||B.kind==='ego')&&!G.ego.loose){ /* Predictacar guardian: it is never in a collision – whatever touches its shield field is deflected softly, no impact, no damage */
     const O=A.kind==='ego'?B:A,sg=A.kind==='ego'?1:-1,vo=velOf(O,dt),vn=vo.vx*c.n[0]*sg+vo.vz*c.n[1]*sg;makeLoose(O,{vx:vo.vx-Math.min(0,vn)*c.n[0]*sg+c.n[0]*sg*0.6,vz:vo.vz-Math.min(0,vn)*c.n[1]*sg+c.n[1]*sg*0.6,w:vo.w*0.3});O.ref.loose.x+=sg*c.n[0]*(c.o+0.05);O.ref.loose.z+=sg*c.n[1]*(c.o+0.05);O.ref.loose.soft=true;continue}
    const va=velOf(A,dt),vb=velOf(B,dt),n=c.n,ra=[c.p[0]-A.x,c.p[1]-A.z],rb=[c.p[0]-B.x,c.p[1]-B.z],IA=A.m*(A.L*A.L+A.W*A.W)/12,IB=B.m*(B.L*B.L+B.W*B.W)/12;
    const pa=[va.vx+va.w*ra[1],va.vz-va.w*ra[0]],pb=[vb.vx+vb.w*rb[1],vb.vz-vb.w*rb[0]],rel=[pb[0]-pa[0],pb[1]-pa[1]],vn=rel[0]*n[0]+rel[1]*n[1];
@@ -5348,7 +5348,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
 (function(){
  const D2={on:true,trk:new Map(),pc:new Map(),pcT:-1};window.DRIVE2=D2;
  const T_STEPS=[0.4,0.8,1.2,1.6,2.0,2.5];
- const active=()=>D2.on&&game&&game.route&&game.ego&&game.ego.mesh&&!smartOn()&&!game.uturn&&!game.ego.loose&&!(window.BENCH&&BENCH.on);
+ const active=()=>D2.on&&game&&game.route&&game.ego&&game.ego.mesh&&!smartOn()&&!(window.CANNON&&CANNON.on)&&!game.uturn&&!game.ego.loose&&!(window.BENCH&&BENCH.on);
  /* ---------- 5 · tracking + prediction in the route frame ---------- */
  function routeLat(s,x,z){const c=routeXZ(s,0);return (x-c[0])*(-c[3])+(z-c[1])*c[2]}
  function track(dt){const G=game;if(!(dt>0))return;const seen=new Set();
@@ -5469,7 +5469,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
 (function(){
  const F={on:true,objs:[],ghosts:new Map(),hyps:new Map(),plan:null,mrm:null,lat:{n:0,sum:0,max:0,pending:new Map()},aeb:0,dbg:{cands:[],zones:[]},t:0};window.FSD=F;
  const D=()=>window.DRIVE2;
- const active=()=>F.on&&game&&game.route&&game.ego&&game.ego.mesh&&!smartOn()&&!game.uturn&&!game.ego.loose&&!(window.BENCH&&BENCH.on);
+ const active=()=>F.on&&game&&game.route&&game.ego&&game.ego.mesh&&!smartOn()&&!(window.CANNON&&CANNON.on)&&!game.uturn&&!game.ego.loose&&!(window.BENCH&&BENCH.on);
  const rnd=(()=>{let s=1;return ()=>((s=Math.imul(s^s>>>15,2246822519)+0x9e3779b9|0)>>>0)/4294967296})();
  const gauss=()=>{let u=0,v=0;while(!u)u=rnd();while(!v)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v)};
  /* ================= PERCEPTION ================= */
@@ -5594,7 +5594,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    TOOLS      30 safety dashboard (📊) · 32 planner debug view (🧠) · 31/33 nightly regression + A/B in testkit.js */
 (function(){
  const B={};window.FSDB=B;
- const on=()=>game&&game.route&&game.ego&&game.ego.mesh&&!smartOn()&&!game.uturn&&!game.ego.loose&&!(window.BENCH&&BENCH.on)&&(!window.FSD||FSD.on);
+ const on=()=>game&&game.route&&game.ego&&game.ego.mesh&&!smartOn()&&!(window.CANNON&&CANNON.on)&&!game.uturn&&!game.ego.loose&&!(window.BENCH&&BENCH.on)&&(!window.FSD||FSD.on);
  const nodeS=i=>game.route.cum[i];
  const stepAt=(i0,i1)=>game.route.steps.find(st=>st.idx>=i0&&st.idx<=i1&&st.type!=='depart'&&st.type!=='arrive');
  /* ---------- 14 · turn lanes ---------- */
@@ -6093,10 +6093,10 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    system re-engages after checking the lane. Your car keeps physical collisions while you drive. */
 (function(){
  Object.assign(DRIVE_P,{Grandma:{acc:0.5,spd:0.88,gap:1.8},Sporty:{acc:1.45,spd:1.1,gap:0.7}});
- const STY=[['Standard','🙂 Normal'],['Comfort','🛋 Comfort'],['Express','⚡ Express']];
- UIX.section('Driving style',`<select id="styleSel" style="width:100%;${UIX.sel}">${STY.map(([k,t])=>`<option value="${k}">${t}</option>`).join('')}</select><div style="font-size:11px;color:var(--dim)">Comfort: smooth and gentle, minimal g-forces · Express: chase-style driving, no police.</div>`,/Graphics quality/);
+ const STY=[['Standard','🙂 Normal'],['Comfort','🛋 Comfort'],['Express','⚡ Express'],['Cannonball','💣 Cannonball']];
+ UIX.section('Driving style',`<select id="styleSel" style="width:100%;${UIX.sel}">${STY.map(([k,t])=>`<option value="${k}">${t}</option>`).join('')}</select><div style="font-size:11px;color:var(--dim)">Comfort: smooth and gentle, minimal g-forces · Express: chase-style driving, no police · Cannonball: Express with every safety system off.</div>`,/Graphics quality/);
  const ss=document.getElementById('styleSel');{const v=UIX.load('style','Standard');ss.value=STY.some(x=>x[0]===v)?v:'Standard'}
- function apply(v){if(!STY.some(x=>x[0]===v))v='Standard';UIX.save('style',v);ss.value=v;const h=document.getElementById('styleHud');if(h)h.value=v;if(!game||!game.route)return;if(v==='Express'){DRIVE.profile='Assertive';if(!EXPRESS.on)expressToggle()}else{DRIVE.profile=v;if(EXPRESS.on)expressToggle()}}
+ function apply(v){if(!STY.some(x=>x[0]===v))v='Standard';UIX.save('style',v);ss.value=v;const h=document.getElementById('styleHud');if(h)h.value=v;if(!game||!game.route)return;CANNON.on=v==='Cannonball';if(v==='Express'||v==='Cannonball'){DRIVE.profile='Assertive';if(!EXPRESS.on)expressToggle();if(v==='Cannonball')game.status='💣 CANNONBALL · flat out, all safety systems off'}else{DRIVE.profile=v;if(EXPRESS.on)expressToggle()}}
  ss.onchange=()=>apply(ss.value);
  /* E cycles Normal → Comfort → Express (replaces the old Express toggle key) */
  addEventListener('keydown',ev=>{if(/^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName)||!game||!game.route)return;if(ev.key==='e'||ev.key==='E'){ev.stopImmediatePropagation();const i=STY.findIndex(x=>x[0]===ss.value);apply(STY[(i+1)%STY.length][0])}},true);
