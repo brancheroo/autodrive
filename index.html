@@ -5780,6 +5780,32 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    if(LB.cells.size>4000){for(const [kk,v] of LB.cells)if(now-v.last>900)LB.cells.delete(kk)}}});
 })();
 </script>
+<script>/* mods/29f-aebsat.js */
+/* Last-resort emergency braking for satellite / Predictacar cars. The Drive2 + FSD stack (which has its own AEB) stands down
+   when the satellite planner is in charge, so this is the independent safety net under it: every 50 ms of sim time it
+   projects the ego car and every nearby vehicle / pedestrian 1.2 s ahead on straight-line paths, and if any footprints
+   overlap it caps the speed to zero (the planner brakes at its hardest) for 0.4 s. Skipped in Cannonball (all safety off). */
+(function(){
+ const A={on:true,hits:0,hold:0,last:'',tick:0};window.AEBSAT=A;
+ const SW=[0.2,0.45,0.7,0.95,1.2];
+ function foot(a){const s=a.spec||{};return {L:s.L||4.6,W:s.W||1.9}}
+ function scan(G){const e=G.ego,fx=Math.cos(e.head),fz=-Math.sin(e.head),Le=G.spec.L,We=G.spec.W,v=e.v;let hit=null;
+  const test=(x,z,vx,vz,L,W,tag)=>{const dx=x-e.x,dz=z-e.z,f=dx*fx+dz*fz;if(f<-L||f>v*1.3+L+8)return;const lat=-dx*fz+dz*fx;if(Math.abs(lat)>We/2+W/2+Math.abs(vx*-fz+vz*fx)*1.3+3)return;
+   const ov=vx*fx+vz*fz,lv=-vx*fz+vz*fx;
+   for(const t of SW){const fe=v*t,fo=f+ov*t,la=lat+lv*t;if(Math.abs(fo-fe)<(Le+L)/2+0.3&&Math.abs(la)<(We+W)/2-0.1){if(!hit||t<hit.t)hit={t,tag,gap:f-(Le+L)/2};return}}};
+  for(const a of G.agents){if(!a.mesh||a.loose)continue;const h=a.mesh.rotation.y,sp=a.v||0,F=foot(a);test(a.mesh.position.x,a.mesh.position.z,Math.cos(h)*sp,-Math.sin(h)*sp,F.L,F.W,a.kind)}
+  for(const p of G.peds||[]){if(p.x===undefined)continue;test(p.x,p.z,0,0,0.6,0.7,'ped')}
+  return hit}
+ MODS.push({id:'aebsat',
+  start(){A.hits=0;A.hold=0;if(window.capSet)capSet('aebsat',null)},
+  disable(){if(window.capSet)capSet('aebsat',null)},
+  sim(dt){const G=game;if(!A.on||!G||!G.ego||!G.ego.mesh||!G.route)return;
+   if(!smartOn()||(window.CANNON&&CANNON.on)||G.ego.loose||G.charging||G.tow||G.uturn){if(A.hold>0){A.hold=0;capSet('aebsat',null)}return}
+   if(A.hold>0){A.hold-=dt;if(A.hold<=0)capSet('aebsat',null);else return}
+   A.tick-=dt;if(A.tick>0)return;A.tick=0.05;if(G.ego.v<2.5)return;
+   const h=scan(G);if(h){A.hold=0.4;A.hits++;A.last=h.tag+' in '+h.t.toFixed(2)+' s';capSet('aebsat',0);G.status='🛑 Emergency braking · '+h.tag+' ahead'}}});
+})();
+</script>
 <script>/* mods/30-isect.js */
 /* (3) Four-way stop negotiation. Every stop-controlled node keeps an arrival queue shared by your car, route
    traffic and cross-street traffic. After the legal full stop a vehicle may only go when it is first in the
