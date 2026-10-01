@@ -6375,7 +6375,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    33: movable bridges on the route: sometimes the span is up for a passing boat – gates down, "BRIDGE OPEN" lights,
        bascule leaves raised; traffic waits until they come down. */
 (function(){
- const IN={xings:[],tolls:[],bridges:[],deco:[],tollTotal:0,express:false};window.INFRA=IN;const HK=(window.PLAN_HOOKS=window.PLAN_HOOKS||[]);const rnd=(a,b)=>a+Math.random()*(b-a);
+ const IN={xings:[],tolls:[],bridges:[],deco:[],tollTotal:0,express:false};IN.rail=UIX.load('railOn',false);window.INFRA=IN;const HK=(window.PLAN_HOOKS=window.PLAN_HOOKS||[]);const rnd=(a,b)=>a+Math.random()*(b-a);
  const M=(c,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:0.6,...o});
  const put=(m,s,lat,yaw=0)=>{const p=ACT.pose(s,lat);m.position.set(p.x,p.y,p.z);m.rotation.y=p.h+yaw;scene.add(m);return m};
  const halfW=s=>{const n=window.LANES?LANES.count(s):1;return routeOnewayAt(s)?n*3.6/2:n*3.6};
@@ -6443,9 +6443,9 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   bridge(d=400){const e=game.ego,rs=e.s+d,q=routeXZ(rs,0);const B=makeBridge({lat:toLat(q[1]),lon:toLon(q[0])},rs);B.state='up';B.t=40;IN.bridges.push(B);return B}};
  function clearAll(){for(const L of [IN.xings,IN.tolls,IN.bridges,IN.deco])for(const o of L){for(const m of o.objs)scene.remove(m);if(o.train)scene.remove(o.train.T.g)}IN.xings=[];IN.tolls=[];IN.bridges=[];IN.deco=[];if(exG){scene.remove(exG);exG=null}}
  MODS.push({id:'infra',disable:clearAll,reroute:clearAll,
-  start(){clearAll();IN.tollTotal=0;IN.express=false;for(const f of OSMX.feat)delete f._inf},
+  start(){const rb=UIX.btn('railBtn','🚂','Rail crossings and trains – on/off',null)||document.getElementById('railBtn');if(rb){const lab=()=>{rb.textContent='🚂 '+(IN.rail?'On':'Off');rb.classList.toggle('on',IN.rail)};rb.onclick=()=>{IN.rail=!IN.rail;UIX.save('railOn',IN.rail);if(!IN.rail){for(const X of IN.xings){for(const m of X.objs)scene.remove(m);if(X.train)scene.remove(X.train.T.g)}IN.xings=[]}else for(const f of OSMX.feat)delete f._inf;lab();if(window.game)game.status=IN.rail?'✅ Rail crossings on':'🚫 Rail crossings off'};lab()}clearAll();IN.tollTotal=0;IN.express=false;for(const f of OSMX.feat)delete f._inf},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;chk-=dt;if(chk<0){chk=2;
-    for(const f of OSMX.feat){if(f._inf===G.route)continue;if(!/levelx|toll|drivethru|garage|drawbridge/.test(f.kind))continue;const d=Math.hypot(toX(f.lon)-e.x,toZ(f.lat)-e.z);if(d>1600)continue;if(f.kind!=='drawbridge'){OSMX.onRoute(f,25);if(f._r!==G.route)continue}f._inf=G.route; /* wait for the (async) route projection */
+    for(const f of OSMX.feat){if(f._inf===G.route)continue;if(!/levelx|toll|drivethru|garage|drawbridge/.test(f.kind))continue;if(f.kind==='levelx'&&!IN.rail)continue; /* rail crossings are off by default (🚂 button / ⚙ Options) */const d=Math.hypot(toX(f.lon)-e.x,toZ(f.lat)-e.z);if(d>1600)continue;if(f.kind!=='drawbridge'){OSMX.onRoute(f,25);if(f._r!==G.route)continue}f._inf=G.route; /* wait for the (async) route projection */
      if(f.kind==='levelx'){const rs=OSMX.onRoute(f,12);if(rs!=null&&rs>e.s){const X=makeCrossing(f,rs);if(X)IN.xings.push(X)}}else if(f.kind==='toll'){const rs=OSMX.onRoute(f,25);if(rs!=null&&rs>e.s)IN.tolls.push(makeToll(f,rs))}else if(f.kind==='drawbridge'&&f.geom){const mid=f.geom[Math.floor(f.geom.length/2)],ff=f._mid||(f._mid={id:f.id+'m',lat:mid[0],lon:mid[1]}),rs=OSMX.onRoute(ff,15);if(ff._r!==G.route){f._inf=null;continue}if(rs!=null&&rs>e.s)IN.bridges.push(makeBridge(ff,rs))}else if(d<600)decoFor(f)}
     for(const L of [IN.xings,IN.tolls,IN.bridges,IN.deco])for(const o of L.slice())if(o.rs<e.s-300){for(const m of o.objs)scene.remove(m);if(o.train)scene.remove(o.train.T.g);L.splice(L.indexOf(o),1)}
     IN.express=window.LANES?expressDeco():false}
