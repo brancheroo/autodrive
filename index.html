@@ -1547,7 +1547,7 @@ function buildGargantua(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}
    for(const sd of [1,-1]){const sp=new THREE.Mesh(new THREE.PlaneGeometry(pL-0.3,pH-0.3),face);sp.position.set(px,py,sd*(bodyW/2+0.004));if(sd<0)sp.rotation.y=Math.PI;pack.add(sp);box(pL-0.1,0.05,0.03,glow,px,pY0+0.07,sd*(bodyW/2+0.012),pack)}
    for(let k=0;k<7;k++)box(0.05,0.06,bodyW-0.3,steel,px-pL/2+0.5+k*(pL-1)/6,pY0+pH+0.03,0,pack);
    box(0.05,pH-0.1,bodyW-0.1,dark,px-pL/2-0.01,py,0,pack);
-   for(const ax of axX)for(const sd of [1,-1])box(0.3,pY0-(deckY+deckH/2),0.3,dark,ax,(pY0+deckY+deckH/2)/2,sd*(bodyW/2-0.2),pack)}
+   box(0.3,pY0-(deckY+deckH/2),bodyW-0.1,dark,(axX[1]+axX[2])/2,(pY0+deckY+deckH/2)/2,0,pack)}
   const dTop=deckY+deckH/2;if(floorY>dTop+0.01)box(cabL,floorY-dTop,cabW,paint,cx,(floorY+dTop)/2,0)}
  ud.wheels=wheels;ud.gargantua=true;
  if(typeof contactShadow==='function')contactShadow(g,L*1.05,W*1.15);
