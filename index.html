@@ -5447,7 +5447,9 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  function arcClear(U,ext){for(let k=0;k<=24;k++){const p=uturnPose(U,k/24),c=Math.cos(p.h),s=-Math.sin(p.h),W=game.spec.W/2+0.2,L=game.spec.L/2+0.2;
    for(const [f,l] of [[L,W],[L,-W],[-L,W],[-L,-W],[0,0]]){const x=p.x+c*f-s*l,z=p.z+s*f+c*l;if(bAt(x,z))return false}}return true}
  const _uc=window.uturnCheck;
- window.uturnCheck=function(){_uc.apply(this,arguments);const G=game,U=G.uturn;if(!U||G.spec.hyper||G.spec.omni||U.checked)return;U.checked=true;
+ window.uturnCheck=function(){_uc.apply(this,arguments);const G=game,U=G.uturn;if(!U||U.checked)return;U.checked=true;
+  if(G.spec.hyper||G.spec.omni){ /* 360° cars pivot on the spot and crab across: that needs the spin circle AND the line to be clear, otherwise they use the checked arc / three-point turn like any car */
+   const P=G.ego.mesh.position,R=Math.min(6,G.spec.L/2+0.4);let ok=Math.hypot(U.P1[0]-P.x,U.P1[1]-P.z)<=16;for(let k=0;k<16&&ok;k++){const an=k/16*Math.PI*2;if(bAt(P.x+Math.cos(an)*R,P.z+Math.sin(an)*R))ok=false}for(let k=1;k<12&&ok;k++){if(bAt(P.x+(U.P1[0]-P.x)*k/12,P.z+(U.P1[1]-P.z)*k/12))ok=false}if(ok)return;U.noPivot=true}
   if(!D2.forceThree&&arcClear(U))return; /* D2.forceThree: test hook – skip the U-turn arc and take the three-point turn */
   /* three-point turn: forward-left across, reverse, forward into the new lane */
   const e=G.ego,h0=e.mesh.rotation.y,fx=Math.cos(h0),fz=-Math.sin(h0),nx=fz,nz=-fx; /* n = left of travel */
