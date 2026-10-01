@@ -1536,6 +1536,18 @@ function buildGargantua(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}
  /* wheel arches: a half-shell over the top of every wheel, and a plinth carrying the cab clear of the tallest tyres */
  {const ar=wr+0.14,aw=tw+0.16,archG=new THREE.CylinderGeometry(ar,ar,aw,lodSeg(opts),1,true,Math.PI*0.4,Math.PI*1.2).rotateX(Math.PI/2);paint.side=THREE.DoubleSide;
   axX.forEach(ax=>{for(const fz of [1,-1]){const am=new THREE.Mesh(archG,paint);am.position.set(ax,wr,fz*(W/2-tw/2-0.02));am.castShadow=true;g.add(am)}});
+  /* giant battery pack: the whole rear section over the wheels – gunmetal casing, cell-module grid, cooling fins, glowing charge strips */
+  {const pL=cx-cabL/2-0.1+3.95,pY0=wr*2+0.22,pH=0.85,px=(-L*0.47+(cx-cabL/2-0.1))/2,py=pY0+pH/2,pc=document.createElement('canvas');pc.width=1024;pc.height=320;const x=pc.getContext('2d');
+   x.fillStyle='#1d2229';x.fillRect(0,0,1024,320);x.strokeStyle='#3b4652';x.lineWidth=2;for(let i=0;i<=16;i++){x.beginPath();x.moveTo(i*64,0);x.lineTo(i*64,320);x.stroke()}for(let j=0;j<=5;j++){x.beginPath();x.moveTo(0,j*64);x.lineTo(1024,j*64);x.stroke()}
+   x.fillStyle='#2d9cff';for(let i=0;i<16;i++)for(let j=0;j<5;j++)if((i*7+j*3)%5!==0){x.globalAlpha=0.35+((i*13+j*5)%4)*0.15;x.fillRect(i*64+8,j*64+8,48,48)}x.globalAlpha=1;
+   x.fillStyle='#e8f4ff';x.font='bold 52px system-ui';x.textAlign='center';x.fillText('1 GWh  BATTERY PACK',512,176);x.font='28px system-ui';x.fillStyle='#8fd0ff';x.fillText('GARGANTUA · 6 × 1,500 ehp',512,222);
+   const pt=new THREE.CanvasTexture(pc);pt.encoding=THREE.sRGBEncoding;pt.anisotropy=4;const casing=new THREE.MeshStandardMaterial({color:0x232930,metalness:0.7,roughness:0.45}),face=new THREE.MeshStandardMaterial({map:pt,roughness:0.5,metalness:0.2}),glow=new THREE.MeshBasicMaterial({color:0x35ff8a});
+   const pack=new THREE.Group();g.add(pack);ud.pack=pack;const pb=box(pL,pH,bodyW,casing,px,py,0,pack);
+   const top=new THREE.Mesh(new THREE.PlaneGeometry(pL-0.2,bodyW-0.2),face);top.rotation.x=-Math.PI/2;top.position.set(px,pY0+pH+0.004,0);pack.add(top);
+   for(const sd of [1,-1]){const sp=new THREE.Mesh(new THREE.PlaneGeometry(pL-0.3,pH-0.3),face);sp.position.set(px,py,sd*(bodyW/2+0.004));if(sd<0)sp.rotation.y=Math.PI;pack.add(sp);box(pL-0.1,0.05,0.03,glow,px,pY0+0.07,sd*(bodyW/2+0.012),pack)}
+   for(let k=0;k<7;k++)box(0.05,0.06,bodyW-0.3,steel,px-pL/2+0.5+k*(pL-1)/6,pY0+pH+0.03,0,pack);
+   box(0.05,pH-0.1,bodyW-0.1,dark,px-pL/2-0.01,py,0,pack);
+   for(const ax of axX)for(const sd of [1,-1])box(0.3,pY0-(deckY+deckH/2),0.3,dark,ax,(pY0+deckY+deckH/2)/2,sd*(bodyW/2-0.2),pack)}
   const dTop=deckY+deckH/2;if(floorY>dTop+0.01)box(cabL,floorY-dTop,cabW,paint,cx,(floorY+dTop)/2,0)}
  ud.wheels=wheels;ud.gargantua=true;
  if(typeof contactShadow==='function')contactShadow(g,L*1.05,W*1.15);
