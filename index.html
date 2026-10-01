@@ -7712,7 +7712,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
  const ld=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}},sv=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
  const D={on:ld('dmgOn','1')!=='0'};window.DMGOPT=D;
  const _d=window.damageVehicle;
- if(typeof _d==='function')window.damageVehicle=function(obj){const G=window.game;if(!D.on&&G&&G.ego&&obj===G.ego.mesh)return;return _d.apply(this,arguments)};
+ if(typeof _d==='function')window.damageVehicle=function(obj){const G=typeof game!=='undefined'?game:null;if(!D.on&&G&&G.ego&&obj===G.ego.mesh)return;return _d.apply(this,arguments)};
  const lab=(b,t,on)=>{b.textContent=t+' '+(on?'On':'Off');b.classList.toggle('on',on)};
  MODS.push({id:'damageopt',start(){
   const a=UIX.btn('dmgBtn','💥 …','Crash damage – when off, your car is never dented in a collision',null)||document.getElementById('dmgBtn');
