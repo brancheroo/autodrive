@@ -2552,7 +2552,7 @@ function routeY(s,off=0){const R=game.route,[,,i]=routeLLnh(s),h0=NODEH.get(R.no
 function place(a,off){if(a.loose)return; // sliding after a collision: the physics owns the pose
 
  const [x,z,dx,dz,idx]=routeXZ(a.s,off!==undefined?off:laneOffsetAt(routeLLnh(a.s)[2]));
- const hb=routeXZ(a.s-2,0),hf=routeXZ(a.s+3,0);let hh=Math.atan2(-(hf[1]-hb[1]),hf[0]-hb[0]);
+ const hw=a.v>40?Math.min(a.v*0.12,90):0,hb=routeXZ(a.s-2-hw,0),hf=routeXZ(a.s+3+hw,0); /* fast cars read heading over a wider window (~0.25 s of travel) so polyline vertices don't snap the yaw */let hh=Math.atan2(-(hf[1]-hb[1]),hf[0]-hb[0]);
  if(a.dir<0)hh+=Math.PI;
  let d=hh-a.head;d=Math.atan2(Math.sin(d),Math.cos(d));
  const k=clamp(a.v*0.12+0.05,0.05,1);
