@@ -1481,7 +1481,7 @@ function mkProfile(spec){
  const belt=u=>{const bw=Math.min(sh.belt*H+(0.5-u)*0.05,top(u)),k=clamp((u-sh.roofR+0.02)/0.06,0,1)*clamp((sh.cowl-u+0.01)/0.05,0,1);return lerp(top(u),bw,sm(k))}; /* side-glass base only between the pillars; hood and deck keep their own height (no longer clipped to the belt) */
  const half=u=>{let a=W/2*(1-sh.ft*Math.pow(clamp((u-0.8)/0.2,0,1),2)-sh.rt*Math.pow(clamp((0.2-u)/0.2,0,1),2));const d=Math.min(u,1-u)*L,r=Math.max(sh.endR,Math.min(W*0.22,0.42)); /* real plan-view corner radii (~0.3–0.45 m): rounded, but with a proper front/rear face for the lamps */if(d<r)a-=r*(1-Math.sqrt(Math.max(0,1-Math.pow(1-d/r,2))));return Math.max(0.05,a)};
  /* halfAt: the lower body's real half-width at height y (same superellipse as loftLower), so parts on the nose/tail sit on the skin */
- const halfAt=(u,y)=>{const b0=bottom(u),t0=Math.max(b0+0.02,Math.min(top(u),belt(u))),yc=(b0+t0)/2,hh=(t0-b0)/2||1,up=clamp((y-yc)/hh,-1,1),cy=Math.sign(up)*Math.pow(Math.abs(up),1/0.5),cz=Math.sqrt(Math.max(0,1-cy*cy)),ex=sh.box||0.4,e=up>0?lerp(ex,1,0.45):lerp(ex,1,0.55);return half(u)*Math.pow(cz,e)*(up>0?1-0.1*up*up:1-0.18*up*up)};
+ const halfAt=(u,y)=>{const b0=bottom(u),t0=Math.max(b0+0.02,Math.min(top(u),belt(u))),yc=(b0+t0)/2,hh=(t0-b0)/2||1,up=clamp((y-yc)/hh,-1,1),cy=Math.sign(up)*Math.pow(Math.abs(up),1/(up>0?0.3:0.5)),cz=Math.sqrt(Math.max(0,1-cy*cy)),ex=sh.box||0.4,e=up>0?Math.min(ex,0.3):lerp(ex,1,0.55);return half(u)*Math.pow(cz,e)*(up>0?1-0.1*up*up:1-0.18*up*up)};
  return {sh,top,bottom,belt,half,halfAt,axles,R,xOf:u=>u*L-L/2};
 }
 const sp=(v,e)=>Math.sign(v)*Math.pow(Math.abs(v),e);
@@ -1489,8 +1489,8 @@ function fixWinding(g,probe){g.computeVertexNormals();const n=g.attributes.norma
 function loftLower(P,u0=0,u1=1,N=HIGH?200:110,M=HIGH?44:32,hole=null){
  const pos=[],idx=[],uv=[],upv=[];const st=[];for(let i=0;i<=N;i++){const t=i/N;st.push(u0+(u1-u0)*(0.5-0.5*Math.cos(Math.PI*t)))}
  for(const u of st){const b0=P.bottom(u),t0=Math.max(b0+0.02,Math.min(P.top(u),P.belt(u))),a=P.half(u),yc=(b0+t0)/2,hh=(t0-b0)/2,x=P.xOf(u);
-  const ex=P.sh.box||0.4,eUp=lerp(ex,1,0.45),eLo=lerp(ex,1,0.55); /* shoulders roll in to meet the glass (no flat shelf) */ /* rounder than before: gentle shoulder, strong tuck-under to the rockers */
-  for(let j=0;j<M;j++){const th=j/M*Math.PI*2;const cy=-Math.cos(th),cz=Math.sin(th);const y=yc+hh*sp(cy,0.5);const up=(y-yc)/(hh||1);const z=a*sp(cz,up>0?eUp:eLo)*(up>0?1-0.1*up*up:1-0.18*up*up);pos.push(x,y,z);uv.push(x,y);upv.push(up)}}
+  const ex=P.sh.box||0.4,eUp=Math.min(ex,0.3),eLo=lerp(ex,1,0.55); /* full shoulders up to the window line (tight top radius), strong tuck-under below */ /* rounder than before: gentle shoulder, strong tuck-under to the rockers */
+  for(let j=0;j<M;j++){const th=j/M*Math.PI*2;const cy=-Math.cos(th),cz=Math.sin(th);const y=yc+hh*sp(cy,cy>0?0.3:0.5);const up=(y-yc)/(hh||1);const z=a*sp(cz,up>0?eUp:eLo)*(up>0?1-0.1*up*up:1-0.18*up*up);pos.push(x,y,z);uv.push(x,y);upv.push(up)}}
  for(let i=0;i<N;i++)for(let j=0;j<M;j++){const a=i*M+j,b=(i+1)*M+j,c=(i+1)*M+(j+1)%M,d=i*M+(j+1)%M;
   if(hole&&st[i]>=hole.u0&&st[i+1]<=hole.u1&&upv[a]>hole.up&&upv[b]>hole.up&&upv[c]>hole.up&&upv[d]>hole.up)continue; /* open cabin: no lid over the passenger compartment */
   idx.push(a,b,c,a,c,d)}
