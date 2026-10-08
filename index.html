@@ -3411,7 +3411,7 @@ function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cv
  if(G.spec.hyper)hyperOverlay(x,W,H,dpr,proj,dets);else if(satActive())satIcon(x,W,H,dpr);
  {const G=game,e=G.ego,mph=Math.round(e.v*MPH),acc=e.acc||0,verb=G.charging?'':acc>0.3?'accelerating':acc<-0.8?'braking':acc<-0.2?'easing off':'holding speed';const sig=G.sig<0?' · signalling left':G.sig>0?' · signalling right':'';
   $('cvExp').style.display=EXPRESS.on?'block':'none';$('cvExp').textContent=window.CANNON&&CANNON.on?'CANNONBALL':'EXPRESS MODE';$('cvAct').textContent=`▶ ${G.status||'Cruising'}${verb&&mph>0?' · '+verb:''} · ${mph} mph${sig}`}
- game.seen={...counts};$('cvStats').textContent=`${counts.car} veh · ${counts.ped} ped${counts.animal?` · ${counts.animal} animal`:''} · ${counts.light} lights · ${counts.stop} stop`;$('cvTitle').textContent='PERCEPTION';
+ game.seen={...counts};$('cvStats').textContent=`${counts.car} veh · ${counts.ped} ped${counts.animal?` · ${counts.animal} animal`:''} · ${counts.light} lights · ${counts.stop} stop`;if(!(game.spec&&game.spec.rideshare))$('cvTitle').textContent='PERCEPTION'; /* rideshare/taxi panels say DRIVER'S VIEW */
  drawBEV(dets,S)}
 /* HYPER perception: overwhelming data — per-object IDs, velocity vectors, 4 s predicted trajectories with TTC, threat lock,
    lidar point spray, fusion/compute telemetry columns, occupancy mini-grid and a scrolling data stream */
@@ -8516,10 +8516,10 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
    [notice('nosm','NO SMOKING',['No smoking, vaping','or open alcohol','in this vehicle','','Fine up to $100'],'#ffffff','#c00000'),-0.05,1.02],
    [notice('belt','BUCKLE UP',['Seat belts are','required for all','passengers.','','Safety first!'],'#fff2d0','#0a3a8a'),-0.36,0.95],
    [notice('rights','RIDER RIGHTS',['Choose your route','Air conditioning','Quiet ride on request','Receipt on request','Complaints: dial 311'],'#eef6ff','#111'),0.32,0.55]];
-  for(const [t,z,y] of N){const n=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.2),new THREE.MeshStandardMaterial({map:t,roughness:0.7}));n.rotation.y=-Math.PI/2;n.position.set(-0.025,fy+y,z);P.add(n)}
+  for(const [t,z,y] of N){const n=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.2),new THREE.MeshStandardMaterial({map:t,roughness:0.7}));n.rotation.y=-Math.PI/2;n.position.set(-0.045,fy+y,z); /* well clear of the panel/plexi so they don't z-fight */P.add(n)}
   /* back-seat TV in the partition, in front of the right rear seat */
   const tvT=tex('tv',256,160,(x,w,h)=>{const gr=x.createLinearGradient(0,0,w,h);gr.addColorStop(0,'#1a2a6a');gr.addColorStop(1,'#6a1a5a');x.fillStyle=gr;x.fillRect(0,0,w,h);x.fillStyle='#ffd21a';x.font='900 34px Arial';x.textAlign='center';x.fillText('TAXI TV',w/2,60);x.fillStyle='#fff';x.font='600 18px Arial';x.fillText('Tonight: city news & weather',w/2,100);x.fillText('Tap to pay · Fare $ 12.40',w/2,135)});
-  const tv=new THREE.Mesh(new THREE.PlaneGeometry(0.26,0.16),new THREE.MeshBasicMaterial({map:tvT}));tv.rotation.y=-Math.PI/2;tv.position.set(-0.025,fy+0.62,-eye.z);P.add(tv);
+  const tv=new THREE.Mesh(new THREE.PlaneGeometry(0.26,0.16),new THREE.MeshBasicMaterial({map:tvT}));tv.rotation.y=-Math.PI/2;tv.position.set(-0.045,fy+0.62,-eye.z);P.add(tv);
   /* fare meter on the dash, glowing red digits */
   const mT=tex('meter',256,96,(x,w,h)=>{x.fillStyle='#0a0a0a';x.fillRect(0,0,w,h);x.fillStyle='#ff2a1a';x.font='700 54px Courier New, monospace';x.textAlign='right';x.fillText('$12.40',w-14,64);x.font='700 16px Arial';x.textAlign='left';x.fillText('HIRED',12,88)});
   const meter=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.07,0.18),frame);meter.position.set(eye.x+0.62,fy+0.9,0.02);I.add(meter);
