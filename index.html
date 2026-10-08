@@ -5339,6 +5339,67 @@ function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userDa
    yaw+=(ty-yaw)*Math.min(1,dt*3);const h=r.userData.head;if(h){h.rotation.y=-yaw;for(const o of r.userData.hideIn||[])if(o!==h)o.rotation.y=-yaw}}});
 })();
 </script>
+<script>/* mods/21b-rider-hq.js */
+/* High-detail people (every buildDriver figure: you, cabbies, drivers and passengers in traffic). The original figure keeps its
+   structure – head sphere (userData.head), hair cap, neck, torso, two arm groups at y −0.26 – because the outfit code (riderAttach,
+   22-rider-style), the animation (21-rider-anim) and hats/glasses/beards all rely on it. This upgrades it in place:
+   • smooth high-segment head/neck/hair; a face: eye whites, irises + pupils, eyelids, brows, nose, lips, ears
+   • torso: sculpted chest/shoulders/waist (lathe) instead of a capsule; rounded shoulder caps
+   • arms: smooth upper/forearms, wrist, a hand with palm, four fingers and a thumb (hands on the wheel when driving)
+   • legs: thighs and shins seated forward/down, trousers and shoes
+   Parts that must keep their own colour (eyes, lips, brows, trousers, shoes) carry userData.keepMat and are restored after
+   riderAttach recolours the figure. */
+(function(){
+ const pk=a=>a[Math.floor(Math.random()*a.length)];
+ const TROUSERS=[0x1f2a44,0x2b2b2e,0x4a4036,0x3a4a5a,0x6b5a45,0x1c1c1c],SHOES=[0x111111,0xf0f0f0,0x5a3a22,0x2a2a2a],EYES=[0x3b2a1a,0x4a6a8a,0x3a5a3a,0x2a1a10,0x6a5a3a];
+ const keep=(o,m)=>{o.material=m;o.userData.keepMat=m;return o};
+ function upgrade(g){const U=g.userData,head=U.head;if(!head||U.hq)return;U.hq=true;const skin=head.material;
+  const kids=[...g.children];const hair=kids.find(c=>c.isMesh&&c!==head&&c.geometry.type==='SphereGeometry'&&c.position.y>-0.1);
+  const neck=kids.find(c=>c.isMesh&&c.geometry.type==='CylinderGeometry'&&Math.abs(c.position.y+0.14)<0.02);
+  const torso=kids.find(c=>c.isMesh&&Math.abs(c.position.y+0.42)<0.03);const shirt=torso?torso.material:skin;
+  /* head & hair & neck: same sizes, far smoother */
+  head.geometry=new THREE.SphereGeometry(0.105,40,30);
+  if(hair){const p=hair.geometry.parameters;hair.geometry=new THREE.SphereGeometry(p.radius,40,20,p.phiStart,p.phiLength,p.thetaStart,p.thetaLength)}
+  if(neck)neck.geometry=new THREE.CylinderGeometry(0.046,0.052,0.12,20);
+  /* face (children of the head so it turns with it and hides with it in first person). Figure faces +x. */
+  const white=new THREE.MeshStandardMaterial({color:0xf4f1ea,roughness:0.25}),iris=new THREE.MeshStandardMaterial({color:pk(EYES),roughness:0.2}),pupil=new THREE.MeshStandardMaterial({color:0x050505,roughness:0.1}),
+   brow=new THREE.MeshStandardMaterial({color:hair?hair.material.color.clone().multiplyScalar(0.8):0x2a1a10,roughness:0.9}),lip=new THREE.MeshStandardMaterial({color:new THREE.Color(skin.color).lerp(new THREE.Color(0xa04048),0.35),roughness:0.5});
+  for(const s of [1,-1]){const E=new THREE.Group();E.position.set(0.082,0.018,s*0.036);head.add(E);
+   E.add(keep(new THREE.Mesh(new THREE.SphereGeometry(0.017,16,12),white),white));
+   const ir=keep(new THREE.Mesh(new THREE.SphereGeometry(0.0085,12,8),iris),iris);ir.position.x=0.012;E.add(ir);const pu=keep(new THREE.Mesh(new THREE.SphereGeometry(0.004,8,6),pupil),pupil);pu.position.x=0.0185;E.add(pu);
+   const lid=new THREE.Mesh(new THREE.SphereGeometry(0.0185,16,8,0,Math.PI*2,0,Math.PI*0.32),skin);lid.rotation.z=-0.5;E.add(lid); /* upper eyelid */
+   const b=keep(new THREE.Mesh(new THREE.BoxGeometry(0.012,0.006,0.034),brow),brow);b.position.set(0.094,0.045,s*0.037);b.rotation.x=s*0.15;head.add(b);
+   const ear=new THREE.Mesh(new THREE.SphereGeometry(0.024,12,10),skin);ear.scale.set(0.6,1.1,0.35);ear.position.set(-0.005,0.0,s*0.1);head.add(ear)}
+  const nose=new THREE.Mesh(new THREE.ConeGeometry(0.016,0.045,12),skin);nose.rotation.z=-Math.PI/2+0.35;nose.position.set(0.108,-0.008,0);nose.scale.set(1,1,0.8);head.add(nose);
+  const tip=new THREE.Mesh(new THREE.SphereGeometry(0.011,10,8),skin);tip.position.set(0.118,-0.022,0);head.add(tip);
+  const mouth=keep(new THREE.Mesh(new THREE.CapsuleGeometry(0.0045,0.03,4,8),lip),lip);mouth.rotation.x=Math.PI/2;mouth.position.set(0.098,-0.055,0);head.add(mouth);
+  const chin=new THREE.Mesh(new THREE.SphereGeometry(0.03,12,10),skin);chin.scale.set(0.9,0.7,1.1);chin.position.set(0.075,-0.085,0);head.add(chin);
+  /* torso: chest, shoulders and waist from a lathe profile, flattened front-to-back */
+  if(torso){const pr=[[0.001,-0.36],[0.13,-0.35],[0.15,-0.26],[0.14,-0.1],[0.155,0.04],[0.17,0.14],[0.16,0.2],[0.11,0.25],[0.05,0.27],[0.001,0.27]].map(([r,y])=>new THREE.Vector2(r,y));
+   torso.geometry=new THREE.LatheGeometry(pr,32);torso.scale.set(0.72,1,1.2);torso.position.set(-0.04,-0.47,0);
+   for(const s of [1,-1]){const sh=new THREE.Mesh(new THREE.CapsuleGeometry(0.055,0.03,8,16),shirt);sh.rotation.x=Math.PI/2;sh.position.set(-0.035,-0.25,s*0.165);g.add(sh)}} /* rounded shoulder caps */
+  /* arms: the groups the animation finds at y −0.26 */
+  for(const up of kids.filter(c=>c.isGroup&&Math.abs(c.position.y+0.26)<0.02)){const s=up.position.z>0?1:-1;const a=up.children.find(c=>c.isMesh);if(a)a.geometry=new THREE.CylinderGeometry(0.048,0.04,0.3,20);
+   const fo=up.children.find(c=>c.isGroup);if(!fo)continue;const f=fo.children.find(c=>c.isMesh&&c.geometry.type==='CylinderGeometry');if(f)f.geometry=new THREE.CylinderGeometry(0.04,0.03,0.28,20);
+   const elbow=new THREE.Mesh(new THREE.CapsuleGeometry(0.042,0.01,6,12),a?a.material:shirt);elbow.position.y=-0.3;up.add(elbow); /* sleeve at the elbow */
+   const h=fo.children.find(c=>c.isMesh&&c.geometry.type==='SphereGeometry');if(h){h.geometry=new THREE.SphereGeometry(0.042,16,12);h.scale.set(0.55,1,0.95);h.position.y=-0.31; /* palm */
+    for(let k=0;k<4;k++){const fg=new THREE.Mesh(new THREE.CylinderGeometry(0.0085,0.0075,0.07,8),skin);fg.position.set(0.012,-0.36,(k-1.5)*0.017);fg.rotation.z=0.35;fo.add(fg);const tp=new THREE.Mesh(new THREE.SphereGeometry(0.0078,8,6),skin);tp.position.set(0.024,-0.393,(k-1.5)*0.017);fo.add(tp)}
+    const th=new THREE.Mesh(new THREE.CylinderGeometry(0.009,0.008,0.05,8),skin);th.position.set(0.03,-0.31,-s*0.03);th.rotation.set(-s*0.6,0,0.8);fo.add(th)}}
+  /* legs: seated, thighs forward, shins down, shoes */
+  const tr=new THREE.MeshStandardMaterial({color:pk(TROUSERS),roughness:0.9}),sho=new THREE.MeshStandardMaterial({color:pk(SHOES),roughness:0.5});
+  for(const s of [1,-1]){const z=s*0.09;const th=keep(new THREE.Mesh(new THREE.CapsuleGeometry(0.068,0.36,8,16),tr),tr);th.rotation.z=Math.PI/2-0.12;th.position.set(0.16,-0.8,z);g.add(th);
+   const sn=keep(new THREE.Mesh(new THREE.CapsuleGeometry(0.052,0.26,8,16),tr),tr);sn.rotation.z=0.55;sn.position.set(0.45,-0.97,z);g.add(sn); /* shins angled forward: car floors are low */
+   const sh=keep(new THREE.Mesh(new THREE.CapsuleGeometry(0.045,0.16,6,12),sho),sho);sh.rotation.z=Math.PI/2-0.2;sh.position.set(0.58,-1.1,z);g.add(sh)}
+  const hips=keep(new THREE.Mesh(new THREE.CapsuleGeometry(0.11,0.12,8,16),tr),tr);hips.rotation.x=Math.PI/2;hips.position.set(-0.02,-0.78,0);hips.scale.set(1,1,0.85);g.add(hips);
+  g.traverse(o=>{if(o.isMesh)o.castShadow=true})}
+ const _bd=window.buildDriver;
+ if(typeof _bd==='function')window.buildDriver=function(){const g=_bd.apply(this,arguments);try{upgrade(g)}catch(err){console.warn('hq rider',err)}return g};
+ /* riderAttach recolours every mesh by shape: put back the parts that have their own colour */
+ const _ra=window.riderAttach;
+ if(typeof _ra==='function')window.riderAttach=function(){const r=_ra.apply(this,arguments);try{const m=typeof game!=='undefined'&&game&&game.ego&&game.ego.mesh,R=m&&m.userData.rider;if(R)R.traverse(o=>{if(o.userData.keepMat)o.material=o.userData.keepMat})}catch(err){}return r};
+ MODS.push({id:'riderhq'});
+})();
+</script>
 <script>/* mods/22-rider-style.js */
 /* More rider customisation (glasses, hair style & colour, beard) + photo mode (📸 / F): hides the HUD, frames the
    rider through the windscreen, orbit with the mouse, "Save photo" downloads a PNG. */
