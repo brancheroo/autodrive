@@ -7526,7 +7526,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const body=new THREE.Group();lean.add(body);ud.body=body;ud.paint=paint;
   const nose=mesh(new THREE.ConeGeometry(0.26,0.9,4),paint,wb/2+0.15,wr+0.42,0,body);nose.rotation.set(0,Math.PI/4,-Math.PI/2);nose.scale.set(1,1,0.75);
   box(0.95,0.32,0.36,paint,0.15,wr+0.5,0,body);box(0.6,0.2,0.3,black,-0.35,wr+0.52,0,body); /* tank + seat */
-  const tail=mesh(new THREE.ConeGeometry(0.2,0.8,4),paint,-wb/2-0.05,wr+0.62,0,body);tail.rotation.set(0,Math.PI/4,Math.PI/2+0.12);tail.scale.set(1,1,0.6);
+  const tail=mesh(new THREE.ConeGeometry(0.15,0.7,4),paint,-wb/2-0.05,wr+0.62,0,body);tail.rotation.set(0,Math.PI/4,Math.PI/2+0.12);tail.scale.set(1,1,0.6);
   box(1.5,0.16,0.22,black,0,wr+0.2,0,body); /* belly pan / battery */
   for(const sd of [1,-1])box(1.3,0.025,0.01,neon,0.1,wr+0.36,sd*0.19,body); /* neon side stripes */
   const scr=mesh(new THREE.PlaneGeometry(0.38,0.28),glass,wb/2-0.12,wr+0.78,0,body);scr.rotation.set(0,Math.PI/2,0);scr.rotation.order='YXZ';scr.rotation.x=-0.9;
@@ -7554,27 +7554,29 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const red=new THREE.MeshStandardMaterial({color:0xd0141c,roughness:0.45,metalness:0.1}),white=new THREE.MeshStandardMaterial({color:0xf2f2f2,roughness:0.5}),
    dark=new THREE.MeshStandardMaterial({color:0x15161a,roughness:0.6}),hairM=new THREE.MeshStandardMaterial({color:0x2a1a4a,roughness:0.6}),
    visor=new THREE.MeshPhysicalMaterial({color:0x10d8ff,metalness:0.9,roughness:0.05,clearcoat:1,emissive:0x0a5070,emissiveIntensity:0.4});
-  const torso=box(0.55,0.22,0.34,red,0.2,0.2,0,R);torso.rotation.z=-0.55; /* chest down over the tank */
-  box(0.5,0.02,0.2,white,0.2,0.33,0,R).rotation.z=-0.55; /* white racing stripe down the back */
-  const emb=new THREE.Mesh(new THREE.CircleGeometry(0.09,24),white);emb.rotation.set(-Math.PI/2,0,0.55);emb.position.set(0.12,0.315,0);R.add(emb); /* back emblem */
-  const embIn=new THREE.Mesh(new THREE.CircleGeometry(0.06,3),red);embIn.rotation.set(-Math.PI/2,0,0.55);embIn.position.set(0.12,0.318,0);R.add(embIn);
+  const torso=box(0.55,0.22,0.34,red,0.15,0.17,0,R);torso.rotation.z=0.5; /* chest forward over the tank, back flat */
+  box(0.5,0.02,0.2,white,0,0.115,0,torso); /* white racing stripe down the back */
+  const emb=new THREE.Mesh(new THREE.CircleGeometry(0.09,24),white);emb.rotation.x=-Math.PI/2;emb.position.set(-0.08,0.122,0);torso.add(emb); /* back emblem */
+  const embIn=new THREE.Mesh(new THREE.CircleGeometry(0.06,3),red);embIn.rotation.x=-Math.PI/2;embIn.position.set(-0.08,0.125,0);torso.add(embIn);
   box(0.3,0.18,0.36,dark,-0.12,0.0,0,R); /* hips on the seat */
-  for(const sd of [1,-1]){const th=box(0.42,0.13,0.13,red,0.0,-0.04,sd*0.17,R);th.rotation.z=-0.35;const sh=box(0.13,0.36,0.12,white,0.12,-0.25,sd*0.2,R);sh.rotation.z=0.5;box(0.18,0.08,0.1,dark,0.04,-0.42,sd*0.2,R); /* thighs, shins, boots */
-   const ua=box(0.3,0.09,0.09,red,0.5,0.25,sd*0.2,R);ua.rotation.z=0.5;const fa=box(0.28,0.08,0.08,white,0.68,0.12,sd*0.22,R);fa.rotation.z=-0.2;box(0.08,0.07,0.08,dark,0.82,0.08,sd*0.22,R)} /* arms to the clip-ons, gloves */
-  const helm=mesh(new THREE.SphereGeometry(0.15,20,14),white,0.62,0.4,0,R);helm.scale.set(1.15,1,0.95);ud.helmet=helm;
-  const vis=mesh(new THREE.SphereGeometry(0.152,20,10,-Math.PI*0.35,Math.PI*0.7,Math.PI*0.32,Math.PI*0.3),visor,0.62,0.4,0,R);vis.scale.set(1.16,1,0.96);vis.rotation.y=Math.PI/2;
-  box(0.3,0.015,0.05,red,0.6,0.55,0,R); /* helmet centre stripe */
+  const limb=(w,h,d,m,x0,y0,x1,y1,z)=>{const o=box(Math.hypot(x1-x0,y1-y0)+w,h,d,m,(x0+x1)/2,(y0+y1)/2,z,R);o.rotation.z=Math.atan2(y1-y0,x1-x0);return o}; /* box from joint to joint */
+  for(const sd of [1,-1]){const z=sd*0.19;
+   limb(0.06,0.13,0.13,red,-0.12,0,0.16,-0.12,z);limb(0.04,0.12,0.12,white,0.16,-0.12,-0.1,-0.42,z);box(0.2,0.08,0.1,dark,-0.12,-0.45,z,R); /* thigh, shin, boot on the peg */
+   limb(0.04,0.09,0.09,red,0.38,0.27,0.6,0.12,sd*0.2);limb(0.03,0.08,0.08,white,0.6,0.12,0.73,0.06,sd*0.22);box(0.08,0.07,0.08,dark,0.76,0.06,sd*0.22,R)} /* arms to the clip-ons, gloves */
+  const helm=mesh(new THREE.SphereGeometry(0.15,20,14),white,0.52,0.4,0,R);helm.scale.set(1.15,1,0.95);ud.helmet=helm;
+  const vis=mesh(new THREE.SphereGeometry(0.152,20,10,-Math.PI*0.35,Math.PI*0.7,Math.PI*0.32,Math.PI*0.3),visor,0.52,0.4,0,R);vis.scale.set(1.16,1,0.96);vis.rotation.y=Math.PI/2;
+  box(0.3,0.015,0.05,red,0.5,0.55,0,R); /* helmet centre stripe */
   /* spiky hair spilling out the back of the helmet */
-  const spikes=[];for(let i=0;i<7;i++){const s=mesh(new THREE.ConeGeometry(0.035,0.22,5),hairM,0.47-i*0.01,0.36+(i%3)*0.03,(i-3)*0.035,R);s.rotation.z=Math.PI/2+0.25+(i%2)*0.2;spikes.push(s)}
+  const spikes=[];for(let i=0;i<7;i++){const s=mesh(new THREE.ConeGeometry(0.035,0.22,5),hairM,0.37-i*0.01,0.36+(i%3)*0.03,(i-3)*0.035,R);s.rotation.z=Math.PI/2+0.25+(i%2)*0.2;spikes.push(s)}
   /* long scarf: a chain of segments animated to stream behind */
-  const scarfM=new THREE.MeshStandardMaterial({color:0xffd21a,roughness:0.8,side:THREE.DoubleSide}),scarf=[];let par=R,sx=0.5,sy=0.3;
+  const scarfM=new THREE.MeshStandardMaterial({color:0xffd21a,roughness:0.8,side:THREE.DoubleSide}),scarf=[];let par=R,sx=0.4,sy=0.3;
   for(let i=0;i<8;i++){const s=new THREE.Group();s.position.set(i?-0.16:sx,i?0:sy,i?0:0.08);par.add(s);const p=new THREE.Mesh(new THREE.PlaneGeometry(0.17,0.07),scarfM);p.position.x=-0.08;s.add(p);scarf.push(s);par=s}
   ud.scarf=scarf;ud.spikes=spikes;
   /* interior/hood stubs for the camera code; seat for the rider's eye */
   const I=new THREE.Group();g.add(I);ud.interior=I;ud.hood=new THREE.Group();g.add(ud.hood);ud.seats=[new THREE.Vector3(-0.2,wr+0.7,0)];
   ud.hbike=true;return g};
  const _eye=window.eyePos;
- if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.hbike)return new THREE.Vector3(0.62,spec.wr+1.05,0);return _eye.apply(this,arguments)};
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.hbike)return new THREE.Vector3(0.42,spec.wr+1.02,0);return _eye.apply(this,arguments)};
  /* the built-in biker replaces the generic rider figure */
  const _ra=window.riderAttach;if(typeof _ra==='function')window.riderAttach=function(){const r=_ra.apply(this,arguments);try{const G=game,m=G&&G.ego&&G.ego.mesh;if(G&&G.spec&&G.spec.hbike&&m&&m.userData.rider){m.remove(m.userData.rider);m.userData.rider=null}}catch(err){}return r};
  let last=performance.now(),leanA=0,t=0;
