@@ -5856,6 +5856,30 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   P.cap=best||0;P.why=why;return best==null?null:{v:best,reason:why}});
 })();
 </script>
+<script>/* mods/29i-tripsummary.js */
+/* Trip summary: when a trip ends, a short panel lists what happened on it – collisions, hard brakes, emergency brakes,
+   reroutes and the distance and time driven. Every number comes from counters the game already keeps. Dismiss with ✕. */
+(function(){
+ const S={c0:0,r0:0,km0:0,t0:0};
+ const count=(ev)=>{try{return BLACKBOX.get().filter(e=>e.ev===ev).length}catch(err){return 0}};
+ MODS.push({id:'tripsummary',
+  start(){S.c0=CRASH.log.length;S.r0=count('reroute');S.km0=game&&game.odo||0;S.t0=game&&game.simTime||0;const old=document.getElementById('tripSum');if(old)old.remove()},
+  arrive(){const G=game;if(!G||!G.ego)return;
+   const crashes=CRASH.log.slice(S.c0).filter(c=>c.a==='ego'||c.b==='ego').length;
+   const km=((G.odo||0)-S.km0)/1000,min=((G.simTime||0)-S.t0)/60;
+   const hb=(window.COMFORTM&&COMFORTM.hard)||0,ae=(window.AEBSAT&&AEBSAT.hits)||0,rr=Math.max(0,count('reroute')-S.r0);
+   const box=document.createElement('div');box.id='tripSum';
+   box.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9000;background:#0e141df5;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:16px 20px;font:14px system-ui;min-width:280px;box-shadow:0 10px 40px #0008';
+   box.innerHTML='<div style="display:flex;align-items:center;gap:10px"><b style="font-size:16px">🏁 Trip summary</b><button id="tripSumX" style="margin-left:auto">✕</button></div>'+
+    '<div style="margin-top:10px;line-height:1.7">'+
+    '<div>Distance: <b>'+km.toFixed(1)+' km</b> · time: <b>'+Math.round(min)+' min</b></div>'+
+    '<div>Collisions: <b>'+crashes+'</b></div>'+
+    '<div>Hard brakes: <b>'+hb+'</b></div>'+
+    '<div>Emergency brakes: <b>'+ae+'</b></div>'+
+    '<div>Reroutes: <b>'+rr+'</b></div></div>';
+   document.body.appendChild(box);document.getElementById('tripSumX').onclick=()=>box.remove();setTimeout(()=>{if(box.parentNode)box.remove()},60000)}});
+})();
+</script>
 <script>/* mods/30-isect.js */
 /* (3) Four-way stop negotiation. Every stop-controlled node keeps an arrival queue shared by your car, route
    traffic and cross-street traffic. After the legal full stop a vehicle may only go when it is first in the
