@@ -5863,7 +5863,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
 /* Last-resort emergency braking for satellite / Predictacar cars. The Drive2 + FSD stack (which has its own AEB) stands down
    when the satellite planner is in charge, so this is the independent safety net under it: every 50 ms of sim time it
    projects the ego car and every nearby vehicle / pedestrian 1.2 s ahead on straight-line paths, and if any footprints
-   overlap it caps the speed to zero (the planner brakes at its hardest) for 0.6 s (braking up to 0.9 g on dry road). Skipped in Cannonball (all safety off). */
+   overlap it caps the speed to zero (the planner brakes at its hardest) for 0.6 s (braking up to 0.9 g on dry road). Also active in Cannonball, which ignores traffic laws but not obstacles. */
 (function(){
  const A={on:true,hits:0,hold:0,last:'',tick:0};window.AEBSAT=A;
  const sweep=v=>{const H=Math.max(0.9,Math.min(1.6,0.7+v/30));return [0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6].filter(t=>t<=H+0.01)}; /* look-ahead grows with speed: 1.0 s in town, 1.6 s at highway speed */
