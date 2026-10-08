@@ -246,6 +246,9 @@ const CARS=[
 {id:'wedge',name:'Lamborgo Cuneo',sub:'Wedge hypercar · V12 + KERS',style:'coupe',L:4.6,W:2.05,H:1.07,wb:2.7,wr:0.36,hp:2000,z60:2.0,top:240,range:'~260 mi (est.)',weight:'3,750 lb',drive:'6.5L V12 (1,000 hp) + F1-style KERS (1,000 ehp) · AWD',level:'SAE Level 4 · full assist suite + tracking satellite (fictional)',
  tech:'A razor-edged wedge in the 1970s supercar tradition. A naturally aspirated 6.5-litre V12 makes 1,000 hp, and an F1-style kinetic energy recovery system harvests energy under braking and deploys up to another 1,000 ehp on hard acceleration. It carries every driving aid in the game: the full lidar, radar and camera suite, the predictive planner and the tracking satellite.',
  colors:[['Verde Mantis','#7ad21f'],['Arancio Borealis','#ff6a10'],['Giallo Orion','#ffd200'],['Bianco Monocerus','#f2f2ee'],['Nero Aldebaran','#121214']],dash:'center-mb',wheel:'round',sensors:'hyper',sound:'v12',driver:true,allaids:true,kers:true},
+{id:'aegis',name:'Morrows Aegis-X',sub:'Active-aero omni-wheel hypercar',style:'coupe',L:4.9,W:2.1,H:1.15,wb:2.8,wr:0.37,hp:4000,z60:1.2,top:1000,range:'effectively unlimited with regen · 300 kWh',weight:'4,000 lb (360 lb in lift mode)',drive:'4 × 1,000 hp hub motors · 360° steering · 4 × 1,000 hp downforce fans · twin rocket boosters',level:'SAE Level 5 · full Predictacar stack + tracking satellite + clearance drone (fictional)',
+ tech:'Everything the Predictacar has, pushed further. Each wheel has its own 1,000 hp hub motor and turns a full 360°, so it can crab, strafe and spin on the spot. Four 1,000 hp fans pull it down for grip, or the active aero front and rear lifts it, cutting its effective weight by 90% on straights. Twin rocket boosters at the back add straight-line thrust; grid fins pop up from the roof under heavy braking. The body is clad in space-grade heat tiles. A small clearance drone drives ahead in your lane and nudges vehicles aside, and the collision shield stays on even in Cannonball, so it hits nothing. Regenerative braking puts almost all braking energy back into the battery.',
+ colors:[['Shuttle White','#f1f1ee'],['Re-entry Black','#16171a'],['Ablative Orange','#ff6a10'],['Orbit Blue','#2a64c8']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',driver:true,hyper:true,omni:true,aegis:true},
 {id:'gargantua',name:'Gargantua',sub:'Six-wheel street-legal super-tug',style:'van',L:8.4,W:4.2,H:4.4,wb:6.3,wr:1.44,hp:1800000,z60:1.1,top:250,range:'~1,500,000 mi (est.) · 100 GWh',weight:'~1,400,000 lb',drive:'6 independent 300,000 ehp hub motors · 360° omni-directional wheels',level:'SAE Level 4 · full Predictacar autonomy stack + tracking satellite (fictional)',
  tech:'Shaped like a giant airport aircraft tug and twice the width of a normal car (4.2 m), so it takes more than a full lane. Six independent wheels, each twice the normal width and height, carry their own 300,000 ehp hub motor (1,800,000 ehp in total) and can point and drive in any direction: it crabs sideways, moves diagonally and spins on the spot. A 100 GWh battery pack fills the flat chassis between the axles, and the whole machine weighs about 700 tonnes. It carries every self-driving technology in the game: the Predictacar OmniSense suite (1 km see-through lidar, radar, cameras, thermal, ultrasonics) and the tracking satellite, always on. The low wedge nose and towbar hitch come straight from the airport apron; the full-width glass cab seats six in three rows.',
  colors:[['Apron Yellow','#f2c200'],['Tug Orange','#ff7a00'],['Runway White','#eef0f2'],['Hangar Grey','#5b6168']],dash:'waymo',wheel:'round',sensors:'hyper',sound:'ev',driver:true,gargantua:true,omni:true},
@@ -1406,6 +1409,7 @@ const MODEL={
  'boosthatch':{epa:220,shape:{box:.15,clr:.12,nose:.45,hood:.58,cowl:.7,roofF:.6,roofR:.1,tail:.02,deck:.72,belt:.58,tum:.78,endR:.18,ft:.06,rt:.04,roof:'paint',cpil:true},grille:'none',drl:'bar',tailL:'bar',rim:{n:5,style:'multi',col:0x1a1b1d},cal:0xc01818,int:{seat:0x1a1a1c,mat:'cloth',trim:'none',dash:0x141416}},
  'whaletail':{epa:410,shape:{clr:.12,nose:.42,hood:.52,cowl:.66,roofF:.55,roofR:.28,tail:.0,deck:.62,belt:.62,tum:.7,endR:.3,ft:.06,rt:.04,roof:'paint'},grille:'none',drl:'yugo',tailL:'bar',rim:{n:5,style:'spoke',col:0xd9dcdf},cal:0xc01818,int:{seat:0x1a1a1c,mat:'leather',trim:'none',dash:0x141416}},
  'wedge':{epa:260,shape:{clr:.09,nose:.22,hood:.33,cowl:.52,roofF:.5,roofR:.36,tail:.0,deck:.55,belt:.55,tum:.62,roof:'paint',endR:.1,ft:.08,rt:.05,cpil:false},grille:'none',drl:'bar',tailL:'bar',rim:{n:10,style:'multi',col:0x1a1b1d},cal:0xffd200,int:{seat:0x111112,mat:'leather',trim:'carbon',dash:0x121214}},
+ 'aegis':{epa:2000,shape:{clr:.09,nose:.3,hood:.45,cowl:.6,roofF:.55,roofR:.36,tail:.0,deck:.58,belt:.62,tum:.62,roof:'paint',endR:.35,ft:.12,rt:.08},rocker:true,grille:'none',drl:'bar',tailL:'bar',rim:{n:10,style:'aero',col:0x111111},cal:0xff6a10,int:{seat:0x111111,mat:'leather',trim:'carbon',dash:0x0b0b0e}},
  'yugo':{epa:235,shape:{box:.2,clr:.15,nose:.5,hood:.61,cowl:.72,roofF:.63,roofR:.06,tail:.01,deck:.74,belt:.6,tum:.78,endR:.14,ft:.05,rt:.03,roof:'paint',cpil:true},grille:'yugo',drl:'yugo',tailL:'yugo',rim:{n:4,style:'disc',col:0xb9bcbf},cal:0x333333,int:{seat:0x5e4c3c,mat:'cloth',trim:'none',dash:0x1b1b1b}},
   'starfire':{epa:290,chromeBelt:true,shape:{tail:.12,deck:.72,nose:.5,hood:.7,roofF:.58,roofR:.36,cowl:.7},grille:'mb',drl:'yugo',tailL:'pair',rim:{n:0,style:'disc',col:0xd8dcdf},cal:0x999999,int:{seat:0xe8dcc2,mat:'leather',trim:'walnut',dash:0x8a1c1c}},
  's580':{epa:380,chromeBelt:true,shape:{tail:.11,deck:.71,nose:.48,hood:.64,roofF:.6,roofR:.35,cowl:.69},grille:'mb',drl:'mb',tailL:'pair',rim:{n:10,style:'multi',col:0xb8bcc0},cal:0x777777,int:{seat:0xcdb08a,mat:'leather',trim:'walnut',dash:0x2a211b}},
@@ -2312,6 +2316,7 @@ const ENERGY={
  'icecream':{epa:150,kwh:120,kg:5000,cda:1.35,crr:0.011,dc:150,port:'CCS'},
  'solarcar':{epa:250,kwh:5,kg:300,cda:0.07,crr:0.004,dc:5,port:'J1772'},
  'keitruck':{epa:95,kwh:20,kg:850,cda:0.75,crr:0.011,dc:30,port:'CCS'},
+ 'aegis':{epa:2000,kwh:300,kg:1800,cda:0.3,crr:0.007,dc:2000,port:'CCS'},
  'ecosemi':{epa:500,kwh:900,kg:29000,cda:4.0,crr:0.0055,dc:1000,port:'NACS'},
  'ezpt':{epa:18500,kwh:22000,kg:150000,cda:3.4,crr:0.016,dc:15000,port:'CCS'},
  'r1s':{epa:410,kwh:140,kg:3150,cda:0.98,crr:0.011,dc:220,port:'NACS'},
@@ -2829,7 +2834,7 @@ function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;c
  for(let i=0;i<bodies.length;i++){const A=bodies[i];for(let j=i+1;j<bodies.length;j++){const B=bodies[j];const R=(A.L+B.L)/2+0.5;if(Math.abs(A.x-B.x)>R||Math.abs(A.z-B.z)>R)continue;if(A.y!=null&&B.y!=null&&Math.abs(A.y-B.y)>3)continue; /* different levels: overpass above / road below */
    if(A.kind!=='ego'&&B.kind!=='ego'&&A.kind===B.kind&&A.kind!=='chaos'&&A.kind!=='cop')continue; // same scripted lane stream: they queue, they don't overlap by design
    if((A.ref._age??9)<1.5||(B.ref._age??9)<1.5)continue;const c=satOverlap(A,B);if(!c)continue;
-   if(G.spec.hyper&&!(window.CANNON&&CANNON.on)&&(A.kind==='ego'||B.kind==='ego')&&!G.ego.loose){ /* Predictacar guardian: it is never in a collision – whatever touches its shield field is deflected softly, no impact, no damage */
+   if(G.spec.hyper&&(!(window.CANNON&&CANNON.on)||G.spec.aegis)&&(A.kind==='ego'||B.kind==='ego')&&!G.ego.loose){ /* Predictacar guardian: it is never in a collision – whatever touches its shield field is deflected softly, no impact, no damage */
     const O=A.kind==='ego'?B:A,sg=A.kind==='ego'?1:-1,vo=velOf(O,dt),vn=vo.vx*c.n[0]*sg+vo.vz*c.n[1]*sg;makeLoose(O,{vx:vo.vx-Math.min(0,vn)*c.n[0]*sg+c.n[0]*sg*0.6,vz:vo.vz-Math.min(0,vn)*c.n[1]*sg+c.n[1]*sg*0.6,w:vo.w*0.3});O.ref.loose.x+=sg*c.n[0]*(c.o+0.05);O.ref.loose.z+=sg*c.n[1]*(c.o+0.05);O.ref.loose.soft=true;continue}
    const va=velOf(A,dt),vb=velOf(B,dt),n=c.n,ra=[c.p[0]-A.x,c.p[1]-A.z],rb=[c.p[0]-B.x,c.p[1]-B.z],IA=A.m*(A.L*A.L+A.W*A.W)/12,IB=B.m*(B.L*B.L+B.W*B.W)/12;
    const pa=[va.vx+va.w*ra[1],va.vz-va.w*ra[0]],pb=[vb.vx+vb.w*rb[1],vb.vz-vb.w*rb[0]],rel=[pb[0]-pa[0],pb[1]-pa[1]],vn=rel[0]*n[0]+rel[1]*n[1];
@@ -7268,6 +7273,51 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    if(a<-0.5&&e.v>2){K.store=Math.min(K.cap,K.store+0.6*m*e.v*(-a)*dt);K.deploy=false} /* 60% of braking energy recovered */
    else if(a>2&&e.v>1&&K.store>0){K.store=Math.max(0,K.store-746000*dt);K.deploy=true}else K.deploy=false},
   frame(){const G=typeof game!=='undefined'?game:null;if(!el||!G||!G.spec||!G.spec.kers)return;el.textContent='⚡ KERS '+Math.round(K.store/K.cap*100)+'%'+(K.deploy?' · DEPLOY':'');el.style.background=K.deploy?'#ff6a10cc':'#0e141dcc'}});
+})();
+</script>
+<script>/* mods/61j-aegis.js */
+/* Morrows Aegis-X systems (spec.aegis; the hyper + omni flags already give fans, rear wing, rockets, satellite, scout drone,
+   360° wheels, crab and pivot):
+   - heat-tile skin, active front canards, roof grid fins that open under heavy braking
+   - aero mode: LIFT (effective weight −90%, less rolling loss) on fast straights, DOWNFORCE otherwise
+   - regenerative braking: 98% of braking energy back into the battery
+   - clearance drone: drives 30 m ahead in your lane and nudges vehicles in it over to the kerb
+   The collision shield stays on in Cannonball for this car (index.html, collision code). */
+(function(){
+ const BASE_KG=1800;let tileTex=null,hud=null,drone=null;const ST={mode:'DOWNFORCE',fins:0,pushed:0};window.AEGIS=ST;
+ function tiles(){if(tileTex)return tileTex;const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#e9e9e4';x.fillRect(0,0,256,256);
+  for(let j=0;j<8;j++)for(let i=0;i<8;i++){const sh=200+((i*7+j*13)%5)*9;x.fillStyle=`rgb(${sh},${sh},${sh-6})`;x.fillRect(i*32+1,j*32+1,30,30)}
+  x.fillStyle='#1b1b1d';for(let j=6;j<8;j++)for(let i=0;i<8;i++)x.fillRect(i*32+1,j*32+1,30,30); /* black tiles along the underside band */
+  tileTex=new THREE.CanvasTexture(c);tileTex.wrapS=tileTex.wrapT=THREE.RepeatWrapping;tileTex.repeat.set(5,2);tileTex.encoding=THREE.sRGBEncoding;return tileTex}
+ function kit(g,spec){const U=g.userData;if(U.paint){U.paint.map=tiles();U.paint.color.set(0xffffff);U.paint.needsUpdate=true}
+  g.updateMatrixWorld(true);const top=new THREE.Box3().setFromObject(g).max.y;const blk=new THREE.MeshStandardMaterial({color:0x2a2b2e,metalness:0.7,roughness:0.35});
+  const fins=[];for(const [fx,sd] of [[0.35,1],[0.35,-1],[-0.55,1],[-0.55,-1]]){const piv=new THREE.Group();piv.position.set(fx,top-0.04,sd*0.42);g.add(piv);
+   const fin=new THREE.Group();piv.add(fin);const fr=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.02,0.26),blk);fr.position.set(0,0,sd*0.13);fin.add(fr);
+   for(let k=1;k<5;k++){const bar=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.03,0.008),blk);bar.position.set(0,0,sd*k*0.052);fin.add(bar)}fins.push({piv,sd})}
+  const cans=[];for(const sd of [1,-1]){const c=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.015,0.24),blk);c.position.set(spec.L/2-0.25,0.42,sd*(spec.W/2-0.2));g.add(c);cans.push(c)}
+  U.aegis={fins,cans}}
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec){const g=_bc.apply(this,arguments);try{if(spec&&spec.aegis&&g&&!g.userData.aegis)kit(g,spec)}catch(err){}return g};
+ function makeDrone(){const g=new THREE.Group(),b=new THREE.MeshStandardMaterial({color:0x202226,metalness:0.6,roughness:0.4}),o=new THREE.MeshBasicMaterial({color:0xff8a1f});
+  const hull=new THREE.Mesh(new THREE.BoxGeometry(1.1,0.28,0.8),b);hull.position.y=0.22;g.add(hull);const plow=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.3,1.0),b);plow.position.set(0.6,0.2,0);plow.rotation.z=-0.3;g.add(plow);
+  const lamp=new THREE.Mesh(new THREE.SphereGeometry(0.07,10,8),o);lamp.position.set(0,0.42,0);g.add(lamp);g.userData.lamp=lamp;
+  for(const [x,z] of [[0.35,0.42],[0.35,-0.42],[-0.35,0.42],[-0.35,-0.42]]){const w=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.08,12).rotateX(Math.PI/2),b);w.position.set(x,0.12,z);g.add(w)}return g}
+ const on=()=>{const G=typeof game!=='undefined'?game:null;return !!(G&&G.spec&&G.spec.aegis&&G.ego&&G.ego.mesh&&G.route)};
+ MODS.push({id:'aegis',
+  start(){ST.pushed=0;if(drone){scene.remove(drone);drone=null}if(!hud){hud=document.createElement('div');hud.style.cssText='position:fixed;top:150px;left:50%;transform:translateX(-50%);z-index:61;font:700 11px system-ui;padding:3px 9px;border-radius:7px;background:#0e141dcc;color:#e8eef5;pointer-events:none';document.body.appendChild(hud)}
+   hud.style.display=on()?'block':'none';if(on()){drone=makeDrone();scene.add(drone)}else if(ENERGY.aegis)ENERGY.aegis.kg=BASE_KG},
+  sim(dt){if(!on()||dt<=0)return;const G=game,e=G.ego,a=e.acc||0,E=ENERGY.aegis;
+   /* regen: 98% of braking energy back into the battery */
+   if(a<0&&e.v>0.5){const cap=capJ(E);G.energy=Math.min(cap,G.energy+0.98*BASE_KG*e.v*(-a)*dt);G.soc=G.energy/cap}
+   /* aero mode: lift on fast, straight, unbraked running; downforce otherwise */
+   const straight=Math.abs(e.ayF||0)<1.5,lift=e.v>25&&a>-1&&straight;ST.mode=lift?'LIFT −90%':'DOWNFORCE';E.kg=lift?BASE_KG*0.1:BASE_KG;
+   /* clearance drone: vehicles in our lane 12–60 m ahead get nudged to the kerb and slowed */
+   const lane=e.off??laneOffsetAt(routeLLnh(e.s)[2]);for(const b of G.agents){if(!b.mesh||b.loose||b.kind!=='route')continue;const d=b.s-e.s;if(d<12||d>60)continue;const lat=(b.off??1.85)+(b.offAdd||0);if(Math.abs(lat-lane)>2.2)continue;
+    b.offAdd=Math.min(3.2,(b.offAdd||0)+2.2*dt);b.v=Math.max(0,b.v-3*dt);if(!b.__aegis){b.__aegis=1;ST.pushed++}}},
+  frame(){if(!on())return;const G=game,e=G.ego,U=e.mesh.userData.aegis,a=e.acc||0;
+   ST.fins+=((a<-4?1:0)-ST.fins)*0.12;if(U){for(const f of U.fins)f.piv.rotation.x=-f.sd*ST.fins*1.3;for(const c of U.cans)c.rotation.z=clamp(-a*0.03,-0.35,0.35)+(ST.mode==='DOWNFORCE'?-0.12:0.05)}
+   if(drone){const p=routeXZ(Math.min(G.route.total,e.s+30),e.off??laneOffsetAt(routeLLnh(e.s)[2]));drone.position.set(p[0],groundY(p[0],p[1])+0.02,p[1]);drone.rotation.y=Math.atan2(-p[3],p[2]);drone.userData.lamp.visible=(performance.now()/300|0)%2===0;drone.visible=!G.fast}
+   if(hud)hud.textContent='🛩 AERO '+ST.mode+(ST.fins>0.3?' · GRID FINS':'')+' · 🤖 drone cleared '+ST.pushed}});
 })();
 </script>
 <script>/* mods/62-trams.js */
