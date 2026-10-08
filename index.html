@@ -2428,7 +2428,7 @@ function plan(a,dt,lead,isEgo){
  const brake=WX.brake*(isEgo&&fastOn()?1.8:1)*(isEgo&&!fastOn()?(DRIVE_P[DRIVE.profile].brk||1):1);
  const allow=(vc,d)=>Math.sqrt(Math.max(0,vc*vc+2*brake*Math.max(0,d)));
  // curvature
- for(let d=5;d<look&&!(isEgo&&a.spec.hyper&&chase&&window.HYX&&HYX.on);d+=5){const p0=routeXZ(a.s+d-5,0),p1=routeXZ(a.s+d+5,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh<0.02)continue;const Rr=10/dh,vc=Math.max(3.0,Math.sqrt(WX.latA*(isEgo?(window.UPG_GRIP||1):1)*(isEgo&&!chase?(DRIVE_P[DRIVE.profile].lat||1):1)*(chase?(a.spec.hyper&&isEgo?2.8:1.9):1)*(isEgo&&a.spec.hyper?HB.grip:1)*Rr)); /* fans up to 9× grip (planner keeps ~5% margin) */ /* hypercar: vacuum fans can triple grip */const v=allow(vc,d-4);if(v<target){target=v;reason=vc<8?'Slowing for turn':'Slowing for curve'}}
+ for(let d=5;d<look&&!(isEgo&&a.spec.hyper&&chase&&window.HYX&&HYX.on);d+=5){const p0=routeXZ(a.s+d-5,0),p1=routeXZ(a.s+d+5,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh<0.02)continue;const Rr=10/dh,vc=Math.max(3.0,Math.sqrt(WX.latA*(isEgo?(window.UPG_GRIP||1):1)*(isEgo&&!chase?(DRIVE_P[DRIVE.profile].lat||1):1)*(chase?(a.spec.hyper&&isEgo?2.8:1.9):1)*(isEgo&&a.spec.hyper?HB.grip:1)*(isEgo&&a.spec.hyper&&window.HOVER&&HOVER.on?0.7:1)*Rr)); /* fans up to 9× grip (planner keeps ~5% margin) */ /* hypercar: vacuum fans can triple grip */const v=allow(vc,d-4);if(v<target){target=v;reason=vc<8?'Slowing for turn':'Slowing for curve'}}
  // controls along route nodes
  const up=[];
  for(let i=idx+1;i<R.nodes.length&&R.cum[i]-a.s<look&&!chase;i++){const c=CONTROLS.get(R.nodes[i]);if(!c)continue;const d=R.cum[i]-a.s;
