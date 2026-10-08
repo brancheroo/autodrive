@@ -5360,7 +5360,7 @@ function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userDa
   /* head & hair & neck: same sizes, far smoother */
   head.geometry=new THREE.SphereGeometry(0.105,40,30);
   if(hair){const p=hair.geometry.parameters;hair.geometry=new THREE.SphereGeometry(p.radius,40,20,p.phiStart,p.phiLength,p.thetaStart,p.thetaLength)}
-  if(neck)neck.geometry=new THREE.CylinderGeometry(0.054,0.064,0.13,20);
+  if(neck){neck.geometry=new THREE.CylinderGeometry(0.054,0.064,0.13,20);sk(neck)} /* thicker than the skin-by-shape rule allows: mark it */
   /* face (children of the head so it turns with it and hides with it in first person). Figure faces +x. */
   const white=new THREE.MeshStandardMaterial({color:0xf4f1ea,roughness:0.25}),iris=new THREE.MeshStandardMaterial({color:pk(EYES),roughness:0.2}),pupil=new THREE.MeshStandardMaterial({color:0x050505,roughness:0.1}),
    brow=new THREE.MeshStandardMaterial({color:hair?hair.material.color.clone().multiplyScalar(0.8):0x2a1a10,roughness:0.9}),lip=new THREE.MeshStandardMaterial({color:new THREE.Color(skin.color).lerp(new THREE.Color(0xa04048),0.35),roughness:0.5});
@@ -5376,8 +5376,7 @@ function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userDa
   const jaw=new THREE.Mesh(new THREE.SphereGeometry(0.075,24,16),skin);jaw.scale.set(1,0.75,0.95);jaw.position.set(0.028,-0.055,0);head.add(jaw); /* jaw/cheeks blend the face into the chin */
   /* torso: chest, shoulders and waist from a lathe profile, flattened front-to-back */
   if(torso){const pr=[[0.001,-0.36],[0.13,-0.35],[0.15,-0.26],[0.14,-0.1],[0.155,0.04],[0.17,0.14],[0.16,0.2],[0.11,0.25],[0.05,0.27],[0.001,0.27]].map(([r,y])=>new THREE.Vector2(r,y));
-   torso.geometry=new THREE.LatheGeometry(pr,32);torso.scale.set(0.72,1,1.2);torso.position.set(-0.04,-0.45,0);
-   for(const s of [1,-1]){const sh=new THREE.Mesh(new THREE.CapsuleGeometry(0.048,0.05,8,16),shirt);sh.rotation.x=Math.PI/2-s*0.35;sh.position.set(-0.035,-0.24,s*0.15);g.add(sh)}} /* rounded shoulder caps */
+   torso.geometry=new THREE.LatheGeometry(pr,32);torso.scale.set(0.72,1,1.2);torso.position.set(-0.04,-0.45,0);}
   /* arms: the groups the animation finds at y −0.26 */
   for(const up of kids.filter(c=>c.isGroup&&Math.abs(c.position.y+0.26)<0.02)){const s=up.position.z>0?1:-1;const a=up.children.find(c=>c.isMesh);if(a)a.geometry=new THREE.CylinderGeometry(0.048,0.04,0.3,20);
    const fo=up.children.find(c=>c.isGroup);if(!fo)continue;const f=fo.children.find(c=>c.isMesh&&c.geometry.type==='CylinderGeometry');if(f)f.geometry=new THREE.CylinderGeometry(0.04,0.03,0.28,20);
