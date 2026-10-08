@@ -7465,9 +7465,11 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const hookX=front+0.6,hookY=wr+0.5,dX=1.05,dY=0.42;
   const cable=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,1,6),dark);g.add(cable);
   /* the drone: carbon body, LED nav lights, delivery box on top, four wheels underneath */
-  const D=new THREE.Group();D.position.set(dX,dY,0);g.add(D);const core=box(0.55,0.16,0.45,body,0,0,0,D);const dome=new THREE.Mesh(new THREE.SphereGeometry(0.2,16,10,0,Math.PI*2,0,Math.PI/2),body);dome.position.y=0.08;D.add(dome);
+  const D=new THREE.Group();D.position.set(dX,dY,0);g.add(D);const core=box(0.55,0.16,0.45,body,0,0,0,D);
 
-  box(0.42,0.36,0.4,bag,-0.05,0.36,0,D);box(0.44,0.04,0.42,white,-0.05,0.56,0,D); /* delivery box rides on top */
+  /* big FoodFast delivery box on top: orange insulated cube, white lid, stylised logo on all four sides */
+  const bw=0.8,bh=0.62,bd=0.66,by=0.08+bh/2;box(bw,bh,bd,bag,-0.04,by,0,D);box(bw+0.04,0.05,bd+0.04,white,-0.04,by+bh/2+0.02,0,D);
+  const logoTex=foodFastLogo();for(const [x,z,ry,w] of [[-0.04,bd/2+0.003,0,bw],[-0.04,-bd/2-0.003,Math.PI,bw],[bw/2-0.037,0,Math.PI/2,bd],[-bw/2-0.043,0,-Math.PI/2,bd]]){const pl=new THREE.Mesh(new THREE.PlaneGeometry(w*0.92,w*0.92*0.5),new THREE.MeshStandardMaterial({map:logoTex,transparent:true,roughness:0.6}));pl.position.set(x,by,z);pl.rotation.y=ry;D.add(pl)}
   const dwr=0.2,dtg=new THREE.CylinderGeometry(dwr,dwr,0.1,18).rotateX(Math.PI/2),dhg=new THREE.CylinderGeometry(dwr*0.5,dwr*0.5,0.11,12).rotateX(Math.PI/2),dtm=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.9}),dWheels=[];
   for(const ax of [0.3,-0.3])for(const sd of [1,-1]){const w=new THREE.Group();w.position.set(ax,-dY+dwr,sd*0.3);w.add(new THREE.Mesh(dtg,dtm));w.add(new THREE.Mesh(dhg,bag));D.add(w);dWheels.push(w)} /* wheels sit on the road */
   const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
@@ -7484,6 +7486,14 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   ud.dw={D,dWheels,dwr,cable,hook:new THREE.Vector3(hookX,hookY,0),base:D.position.clone(),t:Math.random()*10};
   const fixCable=()=>{const a=ud.dw.hook,b=new THREE.Vector3(D.position.x-0.3,D.position.y-0.05,0),m=a.clone().add(b).multiplyScalar(0.5),L=a.distanceTo(b);cable.position.copy(m);cable.scale.set(1,L,1);cable.rotation.set(0,0,Math.atan2(b.y-a.y,b.x-a.x)-Math.PI/2)};ud.dw.fixCable=fixCable;fixCable();
   ud.dronewagon=true;return g};
+/* the FoodFast logo: italic heavy wordmark with speed lines and a fork, drawn once into a canvas texture */
+ let _logo=null;function foodFastLogo(){if(_logo)return _logo;const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d');
+  x.fillStyle='#ffffff';x.beginPath();x.roundRect(14,40,484,176,40);x.fill();x.fillStyle='#d2161e';x.beginPath();x.roundRect(26,52,460,152,30);x.fill();
+  x.strokeStyle='#ffd23a';x.lineWidth=9;x.lineCap='round';for(const [y,l] of [[96,70],[128,100],[160,60]]){x.beginPath();x.moveTo(40,y);x.lineTo(40+l,y);x.stroke()} /* speed lines */
+  x.save();x.translate(278,150);x.transform(1,0,-0.25,1,0,0);x.font='900 92px Arial Black, Arial, sans-serif';x.textAlign='center';x.lineJoin='round';
+  x.lineWidth=14;x.strokeStyle='#7a0a10';x.strokeText('FoodFast',6,6);x.fillStyle='#ffd23a';x.fillText('Food',-88,0);x.fillStyle='#ffffff';x.fillText('Fast',112,0);x.restore();
+  x.fillStyle='#ffd23a';x.font='italic 700 24px Arial, sans-serif';x.textAlign='center';x.fillText('HOT · FRESH · FLYING TO YOU',280,192);
+  const t=new THREE.CanvasTexture(c);t.anisotropy=4;return _logo=t}
  const _eye=window.eyePos;
  if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.dronewagon)return new THREE.Vector3(-0.95,spec.wr+0.95,0);return _eye.apply(this,arguments)};
  let last=performance.now();
