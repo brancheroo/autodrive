@@ -2523,7 +2523,7 @@ function plan(a,dt,lead,isEgo){
   game.fans=(game.fans||[0,0,0,0]).map((v,i)=>lerp(v,tgt[i],Math.min(1,dt*6)));game.fanLat=lat}
  if(isEgo&&a.spec.hyper){ /* ROCKETS: fire when the motors are maxed out and there's still a lot of speed to gain; +~1 g of thrust, not grip-limited */
   const maxed=acc>=amax*0.9&&target>a.v+6&&a.v>8&&!a.loose;game.rocketT=maxed?Math.min(1.2,(game.rocketT||0)+dt):Math.max(0,(game.rocketT||0)-dt*1.5);const on=game.rocketT>0.3;
-  if(on!==!!game.rocket){game.rocket=on;rocketSound(on)}if(on)acc+=(9.5+Math.min(20,a.v/15))*clamp((target-a.v)/20,0.3,1) /* thrust builds with speed: ~3 g near 1000 mph */}
+  if(on!==!!game.rocket){game.rocket=on;rocketSound(on)}if(on){acc+=(9.5+Math.min(20,a.v/15))*clamp((target-a.v)/20,0.3,1)*(a.spec.aegis?100:1);if(a.spec.aegis)acc=Math.min(acc,Math.max(0,(target-a.v)/Math.max(dt,1e-3)))} /* thrust builds with speed: ~3 g near 1000 mph; Aegis-X: 100× thrust, but never past the planner's target speed in one step */}
  a.v=Math.max(0,a.v+acc*dt);a.s+=a.v*dt;a.acc=acc;
  if(a.v<0.05&&target<0.3)a.v=0;
  return reason}
