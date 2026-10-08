@@ -3044,7 +3044,7 @@ function step(){
  for(const T of TILES.values()){for(const l of T.lamps)l.material=G.dark?MAT.lampOn:MAT.lampOff;if(T.adFaces)for(const m of T.adFaces)m.emissiveIntensity=G.dark?0.55:0;
   if(T.sigInst){for(const s of T.signals)for(const h of s.heads){const st=signalState(s.id,h.axis,G.simTime);h.idx.forEach((ix,i)=>T.sigInst.setColorAt(ix,_sigC.set('RYG'[i]===st?[0xff2a1a,0xffb300,0x22ff66][i]:0x222222)))}T.sigInst.instanceColor.needsUpdate=true}}
  // streaming tiles, spawning
- tileT-=rdt;if(tileT<=0){tileT=0.5;manageTerrain();manageTiles();manageSat();manageFF();mkDiscover();if((G._rcc=(G._rcc||0)+1)%4===0)roadClearCheck()}
+ tileT-=rdt;if(tileT<=0){tileT=e.v>40?0.25:0.5;manageTerrain();manageTiles();manageSat();manageFF();mkDiscover();if((G._rcc=(G._rcc||0)+1)%4===0)roadClearCheck()}
  spawnT-=rdt;if(spawnT<=0){spawnT=0.4;manageTraffic()}
  // camera
  updateCamera(rdt);if(CRASH.shake>0){const k=CRASH.shake;camera.position.x+=(Math.random()-0.5)*k*0.35;camera.position.y+=(Math.random()-0.5)*k*0.25;camera.rotation.z+=(Math.random()-0.5)*k*0.03} // impact shake
@@ -3080,7 +3080,7 @@ function updateClock(){const G=game,d=new Date(G.simTime*1000),tz=G.tz||approxIA
  if(!G.tzBusy&&(G.tzAt===undefined||Math.abs(G.odoTZ-(G.odo||0))>20000)){G.tzBusy=true;G.odoTZ=G.odo||0;G.tzAt=1;lookupTZ(toLat(G.ego.z),toLon(G.ego.x)).then(z=>{if(z!==G.tz&&G.tz)G.tzChanged={from:G.tz,to:z,t:G.simTime};G.tz=z;G.tzBusy=false})}}
 function localTimeOld(d,lon){const off=approxTZ(toLat(game.ego.z),lon,d);const t=new Date(d.getTime()+off*3600000);let h=t.getUTCHours(),m=t.getUTCMinutes();const ap=h>=12?'PM':'AM';h=h%12||12;return `${h}:${String(m).padStart(2,'0')} ${ap}`}
 function approxTZ(lat,lon,d){const mo=d.getUTCMonth();const dst=mo>=2&&mo<=9;let z=lon<-114.5?-8:lon<-102||(lon<-101&&lat>37)?-7:lon<-87.5?-6:-5;if(lon<-109&&lon>-114.8&&lat<37)return -7; /* Arizona: no DST */return z+(dst?1:0)}
-function fastTravel(){const G=game,rate=G.scale*Math.max(G.ego.v,1);if(G.charging||G.tow)return G.fast=false;G.fast=G.fast?rate>250:rate>400;return G.fast}
+function fastTravel(){const G=game,rate=G.scale*Math.max(G.ego.v,1);if(G.charging||G.tow)return G.fast=false;G.fast=G.scale>1&&(G.fast?rate>250:rate>400);return G.fast} /* scenery is only dropped when game time is sped up – a fast car at normal time keeps its world, even above 1,000 mph */
 function manageTiles(){
  const G=game,e=G.ego;
  if(Math.hypot(e.x,e.z)>4000){rebase()}
@@ -3093,12 +3093,12 @@ function manageTiles(){
  const want=new Set();const ci=Math.floor(lat/TS),cj=Math.floor(lon/TS);
  for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)want.add((ci+i)+'_'+(cj+j));
  /* tiles ahead along the route: look-ahead scales with speed (about 9 s of travel, 1–4.5 km), each remembered with how far ahead it is */
- const ahead=new Map(),reach=Math.max(0,Math.min(G.route.total-e.s,Math.max(HIGH?2000:1000,Math.min(4500,e.v*9))));for(let d=0;d<=reach;d+=250){const p=routeLLnh(Math.min(G.route.total,e.s+d)),k=tileKey(p[1],p[0]);if(!ahead.has(k)){ahead.set(k,d);want.add(k)}}
+ const ahead=new Map(),reach=Math.max(0,Math.min(G.route.total-e.s,Math.max(HIGH?2000:1000,Math.min(8000,e.v*12))));for(let d=0;d<=reach;d+=250){const p=routeLLnh(Math.min(G.route.total,e.s+d)),k=tileKey(p[1],p[0]);if(!ahead.has(k)){ahead.set(k,d);want.add(k)}}
  for(const k of [...TILES.keys()])if(!want.has(k)){const [i,j]=k.split('_').map(Number);if(Math.abs(i-ci)>2||Math.abs(j-cj)>2)unloadTile(k)}
  // order by distance
  const pri=k=>{if(ahead.has(k))return ahead.get(k);const [i,j]=k.split('_').map(Number);return (Math.abs(i-ci)+Math.abs(j-cj))*700}; /* build in the order the car will reach them: route tiles by distance ahead, side tiles after */
  const order=[...want].sort((a,b)=>pri(a)-pri(b));
- let built=!!BT.gen; /* a tile is still being built in slices */if(!built&&REBUILDQ.length&&!(G.rebT>performance.now())){const k2=REBUILDQ.shift();const [ri,rj]=k2.split('_').map(Number);if(TILES.has(k2)&&Math.abs(ri-ci)<=1&&Math.abs(rj-cj)<=1){unloadTile(k2);btStart(k2);built=true;G.rebT=performance.now()+3000} /* rebuilds only for tiles right beside the car, one every 3 s; the rest keep their slightly looser clearance */}for(const k of order){if(RAW.has(k)){if(!TILES.has(k)&&!built){const nb=neighbourKeys(k).filter(n=>want.has(n));const ready=nb.every(n=>RAW.has(n));const w0=RAW.get(k)._wait||(RAW.get(k)._wait=performance.now());if(ready||performance.now()-w0>6000){if(TILES.size)btStart(k);else buildTile(k);built=true}}}else if(netBusy<3)fetchTile(k)} /* at most one tile build per pass (nearest first) so arriving tiles don't stack into one long hitch */
+ let built=!!BT.gen; /* a tile is still being built in slices */if(!built&&REBUILDQ.length&&!(G.rebT>performance.now())){const k2=REBUILDQ.shift();const [ri,rj]=k2.split('_').map(Number);if(TILES.has(k2)&&Math.abs(ri-ci)<=1&&Math.abs(rj-cj)<=1){unloadTile(k2);btStart(k2);built=true;G.rebT=performance.now()+3000} /* rebuilds only for tiles right beside the car, one every 3 s; the rest keep their slightly looser clearance */}for(const k of order){if(RAW.has(k)){if(!TILES.has(k)&&!built){const nb=neighbourKeys(k).filter(n=>want.has(n));const ready=nb.every(n=>RAW.has(n));const w0=RAW.get(k)._wait||(RAW.get(k)._wait=performance.now());if(ready||performance.now()-w0>(e.v>40?1500:6000)){if(TILES.size)btStart(k);else buildTile(k);built=true}}}else if(netBusy<(e.v>40?6:3))fetchTile(k)} /* more downloads in flight at speed */ /* at most one tile build per pass (nearest first) so arriving tiles don't stack into one long hitch */
  // route road ribbon (guarantees a road even before/without OSM tiles, e.g. at 100x on interstates)
  if(!G.rr||Math.abs(G.rr.s-e.s)>300||G.rr.ox!==ORIGIN.lon||G.rr.tv!==TERR.ver&&Math.abs(G.rr.s-e.s)>40){if(G.rr)scene.remove(G.rr.mesh);const b=new Buf(),pts=[];for(let s=Math.max(0,e.s-400);s<Math.min(G.route.total,e.s+Math.max(1200,e.v*12));s+=4){const p=routeXZ(s,0); /* fallback road reaches ~12 s ahead at speed */pts.push([p[0],p[1],routeY(s,0)+0.05])}ribbon(b,pts,7.6,0.03,1.9);const g=b.geo();const m=new THREE.Mesh(g,MAT.road2);m.receiveShadow=true;scene.add(m);G.rr={s:e.s,mesh:m,ox:ORIGIN.lon,tv:TERR.ver}}
 }
