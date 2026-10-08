@@ -1763,8 +1763,9 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  // helper to put a flat part on the nose/tail surface
  // surface-conforming panel: samples the body across its width so lamps/grilles wrap the nose & tail
  const onEnd=(front,z,y,w,h,mat,d=0.03)=>{w=Math.min(w,2*P.half(front?0.96:0.04)*0.92);const K=Math.max(2,Math.ceil(w/0.05)),pos=[],uv=[],idx=[],sg=front?1:-1;
-  for(let i=0;i<=K;i++){const zz=z-w/2+w*i/K;for(const [yy,v] of [[y-h/2,0],[y+h/2,1]]){const x=surfX(P,front,Math.abs(zz),yy)+sg*(d*0.35+0.004);pos.push(x,yy,zz);uv.push(i/K,v)}}
-  for(let i=0;i<K;i++){const a=i*2,b=a+1,c=a+3,e=a+2;front?idx.push(a,c,e,a,b,c):idx.push(a,e,c,a,c,b)}
+  const RW=Math.max(1,Math.ceil(h/0.03)); /* rows too, so the badge/lamp/grille follows the rounded nose top-to-bottom instead of cutting into it */
+  for(let i=0;i<=K;i++){const zz=z-w/2+w*i/K;for(let r=0;r<=RW;r++){const v=r/RW,yy=y-h/2+h*v,x=surfX(P,front,Math.abs(zz),yy)+sg*(d*0.35+0.004);pos.push(x,yy,zz);uv.push(i/K,v)}}
+  const C=RW+1;for(let i=0;i<K;i++)for(let r=0;r<RW;r++){const a=i*C+r,b=a+1,c=a+C+1,e=a+C;front?idx.push(a,c,e,a,b,c):idx.push(a,e,c,a,c,b)}
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(idx);geo.computeVertexNormals();
   const m=new THREE.Mesh(geo,mat);g.add(m);return m};
  const mk=c=>new THREE.MeshBasicMaterial({color:c});
