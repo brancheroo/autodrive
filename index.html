@@ -8077,6 +8077,21 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
  MODS.push({id:'modebadge'});
 })();
 </script>
+<script>/* mods/86c-unlimitedbatt.js */
+/* Unlimited battery (⚙ Options, default off): keeps the battery – or the fuel tank in a fuel car – full the whole trip and
+   drops planned charging / fuel stops, so a trip of any length runs straight through. */
+(function(){
+ const ld=()=>{try{return localStorage.getItem('unlimitedBatt')==='1'}catch(e){return false}};
+ const U={on:ld()};window.UNLIMITED=U;
+ const lab=b=>{b.textContent='🔋 Unlimited '+(U.on?'On':'Off');b.classList.toggle('on',U.on)};
+ function fill(){const G=typeof game!=='undefined'?game:null;if(!G||!G.spec||!G.route)return;const E=ES();G.energy=capJ(E);G.soc=1;if(!G.charging&&G.stops&&G.stops.length){G.stops=[];G.stopIdx=0}}
+ MODS.push({id:'unlimitedbatt',
+  start(){const b=UIX.btn('unlBtn','🔋 …','Unlimited battery – the battery (or fuel tank) stays full and no charging or fuel stops are planned',null)||document.getElementById('unlBtn');
+   if(b){lab(b);b.onclick=()=>{U.on=!U.on;try{localStorage.setItem('unlimitedBatt',U.on?'1':'0')}catch(e){}lab(b);if(U.on)fill();if(window.game)game.status=U.on?'🔋 Unlimited battery on':'Unlimited battery off'}}
+   if(U.on)fill()},
+  sim(){if(U.on)fill()}});
+})();
+</script>
 <script>/* mods/87-rideshare.js */
 /* Rideshare: a compact sedan with a human driver. You ride in the back right seat (the one exception to the driver's-seat
    camera rule). The perception panel becomes a plain DRIVER'S VIEW: the panel camera sits at the driver's eyes looking ahead,
