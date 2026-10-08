@@ -4657,7 +4657,9 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
     else if(mode<1.5){float l=dot(pow(aces(c*3.2),vec3(1./2.2)),vec3(.3,.59,.11));l=pow(l,0.8)*(0.85+0.15*sin(vUv.y*540.))*(1.-0.6*pow(length(vUv-.5)*1.4,2.))+fract(sin(dot(vUv*t,vec2(12.9,78.2)))*43758.)*0.06;c=vec3(0.15,1.,0.25)*l;}
     else{float l=dot(c,vec3(.3,.59,.11));c=ironbow(l*1.15);}
     gl_FragColor=vec4(c,1.);}`}); /* perception blit: tone-map + sRGB here (the render target is linear), or night-vision / ironbow thermal for the Predictacar's vision modes */bscene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bmat));
- window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const wrap=document.getElementById('cvWrap');if(wrap&&(getComputedStyle(wrap).visibility==='hidden'||wrap.style.display==='none'))return; /* hidden (photo mode etc.) */const r=area.getBoundingClientRect();if(r.width<10||r.height<10)return;
+ /* cvRect: the perception panels are measured every frame, and reading a size forces a layout. Cache the rectangle for 250 ms per element (a resize shows within a quarter second). */
+const _cvRc={el:null,t:0,r:null};window.cvRect=function(el){const now=performance.now();if(_cvRc.el!==el||!_cvRc.r||now-_cvRc.t>250){_cvRc.el=el;_cvRc.t=now;_cvRc.r=el.getBoundingClientRect()}return _cvRc.r};
+window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const wrap=document.getElementById('cvWrap');if(wrap&&(getComputedStyle(wrap).visibility==='hidden'||wrap.style.display==='none'))return; /* hidden (photo mode etc.) */const r=cvRect(area);if(r.width<10||r.height<10)return;
   const t=tier(),every=t==='ultra'?2:t==='high'?4:6,scale=t==='ultra'?0.85:1,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
   if(!rt||rt.width!==W||rt.height!==H){if(rt)rt.dispose();rt=new THREE.WebGLRenderTarget(W,H,{samples:0});bmat.uniforms.map.value=rt.texture;fr=0}
   const realRender=renderer.render;fr++;if(t!=='ultra'&&cvCam.far>300){cvCam.far=300;cvCam.updateProjectionMatrix()} /* perception view: nothing past 300 m (cuts draw calls) */
@@ -6266,7 +6268,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  MODS.push({id:'sensorviews',
   start(){ui();V.pts=[]},
   sim(dt){if(V.mode!=='lidar')return;V.sweepT-=dt;if(V.sweepT<0){V.sweepT=0.1;try{sweep()}catch(e){}}},
-  preRender(){const G=game;if(!G||!G.route||!G.ego||!V.ov)return;const cam=document.getElementById('cvCam'),r=cam.getBoundingClientRect(),dpr=devicePixelRatio,W=Math.round(r.width*dpr),H=Math.round(r.height*dpr);if(V.ov.width!==W||V.ov.height!==H){V.ov.width=W;V.ov.height=H}const x=V.ov.getContext('2d');
+  preRender(){const G=game;if(!G||!G.route||!G.ego||!V.ov)return;const cam=document.getElementById('cvCam'),r=cvRect(cam),dpr=devicePixelRatio,W=Math.round(r.width*dpr),H=Math.round(r.height*dpr);if(V.ov.width!==W||V.ov.height!==H){V.ov.width=W;V.ov.height=H}const x=V.ov.getContext('2d');
    V.frame=(V.frame||0)+1;if(V.frame%({ultra:3,high:5,low:8}[window.GFX?GFX.get():'high']||5))return;x.clearRect(0,0,W,H);let dets=[];try{dets=detections()}catch(e){}
    if(V.mode==='lidar'&&!(sensorsOf().lidar)){x.fillStyle='#02060a';x.fillRect(0,0,W,H);x.fillStyle='#9fe';x.font=`${11*dpr}px system-ui`;x.fillText('This car has no lidar',10*dpr,20*dpr)}else if(V.mode==='radar'&&!(sensorsOf().radar)){x.fillStyle='#020a06';x.fillRect(0,0,W,H);x.fillStyle='#9fe';x.font=`${11*dpr}px system-ui`;x.fillText('This car has no radar',10*dpr,20*dpr)}else if(V.mode==='lidar')drawLidar(x,W,H);else if(V.mode==='radar')drawRadar(x,W,H,dets);else{if(V.heat)drawHeat(x,W,H,dets);drawLabels(x,W,H,dets)}}});
 })();
