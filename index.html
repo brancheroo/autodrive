@@ -234,8 +234,8 @@ const CARS=[
 {id:'rideshare',name:'RideNow Coralla',sub:'Rideshare · human driver',style:'sedan',L:4.63,W:1.78,H:1.44,wb:2.7,wr:0.32,hp:169,z60:8.2,top:115,range:'~550 mi (50 mpg hybrid)',weight:'3,100 lb',drive:'1.8L hybrid · CVT · FWD',level:'Human driver (rideshare)',
  tech:'An ordinary compact hybrid sedan from a rideshare app, with a real person at the wheel. You ride in the back right seat. There are no self-driving sensors: the panel shows what the driver sees through the windscreen.',
  colors:[['Silver Mist','#b8bdc2'],['Midnight Black','#141517'],['Classic White','#eeeeea'],['Slate Blue','#4a5a72']],dash:'center-mb',wheel:'round',sensors:'none',sound:'i4',driver:true,rideshare:true},
-{id:'keitruck',name:'Kei-Volt Mini',sub:'Electric kei pickup truck',style:'van',L:3.4,W:1.48,H:1.82,wb:1.9,wr:0.27,hp:40,z60:14,top:62,range:'~95 mi (est.) · 20 kWh',weight:'~1,900 lb',drive:'Single motor RWD EV',level:'SAE Level 2 · supervised',
- tech:'A tiny Japanese-style kei pickup, rebuilt as an EV. Cab-over layout with a flat front, two seats, and a flat bed with fold-down side and tail gates. Under 3.4 m long and 1.48 m wide, so it fits down any lane or alley.',
+{id:'keitruck',name:'Kei-Volt Mini',sub:'Electric micro kei pickup truck',style:'van',L:2.75,W:1.2,H:1.47,wb:1.54,wr:0.22,hp:40,z60:14,top:62,range:'~95 mi (est.) · 20 kWh',weight:'~1,900 lb',drive:'Single motor RWD EV',level:'SAE Level 2 · supervised',
+ tech:'A tiny Japanese-style kei pickup, rebuilt as an EV. Cab-over layout with a flat front, two seats, and a flat bed with fold-down side and tail gates. Only 2.75 m long and 1.2 m wide, smaller than a regular kei truck, so it fits down any lane or alley.',
  colors:[['Farm White','#f1f1ec'],['Kei Silver','#b9bdc1'],['Tractor Green','#3f7a3a'],['Pickup Red','#c4252a'],['Sky Blue','#7fb6dd']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,keitruck:true},
 {id:'gargantua',name:'Gargantua',sub:'Six-wheel street-legal super-tug',style:'van',L:8.4,W:4.2,H:4.4,wb:6.3,wr:1.44,hp:18000,z60:1.1,top:250,range:'~1,500,000 mi (est.) · 1 GWh',weight:'~14,000 lb',drive:'6 independent 3,000 ehp hub motors · 360° omni-directional wheels',level:'SAE Level 4 · full Predictacar autonomy stack + tracking satellite (fictional)',
  tech:'Shaped like a giant airport aircraft tug and twice the width of a normal car (4.2 m), so it takes more than a full lane. Six independent wheels, each twice the normal width and height, carry their own 3,000 ehp hub motor (18,000 ehp in total) and can point and drive in any direction: it crabs sideways, moves diagonally and spins on the spot. A 1 GWh battery pack fills the flat chassis between the axles. It carries every self-driving technology in the game: the Predictacar OmniSense suite (1 km see-through lidar, radar, cameras, thermal, ultrasonics) and the tracking satellite, always on. The low wedge nose and towbar hitch come straight from the airport apron; the full-width glass cab seats six in three rows.',
@@ -7127,7 +7127,8 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    and tail gates behind it, four small wheels. Built here (not from the car profile) because the cab-over shape and open bed
    don't fit the standard body generator. */
 (function(){
- window.buildKeiTruck=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{L,W,H,wr}=spec;
+ window.buildKeiTruck=function(spec,colorHex,opts){const K=spec.L/3.4,N={...spec,L:3.4,W:spec.W/K,H:spec.H/K,wr:spec.wr/K,wb:spec.wb/K}; /* drawn at full kei-truck proportions, then the whole model is scaled to the spec size */
+  const g=new THREE.Group(),ud=g.userData,{L,W,H,wr}=N;
   const paint=new THREE.MeshStandardMaterial({color:colorHex,metalness:0.25,roughness:0.5}),dark=new THREE.MeshStandardMaterial({color:0x1c1e22,roughness:0.85}),steel=new THREE.MeshStandardMaterial({color:0x9aa1a8,metalness:0.7,roughness:0.35}),
    glass=new THREE.MeshPhysicalMaterial({color:0x2a3a48,roughness:0.05,transparent:true,opacity:0.4,depthWrite:false}),seatM=new THREE.MeshStandardMaterial({color:0x2b2f36,roughness:0.85});
   const box=(w,h,d,m,x,y,z,par=g)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;par.add(o);return o};
@@ -7161,10 +7162,10 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   ud.hood=new THREE.Group();g.add(ud.hood);
   /* wheels */
   const tg=new THREE.CylinderGeometry(wr,wr,0.16,20).rotateX(Math.PI/2),tm=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),hg=new THREE.CylinderGeometry(wr*0.55,wr*0.55,0.17,16).rotateX(Math.PI/2),wheels=[];
-  for(const [x,front] of [[spec.wb/2+0.25,true],[-spec.wb/2+0.25,false]])for(const sd of [1,-1]){const piv=new THREE.Group();piv.position.set(x,wr,sd*(W/2-0.12));const spin=new THREE.Group();spin.add(new THREE.Mesh(tg,tm));spin.add(new THREE.Mesh(hg,steel));const holder=new THREE.Group();holder.add(spin);piv.add(holder);g.add(piv);wheels.push({piv,spin,front,sign:sd})}
-  ud.wheels=wheels;ud.keitruck=true;return g};
+  for(const [x,front] of [[N.wb/2+0.25,true],[-N.wb/2+0.25,false]])for(const sd of [1,-1]){const piv=new THREE.Group();piv.position.set(x,wr,sd*(W/2-0.12));const spin=new THREE.Group();spin.add(new THREE.Mesh(tg,tm));spin.add(new THREE.Mesh(hg,steel));const holder=new THREE.Group();holder.add(spin);piv.add(holder);g.add(piv);wheels.push({piv,spin,front,sign:sd})}
+  ud.wheels=wheels;ud.keitruck=true;g.scale.setScalar(K);for(const v of ud.seats)v.multiplyScalar(K);return g};
  const _eye=window.eyePos;
- if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.keitruck){const L=spec.L,wr=spec.wr,cabL=1.25,cabX=L/2-cabL/2;return new THREE.Vector3(cabX-0.15,wr*2+0.12+1.0,-0.33)}return _eye.apply(this,arguments)};
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.keitruck){const K=spec.L/3.4,L=3.4,wr=spec.wr/K,cabL=1.25,cabX=L/2-cabL/2;return new THREE.Vector3(cabX-0.15,wr*2+0.12+1.0,-0.33).multiplyScalar(K)}return _eye.apply(this,arguments)};
  MODS.push({id:'keitruck'});
 })();
 </script>
