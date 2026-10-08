@@ -4781,6 +4781,20 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  MODS.push({id:'janitor'});
 })();
 </script>
+<script>/* mods/02e-prefetch.js */
+/* Route prefetch: while the downloader is idle, fetch the map tiles along the route up to 40 km ahead of the car, one at a
+   time. Each fetched tile lands in the 30-day local cache (IndexedDB), so when the car gets there – even above 1,000 mph –
+   it loads from disk in a fraction of a second instead of waiting several seconds for the map server. The janitor still
+   frees far-off tile data from memory; it reloads quickly from the cache. */
+(function(){
+ const P={keys:[],route:null,done:0};window.PREFETCH=P;
+ function plan(G){P.route=G.route;P.keys=[];const seen=new Set();for(let d=0;d<=G.route.total;d+=400){const p=routeLLnh(d),k=tileKey(p[1],p[0]);if(!seen.has(k)){seen.add(k);P.keys.push({k,d})}}}
+ setInterval(()=>{const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego||G.fast)return;if(P.route!==G.route)plan(G);
+  const busy=typeof netBusy!=='undefined'?netBusy:0;if(busy>0)return; /* only when nothing else is downloading */
+  const e=G.ego;for(const it of P.keys){if(it.d<e.s-500)continue;if(it.d>e.s+40000)break;if(RAW.has(it.k)||PENDING.has(it.k)||TILES.has(it.k)||it.got)continue;it.got=true;P.done++;try{fetchTile(it.k)}catch(err){}break}},700);
+ MODS.push({id:'prefetch',start(){P.route=null;P.done=0}});
+})();
+</script>
 <script>/* mods/03-quality.js */
 /* Graphics quality setting (Low / High / Ultra) on the start screen and HUD, plus a small FPS readout. */
 (function(){
