@@ -1943,7 +1943,7 @@ function buildInterior(g,spec){
   box(0.36,0.38,W*0.9,dashMat,fFront+0.12,dTop-0.33,0); // lower dash / footwell face
   box(0.95,0.2,0.3,dashMat,eye.x+0.05,eye.y-0.62,mid+eye.z); // centre console
   box(0.12,0.012,0.08,new THREE.MeshStandardMaterial({color:0x111111,roughness:0.3}),eye.x+0.35,eye.y-0.515,mid+eye.z-0.06); // phone pad
-  for(const s of [1,-1]){box(spec.L*0.55,0.46,0.05,dashMat,eye.x-0.1,dTop-0.3,s*W*0.46).userData.inOnly=1;box(spec.L*0.5,0.02,0.02,new THREE.MeshBasicMaterial({color:AMB}),eye.x-0.05,dTop-0.08,s*W*0.455).userData.inOnly=1}
+  for(const s of [1,-1]){box(spec.L*0.55,0.46,0.05,dashMat,eye.x-0.1,dTop-0.3,s*W*0.42).userData.inOnly=1;box(spec.L*0.5,0.02,0.02,new THREE.MeshBasicMaterial({color:AMB}),eye.x-0.05,dTop-0.08,s*W*0.415).userData.inOnly=1 /* door cards: inside the rounder shoulders */}
   // rear-view mirror
   if(!/cybercab|zoox/.test(spec.id)&&!spec.roadster){const mm=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.07,0.24),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.4}));rel(mm,0.55,-0.16,mid);const glassM=new THREE.Mesh(new THREE.PlaneGeometry(0.22,0.06),new THREE.MeshStandardMaterial({color:0x8fa0b0,metalness:1,roughness:0.05}));rel(glassM,0.535,-0.16,mid)}
  }
