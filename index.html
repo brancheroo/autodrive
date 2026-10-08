@@ -415,10 +415,19 @@ const PH={
  bark:phTex('bark_brown_02','diff',1,true),
 };
 const ENVMATS=[];
-function phSet(name,rep,diff='diff',res){const RS=res||TEXRES,u=m=>`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/${m==='arm'?TEXRES:RS}/${name}/${name}_${m}_${m==='arm'?TEXRES:RS}.jpg`;const ld=(m,srgb)=>{TEXSTAT.n++;const t=texLoader.load(u(m),()=>TEXSTAT.ok++,undefined,()=>TEXSTAT.fail++);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep,rep);t.anisotropy=ANISO;if(srgb)t.encoding=THREE.sRGBEncoding;return t};const arm=ld('arm');return{map:ld(diff,true),normalMap:ld('nor_gl'),roughnessMap:arm,aoMap:arm}}
-const INT={leather:phSet('leather_white',3,'diff',HIGH?'4k':TEXRES),cloth:phSet('caban',4,'diff',HIGH?'4k':TEXRES),soft:phSet('fabric_leather_02',3),walnut:phSet('american_walnut_veneer',2),oak:phSet('black_oak_veneer',2),suede:phSet('scuba_suede',4)};
+function phSet(name,rep,diff='diff',res){const RS=res||TEXRES,u=m=>`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/${RS}/${name}/${name}_${m}_${RS}.jpg`; /* every map (incl. AO/rough/metal) at the requested resolution */const ld=(m,srgb)=>{TEXSTAT.n++;const t=texLoader.load(u(m),()=>TEXSTAT.ok++,undefined,()=>TEXSTAT.fail++);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep,rep);t.anisotropy=ANISO;if(srgb)t.encoding=THREE.sRGBEncoding;return t};const arm=ld('arm');return{map:ld(diff,true),normalMap:ld('nor_gl'),roughnessMap:arm,aoMap:arm}}
+const INTRES=HIGH?'4k':'2k'; /* interiors are seen from 0.5 m away: always at least 2k, 4k on capable machines */
+const INT={leather:phSet('leather_white',3,'diff',INTRES),cloth:phSet('caban',4,'diff',INTRES),soft:phSet('fabric_leather_02',3,'diff',INTRES),walnut:phSet('american_walnut_veneer',2,'diff',INTRES),oak:phSet('black_oak_veneer',2,'diff',INTRES),suede:phSet('scuba_suede',4,'diff',INTRES)};
 function carbonTex(){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');for(let i=0;i<8;i++)for(let j=0;j<8;j++){const g=x.createLinearGradient(i*8,j*8,i*8+8,j*8+8);const a=(i+j)%2?['#2a2a2c','#0c0c0d']:['#0c0c0d','#2a2a2c'];g.addColorStop(0,a[0]);g.addColorStop(1,a[1]);x.fillStyle=g;x.fillRect(i*8,j*8,8,8)}const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(6,6);t.encoding=THREE.sRGBEncoding;return t}
 const CARBON=carbonTex();
+/* softBox: a box with rounded edges/corners (radius r) for interior trim and upholstery – a segmented box whose vertices are pulled
+   onto an inner box + radius, then re-normalled. Cached per size; carries uv2 so aoMap shading works. */
+const SOFTBOX=new Map();
+function softBox(w,h,d,r){r=Math.min(r??0.012,w*0.45,h*0.45,d*0.45);const k=[w,h,d,r].map(v=>v.toFixed(3)).join('|');let g=SOFTBOX.get(k);if(g)return g;
+ if(r<0.002){g=new THREE.BoxGeometry(w,h,d)}else{const sg=3;g=new THREE.BoxGeometry(w,h,d,sg*2,sg*2,sg*2);const P=g.attributes.position,v=new THREE.Vector3(),hw=w/2-r,hh=h/2-r,hd=d/2-r;
+  for(let i=0;i<P.count;i++){v.fromBufferAttribute(P,i);const cx=Math.max(-hw,Math.min(hw,v.x)),cy=Math.max(-hh,Math.min(hh,v.y)),cz=Math.max(-hd,Math.min(hd,v.z)),dx=v.x-cx,dy=v.y-cy,dz=v.z-cz,l=Math.hypot(dx,dy,dz)||1;P.setXYZ(i,cx+dx/l*r,cy+dy/l*r,cz+dz/l*r)}
+  g.computeVertexNormals()}
+ g.setAttribute('uv2',g.attributes.uv);SOFTBOX.set(k,g);return g}
 {const pm=new THREE.PMREMGenerator(renderer);texLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/kloofendal_48d_partly_cloudy_puresky.jpg',t=>{let src=t;if(!HIGH&&t.image){ /* Low graphics: convert a 512×256 copy – the sky reflections look the same at this size and the full-size conversion caused a ~0.6 s hitch */const c=document.createElement('canvas');c.width=512;c.height=256;c.getContext('2d').drawImage(t.image,0,0,512,256);src=new THREE.CanvasTexture(c);src.encoding=THREE.sRGBEncoding}src.mapping=THREE.EquirectangularReflectionMapping;scene.environment=pm.fromEquirectangular(src).texture;if(src!==t)src.dispose();t.dispose();TEXSTAT.ok++},undefined,()=>TEXSTAT.fail++);TEXSTAT.n++}
 
 // ============================================================ MATERIALS
@@ -1917,7 +1926,7 @@ function buildInterior(g,spec){
  const dashMat=new THREE.MeshStandardMaterial({color:IM.dash,normalMap:INT.soft.normalMap,roughness:0.95});
  const trim=IM.trim==='walnut'?new THREE.MeshStandardMaterial({...INT.walnut,roughness:0.35}):IM.trim==='oak'?new THREE.MeshStandardMaterial({...INT.oak,roughness:0.4}):IM.trim==='carbon'?new THREE.MeshStandardMaterial({color:0xffffff,map:CARBON,metalness:0.3,roughness:0.25}):new THREE.MeshStandardMaterial({color:0x2e2e30,roughness:0.5,metalness:0.3});
  const AMB={tesla:0xffffff,teslaS:0xffffff,cybercab:0xffe2b0,waymo:0x29d3c3,mercedes:0x10d8c8,bmw:0x4f7dff,cadillac:0xb07bff,ford:0xff3b2f,lucid:0xd7b98a,rivian:0xffc107,zoox:0x8be0a2}[spec.dash]||0xffffff;
- const box=(w,h,d,m,x,y,z,par=I)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);par.add(o);return o};
+ const box=(w,h,d,m,x,y,z,par=I)=>{const o=new THREE.Mesh(softBox(w,h,d,Math.min(w,h,d)>0.03?0.01:0),m);o.position.set(x,y,z);par.add(o);return o};
  // eye-relative placement: f = forward, d = down, l = lateral (+ toward car's right/centre); plane faces the eye
  const rel=(m,f,d,l,tilt=0.14)=>{m.position.set(eye.x+f,eye.y-d,eye.z+l);const yaw=Math.atan2(eye.x-m.position.x,eye.z-m.position.z);m.rotation.order='YXZ';m.rotation.set(-tilt,yaw,0);I.add(m);return m};
  const dTop=eye.y-0.36,fFront=eye.x+0.68,W=spec.W;
@@ -1941,9 +1950,9 @@ function buildInterior(g,spec){
  const seatM=new THREE.MeshStandardMaterial({color:IM.seat,...(IM.mat==='cloth'?INT.cloth:INT.leather)});
  /* SCULPTED SEATS: wedge cushion, reclined backrest, curved side bolsters, perforated inserts with contrast stitching, rounded headrest */
  const insM=seatM.clone();insM.color=new THREE.Color(IM.seat).multiplyScalar(0.82);if(IM.mat!=='cloth'){insM.bumpMap=perfTex();insM.bumpScale=0.004;insM.roughness=0.55} /* same leather, darker insert with pressed perforations */const stitchM=new THREE.MeshStandardMaterial({color:IM.mat==='cloth'?0x6a6a6a:new THREE.Color(IM.seat).getHSL({}).l>0.5?0x7a5a3a:0xbfae90,roughness:0.8});
- for(const s of spec.style==='pod'?[0.45,-0.45]:[0.37,-0.37]){const z=s*W/1.9,sx=eye.x+0.12,sy=eye.y-0.72,S=new THREE.Group();S.position.set(sx,sy,z);I.add(S);const b2=(w,h,d,m,x,y,zz,rz=0,rx=0)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,zz);o.rotation.set(rx,0,rz);S.add(o);return o};
+ for(const s of spec.style==='pod'?[0.45,-0.45]:[0.37,-0.37]){const z=s*W/1.9,sx=eye.x+0.12,sy=eye.y-0.72,S=new THREE.Group();S.position.set(sx,sy,z);I.add(S);const b2=(w,h,d,m,x,y,zz,rz=0,rx=0)=>{const o=new THREE.Mesh(softBox(w,h,d,m===stitchM?0:0.035),m);o.position.set(x,y,zz);o.rotation.set(rx,0,rz);S.add(o);return o};
   b2(0.54,0.1,0.52,seatM,0,0,0,-0.08);b2(0.48,0.02,0.3,insM,0.01,0.055,0,-0.08);for(const k of [-1,1]){b2(0.52,0.13,0.1,seatM,0,0.04,k*0.23,-0.08,k*0.28);b2(0.46,0.006,0.006,stitchM,0.01,0.066,k*0.155,-0.08)}
-  const B=new THREE.Group();B.position.set(-0.3,0.05,0);B.rotation.z=0.26;S.add(B);const b3=(w,h,d,m,x,y,zz,ry=0)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,zz);o.rotation.y=ry;B.add(o);return o};
+  const B=new THREE.Group();B.position.set(-0.3,0.05,0);B.rotation.z=0.26;S.add(B);const b3=(w,h,d,m,x,y,zz,ry=0)=>{const o=new THREE.Mesh(softBox(w,h,d,m===stitchM?0:0.04),m);o.position.set(x,y,zz);o.rotation.y=ry;B.add(o);return o};
   b3(0.12,0.66,0.5,seatM,0,0.36,0);b3(0.02,0.46,0.28,insM,0.065,0.38,0);for(const k of [-1,1]){b3(0.16,0.58,0.1,seatM,0.03,0.33,k*0.23,-k*0.35);b3(0.006,0.46,0.006,stitchM,0.078,0.38,k*0.145)}
   b3(0.1,0.2,0.28,seatM,-0.01,0.82,0);for(const k of [-1,1]){const pst=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.1,8),new THREE.MeshStandardMaterial({color:0xc0c4c8,metalness:0.9,roughness:0.2}));pst.position.set(-0.01,0.7,k*0.07);B.add(pst)}}
  interiorDetails(I,spec,eye,mid,dTop,fFront,dashMat,seatM,trim,AMB,box);
