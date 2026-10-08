@@ -3312,7 +3312,7 @@ function detections(){const G=game,e=G.ego,S=sensorsOf(),R=Math.min(maxRange(S),
  for(const c of CONTROLS.values())if(c.type==='stop'){const dx=c.x-e.x,dz=c.z-e.z;if(dx*fx+dz*fz<3)continue;add('stop',c.x,2.5,c.z,0.76,0.76,0.1,0)}
  return out}
 const _v=new THREE.Vector3();
-function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cvCam'),r=area.getBoundingClientRect();if(r.width<10)return;
+function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cvCam'),r=window.cvRect?cvRect(area):area.getBoundingClientRect();if(r.width<10)return;
  const e=G.ego,S=sensorsOf(),fx=Math.cos(e.head),fz=-Math.sin(e.head);
  // camera at the sensor head, looking down the lane
  cvCam.position.set(e.x+fx*(G.spec.L*0.25),S.h+(G.spec.H-1.4)*0.6+e.mesh.position.y,e.z+fz*(G.spec.L*0.25));cvCam.lookAt(cvCam.position.x+fx*30,routeY(e.s+30,e.off)+1.0,cvCam.position.z+fz*30);cvCam.aspect=r.width/r.height;cvCam.updateProjectionMatrix();
