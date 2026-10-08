@@ -1455,7 +1455,7 @@ const MODEL={
  ex90:{epa:300,shape:{roof:'glass',clr:.2,nose:.55,hood:.64,cowl:.68,roofF:.6,roofR:.07,tail:.02,deck:.76,belt:.6,tum:.78,endR:.28},grille:'none',drl:'bar',tailL:'bar',rim:{n:5,style:'aero',col:0x2a2c30},int:{seat:0xd8d2c6,mat:'leather',trim:'oak',dash:0x2a2a2c}},
  taycan:{epa:290,shape:{roof:'glass',nose:.36,hood:.50,roofR:.3,clr:.12,cowl:.70,roofF:.57,tail:.05,deck:.62,belt:.6,tum:.66,endR:.4},grille:'none',drl:'bar',tailL:'bar',rim:{n:10,style:'multi',col:0x1a1b1d},int:{seat:0x1b1b1b,mat:'leather',trim:'carbon',dash:0x141416}},
  ioniq5:{epa:318,shape:{box:.3,clr:.16,nose:.52,hood:.62,cowl:.72,roofF:.62,roofR:.06,tail:.01,deck:.78,belt:.6,tum:.78,endR:.15,roof:'paint'},grille:'none',drl:'bar',tailL:'bar',rim:{n:4,style:'aero',col:0x6a6e72},int:{seat:0xcfc8bc,mat:'cloth',trim:'oak',dash:0x2c2d30}},
- idbuzz:{epa:234,shape:{box:.35,clr:.16,nose:.45,hood:.55,cowl:.86,roofF:.82,roofR:.04,tail:.01,deck:.8,belt:.58,tum:.82,endR:.4,roof:'paint'},grille:'none',drl:'bar',tailL:'bar',rim:{n:5,style:'aero',col:0x2a2c30},int:{seat:0xe9e2d0,mat:'cloth',trim:'oak',dash:0xf0ede6}},
+ idbuzz:{epa:234,shape:{box:.35,clr:.16,nose:.45,hood:.52,cowl:.88,roofF:.74,roofR:.04,tail:.01,deck:.8,belt:.58,tum:.82,endR:.4,roof:'paint'},grille:'none',drl:'bar',tailL:'bar',rim:{n:5,style:'aero',col:0x2a2c30},int:{seat:0xe9e2d0,mat:'cloth',trim:'oak',dash:0xf0ede6}},
  'r1s':{epa:410,shape:{box:.3,clr:.24,nose:.55,hood:.66,cowl:.7,roofF:.62,roofR:.03,tail:.01,deck:.8,belt:.6,tum:.8,endR:.3},grille:'none',drl:'rivian',tailL:'bar',rim:{n:6,style:'spoke',col:0x3a3c40},rails:true,cladding:true,int:{seat:0x5a3a26,mat:'leather',trim:'walnut',dash:0x2a2622}},
 };
 function shapeOf(spec){return Object.assign({},SHAPE_T[spec.style],(MODEL[spec.id]||{}).shape||{})}
