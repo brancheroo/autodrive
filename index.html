@@ -256,7 +256,7 @@ const CARS=[
  tech:'You ride in a classic red steel kids\' wagon, sitting on a cushion with your knees up. Out front, on a tow bar and cable, a 100 hp wheeled food-delivery drone rolls along on four chunky wheels and pulls you, its insulated delivery box still on top. It squats under power and dips its nose when braking. There is room for exactly one person and no roof.',
  colors:[['Radio Red','#d2161e'],['Fire Engine','#e8231b'],['Cherry','#b80f24'],['Classic Blue','#2050b0'],['Mint','#58c8a0']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,plim:true,dronewagon:true},
 {id:'hyperbike',name:'Kaze-R Hyperbike',sub:'Self-riding 2,000 mph rocket hyperbike',style:'coupe',L:2.6,W:0.8,H:1.25,wb:1.55,wr:0.33,hp:1200,z60:1.4,top:2000,range:'effectively unlimited · 500 kWh',weight:'~600 lb',drive:'Twin hub motors + tail rocket',level:'SAE Level 5 · self-riding',
- tech:'A long, low hyperbike that rides itself. Hubless wheels with glowing rings, a wedge fairing and a rocket under the tail take it to 2,000 mph on a clear road in Express or Cannonball. It has the same brain as the Predictacar (lidar, tracking satellite, a scout drone and the collision shield), so it carves through traffic lane by lane, leaning hard into every curve and gap. Your rider wears red-and-white race leathers with a big back emblem, a white full-face helmet with a cyan visor, spiky hair poking out the back and a long yellow scarf streaming in the wind.',
+ tech:'A long, low hyperbike that rides itself. Hubless wheels with glowing rings, a wedge fairing and a rocket under the tail take it to 2,000 mph on a clear road in Express or Cannonball. It has the same brain as the Predictacar (lidar, tracking satellite, a scout drone and the collision shield), so it carves through traffic lane by lane, leaning hard into every curve and gap. Your rider wears two-tone race leathers in the opposite colour to the bike with a big back emblem, a white full-face helmet with a cyan visor, spiky hair poking out the back and a long yellow scarf streaming in the wind.',
  colors:[['Neo Red','#d4141c'],['Midnight Violet','#3a1a6a'],['Cyber Cyan','#14c8e0'],['Pearl White','#f2f2ee'],['Akihabara Pink','#ff4fa8']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',hyper:true,hbike:true},
 {id:'h2saab',name:'Sahb 900 H2',sub:'Hydrogen fuel-cell hatchback',style:'sedan',L:4.69,W:1.69,H:1.42,wb:2.52,wr:0.32,hp:240,z60:7.2,top:130,range:'~400 mi on 6.2 kg of hydrogen',weight:'3,300 lb',drive:'Hydrogen fuel cell + 1.6 kWh buffer battery · FWD electric',level:'SAE Level 2 · supervised',
  tech:'The classic Swedish 3-door hatch with its upright wraparound windscreen and ignition between the seats, rebuilt around a hydrogen fuel cell. Two carbon-fibre tanks hold 6.2 kg of hydrogen for about 400 miles, it refuels in five minutes, and the only thing out of the tailpipe is water.',
@@ -7512,7 +7512,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
 /* Kaze-R hyperbike (spec.hbike, plus spec.hyper for the hypercar brain: lidar + satellite + scout drone, guardian field,
    chase-style carving through traffic). A long, low, self-riding hyperbike: hubless glowing wheels, a wedge fairing with
    a twin-eye headlight, a single rocket nozzle under the tail. The rider is built in, dressed like an anime biker:
-   red-and-white leathers with a big back emblem, full-face helmet with a cyan visor, spiky hair spilling out the back and a
+   two-tone leathers (the opposite hue of the bike) with a big back emblem, full-face helmet with a cyan visor, spiky hair spilling out the back and a
    long scarf that streams in the wind. The whole bike leans into curves and lane changes (the lean group pivots on the contact patch). */
 (function(){
  window.buildHyperbike=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{L,wr,wb}=spec;
@@ -7551,7 +7551,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const rl=new THREE.PointLight(0xff7a2a,0,12,2);rl.position.set(-wb/2-1.2,0.5,0);g.add(rl);ud.rockets={noz:[{n,f1,f2,gl,hot}],light:rl};
   /* the rider: tucked race crouch */
   const R=new THREE.Group();R.position.set(-0.2,wr+0.62,0);lean.add(R);ud.biker=R;
-  const red=new THREE.MeshStandardMaterial({color:0xd0141c,roughness:0.45,metalness:0.1}),white=new THREE.MeshStandardMaterial({color:0xf2f2f2,roughness:0.5}),
+  const red=new THREE.MeshStandardMaterial({color:(()=>{const c=new THREE.Color(colorHex),h={};c.getHSL(h);return new THREE.Color().setHSL((h.h+0.5)%1,0.85,0.42)})(),roughness:0.45,metalness:0.1}) /* leathers: the opposite hue of the bike's paint, so the rider always stands out */,white=new THREE.MeshStandardMaterial({color:0xf2f2f2,roughness:0.5}),
    dark=new THREE.MeshStandardMaterial({color:0x15161a,roughness:0.6}),hairM=new THREE.MeshStandardMaterial({color:0x2a1a4a,roughness:0.6}),
    visor=new THREE.MeshPhysicalMaterial({color:0x10d8ff,metalness:0.9,roughness:0.05,clearcoat:1,emissive:0x0a5070,emissiveIntensity:0.4});
   const torso=box(0.55,0.22,0.34,red,0.15,0.17,0,R);torso.rotation.z=0.5; /* chest forward over the tank, back flat */
