@@ -252,8 +252,8 @@ const CARS=[
 {id:'isetta',name:'Bubbli eSetta',sub:'Ultra-compact electric bubble car · single seater',style:'coupe',L:1.75,W:1.0,H:1.18,wb:1.15,wr:0.2,hp:12,z60:20,top:50,range:'~45 mi (est.) · 6 kWh',weight:'~650 lb',drive:'Single rear hub motor EV',level:'SAE Level 2 · supervised',
  tech:'An egg-shaped electric bubble car in the spirit of the 1950s Isetta. The whole front of the car is the door, there is room for exactly one person, and the rear wheels sit close together. At 1.75 m long and 1 m wide it barely fits one person – you fold yourself in through the front door – and it parks nose-in to the kerb and comes in glossy candy colours.',
  colors:[['Bubblegum Pink','#ff7ac8'],['Mint Candy','#7ff0c4'],['Lemon Drop','#ffe84a'],['Tangerine','#ff8a2a'],['Grape Soda','#9b5cff'],['Cotton Candy Blue','#7cc8ff'],['Cherry Red','#e8173a']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,plim:true,isetta:true},
-{id:'dronewagon',name:'SkyTote Wagon',sub:'Red wagon towed by a 100 hp wheeled delivery drone',style:'coupe',L:3.0,W:0.7,H:2.0,wb:0.7,wr:0.11,hp:100,z60:5.5,top:70,range:'~40 mi (est.) · 12 kWh',weight:'~420 lb',drive:'Wheeled drone tow · 100 hp hub motors + ducted rotors',level:'SAE Level 4 · rider-only',
- tech:'You ride in a classic red steel kids\' wagon, sitting on a cushion with your knees up. Out front, on a tow bar and cable, a 100 hp wheeled food-delivery drone rolls along on four chunky wheels and pulls you, its insulated delivery box still on top. Its ducted rotors spin up for extra pull, and it squats under power and dips its nose when braking. There is room for exactly one person and no roof.',
+{id:'dronewagon',name:'SkyTote Wagon',sub:'Red wagon towed by a 100 hp wheeled delivery drone',style:'coupe',L:3.0,W:0.7,H:2.0,wb:0.7,wr:0.11,hp:100,z60:5.5,top:70,range:'~40 mi (est.) · 12 kWh',weight:'~420 lb',drive:'Wheeled drone tow · 100 hp hub motors',level:'SAE Level 4 · rider-only',
+ tech:'You ride in a classic red steel kids\' wagon, sitting on a cushion with your knees up. Out front, on a tow bar and cable, a 100 hp wheeled food-delivery drone rolls along on four chunky wheels and pulls you, its insulated delivery box still on top. It squats under power and dips its nose when braking. There is room for exactly one person and no roof.',
  colors:[['Radio Red','#d2161e'],['Fire Engine','#e8231b'],['Cherry','#b80f24'],['Classic Blue','#2050b0'],['Mint','#58c8a0']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,plim:true,dronewagon:true},
 {id:'h2saab',name:'Sahb 900 H2',sub:'Hydrogen fuel-cell hatchback',style:'sedan',L:4.69,W:1.69,H:1.42,wb:2.52,wr:0.32,hp:240,z60:7.2,top:130,range:'~400 mi on 6.2 kg of hydrogen',weight:'3,300 lb',drive:'Hydrogen fuel cell + 1.6 kWh buffer battery · FWD electric',level:'SAE Level 2 · supervised',
  tech:'The classic Swedish 3-door hatch with its upright wraparound windscreen and ignition between the seats, rebuilt around a hydrogen fuel cell. Two carbon-fibre tanks hold 6.2 kg of hydrogen for about 400 miles, it refuels in five minutes, and the only thing out of the tailpipe is water.',
@@ -7446,7 +7446,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
 <script>/* mods/61m-dronewagon.js */
 /* Drone-towed wagon: you sit in a classic red kids' wagon (steel tub, white rails, four little rubber wheels) towed
    by a 100 hp wheeled food-delivery drone on a tow bar + cable. The drone drives ahead on four chunky wheels with its
-   insulated delivery box on top; its ducted rotors spin up with throttle for extra pull, and it squats as it pulls. */
+   insulated delivery box on top, and it squats as it pulls. */
 (function(){
  window.buildDroneWagon=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{W,wr}=spec,wx=-0.85; /* wagon centre (rear of the rig) */
   const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.5,roughness:0.3,clearcoat:0.8,clearcoatRoughness:0.1}),
@@ -7464,12 +7464,9 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const front=wx+0.38,bar=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,0.75,8),metal);bar.position.set(front+0.3,wr+0.3,0);bar.rotation.z=-1.0;g.add(bar);
   const hookX=front+0.6,hookY=wr+0.5,dX=1.05,dY=0.42;
   const cable=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,1,6),dark);g.add(cable);
-  /* the drone: carbon body, four arms, ducted rotors, LED nav lights, delivery box on top, four wheels underneath */
+  /* the drone: carbon body, LED nav lights, delivery box on top, four wheels underneath */
   const D=new THREE.Group();D.position.set(dX,dY,0);g.add(D);const core=box(0.55,0.16,0.45,body,0,0,0,D);const dome=new THREE.Mesh(new THREE.SphereGeometry(0.2,16,10,0,Math.PI*2,0,Math.PI/2),body);dome.position.y=0.08;D.add(dome);
-  const rotors=[];for(const [ax,az] of [[1,1],[1,-1],[-1,1],[-1,-1]]){const arm=box(0.6,0.04,0.06,body,ax*0.25,0.02,az*0.25,D);arm.rotation.y=-Math.atan2(az,ax);
-   const px=ax*0.48,pz=az*0.48,duct=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.03,6,28),body);duct.rotation.x=Math.PI/2;duct.position.set(px,0.08,pz);D.add(duct);
-   const motor=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.08,10),metal);motor.position.set(px,0.07,pz);D.add(motor);
-   const r=new THREE.Group();r.position.set(px,0.12,pz);for(let k=0;k<3;k++){const bl=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.01,0.05),dark);bl.rotation.y=k*Math.PI/3*2;r.add(bl)}D.add(r);rotors.push(r)}
+
   box(0.42,0.36,0.4,bag,-0.05,0.36,0,D);box(0.44,0.04,0.42,white,-0.05,0.56,0,D); /* delivery box rides on top */
   const dwr=0.2,dtg=new THREE.CylinderGeometry(dwr,dwr,0.1,18).rotateX(Math.PI/2),dhg=new THREE.CylinderGeometry(dwr*0.5,dwr*0.5,0.11,12).rotateX(Math.PI/2),dtm=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.9}),dWheels=[];
   for(const ax of [0.3,-0.3])for(const sd of [1,-1]){const w=new THREE.Group();w.position.set(ax,-dY+dwr,sd*0.3);w.add(new THREE.Mesh(dtg,dtm));w.add(new THREE.Mesh(dhg,bag));D.add(w);dWheels.push(w)} /* wheels sit on the road */
@@ -7484,15 +7481,14 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   ud.wheels=wheels;
   /* interior/hood stubs so the camera code can toggle them; the rider sits on the cushion */
   const I=new THREE.Group();g.add(I);ud.interior=I;ud.hood=new THREE.Group();g.add(ud.hood);ud.seats=[new THREE.Vector3(wx-0.1,ty+0.15,0)];
-  ud.dw={D,rotors,dWheels,dwr,cable,hook:new THREE.Vector3(hookX,hookY,0),base:D.position.clone(),t:Math.random()*10};
+  ud.dw={D,dWheels,dwr,cable,hook:new THREE.Vector3(hookX,hookY,0),base:D.position.clone(),t:Math.random()*10};
   const fixCable=()=>{const a=ud.dw.hook,b=new THREE.Vector3(D.position.x-0.3,D.position.y-0.05,0),m=a.clone().add(b).multiplyScalar(0.5),L=a.distanceTo(b);cable.position.copy(m);cable.scale.set(1,L,1);cable.rotation.set(0,0,Math.atan2(b.y-a.y,b.x-a.x)-Math.PI/2)};ud.dw.fixCable=fixCable;fixCable();
   ud.dronewagon=true;return g};
  const _eye=window.eyePos;
  if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.dronewagon)return new THREE.Vector3(-0.95,spec.wr+0.95,0);return _eye.apply(this,arguments)};
  let last=performance.now();
  MODS.push({id:'dronewagon',frame(){const now=performance.now(),dt=Math.min(0.1,(now-last)/1000);last=now;const G=typeof game!=='undefined'?game:null;const m=G&&G.ego&&G.ego.mesh;const U=m&&m.userData.dw;if(!U)return;
-  const e=G.ego,acc=e.acc||0,thr=0.35+Math.min(1,Math.abs(acc)/4)*0.4+Math.min(0.25,e.v/120);U.t+=dt;
-  for(let i=0;i<U.rotors.length;i++)U.rotors[i].rotation.y+=(i%2?-1:1)*dt*(60+thr*80);
+  const e=G.ego,acc=e.acc||0;U.t+=dt;
   for(const w of U.dWheels)w.rotation.z-=e.v*dt/U.dwr;
   U.D.rotation.z=clamp(-acc*0.012,-0.06,0.06); /* squats back under power, dips its nose when braking */
   U.D.position.y=U.base.y+(e.v>1?Math.sin(U.t*23)*0.004:0);U.fixCable()}});
