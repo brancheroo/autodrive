@@ -7771,8 +7771,9 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
     const lo=[];for(let i=0;i<=12;i++)lo.push([0.38+0.28*i/12,0.2,s]);det.add(seam(S,lo,0.004,blk)); /* door bottom */
     const bl=[];for(let i=0;i<=24;i++){const u=S.G0+0.01+(S.G1-S.G0-0.02)*i/24,b=S.bottom(u),T=S.top(u);bl.push([u,cl((S.belt(u)-b)/((T-b)||1),0,1),s])}det.add(seam(S,bl,0.006,satin)); /* canopy frame along the belt */}
    /* aero wheel covers: flush champagne discs with a fine spiral of slots */
-   const cov=new THREE.MeshPhysicalMaterial({color:0xd9d4c6,metalness:0.8,roughness:0.25,clearcoat:0.6});for(const w of ud.wheels||[]){const sp=w.spin;if(!sp)continue;const r=spec.wr*0.78,d=new THREE.Mesh(new THREE.CylinderGeometry(r,r,0.02,48).rotateX(Math.PI/2),cov);d.position.z=(w.sign||1)*0.115;sp.add(d);
-    for(let k=0;k<8;k++){const sl=new THREE.Mesh(new THREE.BoxGeometry(r*0.5,0.012,0.004),satin);const a=k*Math.PI/4;sl.position.set(Math.cos(a)*r*0.55,Math.sin(a)*r*0.55,(w.sign||1)*0.127);sl.rotation.z=a+0.5;sp.add(sl)}}
+   const cov=new THREE.MeshPhysicalMaterial({color:0xd9d4c6,metalness:0.8,roughness:0.25,clearcoat:0.6});for(const w of ud.wheels||[]){const sp=w.spin;if(!sp)continue;const r=spec.wr*0.78;sp.updateMatrixWorld(true);let face=0;sp.traverse(o=>{if(o.isMesh&&o.geometry){o.geometry.computeBoundingBox();face=Math.max(face,Math.abs(o.geometry.boundingBox.max.z),Math.abs(o.geometry.boundingBox.min.z))}}); /* sit clearly outside the existing rim face (no z-fighting) */
+    const fz=(w.sign||1)*(face+0.012),d=new THREE.Mesh(new THREE.CylinderGeometry(r,r,0.016,48).rotateX(Math.PI/2),cov);d.position.z=fz;sp.add(d);
+    for(let k=0;k<8;k++){const sl=new THREE.Mesh(new THREE.BoxGeometry(r*0.5,0.012,0.004),satin);const a=k*Math.PI/4;sl.position.set(Math.cos(a)*r*0.55,Math.sin(a)*r*0.55,fz+(w.sign||1)*0.01);sl.rotation.z=a+0.5;sp.add(sl)}}
    /* camera pods (camera-only FSDish): a dark lens above the windshield and on each fender */
    const lens=new THREE.MeshPhysicalMaterial({color:0x050608,roughness:0.05,clearcoat:1});for(const [u,t,s] of [[0.62,0.995,1],[0.8,0.55,1],[0.8,0.55,-1]]){const p=S.pt(u,t,s),m=new THREE.Mesh(new THREE.SphereGeometry(0.025,12,8),lens);m.position.set(p[0],p[1],p[2]);det.add(m)}}
   det.traverse(o=>{if(o.isMesh)o.castShadow=true});ud.cyberkab=true}
