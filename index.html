@@ -1828,7 +1828,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  // turn signals: real-size front & rear lamps, fender side repeaters, and an additive glow halo on each that flashes with the blinker
  const glowM=[0,1].map(()=>new THREE.SpriteMaterial({map:glowTex(),color:0xffa326,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));
  for(const s of [1,-1]){const m=s<0?sigL:sigR,gm=s<0?glowM[0]:glowM[1],spots=[];spots.push([onEnd(true,s*W*0.40,ny-0.06,0.2,0.07,m,0.04),1],[onEnd(false,s*W*0.38,ty-0.1,0.24,0.09,m,0.04),-1]);
-  const uF=0.8,rx=P.xOf(uF),ry=Math.min(P.belt(uF)-0.16,sh.hood*H-0.1),rz=s*(P.half(uF)+0.004),rep_=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.035,0.012),m);rep_.position.set(rx,ry,rz);g.add(rep_);
+  const uF=0.8,rx=P.xOf(uF),ry=Math.min(P.belt(uF)-0.16,sh.hood*H-0.1),rz=s*((P.halfAt?P.halfAt(uF,ry):P.half(uF))+0.004),rep_=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.035,0.012),m); /* on the real (rounded) fender surface */rep_.position.set(rx,ry,rz);g.add(rep_);
   for(const [mesh,sg] of spots){if(!mesh)continue;mesh.geometry.computeBoundingBox();const c=new THREE.Vector3();mesh.geometry.boundingBox.getCenter(c);const sp=new THREE.Sprite(gm);sp.position.set(c.x+sg*0.06,c.y,c.z);sp.scale.setScalar(0.55);g.add(sp)}
   const sr=new THREE.Sprite(gm);sr.position.set(rx,ry,rz+s*0.05);sr.scale.setScalar(0.3);g.add(sr)}
  g.userData.lights={head,tail,sigL,sigR,gL:glowM[0],gR:glowM[1]};
