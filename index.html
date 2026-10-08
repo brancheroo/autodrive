@@ -252,6 +252,9 @@ const CARS=[
 {id:'isetta',name:'Bubbli eSetta',sub:'Ultra-compact electric bubble car · single seater',style:'coupe',L:1.75,W:1.0,H:1.18,wb:1.15,wr:0.2,hp:12,z60:20,top:50,range:'~45 mi (est.) · 6 kWh',weight:'~650 lb',drive:'Single rear hub motor EV',level:'SAE Level 2 · supervised',
  tech:'An egg-shaped electric bubble car in the spirit of the 1950s Isetta. The whole front of the car is the door, there is room for exactly one person, and the rear wheels sit close together. At 1.75 m long and 1 m wide it barely fits one person – you fold yourself in through the front door – and it parks nose-in to the kerb and comes in glossy candy colours.',
  colors:[['Bubblegum Pink','#ff7ac8'],['Mint Candy','#7ff0c4'],['Lemon Drop','#ffe84a'],['Tangerine','#ff8a2a'],['Grape Soda','#9b5cff'],['Cotton Candy Blue','#7cc8ff'],['Cherry Red','#e8173a']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,plim:true,isetta:true},
+{id:'dronewagon',name:'SkyTote Wagon',sub:'Red wagon towed by a 100 hp delivery drone',style:'coupe',L:3.0,W:0.7,H:2.0,wb:0.7,wr:0.11,hp:100,z60:5.5,top:70,range:'~40 mi (est.) · 12 kWh',weight:'~420 lb',drive:'Quadcopter tow · 4 × 25 hp ducted rotors',level:'SAE Level 4 · rider-only',
+ tech:'You ride in a classic red steel kids\' wagon, sitting on a cushion with your knees up. Out front, on a tow bar and cable, a 100 hp food-delivery quadcopter flies at head height and pulls you along, still carrying its insulated delivery box. It noses down to pull, flares to brake and bobs gently in the air. There is room for exactly one person and no roof.',
+ colors:[['Radio Red','#d2161e'],['Fire Engine','#e8231b'],['Cherry','#b80f24'],['Classic Blue','#2050b0'],['Mint','#58c8a0']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,plim:true,dronewagon:true},
 {id:'h2saab',name:'Sahb 900 H2',sub:'Hydrogen fuel-cell hatchback',style:'sedan',L:4.69,W:1.69,H:1.42,wb:2.52,wr:0.32,hp:240,z60:7.2,top:130,range:'~400 mi on 6.2 kg of hydrogen',weight:'3,300 lb',drive:'Hydrogen fuel cell + 1.6 kWh buffer battery · FWD electric',level:'SAE Level 2 · supervised',
  tech:'The classic Swedish 3-door hatch with its upright wraparound windscreen and ignition between the seats, rebuilt around a hydrogen fuel cell. Two carbon-fibre tanks hold 6.2 kg of hydrogen for about 400 miles, it refuels in five minutes, and the only thing out of the tailpipe is water.',
  colors:[['Talladega Red','#a8121c'],['Cirrus White','#efefea'],['Scarab Green','#1e4a3a'],['Le Mans Blue','#1f3f7a'],['Black Pearl','#121316'],['Silver Metallic','#a9adb2']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,hydrogen:true},
@@ -1689,7 +1692,7 @@ function buildEcoSemi(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}=s
  ud.wheels=wheels;ud.ecosemi=true;
  if(typeof contactShadow==='function'){const c1=contactShadow(g,7.4,W*1.1);if(c1&&c1.position)c1.position.x=6.6;const c2=contactShadow(tr,TL*1.04,W*1.1);if(c2&&c2.position)c2.position.x=tcx}
  return g}
-function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.coach&&window.buildCoach)return buildCoach(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
+function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.dronewagon&&window.buildDroneWagon)return buildDroneWagon(spec,colorHex,opts);if(spec.coach&&window.buildCoach)return buildCoach(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
  const lod=!opts.interior&&opts.lod!==false&&!(window.GFX&&GFX.get()==='ultra'); /* traffic / parked cars on Low & High: ~7× fewer body triangles */
  const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=(spec.id||spec.style+L+W+H)+(lod?':lod':'');
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
@@ -2328,6 +2331,7 @@ const ENERGY={
  'keitruck':{epa:95,kwh:20,kg:850,cda:0.75,crr:0.011,dc:30,port:'CCS'},
  'aegis':{epa:200000,kwh:30000,kg:1800,cda:0.3,crr:0.007,dc:200000,port:'CCS'},
  'isetta':{epa:45,kwh:6,kg:295,cda:0.45,crr:0.009,dc:7,port:'J1772'},
+ 'dronewagon':{epa:40,kwh:12,kg:190,cda:0.6,crr:0.012,dc:10,port:'J1772'},
  'h2saab':{epa:400,kwh:100,kg:1500,cda:0.65,crr:0.009,dc:600,port:'CCS'}, /* refuel stops use the map's charging stations as stand-in hydrogen stations */
  'coach':{epa:500,kwh:1000,kg:25000,cda:6.0,crr:0.007,dc:600,port:'CCS'},
  'ecosemi':{epa:500,kwh:900,kg:29000,cda:4.0,crr:0.0055,dc:1000,port:'NACS'},
@@ -2708,7 +2712,7 @@ const hp=new THREE.Vector3();d.head.getWorldPosition(hp); // head position in do
  {car.updateMatrixWorld(true);const hw=new THREE.Vector3();d.head.getWorldPosition(hw);car.worldToLocal(hw);const uu=clamp((hw.x+Lh/2)/Lh,0,1),hz=P?P.half(uu):spec.W/2,want=d.hd*sz*1.1+0.05,outBy=-hw.z-hz,dl=want-outBy;
   if(dl>0){const n0=d.neck.position.clone();d.neck.position.z-=dl/sz;const ext=new THREE.Mesh(new THREE.CylinderGeometry(d.B.g*0.55,d.B.g*0.65,dl/sz+d.B.g,10),d.neck.children[0].material);ext.rotation.x=Math.PI/2;ext.position.set(n0.x+0.02,n0.y+d.B.g*0.45,n0.z-dl/sz/2);d.body.add(ext);d.ext=ext}
   for(let it=0;it<3;it++){let lift=0;car.updateMatrixWorld(true);d.neck.traverse(o=>{if(!o.isMesh)return;const pos=o.geometry.attributes.position;for(let i=0;i<pos.count;i+=2){v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld);car.worldToLocal(v);const u2=clamp((v.x+Lh/2)/Lh,0,1);if(-v.z>(P?P.half(u2):spec.W/2))lift=Math.max(lift,(P?P.belt(u2):spec.H*0.6)+0.02-v.y)}});if(lift<=0.005)break;dog.position.y+=lift}}
- car.userData.wdogH=holder;car.userData.wdog=dog;if(G.spec.solarcar||G.spec.isetta)holder.visible=false; /* single-seaters: no room for the dog */if((G.spec.gargantua||G.spec.ecosemi||G.spec.j800||G.spec.coach)&&car.userData.seats){dog.position.set(0,0,0);holder.position.copy(car.userData.seats[Math.min(2,car.userData.seats.length-1)]);holder.position.y+=0.08} /* Gargantua: the dog rides in the cab, middle row right seat */Object.assign(dog.userData,{barkT:0,next:2,seen:new Map(),look:0,lookT:0})}
+ car.userData.wdogH=holder;car.userData.wdog=dog;if(G.spec.solarcar||G.spec.isetta||G.spec.dronewagon)holder.visible=false; /* single-seaters: no room for the dog */if((G.spec.gargantua||G.spec.ecosemi||G.spec.j800||G.spec.coach)&&car.userData.seats){dog.position.set(0,0,0);holder.position.copy(car.userData.seats[Math.min(2,car.userData.seats.length-1)]);holder.position.y+=0.08} /* Gargantua: the dog rides in the cab, middle row right seat */Object.assign(dog.userData,{barkT:0,next:2,seen:new Map(),look:0,lookT:0})}
 function wdogUpdate(rdt){const G=game;if(!G||!G.ego)return;const dog=G.ego.mesh.userData.wdog;if(!dog)return;const d=dog.userData.dog,U=dog.userData,v=G.ego.v,t=performance.now()/1000,dt=Math.min(0.05,rdt);
  const wind=Math.min(1,v/25);d.ears.forEach((e,i)=>{e.rotation.x=(i?-1:1)*(0.3+wind*1.1+Math.sin(t*(18+i*3))*0.25*wind);e.rotation.z=wind*0.9+Math.sin(t*23+i)*0.15*wind});
  d.head.rotation.z=0.12+Math.sin(t*1.7)*0.05-(G.ego.acc||0)*0.02;d.body.position.y=d.by+Math.sin(t*9)*0.004+Math.abs(Math.sin(t*2.1))*0.004*wind;
@@ -7437,6 +7441,58 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  const _eye=window.eyePos;
  if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.coach)return new THREE.Vector3(spec.L/2-1.3,spec.wr*2+0.35+1.3,-0.75);return _eye.apply(this,arguments)};
  MODS.push({id:'coach'});
+})();
+</script>
+<script>/* mods/61m-dronewagon.js */
+/* Drone-towed wagon: you sit in a classic red kids' wagon (steel tub, white rails, four little rubber wheels) towed
+   by a 100 hp food-delivery quadcopter on a tow bar + cable. The drone flies ahead at head height with an insulated
+   delivery box slung underneath, rotors spinning with throttle, nosing down as it pulls and bobbing in the air. */
+(function(){
+ window.buildDroneWagon=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{W,wr}=spec,wx=-0.85; /* wagon centre (rear of the rig) */
+  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.5,roughness:0.3,clearcoat:0.8,clearcoatRoughness:0.1}),
+   white=new THREE.MeshStandardMaterial({color:0xf4f4f0,roughness:0.5}),dark=new THREE.MeshStandardMaterial({color:0x1a1b1e,roughness:0.75}),
+   metal=new THREE.MeshStandardMaterial({color:0xb8bcc2,metalness:0.9,roughness:0.3}),body=new THREE.MeshStandardMaterial({color:0x2a2d33,roughness:0.45,metalness:0.3}),
+   bag=new THREE.MeshStandardMaterial({color:0xff6a1a,roughness:0.7});
+  const box=(w,h,d,m,x,y,z,p)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;(p||g).add(o);return o};
+  /* the wagon: shallow steel tub with rolled white rim */
+  const tw=1.05,td=W-0.1,th=0.26,ty=wr+0.12;const tub=new THREE.Group();g.add(tub);ud.body=tub;ud.paint=paint;
+  box(tw,0.03,td,paint,wx,ty,0,tub);for(const sd of [1,-1]){box(tw,th,0.03,paint,wx,ty+th/2,sd*td/2,tub);box(0.03,th,td,paint,wx+sd*tw/2,ty+th/2,0,tub)}
+  for(const sd of [1,-1]){box(tw+0.04,0.035,0.05,white,wx,ty+th,sd*td/2,tub);box(0.05,0.035,td+0.04,white,wx+sd*tw/2,ty+th,0,tub)}
+  const logo=new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.1),white);for(const sd of [1,-1]){const l=logo.clone();l.position.set(wx,ty+th*0.5,sd*(td/2+0.017));if(sd<0)l.rotation.y=Math.PI;g.add(l)}
+  box(0.5,0.1,td*0.8,dark,wx-0.1,ty+0.08,0); /* cushion */
+  /* tow bar from the front axle up to the cable hook, cable to the drone */
+  const front=wx+0.38,bar=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,0.75,8),metal);bar.position.set(front+0.3,wr+0.3,0);bar.rotation.z=-1.0;g.add(bar);
+  const hookX=front+0.6,hookY=wr+0.5,dX=1.05,dY=1.55;
+  const cable=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,1,6),dark);g.add(cable);
+  /* the drone: carbon body, four arms, ducted rotors, LED nav lights, insulated delivery box below */
+  const D=new THREE.Group();D.position.set(dX,dY,0);g.add(D);const core=box(0.55,0.16,0.45,body,0,0,0,D);const dome=new THREE.Mesh(new THREE.SphereGeometry(0.2,16,10,0,Math.PI*2,0,Math.PI/2),body);dome.position.y=0.08;D.add(dome);
+  const rotors=[];for(const [ax,az] of [[1,1],[1,-1],[-1,1],[-1,-1]]){const arm=box(0.6,0.04,0.06,body,ax*0.25,0.02,az*0.25,D);arm.rotation.y=-Math.atan2(az,ax);
+   const px=ax*0.48,pz=az*0.48,duct=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.03,6,28),body);duct.rotation.x=Math.PI/2;duct.position.set(px,0.08,pz);D.add(duct);
+   const motor=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.08,10),metal);motor.position.set(px,0.07,pz);D.add(motor);
+   const r=new THREE.Group();r.position.set(px,0.12,pz);for(let k=0;k<3;k++){const bl=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.01,0.05),dark);bl.rotation.y=k*Math.PI/3*2;r.add(bl)}D.add(r);rotors.push(r)}
+  const crate=box(0.42,0.36,0.4,bag,0,-0.3,0,D);const lid=box(0.44,0.04,0.42,white,0,-0.11,0,D);
+  const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
+  const hl=new THREE.Mesh(new THREE.CircleGeometry(0.05,12),head);hl.rotation.y=Math.PI/2;hl.position.set(0.28,0,0);D.add(hl);
+  for(const sd of [1,-1]){const t=new THREE.Mesh(new THREE.SphereGeometry(0.035,8,6),tail);t.position.set(wx-tw/2-0.02,ty+th-0.05,sd*(td/2-0.08));g.add(t);
+   const s=new THREE.Mesh(new THREE.SphereGeometry(0.04,8,6),sd<0?sigL:sigR);s.position.set(0,0.06,sd*0.78);D.add(s)}
+  ud.lights={head,tail,sigL,sigR};
+  /* wheels: four little rubber wagon wheels with white hubs; the front pair steers on the tow bar pivot */
+  const tg=new THREE.CylinderGeometry(wr,wr,0.07,18).rotateX(Math.PI/2),tm=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.9}),hg=new THREE.CylinderGeometry(wr*0.55,wr*0.55,0.08,12).rotateX(Math.PI/2),wheels=[];
+  for(const [x,fr] of [[wx+spec.wb/2,true],[wx-spec.wb/2,false]])for(const sd of [1,-1]){const piv=new THREE.Group();piv.position.set(x,wr,sd*(td/2+0.02));const spin=new THREE.Group();spin.add(new THREE.Mesh(tg,tm));spin.add(new THREE.Mesh(hg,white));const holder=new THREE.Group();holder.add(spin);piv.add(holder);g.add(piv);wheels.push({piv,spin,front:fr,sign:sd})}
+  ud.wheels=wheels;
+  /* interior/hood stubs so the camera code can toggle them; the rider sits on the cushion */
+  const I=new THREE.Group();g.add(I);ud.interior=I;ud.hood=new THREE.Group();g.add(ud.hood);ud.seats=[new THREE.Vector3(wx-0.1,ty+0.15,0)];
+  ud.dw={D,rotors,cable,hook:new THREE.Vector3(hookX,hookY,0),base:D.position.clone(),t:Math.random()*10};
+  const fixCable=()=>{const a=ud.dw.hook,b=new THREE.Vector3(D.position.x,D.position.y-0.48,0),m=a.clone().add(b).multiplyScalar(0.5),L=a.distanceTo(b);cable.position.copy(m);cable.scale.set(1,L,1);cable.rotation.set(0,0,Math.atan2(b.y-a.y,b.x-a.x)-Math.PI/2)};ud.dw.fixCable=fixCable;fixCable();
+  ud.dronewagon=true;return g};
+ const _eye=window.eyePos;
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.dronewagon)return new THREE.Vector3(-0.95,spec.wr+0.95,0);return _eye.apply(this,arguments)};
+ let last=performance.now();
+ MODS.push({id:'dronewagon',frame(){const now=performance.now(),dt=Math.min(0.1,(now-last)/1000);last=now;const G=typeof game!=='undefined'?game:null;const m=G&&G.ego&&G.ego.mesh;const U=m&&m.userData.dw;if(!U)return;
+  const e=G.ego,acc=e.acc||0,thr=0.35+Math.min(1,Math.abs(acc)/4)*0.4+Math.min(0.25,e.v/120);U.t+=dt;
+  for(let i=0;i<U.rotors.length;i++)U.rotors[i].rotation.y+=(i%2?-1:1)*dt*(60+thr*80);
+  U.D.rotation.z=-Math.min(0.45,0.08+e.v*0.006+Math.max(0,acc)*0.04)+Math.max(0,-acc)*0.05; /* nose down to pull, flares when braking */
+  U.D.position.y=U.base.y+Math.sin(U.t*2.1)*0.04+Math.sin(U.t*5.3)*0.012;U.D.position.z=Math.sin(U.t*1.3)*0.03;U.fixCable()}});
 })();
 </script>
 <script>/* mods/62-trams.js */
