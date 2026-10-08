@@ -2452,7 +2452,7 @@ function rebase(){XWG.clear(); // floating origin: keep numbers small over long 
  game.peds.forEach(p=>remPed(p));game.peds=[];
  game.agents.filter(a=>a.kind==='way').forEach(a=>scene.remove(a.mesh));game.agents=game.agents.filter(a=>a.kind!=='way');
  CONTROLS.forEach(c=>{c.x=toX(c.lon);c.z=toZ(c.lat)}); // recompute after origin change below
- const ox=e.x,oz=e.z;setOrigin(lat,lon);{const dx=toX(lon)-ox,dz=toZ(lat)-oz,G=game,S=G.sideCam; /* carry the camera rigs across the origin shift, or they jump km away for a frame */if(S){S.x+=dx;S.z+=dz;S.look.x+=dx;S.look.z+=dz}for(const k of ['followP','droneP','heliP','heliL'])if(G[k]){G[k].x+=dx;G[k].z+=dz}camera.position.x+=dx;camera.position.z+=dz}CONTROLS.forEach(c=>{c.x=toX(c.lon);c.z=toZ(c.lat)});satRebase();RAWROADS.clear();
+ const ox=e.x,oz=e.z;setOrigin(lat,lon);{const dx=toX(lon)-ox,dz=toZ(lat)-oz,G=game,S=G.sideCam; /* carry the camera rigs across the origin shift, or they jump km away for a frame */if(S){S.x+=dx;S.z+=dz;S.look.x+=dx;S.look.z+=dz}for(const k of ['followP','droneP','heliP','heliL'])if(G[k]){G[k].x+=dx;G[k].z+=dz}camera.position.x+=dx;camera.position.z+=dz;e.x+=dx;e.z+=dz;e.mesh.position.x+=dx;e.mesh.position.z+=dz}CONTROLS.forEach(c=>{c.x=toX(c.lon);c.z=toZ(c.lat)});satRebase();RAWROADS.clear();
  game.bio=biome(lat,lon,new Date(game.simTime*1000));applyBiome();
 }
 function speedLimitAt(idx){
