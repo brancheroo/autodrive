@@ -225,6 +225,9 @@ const CARS=[
 {id:'icecream',name:'Frosty eScoop',sub:'Electric ice cream truck',style:'van',L:6.2,W:2.2,H:2.8,wb:3.7,wr:0.42,hp:300,z60:9.5,top:75,range:'~150 mi (est.) · 120 kWh',weight:'~11,000 lb',drive:'Single motor RWD EV · battery-powered freezers',level:'SAE Level 2 · supervised',
  tech:'An all-electric ice cream truck. The battery runs the drive motor and the freezers, so it can sit at the park all afternoon in silence – no idling diesel. On the roof, a giant three-scoop cone turns slowly so kids can spot it from down the street.',
  colors:[['Bubblegum Pink','#ff9ccf'],['Mint Chip','#9fe3c3'],['Vanilla Cream','#fff4d6'],['Sky Blue','#8fd3ff'],['Lemon Sherbet','#ffe76a']],dash:'center-ford',wheel:'round',sensors:'gm',sound:'ev',driver:true,icecream:true},
+{id:'boosthatch',name:'Boostbox 2K',sub:'2,000 hp turbo hatchback',style:'sedan',L:4.3,W:1.86,H:1.42,wb:2.62,wr:0.33,hp:2000,z60:1.9,top:230,range:'~220 mi (12 mpg × 18 gal)',weight:'2,900 lb',drive:'2.0L turbo inline-4 · AWD · 6-speed sequential',level:'SAE Level 2 · supervised',
+ tech:'A small hatchback with an absurd engine: a 2.0-litre inline-4 running a single huge turbo at over 60 psi for 2,000 hp. A giant rear wing on tall struts keeps the tail planted, and the rear tyres are twice the normal width to put the power down.',
+ colors:[['Rally Blue','#1f4fd1'],['Track Yellow','#ffd21f'],['Gloss Black','#111214'],['Race Red','#d11a1f'],['Pearl White','#f1f2ee']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'i4',driver:true,boosthatch:true},
 {id:'gargantua',name:'Gargantua',sub:'Six-wheel street-legal super-tug',style:'van',L:8.4,W:2.1,H:4.4,wb:6.3,wr:1.44,hp:18000,z60:1.1,top:250,range:'~1,500,000 mi (est.) · 1 GWh',weight:'~14,000 lb',drive:'6 independent 3,000 ehp hub motors · 360° omni-directional wheels',level:'SAE Level 4 · full Predictacar autonomy stack + tracking satellite (fictional)',
  tech:'Shaped like a giant airport aircraft tug but built to normal road width and fully street legal. Six independent wheels, each twice the normal width and height, carry their own 3,000 ehp hub motor (18,000 ehp in total) and can point and drive in any direction: it crabs sideways, moves diagonally and spins on the spot. A 1 GWh battery pack fills the flat chassis between the axles. It carries every self-driving technology in the game: the Predictacar OmniSense suite (1 km see-through lidar, radar, cameras, thermal, ultrasonics) and the tracking satellite, always on. The low wedge nose and towbar hitch come straight from the airport apron; the full-width glass cab seats six in three rows.',
  colors:[['Apron Yellow','#f2c200'],['Tug Orange','#ff7a00'],['Runway White','#eef0f2'],['Hangar Grey','#5b6168']],dash:'waymo',wheel:'round',sensors:'hyper',sound:'ev',driver:true,gargantua:true,omni:true},
@@ -1382,6 +1385,7 @@ const MODEL={
  'model-s':{epa:348,shape:{roof:'glass',roofR:.3,cpil:false},grille:'none',drl:'tesla',tailL:'pair',rim:{n:10,style:'multi',col:0x2a2c30},cal:0xc01818,int:{seat:0x151515,mat:'leather',trim:'carbon',dash:0x1c1d20}},
  'zoox':{epa:380,grille:'none',drl:'zoox',tailL:'zoox',rim:{n:0,style:'disc',col:0x222222},int:{seat:0x5a6068,mat:'cloth',trim:'none',dash:0x2a2d31}},
  'smaht':{epa:100,shape:{box:.22,clr:.17,nose:.46,hood:.58,cowl:.66,roofF:.6,roofR:.12,tail:.02,deck:.86,belt:.58,tum:.8,roof:'paint',endR:.3,ft:.02,rt:.02,cpil:false},grille:'none',drl:'bar',tailL:'pair',rim:{n:5,style:'aero',col:0x2a2c30},cal:0x333333,int:{seat:0x2b2d31,mat:'cloth',trim:'none',dash:0x1d1f22}},
+ 'boosthatch':{epa:220,shape:{box:.15,clr:.12,nose:.45,hood:.58,cowl:.7,roofF:.6,roofR:.1,tail:.02,deck:.72,belt:.58,tum:.78,endR:.18,ft:.06,rt:.04,roof:'paint',cpil:true},grille:'none',drl:'bar',tailL:'bar',rim:{n:5,style:'multi',col:0x1a1b1d},cal:0xc01818,int:{seat:0x1a1a1c,mat:'cloth',trim:'none',dash:0x141416}},
  'yugo':{epa:235,shape:{box:.2,clr:.15,nose:.5,hood:.61,cowl:.72,roofF:.63,roofR:.06,tail:.01,deck:.74,belt:.6,tum:.78,endR:.14,ft:.05,rt:.03,roof:'paint',cpil:true},grille:'yugo',drl:'yugo',tailL:'yugo',rim:{n:4,style:'disc',col:0xb9bcbf},cal:0x333333,int:{seat:0x5e4c3c,mat:'cloth',trim:'none',dash:0x1b1b1b}},
   'starfire':{epa:290,chromeBelt:true,shape:{tail:.12,deck:.72,nose:.5,hood:.7,roofF:.58,roofR:.36,cowl:.7},grille:'mb',drl:'yugo',tailL:'pair',rim:{n:0,style:'disc',col:0xd8dcdf},cal:0x999999,int:{seat:0xe8dcc2,mat:'leather',trim:'walnut',dash:0x8a1c1c}},
  's580':{epa:380,chromeBelt:true,shape:{tail:.11,deck:.71,nose:.48,hood:.64,roofF:.6,roofR:.35,cowl:.69},grille:'mb',drl:'mb',tailL:'pair',rim:{n:10,style:'multi',col:0xb8bcc0},cal:0x777777,int:{seat:0xcdb08a,mat:'leather',trim:'walnut',dash:0x2a211b}},
@@ -2271,6 +2275,7 @@ const ENERGY={
  'ioniq5':{epa:318,kwh:84,kg:2100,cda:0.62,crr:0.009,dc:235,port:'NACS'},
  'idbuzz':{epa:234,kwh:86,kg:2690,cda:0.92,crr:0.010,dc:200,port:'CCS'},
  'starfire':{epa:290,ice:true,tankL:76,kg:1950,cda:0.78,crr:0.012,bte:0.17,idleKW:3.5,cityMul:2.4},
+ 'boosthatch':{epa:220,ice:true,tankL:68,kg:1320,cda:0.75,crr:0.012,bte:0.30,idleKW:6,cityMul:2.0},
  'yugo':{epa:235,ice:true,tankL:31.8,kg:980,cda:0.70,crr:0.011,bte:0.20,idleKW:3,cityMul:2.6}, // → ~26 city / 32 hwy / 23 mpg at 75 (EPA '87: 26/30)
  's580':{epa:380,ice:true,tankL:76,kg:2220,cda:0.61,crr:0.010,bte:0.27,idleKW:2.2},
  'i7':{epa:318,kwh:101.7,kg:2715,cda:0.62,crr:0.009,dc:160,port:'CCS'},
@@ -7057,6 +7062,25 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  if(typeof _bc==='function')window.buildCar=function(spec){const g=_bc.apply(this,arguments);try{if(spec&&spec.icecream&&g&&!g.userData.iceCone)addCone(g,spec)}catch(err){}return g};
  let last=performance.now();
  MODS.push({id:'icecream',frame(){const now=performance.now(),dt=Math.min(0.1,(now-last)/1000);last=now;const G=typeof game!=='undefined'?game:null;const m=G&&G.ego&&G.ego.mesh;if(m&&m.userData.iceCone)m.userData.iceCone.rotation.y+=dt*0.9}});
+})();
+</script>
+<script>/* mods/61c-boosthatch.js */
+/* Boostbox 2K: on any vehicle whose spec has `boosthatch`, add a giant rear wing on tall struts (with endplates) and make the
+   rear tyres twice as wide, pushed outward so they stay clear of the body. */
+(function(){
+ function addKit(g,spec){
+  g.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(g),top=isFinite(box.max.y)?box.max.y:spec.H,rx=-spec.L/2+0.35;
+  const blk=new THREE.MeshStandardMaterial({color:0x101114,metalness:0.4,roughness:0.35}),cf=new THREE.MeshStandardMaterial({color:0x1b1c20,metalness:0.6,roughness:0.25});
+  const wing=new THREE.Group();g.add(wing);g.userData.bigWing=wing;
+  const span=spec.W+0.1,y=top+0.42;
+  const blade=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.05,span),cf);blade.position.set(rx,y,0);blade.rotation.z=-0.12;blade.castShadow=true;wing.add(blade);
+  const flap=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.03,span),cf);flap.position.set(rx-0.3,y+0.07,0);flap.rotation.z=-0.35;wing.add(flap);
+  for(const sd of [1,-1]){const ep=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.3,0.02),blk);ep.position.set(rx-0.08,y+0.04,sd*(span/2+0.01));wing.add(ep);
+   const st=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.5,0.03),blk);st.position.set(rx+0.05,top+0.15,sd*0.5);wing.add(st)}
+  for(const w of g.userData.wheels||[]){if(w.front)continue;const side=Math.sign(w.piv.position.z)||1;w.spin.scale.z=2;w.piv.position.z+=side*0.12}}
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec){const g=_bc.apply(this,arguments);try{if(spec&&spec.boosthatch&&g&&!g.userData.bigWing)addKit(g,spec)}catch(err){}return g};
+ MODS.push({id:'boosthatch'});
 })();
 </script>
 <script>/* mods/62-trams.js */
