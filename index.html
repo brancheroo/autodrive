@@ -249,6 +249,9 @@ const CARS=[
 {id:'aegis',name:'Morrows Aegis-X',sub:'Active-aero omni-wheel hypercar',style:'coupe',L:4.9,W:2.1,H:1.15,wb:2.8,wr:0.37,hp:4000,z60:1.2,top:1522,range:'effectively unlimited with regen · 30,000 kWh',weight:'4,000 lb (360 lb in lift mode)',drive:'4 × 1,000 hp hub motors · 360° steering · 4 × 1,000 hp downforce fans · twin rocket boosters',level:'SAE Level 5 · full Predictacar stack + tracking satellite + clearance drone (fictional)',
  tech:'Everything the Predictacar has, pushed further. Each wheel has its own 1,000 hp hub motor and turns a full 360°, so it can crab, strafe and spin on the spot. Four 1,000 hp fans pull it down for grip, or the active aero front and rear lifts it, cutting its effective weight by 90% on straights. Twin rocket boosters at the back add straight-line thrust, and on a clear road in Express or Cannonball it goes for its Mach 2 top speed; grid fins pop up from the roof under heavy braking. The body is clad in space-grade heat tiles. A small clearance drone drives ahead in your lane and nudges vehicles aside, and the collision shield stays on even in Cannonball, so it hits nothing. Regenerative braking puts almost all braking energy back into the battery.',
  colors:[['Shuttle White','#f1f1ee'],['Re-entry Black','#16171a'],['Ablative Orange','#ff6a10'],['Orbit Blue','#2a64c8']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',driver:true,hyper:true,omni:true,aegis:true},
+{id:'isetta',name:'Bubbli eSetta',sub:'Ultra-compact electric bubble car · single seater',style:'coupe',L:2.3,W:1.38,H:1.35,wb:1.5,wr:0.25,hp:15,z60:18,top:55,range:'~60 mi (est.) · 10 kWh',weight:'~950 lb',drive:'Single rear hub motor EV',level:'SAE Level 2 · supervised',
+ tech:'An egg-shaped electric bubble car in the spirit of the 1950s Isetta. The whole front of the car is the door, there is room for exactly one person, and the rear wheels sit close together. Barely longer than a motorbike, it parks nose-in to the kerb and comes in glossy candy colours.',
+ colors:[['Bubblegum Pink','#ff7ac8'],['Mint Candy','#7ff0c4'],['Lemon Drop','#ffe84a'],['Tangerine','#ff8a2a'],['Grape Soda','#9b5cff'],['Cotton Candy Blue','#7cc8ff'],['Cherry Red','#e8173a']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,plim:true,isetta:true},
 {id:'gargantua',name:'Gargantua',sub:'Six-wheel street-legal super-tug',style:'van',L:8.4,W:4.2,H:4.4,wb:6.3,wr:1.44,hp:1800000,z60:1.1,top:250,range:'~1,500,000 mi (est.) · 100 GWh',weight:'~1,400,000 lb',drive:'6 independent 300,000 ehp hub motors · 360° omni-directional wheels',level:'SAE Level 4 · full Predictacar autonomy stack + tracking satellite (fictional)',
  tech:'Shaped like a giant airport aircraft tug and twice the width of a normal car (4.2 m), so it takes more than a full lane. Six independent wheels, each twice the normal width and height, carry their own 300,000 ehp hub motor (1,800,000 ehp in total) and can point and drive in any direction: it crabs sideways, moves diagonally and spins on the spot. A 100 GWh battery pack fills the flat chassis between the axles, and the whole machine weighs about 700 tonnes. It carries every self-driving technology in the game: the Predictacar OmniSense suite (1 km see-through lidar, radar, cameras, thermal, ultrasonics) and the tracking satellite, always on. The low wedge nose and towbar hitch come straight from the airport apron; the full-width glass cab seats six in three rows.',
  colors:[['Apron Yellow','#f2c200'],['Tug Orange','#ff7a00'],['Runway White','#eef0f2'],['Hangar Grey','#5b6168']],dash:'waymo',wheel:'round',sensors:'hyper',sound:'ev',driver:true,gargantua:true,omni:true},
@@ -1679,7 +1682,7 @@ function buildEcoSemi(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}=s
  ud.wheels=wheels;ud.ecosemi=true;
  if(typeof contactShadow==='function'){const c1=contactShadow(g,7.4,W*1.1);if(c1&&c1.position)c1.position.x=6.6;const c2=contactShadow(tr,TL*1.04,W*1.1);if(c2&&c2.position)c2.position.x=tcx}
  return g}
-function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
+function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
  const lod=!opts.interior&&opts.lod!==false&&!(window.GFX&&GFX.get()==='ultra'); /* traffic / parked cars on Low & High: ~7× fewer body triangles */
  const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=(spec.id||spec.style+L+W+H)+(lod?':lod':'');
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
@@ -2317,6 +2320,7 @@ const ENERGY={
  'solarcar':{epa:250,kwh:5,kg:300,cda:0.07,crr:0.004,dc:5,port:'J1772'},
  'keitruck':{epa:95,kwh:20,kg:850,cda:0.75,crr:0.011,dc:30,port:'CCS'},
  'aegis':{epa:200000,kwh:30000,kg:1800,cda:0.3,crr:0.007,dc:200000,port:'CCS'},
+ 'isetta':{epa:60,kwh:10,kg:430,cda:0.55,crr:0.009,dc:7,port:'J1772'},
  'ecosemi':{epa:500,kwh:900,kg:29000,cda:4.0,crr:0.0055,dc:1000,port:'NACS'},
  'ezpt':{epa:18500,kwh:22000,kg:150000,cda:3.4,crr:0.016,dc:15000,port:'CCS'},
  'r1s':{epa:410,kwh:140,kg:3150,cda:0.98,crr:0.011,dc:220,port:'NACS'},
@@ -2691,7 +2695,7 @@ const hp=new THREE.Vector3();d.head.getWorldPosition(hp); // head position in do
  {car.updateMatrixWorld(true);const hw=new THREE.Vector3();d.head.getWorldPosition(hw);car.worldToLocal(hw);const uu=clamp((hw.x+Lh/2)/Lh,0,1),hz=P?P.half(uu):spec.W/2,want=d.hd*sz*1.1+0.05,outBy=-hw.z-hz,dl=want-outBy;
   if(dl>0){const n0=d.neck.position.clone();d.neck.position.z-=dl/sz;const ext=new THREE.Mesh(new THREE.CylinderGeometry(d.B.g*0.55,d.B.g*0.65,dl/sz+d.B.g,10),d.neck.children[0].material);ext.rotation.x=Math.PI/2;ext.position.set(n0.x+0.02,n0.y+d.B.g*0.45,n0.z-dl/sz/2);d.body.add(ext);d.ext=ext}
   for(let it=0;it<3;it++){let lift=0;car.updateMatrixWorld(true);d.neck.traverse(o=>{if(!o.isMesh)return;const pos=o.geometry.attributes.position;for(let i=0;i<pos.count;i+=2){v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld);car.worldToLocal(v);const u2=clamp((v.x+Lh/2)/Lh,0,1);if(-v.z>(P?P.half(u2):spec.W/2))lift=Math.max(lift,(P?P.belt(u2):spec.H*0.6)+0.02-v.y)}});if(lift<=0.005)break;dog.position.y+=lift}}
- car.userData.wdogH=holder;car.userData.wdog=dog;if(G.spec.solarcar)holder.visible=false; /* single-seat solar car: no room for the dog */if((G.spec.gargantua||G.spec.ecosemi||G.spec.j800)&&car.userData.seats){dog.position.set(0,0,0);holder.position.copy(car.userData.seats[Math.min(2,car.userData.seats.length-1)]);holder.position.y+=0.08} /* Gargantua: the dog rides in the cab, middle row right seat */Object.assign(dog.userData,{barkT:0,next:2,seen:new Map(),look:0,lookT:0})}
+ car.userData.wdogH=holder;car.userData.wdog=dog;if(G.spec.solarcar||G.spec.isetta)holder.visible=false; /* single-seaters: no room for the dog */if((G.spec.gargantua||G.spec.ecosemi||G.spec.j800)&&car.userData.seats){dog.position.set(0,0,0);holder.position.copy(car.userData.seats[Math.min(2,car.userData.seats.length-1)]);holder.position.y+=0.08} /* Gargantua: the dog rides in the cab, middle row right seat */Object.assign(dog.userData,{barkT:0,next:2,seen:new Map(),look:0,lookT:0})}
 function wdogUpdate(rdt){const G=game;if(!G||!G.ego)return;const dog=G.ego.mesh.userData.wdog;if(!dog)return;const d=dog.userData.dog,U=dog.userData,v=G.ego.v,t=performance.now()/1000,dt=Math.min(0.05,rdt);
  const wind=Math.min(1,v/25);d.ears.forEach((e,i)=>{e.rotation.x=(i?-1:1)*(0.3+wind*1.1+Math.sin(t*(18+i*3))*0.25*wind);e.rotation.z=wind*0.9+Math.sin(t*23+i)*0.15*wind});
  d.head.rotation.z=0.12+Math.sin(t*1.7)*0.05-(G.ego.acc||0)*0.02;d.body.position.y=d.by+Math.sin(t*9)*0.004+Math.abs(Math.sin(t*2.1))*0.004*wind;
@@ -7341,6 +7345,44 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    ST.fins+=((a<-4?1:0)-ST.fins)*0.12;if(U){for(const f of U.fins)f.piv.rotation.x=-f.sd*ST.fins*1.3;for(const c of U.cans)c.rotation.z=clamp(-a*0.03,-0.35,0.35)+(ST.mode==='DOWNFORCE'?-0.12:0.05)}
    if(drone){const p=routeXZ(Math.min(G.route.total,e.s+30),e.off??laneOffsetAt(routeLLnh(e.s)[2]));drone.position.set(p[0],groundY(p[0],p[1])+0.02,p[1]);drone.rotation.y=Math.atan2(-p[3],p[2]);drone.userData.lamp.visible=(performance.now()/300|0)%2===0;drone.visible=!G.fast}
    if(hud)hud.textContent='🛩 AERO '+ST.mode+(ST.fins>0.3?' · GRID FINS':'')+' · 🤖 drone cleared '+ST.pushed}});
+})();
+</script>
+<script>/* mods/61k-isetta.js */
+/* Electric Isetta-style bubble car: an egg-shaped single-seater with a glass dome, a front-opening door (chrome seam and
+   handle on the nose), headlight pods, a chrome bumper and the narrow rear track of the original. Candy paint: glossy clear coat. */
+(function(){
+ window.buildIsetta=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{L,W,H,wr}=spec;
+  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.35,roughness:0.18,clearcoat:1,clearcoatRoughness:0.04}),
+   glass=new THREE.MeshPhysicalMaterial({color:0x2a3a48,roughness:0.04,transparent:true,opacity:0.32,depthWrite:false,side:THREE.DoubleSide}),
+   chrome=new THREE.MeshStandardMaterial({color:0xe8eaee,metalness:1,roughness:0.12}),dark=new THREE.MeshStandardMaterial({color:0x1b1c20,roughness:0.8});
+  const cy=wr+H*0.42,egg=new THREE.Group();egg.position.y=cy;egg.scale.set(L/2,H*0.5,W/2);g.add(egg);
+  const split=1.05; /* polar angle where the glass dome meets the painted shell */
+  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,40,24,0,Math.PI*2,split,Math.PI-split),paint);shell.castShadow=true;egg.add(shell);ud.body=shell;ud.paint=paint;
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(0.995,40,16,0,Math.PI*2,0,split),glass);egg.add(dome);ud.cab=dome;
+  const band=new THREE.Mesh(new THREE.TorusGeometry(Math.sin(split),0.012,6,48),chrome);band.rotation.x=Math.PI/2;band.position.y=Math.cos(split);egg.add(band);
+  /* front door: chrome seam ring and handle on the nose */
+  const seam=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.012,6,40),chrome);seam.rotation.y=Math.PI/2;seam.position.set(0.86,-0.12,0);egg.add(seam);
+  const handle=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.03,0.18),chrome);handle.position.set(L/2-0.02,cy-0.02,0);g.add(handle);
+  const bump=new THREE.Mesh(new THREE.TorusGeometry(W*0.42,0.025,8,32,Math.PI),chrome);bump.rotation.set(Math.PI/2,0,-Math.PI/2);bump.position.set(L*0.3,wr+0.12,0);g.add(bump);
+  const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
+  for(const sd of [1,-1]){const pod=new THREE.Mesh(new THREE.SphereGeometry(0.11,16,12),paint);pod.position.set(L*0.32,cy+0.02,sd*(W/2-0.06));g.add(pod);
+   const lens=new THREE.Mesh(new THREE.CircleGeometry(0.075,16),head);lens.rotation.y=Math.PI/2;lens.position.set(L*0.32+0.1,cy+0.02,sd*(W/2-0.06));g.add(lens);
+   const tl=new THREE.Mesh(new THREE.SphereGeometry(0.05,10,8),tail);tl.position.set(-L/2+0.06,cy-0.05,sd*0.32);g.add(tl);
+   const sg=new THREE.Mesh(new THREE.SphereGeometry(0.035,8,6),sd<0?sigL:sigR);sg.position.set(L*0.32+0.04,cy-0.1,sd*(W/2-0.02));g.add(sg)}
+  ud.lights={head,tail,sigL,sigR};
+  /* interior: single centred seat, small wheel on the door-mounted column, floor */
+  const I=new THREE.Group();g.add(I);ud.interior=I;const seatM=new THREE.MeshStandardMaterial({color:0xfaf4ea,roughness:0.6});
+  const box=(w,h,d,m,x,y,z)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);I.add(o);return o};
+  box(1.2,0.03,W*0.7,dark,0,wr+0.12,0);box(0.45,0.1,0.55,seatM,-0.25,wr+0.42,0);box(0.1,0.5,0.55,seatM,-0.48,wr+0.7,0);
+  const wl=new THREE.Mesh(new THREE.TorusGeometry(0.15,0.018,8,24),dark);wl.position.set(0.4,wr+0.78,0);wl.rotation.y=Math.PI/2;wl.rotation.x=0.6;I.add(wl);
+  ud.seats=[new THREE.Vector3(-0.25,wr+0.5,0)];ud.hood=new THREE.Group();g.add(ud.hood);
+  /* wheels: wide front track, narrow rear track */
+  const tg=new THREE.CylinderGeometry(wr,wr,0.11,20).rotateX(Math.PI/2),tm=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),hg=new THREE.CylinderGeometry(wr*0.6,wr*0.6,0.12,16).rotateX(Math.PI/2),wheels=[];
+  for(const [x,front,z] of [[spec.wb/2,true,W/2-0.12],[-spec.wb/2,false,0.3]])for(const sd of [1,-1]){const piv=new THREE.Group();piv.position.set(x,wr,sd*z);const spin=new THREE.Group();spin.add(new THREE.Mesh(tg,tm));spin.add(new THREE.Mesh(hg,chrome));const holder=new THREE.Group();holder.add(spin);piv.add(holder);g.add(piv);wheels.push({piv,spin,front,sign:sd})}
+  ud.wheels=wheels;ud.isetta=true;return g};
+ const _eye=window.eyePos;
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.isetta)return new THREE.Vector3(-0.2,spec.wr+1.0,0);return _eye.apply(this,arguments)};
+ MODS.push({id:'isetta'});
 })();
 </script>
 <script>/* mods/62-trams.js */
