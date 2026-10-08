@@ -1843,7 +1843,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
    const mir=new THREE.Mesh(new THREE.SphereGeometry(1,24,14),mirM);mir.scale.set(...mk2);mir.position.set(mx,my,mz);g.add(mir);
    const glassM=new THREE.Mesh(new THREE.PlaneGeometry(0.2,0.12),chrome);glassM.position.set(mx-0.07,my,mz);glassM.rotation.y=-Math.PI/2;g.add(glassM);
    const stalk=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.03,0.12),gloss);stalk.position.set(mx+0.01,my-0.04,s*(P.half(mu)*0.95+0.05));g.add(stalk)}}
- if(md.chromeBelt||md.band){for(const s of [1,-1]){const N=40,pts=[];for(let i=0;i<=N;i++){const u=lerp(md.band?0.2:sh.tail+0.02,md.band?0.8:sh.cowl-0.01,i/N);const y=md.band?sh.clr+0.3:P.belt(u)+0.005;pts.push(new THREE.Vector3(P.xOf(u),y,s*(md.band?P.half(u)*0.99:P.half(u)*0.955+0.004)))}
+ if(md.chromeBelt||md.band){for(const s of [1,-1]){const N=40,pts=[];for(let i=0;i<=N;i++){const u=lerp(md.band?0.2:sh.tail+0.02,md.band?0.8:sh.cowl-0.01,i/N);const y=md.band?sh.clr+0.3:P.belt(u)+0.005;pts.push(new THREE.Vector3(P.xOf(u),y,s*((P.halfAt?P.halfAt(u,md.band?y:y-0.03):P.half(u)*0.955)+0.004)))} /* chrome belt / side band follow the rounded skin */
   const tube=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),60,md.band?0.05:0.012,6),md.band?gloss:chrome);if(md.band)tube.scale.set(1,1,1);g.add(tube)}}
  if(md.rocker){for(const s of [1,-1]){const r=new THREE.Mesh(new THREE.BoxGeometry(wb-2*P.R,0.14,0.05),gloss);r.position.set(P.axles[0]-wb/2,sh.clr+0.08,s*(W/2-0.04));g.add(r)}}
  if(md.rails){for(const s of [1,-1]){const r=new THREE.Mesh(new THREE.BoxGeometry(L*(sh.roofF-sh.roofR)*0.9,0.03,0.04),matte);r.position.set(P.xOf((sh.roofF+sh.roofR)/2),H+0.03,s*W*sh.tum*0.42);g.add(r)}}
