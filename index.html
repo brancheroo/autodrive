@@ -7163,9 +7163,9 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   /* wheels */
   const tg=new THREE.CylinderGeometry(wr,wr,0.16,20).rotateX(Math.PI/2),tm=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),hg=new THREE.CylinderGeometry(wr*0.55,wr*0.55,0.17,16).rotateX(Math.PI/2),wheels=[];
   for(const [x,front] of [[N.wb/2+0.25,true],[-N.wb/2+0.25,false]])for(const sd of [1,-1]){const piv=new THREE.Group();piv.position.set(x,wr,sd*(W/2-0.12));const spin=new THREE.Group();spin.add(new THREE.Mesh(tg,tm));spin.add(new THREE.Mesh(hg,steel));const holder=new THREE.Group();holder.add(spin);piv.add(holder);g.add(piv);wheels.push({piv,spin,front,sign:sd})}
-  ud.wheels=wheels;ud.keitruck=true;g.scale.setScalar(K);for(const v of ud.seats)v.multiplyScalar(K);return g};
+  ud.wheels=wheels;ud.keitruck=true;g.scale.setScalar(K); /* seats and eye stay in the model's own (unscaled) coordinates: the group scale applies to them */return g};
  const _eye=window.eyePos;
- if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.keitruck){const K=spec.L/3.4,L=3.4,wr=spec.wr/K,cabL=1.25,cabX=L/2-cabL/2;return new THREE.Vector3(cabX-0.15,wr*2+0.12+1.0,-0.33).multiplyScalar(K)}return _eye.apply(this,arguments)};
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.keitruck){const K=spec.L/3.4,L=3.4,wr=spec.wr/K,cabL=1.25,cabX=L/2-cabL/2;return new THREE.Vector3(cabX-0.15,wr*2+0.12+1.0,-0.33)}return _eye.apply(this,arguments)};
  MODS.push({id:'keitruck'});
 })();
 </script>
