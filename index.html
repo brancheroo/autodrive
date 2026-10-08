@@ -1512,6 +1512,7 @@ function loftGreen(P,N=HIGH?200:110){
   const roofSeg=s>=3&&s<=6,side=s<=1||s>=8,corner=s===2||s===7;
   let m=1; // glass
   if(roofSeg&&u>sh.roofR+0.01&&u<sh.roofF-0.01&&sh.roof==='paint')m=sh.roofBlack?2:0;
+  if(roofSeg&&u>sh.roofR+0.01&&u<sh.roofF-0.01&&sh.roof==='glass')m=2; /* glass roofs are dark-tinted: they read as black from outside, not as an open top */
   if(corner&&(u>sh.roofF-0.03||u<sh.roofR+0.02))m=0;             // A / C pillar edges
   if(roofSeg&&u>sh.roofR&&u<sh.roofF&&sh.roof==='glass'&&(u<sh.roofR+0.03||u>sh.roofF-0.03))m=0;
   if((side||corner)&&Math.abs(u-mid)<0.013)m=2;                 // B pillar (black)
