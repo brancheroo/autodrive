@@ -4792,7 +4792,16 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  setInterval(()=>{const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego||G.fast)return;if(P.route!==G.route)plan(G);
   const busy=typeof netBusy!=='undefined'?netBusy:0;if(busy>0)return; /* only when nothing else is downloading */
   const e=G.ego;for(const it of P.keys){if(it.d<e.s-500)continue;if(it.d>e.s+40000)break;if(RAW.has(it.k)||PENDING.has(it.k)||TILES.has(it.k)||it.got)continue;it.got=true;P.done++;try{fetchTile(it.k)}catch(err){}break}},700);
- MODS.push({id:'prefetch',start(){P.route=null;P.done=0}});
+ /* ⬇ Preload route (⚙ Options): pause, download every tile on the route into the cache (3 at a time, with progress), resume.
+    Use before a very high-speed run on a route the game has not seen: live downloading cannot keep up above ~500 mph. */
+ async function preload(btn){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||P.busy)return;P.busy=true;plan(G);const was=G.paused;G.paused=true;
+  const todo=P.keys.map(x=>x.k).filter(k=>!RAW.has(k));const total=todo.length;let i=0;const t0=performance.now();
+  const banner=UIX.banner('preBan','top:200px;left:50%;transform:translateX(-50%);background:#0e141df0;color:#e8eef5;padding:8px 14px;border-radius:10px;font:600 13px system-ui');banner.style.display='block';
+  while(i<todo.length||(typeof netBusy!=='undefined'&&netBusy>0)){if(performance.now()-t0>240000)break;if(i<todo.length&&(typeof netBusy==='undefined'||netBusy<3)){const k=todo[i++];if(!RAW.has(k)&&!PENDING.has(k))try{fetchTile(k)}catch(err){}}
+   banner.textContent='⬇ Preloading route map: '+Math.min(i,total)+' / '+total+' tiles';await new Promise(r=>setTimeout(r,150))}
+  banner.textContent='✅ Route preloaded ('+total+' tiles)';setTimeout(()=>{banner.style.display='none'},3000);G.paused=was;P.busy=false;if(btn)btn.textContent='⬇ Preload route'}
+ P.preload=preload;
+ MODS.push({id:'prefetch',start(){P.route=null;P.done=0;const b=UIX.btn('preBtn','⬇ Preload route','Preload route – downloads the map for the whole route into the cache before you drive (needed for clean scenery at very high speed)',null)||document.getElementById('preBtn');if(b)b.onclick=()=>{b.textContent='⬇ Preloading…';preload(b)}}});
 })();
 </script>
 <script>/* mods/03-quality.js */
