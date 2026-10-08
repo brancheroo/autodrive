@@ -1721,7 +1721,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
  const {P,lo,gh}=profCache[pk],sh=P.sh;
  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.6,roughness:0.38,clearcoat:1,clearcoatRoughness:0.04,normalMap:FLAKE,normalScale:new THREE.Vector2(0.12,0.12)});ENVMATS.push(paint);if(ENVMATS.length>400)ENVMATS.splice(5,100);
- const glass=new THREE.MeshPhysicalMaterial({color:0x1a2128,metalness:0.0,roughness:0.02,transparent:true,opacity:0.72, /* tinted like real car glass: the cabin shows through, dimmed */depthWrite:false,envMapIntensity:1.6,clearcoat:1,clearcoatRoughness:0.02,reflectivity:0.9,side:THREE.FrontSide});
+ const glass=new THREE.MeshPhysicalMaterial({color:0x1a2128,metalness:0.0,roughness:0.02,transparent:true,opacity:0.72, /* tinted like real car glass: the cabin shows through, dimmed */depthWrite:false,envMapIntensity:0.7,clearcoat:0.6,clearcoatRoughness:0.03,reflectivity:0.5, /* sky reflections that don't wash the tint out to grey */side:THREE.FrontSide});
  const gloss=new THREE.MeshPhysicalMaterial({color:0x08090a,metalness:0.3,roughness:0.15,clearcoat:1});
  const chrome=new THREE.MeshStandardMaterial({color:0xdddddd,metalness:1,roughness:0.08});
  const matte=new THREE.MeshStandardMaterial({color:0x151617,roughness:0.75});
