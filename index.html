@@ -235,8 +235,8 @@ const CARS=[
  tech:'An ordinary compact hybrid sedan from a rideshare app, with a real person at the wheel. You ride in the back right seat. There are no self-driving sensors: the panel shows what the driver sees through the windscreen.',
  colors:[['Silver Mist','#b8bdc2'],['Midnight Black','#141517'],['Classic White','#eeeeea'],['Slate Blue','#4a5a72']],dash:'center-mb',wheel:'round',sensors:'none',sound:'i4',driver:true,rideshare:true},
 {id:'taxi',name:'Metro Cab Crown Vic',sub:'Classic yellow taxicab · cabbie driver',style:'sedan',L:5.39,W:1.99,H:1.47,wb:2.91,wr:0.34,hp:250,z60:8.6,top:120,range:'~400 mi (19 gal tank)',weight:'4,100 lb',drive:'4.6L V8 · 4-speed auto · RWD · body-on-frame',level:'Human driver (taxi)',
- tech:'A big, boxy, full-size four-door sedan in the mould of the classic Crown Victoria: long hood, upright trunk, chrome egg-crate grille and a V8 under the hood. It wears garish yellow taxicab livery with a checker band down both sides, TAXI and fare decals on the doors and a TAXI sign on the roof that lights up (brighter at night, dark once your trip ends). A cabbie drives; you ride in the back right seat behind a plexiglass partition with a cash tray, fare and rider-rights notices, a back-seat TV and a ticking fare meter on the dash.',
- colors:[['Taxi Yellow','#ffc400'],['Checker Yellow','#f5b800'],['Highlighter','#f2e400']],dash:'center-mb',wheel:'round',sensors:'none',sound:'v8',driver:true,rideshare:true,taxi:true},
+ tech:'A big, boxy, full-size four-door sedan in the mould of the classic Crown Victoria: long hood, upright trunk, chrome egg-crate grille and a V8 under the hood. It wears garish canary-yellow taxicab livery with a black-and-white checkerboard band down both sides, TAXI and fare decals on the doors and a TAXI sign on the roof that lights up (brighter at night, dark once your trip ends). A cabbie drives; you ride in the back right seat behind a plexiglass partition with a cash tray, fare and rider-rights notices, a back-seat TV and a ticking fare meter on the dash.',
+ colors:[['Canary Yellow','#ffef00']],dash:'center-mb',wheel:'round',sensors:'none',sound:'v8',driver:true,rideshare:true,taxi:true},
 {id:'keitruck',name:'Kei-Volt Mini',sub:'Electric micro kei pickup truck',style:'van',L:2.75,W:1.2,H:1.47,wb:1.54,wr:0.22,hp:40,z60:14,top:62,range:'~95 mi (est.) · 20 kWh',weight:'~1,900 lb',drive:'Single motor RWD EV',level:'SAE Level 2 · supervised',
  tech:'A tiny Japanese-style kei pickup, rebuilt as an EV. Cab-over layout with a flat front, two seats, and a flat bed with fold-down side and tail gates. Only 2.75 m long and 1.2 m wide, smaller than a regular kei truck, so it fits down any lane or alley.',
  colors:[['Farm White','#f1f1ec'],['Kei Silver','#b9bdc1'],['Tractor Green','#3f7a3a'],['Pickup Red','#c4252a'],['Sky Blue','#7fb6dd']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,keitruck:true},
@@ -1419,7 +1419,7 @@ const SHAPE_T={
 };
 // Per-model styling taken from manufacturer photos/spec sheets
 const MODEL={
- 'taxi':{epa:400,shape:{clr:.15,nose:.42,hood:.57,cowl:.68,roofF:.585,roofR:.315,tail:.07,deck:.64,belt:.6,tum:.74,endR:.14,ft:.1,rt:.08},grille:'ford',drl:'ford',tailL:'pair',rim:{n:10,style:'spoke',col:0xc8ccd0},cal:0x333333,int:{seat:0x24252a,mat:'vinyl',trim:'none',dash:0x1c1d20}},
+ 'taxi':{epa:400,shape:{clr:.15,nose:.42,hood:.57,cowl:.68,roofF:.585,roofR:.315,tail:.07,deck:.64,belt:.6,tum:.74,endR:.14,ft:.1,rt:.08},grille:'ford',drl:'ford',tailL:'pair',rim:{n:10,style:'spoke',col:0xc8ccd0},cal:0x333333,int:{seat:0x24252a,mat:'cloth',trim:'none',dash:0x1c1d20}},
  'waymo-ipace':{epa:234,shape:{roofR:.2,roofF:.62,cowl:.72,tail:.03,deck:.66,hood:.6,nose:.47},grille:'jaguar',drl:'jaguar',tailL:'pair',rim:{n:10,style:'multi',col:0x1a1b1d},cal:0x333333,cladding:true,band:true,int:{seat:0x2b2d31,mat:'cloth',trim:'none',dash:0x1d1f22}},
  'waymo-zeekr':{epa:260,grille:'none',drl:'bar',tailL:'bar',rim:{n:6,style:'aero',col:0x2a2c30},cladding:true,int:{seat:0x3a3d42,mat:'cloth',trim:'none',dash:0x25272b}},
  'cybercab':{epa:275,shape:{sail:true,roofR:.46,roofF:.62,cowl:.74,tail:.0,deck:.62,belt:.6,nose:.4,hood:.55},rocker:true,grille:'none',drl:'bar',tailL:'bar',rim:{n:0,style:'disc',col:0xc9b27c},int:{seat:0xd9d2c4,mat:'leather',trim:'none',dash:0xe8e4dc}},
@@ -8469,6 +8469,73 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   const w=document.getElementById('cvWrap');if(w)for(const b of w.querySelectorAll('button'))b.style.display=rs?'none':'';
   if(!rs&&cvCam.fov!==58){cvCam.fov=58;cvCam.updateProjectionMatrix()}}
  MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
+})();
+</script>
+<script>/* mods/88-taxi.js */
+/* Big-city taxi (spec.taxi, plus spec.rideshare for the human-driver setup in 87-rideshare.js): a full-size body-on-frame
+   police-style sedan in garish canary-yellow livery – checker band down both sides, TAXI and fare decals on the doors, roof number –
+   with a working TAXI roof sign (glows, brighter at night, its own little light). A real cabbie drives (steering animated)
+   and you ride in the back right seat, visible from every outside camera. Inside it is a proper cab: plexiglass partition
+   with a cash tray, notices on the back of it (fares, no smoking, seat belts, passenger rights), a back-seat TV and a fare
+   meter on the dash. */
+(function(){
+ const canvasTex=(w,h,draw)=>{const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t};
+ const TX={};const tex=(k,w,h,f)=>TX[k]||(TX[k]=canvasTex(w,h,f));
+ const checker=()=>tex('chk',1024,48,(x,w,h)=>{for(let i=0;i<w/16;i++)for(let j=0;j<3;j++){x.fillStyle=(i+j)%2?'#111':'#f4f4f0';x.fillRect(i*16,j*16,16,16)}}); /* three rows of squares, like the classic cab stripe */
+ const doorTxt=()=>tex('door',512,256,(x,w,h)=>{x.fillStyle='#111';x.font='900 120px Arial Black, Arial';x.textAlign='center';x.fillText('TAXI',w/2,130);x.font='700 34px Arial';x.fillText('FARE $3.00 + $2.50/MI',w/2,190);x.font='600 26px Arial';x.fillText('LICENSED · RIDE SAFE',w/2,232)});
+ const signTxt=lit=>tex('sign'+lit,256,96,(x,w,h)=>{x.fillStyle=lit?'#fff7c0':'#e8e2c8';x.fillRect(0,0,w,h);x.fillStyle=lit?'#d00000':'#5a3a3a';x.font='900 72px Arial Black, Arial';x.textAlign='center';x.fillText('TAXI',w/2,74);x.fillStyle='#111';x.font='700 16px Arial';x.fillText('7J42',w/2,92)});
+ const notice=(k,title,lines,bg,fg)=>tex('n'+k,256,320,(x,w,h)=>{x.fillStyle=bg;x.fillRect(0,0,w,h);x.strokeStyle=fg;x.lineWidth=6;x.strokeRect(6,6,w-12,h-12);x.fillStyle=fg;x.textAlign='center';x.font='900 30px Arial';x.fillText(title,w/2,52);x.font='600 19px Arial';lines.forEach((l,i)=>x.fillText(l,w/2,96+i*30))});
+ function livery(g,spec){const{L,W,H,wr}=spec,ud=g.userData;
+  /* checker band + door decals on both sides */
+  for(const sd of [1,-1]){const band=new THREE.Mesh(new THREE.PlaneGeometry(L*0.9,0.12),new THREE.MeshStandardMaterial({map:checker(),roughness:0.6}));band.position.set(0,wr+0.47,sd*(W/2+0.012));if(sd<0)band.rotation.y=Math.PI;g.add(band);
+   for(const dx of [0.55,-0.55]){const d=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.31),new THREE.MeshStandardMaterial({map:doorTxt(),transparent:true,roughness:0.6}));d.position.set(dx,wr+0.27,sd*(W/2+0.014));if(sd<0)d.rotation.y=Math.PI;g.add(d)}}
+  /* roof sign: a triangular-prism TAXI light box on a black base */
+  const S=new THREE.Group();S.position.set(-0.25,H+0.02,0);g.add(S);
+  S.add(new THREE.Mesh(new THREE.BoxGeometry(0.62,0.04,0.3),new THREE.MeshStandardMaterial({color:0x111111,roughness:0.6})));
+  const litM=new THREE.MeshStandardMaterial({map:signTxt(true),emissive:0xffffff,emissiveMap:signTxt(true),emissiveIntensity:0.6,roughness:0.4});
+  for(const sd of [1,-1]){const f=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.2),litM);f.position.set(0,0.12,sd*0.07);f.rotation.x=sd*-0.38;if(sd<0)f.rotation.y=Math.PI;S.add(f)}
+  for(const sd of [1,-1]){const e=new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(-0.14,0),new THREE.Vector2(0.14,0),new THREE.Vector2(0,0.22)])),new THREE.MeshStandardMaterial({color:0xf2c200,side:THREE.DoubleSide}));e.rotation.y=Math.PI/2;e.position.set(sd*0.3,0.02,0);S.add(e)}
+  const pl=new THREE.PointLight(0xfff2a0,0,6,2);pl.position.set(0,0.3,0);S.add(pl);
+  ud.taxiSign={mat:litM,light:pl};}
+ function cabin(g,spec){const ud=g.userData,eye=_eye(spec),I=ud.interior||g;const W=spec.W,dx=eye.x-0.48,fy=eye.y-1.05; /* partition sits just behind the front seat backs */
+  const frame=new THREE.MeshStandardMaterial({color:0x1d1e22,roughness:0.6,metalness:0.4}),plexi=new THREE.MeshPhysicalMaterial({color:0xcfe0e8,roughness:0.08,transparent:true,opacity:0.22,depthWrite:false,side:THREE.DoubleSide});
+  const P=new THREE.Group();P.position.set(dx,0,0);I.add(P);
+  const lowW=W-0.28;const low=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.55,lowW),frame);low.position.set(0,fy+0.5,0);P.add(low); /* lower steel panel */
+  const glass=new THREE.Mesh(new THREE.PlaneGeometry(lowW,0.5),plexi);glass.rotation.y=Math.PI/2;glass.position.set(0,fy+1.03,0);P.add(glass); /* plexiglass upper */
+  for(const z of [-lowW/2,0.0,lowW/2]){const b=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.52,0.03),frame);b.position.set(0,fy+1.03,z);P.add(b)}
+  const top=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.03,lowW),frame);top.position.set(0,fy+1.29,0);P.add(top);
+  const tray=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.05,0.24),new THREE.MeshStandardMaterial({color:0x8a8e94,metalness:0.8,roughness:0.35}));tray.position.set(-0.08,fy+0.8,0.05);P.add(tray); /* cash / card pass-through tray */
+  /* notices on the passenger side of the partition */
+  const N=[[notice('fare','FARES',['Flag drop  $3.00','Per mile  $2.50','Waiting /min  $0.70','Night surcharge $1.00','Tolls extra'],'#fffbe6','#111'),0.3,0.95],
+   [notice('nosm','NO SMOKING',['No smoking, vaping','or open alcohol','in this vehicle','','Fine up to $100'],'#ffffff','#c00000'),-0.05,1.02],
+   [notice('belt','BUCKLE UP',['Seat belts are','required for all','passengers.','','Safety first!'],'#fff2d0','#0a3a8a'),-0.36,0.95],
+   [notice('rights','RIDER RIGHTS',['Choose your route','Air conditioning','Quiet ride on request','Receipt on request','Complaints: dial 311'],'#eef6ff','#111'),0.32,0.55]];
+  for(const [t,z,y] of N){const n=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.2),new THREE.MeshStandardMaterial({map:t,roughness:0.7}));n.rotation.y=-Math.PI/2;n.position.set(-0.025,fy+y,z);P.add(n)}
+  /* back-seat TV in the partition, in front of the right rear seat */
+  const tvT=tex('tv',256,160,(x,w,h)=>{const gr=x.createLinearGradient(0,0,w,h);gr.addColorStop(0,'#1a2a6a');gr.addColorStop(1,'#6a1a5a');x.fillStyle=gr;x.fillRect(0,0,w,h);x.fillStyle='#ffd21a';x.font='900 34px Arial';x.textAlign='center';x.fillText('TAXI TV',w/2,60);x.fillStyle='#fff';x.font='600 18px Arial';x.fillText('Tonight: city news & weather',w/2,100);x.fillText('Tap to pay · Fare $ 12.40',w/2,135)});
+  const tv=new THREE.Mesh(new THREE.PlaneGeometry(0.26,0.16),new THREE.MeshBasicMaterial({map:tvT}));tv.rotation.y=-Math.PI/2;tv.position.set(-0.025,fy+0.62,-eye.z);P.add(tv);
+  /* fare meter on the dash, glowing red digits */
+  const mT=tex('meter',256,96,(x,w,h)=>{x.fillStyle='#0a0a0a';x.fillRect(0,0,w,h);x.fillStyle='#ff2a1a';x.font='700 54px Courier New, monospace';x.textAlign='right';x.fillText('$12.40',w-14,64);x.font='700 16px Arial';x.textAlign='left';x.fillText('HIRED',12,88)});
+  const meter=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.07,0.18),frame);meter.position.set(eye.x+0.62,fy+0.9,0.02);I.add(meter);
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(0.17,0.065),new THREE.MeshBasicMaterial({map:mT}));face.rotation.y=-Math.PI/2;face.position.set(eye.x+0.588,fy+0.9,0.02);I.add(face);ud.taxiMeter={tex:mT,canvas:mT.image}}
+ const _eye=window.eyePos;
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.taxi&&g&&!g.userData.taxi){g.userData.taxi=true;livery(g,spec);if(opts&&opts.interior)cabin(g,spec)}}catch(err){console.warn('taxi kit',err)}return g};
+ /* crew: a cabbie at the wheel, and you (the rider figure) moved to the back right seat */
+ const _ra=window.riderAttach;
+ if(typeof _ra==='function')window.riderAttach=function(){const r=_ra.apply(this,arguments);try{const G=game,m=G&&G.ego&&G.ego.mesh;if(G&&G.spec&&G.spec.taxi&&m){const e=_eye(G.spec),R=m.userData.rider;
+   if(R){R.position.set(e.x-0.95,e.y-0.05,-e.z)} /* back right, behind the front passenger seat */
+   if(!m.userData.cabbie){const d=buildDriver(G.spec,'drive','driver');m.add(d);m.userData.driver=d;m.userData.cabbie=d}}}catch(err){console.warn('taxi crew',err)}return r};
+ /* first person: you are in the back seat, so hide only your own head (not the cabbie); every other camera shows you */
+ const _rv=window.riderView;
+ if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.taxi){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r){r.visible=true;if(r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=G.cam!=='in'&&!o.userData.keepHidden}return}return _rv.apply(this,arguments)};
+ let fare=3,lastS=null,lastT=0;
+ MODS.push({id:'taxi',start(){fare=3;lastS=null},frame(){const G=typeof game!=='undefined'?game:null;const m=G&&G.ego&&G.ego.mesh;const U=m&&m.userData;if(!U||!U.taxiSign)return;
+  /* roof sign: lit while on the road, brighter at night; goes dark once you have arrived (hired → done) */
+  const on=!G.arrived,night=!!G.dark;U.taxiSign.mat.emissiveIntensity=on?(night?1.6:0.6):0.05;U.taxiSign.light.intensity=on&&night?1.4:0;
+  /* meter: $3.00 flag drop + $2.50/mi, redrawn twice a second */
+  if(lastS==null)lastS=G.ego.s;fare+=Math.max(0,G.ego.s-lastS)/1609.34*2.5;lastS=G.ego.s;const now=performance.now();
+  if(U.taxiMeter&&now-lastT>500){lastT=now;const x=U.taxiMeter.canvas.getContext('2d'),w=256;x.fillStyle='#0a0a0a';x.fillRect(0,0,w,96);x.fillStyle='#ff2a1a';x.font='700 54px Courier New, monospace';x.textAlign='right';x.fillText('$'+fare.toFixed(2),w-14,64);x.font='700 16px Arial';x.textAlign='left';x.fillText(G.arrived?'TIME OFF':'HIRED',12,88);U.taxiMeter.tex.needsUpdate=true}}});
 })();
 </script>
 <script>/* mods/90-selftest.js */
