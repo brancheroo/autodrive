@@ -249,8 +249,8 @@ const CARS=[
 {id:'aegis',name:'Morrows Aegis-X',sub:'Active-aero omni-wheel hypercar',style:'coupe',L:4.9,W:2.1,H:1.15,wb:2.8,wr:0.37,hp:4000,z60:1.2,top:1522,range:'effectively unlimited with regen · 30,000 kWh',weight:'4,000 lb (360 lb in lift mode)',drive:'4 × 1,000 hp hub motors · 360° steering · 4 × 1,000 hp downforce fans · twin rocket boosters',level:'SAE Level 5 · full Predictacar stack + tracking satellite + clearance drone (fictional)',
  tech:'Everything the Predictacar has, pushed further. Each wheel has its own 1,000 hp hub motor and turns a full 360°, so it can crab, strafe and spin on the spot. Four 1,000 hp fans pull it down for grip, or the active aero front and rear lifts it, cutting its effective weight by 90% on straights. Twin rocket boosters at the back add straight-line thrust, and on a clear road in Express or Cannonball it goes for its Mach 2 top speed; grid fins pop up from the roof under heavy braking. The body is clad in space-grade heat tiles. A small clearance drone drives ahead in your lane and nudges vehicles aside, and the collision shield stays on even in Cannonball, so it hits nothing. Regenerative braking puts almost all braking energy back into the battery.',
  colors:[['Shuttle White','#f1f1ee'],['Re-entry Black','#16171a'],['Ablative Orange','#ff6a10'],['Orbit Blue','#2a64c8']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',driver:true,hyper:true,omni:true,aegis:true},
-{id:'isetta',name:'Bubbli eSetta',sub:'Ultra-compact electric bubble car · single seater',style:'coupe',L:2.3,W:1.38,H:1.35,wb:1.5,wr:0.25,hp:15,z60:18,top:55,range:'~60 mi (est.) · 10 kWh',weight:'~950 lb',drive:'Single rear hub motor EV',level:'SAE Level 2 · supervised',
- tech:'An egg-shaped electric bubble car in the spirit of the 1950s Isetta. The whole front of the car is the door, there is room for exactly one person, and the rear wheels sit close together. Barely longer than a motorbike, it parks nose-in to the kerb and comes in glossy candy colours.',
+{id:'isetta',name:'Bubbli eSetta',sub:'Ultra-compact electric bubble car · single seater',style:'coupe',L:1.75,W:1.0,H:1.18,wb:1.15,wr:0.2,hp:12,z60:20,top:50,range:'~45 mi (est.) · 6 kWh',weight:'~650 lb',drive:'Single rear hub motor EV',level:'SAE Level 2 · supervised',
+ tech:'An egg-shaped electric bubble car in the spirit of the 1950s Isetta. The whole front of the car is the door, there is room for exactly one person, and the rear wheels sit close together. At 1.75 m long and 1 m wide it barely fits one person – you fold yourself in through the front door – and it parks nose-in to the kerb and comes in glossy candy colours.',
  colors:[['Bubblegum Pink','#ff7ac8'],['Mint Candy','#7ff0c4'],['Lemon Drop','#ffe84a'],['Tangerine','#ff8a2a'],['Grape Soda','#9b5cff'],['Cotton Candy Blue','#7cc8ff'],['Cherry Red','#e8173a']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,plim:true,isetta:true},
 {id:'h2saab',name:'Sahb 900 H2',sub:'Hydrogen fuel-cell hatchback',style:'sedan',L:4.69,W:1.69,H:1.42,wb:2.52,wr:0.32,hp:240,z60:7.2,top:130,range:'~400 mi on 6.2 kg of hydrogen',weight:'3,300 lb',drive:'Hydrogen fuel cell + 1.6 kWh buffer battery · FWD electric',level:'SAE Level 2 · supervised',
  tech:'The classic Swedish 3-door hatch with its upright wraparound windscreen and ignition between the seats, rebuilt around a hydrogen fuel cell. Two carbon-fibre tanks hold 6.2 kg of hydrogen for about 400 miles, it refuels in five minutes, and the only thing out of the tailpipe is water.',
@@ -2327,7 +2327,7 @@ const ENERGY={
  'solarcar':{epa:250,kwh:5,kg:300,cda:0.07,crr:0.004,dc:5,port:'J1772'},
  'keitruck':{epa:95,kwh:20,kg:850,cda:0.75,crr:0.011,dc:30,port:'CCS'},
  'aegis':{epa:200000,kwh:30000,kg:1800,cda:0.3,crr:0.007,dc:200000,port:'CCS'},
- 'isetta':{epa:60,kwh:10,kg:430,cda:0.55,crr:0.009,dc:7,port:'J1772'},
+ 'isetta':{epa:45,kwh:6,kg:295,cda:0.45,crr:0.009,dc:7,port:'J1772'},
  'h2saab':{epa:400,kwh:100,kg:1500,cda:0.65,crr:0.009,dc:600,port:'CCS'}, /* refuel stops use the map's charging stations as stand-in hydrogen stations */
  'coach':{epa:500,kwh:1000,kg:25000,cda:6.0,crr:0.007,dc:600,port:'CCS'},
  'ecosemi':{epa:500,kwh:900,kg:29000,cda:4.0,crr:0.0055,dc:1000,port:'NACS'},
@@ -7380,17 +7380,17 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    const sg=new THREE.Mesh(new THREE.SphereGeometry(0.035,8,6),sd<0?sigL:sigR);sg.position.set(L*0.32+0.04,cy-0.1,sd*(W/2-0.02));g.add(sg)}
   ud.lights={head,tail,sigL,sigR};
   /* interior: single centred seat, small wheel on the door-mounted column, floor */
-  const I=new THREE.Group();g.add(I);ud.interior=I;const seatM=new THREE.MeshStandardMaterial({color:0xfaf4ea,roughness:0.6});
+  const I=new THREE.Group();g.add(I);ud.interior=I;const k=L/2.3; /* interior laid out for the 2.3 m original, scaled to this car */const seatM=new THREE.MeshStandardMaterial({color:0xfaf4ea,roughness:0.6});
   const box=(w,h,d,m,x,y,z)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);I.add(o);return o};
-  box(1.2,0.03,W*0.7,dark,0,wr+0.12,0);box(0.45,0.1,0.55,seatM,-0.25,wr+0.42,0);box(0.1,0.5,0.55,seatM,-0.48,wr+0.7,0);
-  const wl=new THREE.Mesh(new THREE.TorusGeometry(0.15,0.018,8,24),dark);wl.position.set(0.4,wr+0.78,0);wl.rotation.y=Math.PI/2;wl.rotation.x=0.6;I.add(wl);
-  ud.seats=[new THREE.Vector3(-0.25,wr+0.5,0)];ud.hood=new THREE.Group();g.add(ud.hood);
+  box(1.2*k,0.03,W*0.7,dark,0,wr+0.1,0);box(0.42,0.1,Math.min(0.5,W*0.55),seatM,-0.25*k,wr+0.32,0);box(0.1,0.45,Math.min(0.5,W*0.55),seatM,-0.48*k,wr+0.58,0);
+  const wl=new THREE.Mesh(new THREE.TorusGeometry(0.15,0.018,8,24),dark);wl.position.set(0.4*k,wr+0.66,0);wl.rotation.y=Math.PI/2;wl.rotation.x=0.6;I.add(wl);
+  ud.seats=[new THREE.Vector3(-0.25*k,wr+0.4,0)];ud.hood=new THREE.Group();g.add(ud.hood);
   /* wheels: wide front track, narrow rear track */
   const tg=new THREE.CylinderGeometry(wr,wr,0.11,20).rotateX(Math.PI/2),tm=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),hg=new THREE.CylinderGeometry(wr*0.6,wr*0.6,0.12,16).rotateX(Math.PI/2),wheels=[];
-  for(const [x,front,z] of [[spec.wb/2,true,W/2-0.12],[-spec.wb/2,false,0.3]])for(const sd of [1,-1]){const piv=new THREE.Group();piv.position.set(x,wr,sd*z);const spin=new THREE.Group();spin.add(new THREE.Mesh(tg,tm));spin.add(new THREE.Mesh(hg,chrome));const holder=new THREE.Group();holder.add(spin);piv.add(holder);g.add(piv);wheels.push({piv,spin,front,sign:sd})}
+  for(const [x,front,z] of [[spec.wb/2,true,W/2-0.1],[-spec.wb/2,false,W*0.22]])for(const sd of [1,-1]){const piv=new THREE.Group();piv.position.set(x,wr,sd*z);const spin=new THREE.Group();spin.add(new THREE.Mesh(tg,tm));spin.add(new THREE.Mesh(hg,chrome));const holder=new THREE.Group();holder.add(spin);piv.add(holder);g.add(piv);wheels.push({piv,spin,front,sign:sd})}
   ud.wheels=wheels;ud.isetta=true;return g};
  const _eye=window.eyePos;
- if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.isetta)return new THREE.Vector3(-0.2,spec.wr+1.0,0);return _eye.apply(this,arguments)};
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.isetta)return new THREE.Vector3(-0.2*spec.L/2.3,spec.wr+0.86,0);return _eye.apply(this,arguments)};
  MODS.push({id:'isetta'});
 })();
 </script>
