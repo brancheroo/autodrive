@@ -5775,7 +5775,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  const RING=[];let prevH=0,spiked=false;const flush=()=>{try{localStorage.setItem(KEY,JSON.stringify(BB))}catch(e){}};
  const cnt=()=>{const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.route)return null;const n=f=>{try{return f()}catch(e){return -1}};
   return {mb:Math.round(performance.memory.usedJSHeapSize/1e6),km:+(G.ego.s/1000).toFixed(2),tiles:TILES.size,raw:RAW.size,node:NODEINFO.size,feat:n(()=>OSMX.feat.length),kids:scene.children.length,geo:renderer.info.memory.geometries,tex:renderer.info.memory.textures,ag:G.agents.length,peds:G.peds.length,act:n(()=>ACT.list.length),gc:n(()=>GC.tracked),rebq:n(()=>REBUILDQ.length),btn:window.BTN||0,rbn:window.RBN||0,bt:n(()=>BT.key||'-'),hyps:n(()=>FSD.hyps.size),trk:n(()=>DRIVE2.trk.size),xing:n(()=>INFRA.xings.length),park:n(()=>PARKQ.length),st:(G.status||'').slice(0,40)}};
- setInterval(()=>{if(!performance.memory)return;const c=cnt();if(!c)return;RING.push(c);if(RING.length>30)RING.shift();
+ let lastTiles=-1;setInterval(()=>{if(!performance.memory)return;const c=cnt();if(!c)return;if(c.tiles!==lastTiles){bb('tiles',{n:c.tiles,mb:c.mb,geo:c.geo,tex:c.tex});lastTiles=c.tiles} /* heap at every tile load/unload */RING.push(c);if(RING.length>30)RING.shift();
   if((c.mb>1500||c.mb-prevH>800)&&!spiked){spiked=true;bb('memory-spike',{ring:RING.slice(-12)});flush();if(c.mb>2000&&game){game.paused=true;game.status='⚠️ Memory spike – paused. Press 🧾 and send the log.'}}
   if(c.mb<900)spiked=false;prevH=c.mb},1000);
  /* ---------- adaptive allocation tracer: normally only one heap read per frame. When a single frame allocates > 40 MB it
@@ -6973,7 +6973,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  window.HOVER={on:ld(),h:1.2};
  const lab=b=>{b.textContent='🛸 Hover '+(HOVER.on?'On':'Off');b.classList.toggle('on',HOVER.on)};
  MODS.push({id:'hover',
-  start(){const b=UIX.btn('hoverBtn','🛸 …','Predictacar hover – float above the road surface (Predictacar only)',null)||document.getElementById('hoverBtn');
+  start(){const b=UIX.btn('hoverBtn','🛸 …','Predictacar hover – floats 1.2 m above the road, level over bumps; 30% less cornering grip, so it slows more for bends',null)||document.getElementById('hoverBtn');
    if(!b)return;b.style.display=game&&game.spec&&game.spec.hyper?'':'none';lab(b);
    b.onclick=()=>{HOVER.on=!HOVER.on;try{localStorage.setItem('hoverOn',HOVER.on?'1':'0')}catch(e){}lab(b);if(game)game.status=HOVER.on?'🛸 Hover on':'Hover off'}}});
 })();
@@ -7771,6 +7771,19 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   if(a){a.onclick=()=>{D.on=!D.on;sv('dmgOn',D.on?'1':'0');lab(a,'💥 Crash damage',D.on)};lab(a,'💥 Crash damage',D.on)}
   const k=UIX.btn('keepDmgBtn','🔧 …','Keep damage between trips – when off, the car is repaired at the start of each trip',null)||document.getElementById('keepDmgBtn');
   if(k){const on=()=>ld('keepDamage','0')==='1';k.onclick=()=>{sv('keepDamage',on()?'0':'1');lab(k,'🔧 Keep damage',on())};lab(k,'🔧 Keep damage',on())}}});
+})();
+</script>
+<script>/* mods/86b-modebadge.js */
+/* Mode badge: a small badge at the top of the screen whenever the car is not in normal driving – CANNONBALL, CHASE, EXPRESS,
+   COMFORT – plus 🛸 HOVER when hover is on. Normal driving shows nothing. */
+(function(){
+ const b=document.createElement('div');b.id='modeBadge';b.style.cssText='position:fixed;top:92px;left:50%;transform:translateX(-50%);z-index:61;font:800 12px system-ui;letter-spacing:.12em;padding:4px 10px;border-radius:8px;pointer-events:none;display:none;box-shadow:0 2px 10px #0006';document.body.appendChild(b);
+ const COL={CANNONBALL:['#e01b1b','#fff'],CHASE:['#ff6a00','#000'],EXPRESS:['#ffcf2e','#000'],COMFORT:['#7fc8ff','#000']};
+ setInterval(()=>{const G=typeof game!=='undefined'?game:null;if(!G||!G.route||G.arrived){b.style.display='none';return}
+  const mode=window.CANNON&&CANNON.on?'CANNONBALL':typeof CHASE!=='undefined'&&CHASE.on?'CHASE':typeof EXPRESS!=='undefined'&&EXPRESS.on?'EXPRESS':typeof DRIVE!=='undefined'&&DRIVE.profile==='Comfort'?'COMFORT':'';
+  const hov=window.HOVER&&HOVER.on&&G.spec&&G.spec.hyper;const txt=[mode,hov?'🛸 HOVER':''].filter(Boolean).join(' · ');
+  if(!txt){b.style.display='none';return}const c=COL[mode]||['#2a3a52','#e8eef5'];b.style.background=c[0];b.style.color=c[1];b.textContent=txt;b.style.display='block'},500);
+ MODS.push({id:'modebadge'});
 })();
 </script>
 <script>/* mods/90-selftest.js */
