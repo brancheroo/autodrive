@@ -7688,6 +7688,97 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   U.biker.visible=G.cam!=='in'}});
 })();
 </script>
+<script>/* mods/61q-cyberkab.js */
+/* Teslo Cyberkab, high-fidelity body (spec.id 'cybercab'). The generic builder still makes everything the game relies on (wheels,
+   interior, sensors, light materials, camera toggles); this replaces the lofted shell with a dedicated sculpted one:
+   • side view: one continuous arc from a low rounded nose over a cabin peak down to a cut-off Kamm tail, no rear window
+   • plan view: teardrop, widest over the rear wheels, fully rounded nose, slightly tapered tail
+   • cross-section: tucked-under sills, full shoulders, strong tumblehome into a crowned roof
+   • glass: wraparound windshield + side canopy over the butterfly doors; satin-black lower cladding and diffuser
+   • full-width light bars front and rear (driven by the game's head/tail/brake materials), butterfly door seams,
+     aero wheel covers, champagne metallic paint with clear coat
+   Geometry is built once per spec (high and low detail) and cached. */
+(function(){
+ const sm=t=>t*t*(3-2*t),cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+ const cr=(pts,u)=>{let i=0;while(i<pts.length-2&&u>pts[i+1][0])i++;const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)],t=cl((u-p1[0])/((p2[0]-p1[0])||1),0,1),t2=t*t,t3=t2*t;
+  return 0.5*((2*p1[1])+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*t2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*t3)}; /* Catmull-Rom through (u, value) keys */
+ function shape(spec){const{L,W,H,wb,wr}=spec,ax=-0.05,axles=[ax+wb/2,ax-wb/2],R=wr+0.07;
+  /* side-view roof line (u: 0 = tail, 1 = nose), metres */
+  const TOP=[[0,0.80*H/1.35],[0.03,0.93*H/1.35],[0.18,1.17*H/1.35],[0.42,H],[0.6,1.31*H/1.35],[0.76,1.06*H/1.35],[0.88,0.80*H/1.35],[0.96,0.66*H/1.35],[1,0.58*H/1.35]];
+  const top=u=>cr(TOP,u);
+  const bottom=u=>{const x=u*L-L/2;let b=0.15+(u<0.1?Math.pow((0.1-u)/0.1,2)*0.16:0)+(u>0.9?Math.pow((u-0.9)/0.1,2)*0.12:0);for(const w of axles){const d=Math.abs(x-w);if(d<R)b=Math.max(b,wr+Math.sqrt(R*R-d*d)*0.97)}return b};
+  /* plan half-width: rear taper, nose rounded right down to the tip, tail corners rounded */
+  const half=u=>{let a=W/2*(0.9+0.1*sm(cl(u/0.32,0,1)))*(1-0.03*cl((u-0.6)/0.4,0,1));const dF=(1-u)*L,rF=W*0.5,dR=u*L,rR=0.3;
+   if(dF<rF)a*=Math.sqrt(Math.max(0,1-Math.pow(1-dF/rF,2)))*0.82+0.18*(dF/rF);if(dR<rR)a-=rR*(1-Math.sqrt(Math.max(0,1-Math.pow(1-dR/rR,2))))*0.8;return Math.max(0.02,a)};
+  /* glass: belt height (canopy edge) and the canopy's span along the car */
+  const G0=0.34,G1=0.86,belt=u=>cr([[0.3,0.97*H/1.35],[0.5,0.93*H/1.35],[0.7,0.9*H/1.35],[0.86,0.86*H/1.35]],cl(u,0.3,0.86));
+  /* width across height t (0 = underside, 1 = crown) with tumblehome above the belt */
+  const wAt=(u,t)=>{const b=bottom(u),T=top(u),tb=cl((belt(u)-b)/((T-b)||1),0.45,0.92);
+   if(t<0.3)return 0.84+0.16*Math.sin(t/0.3*Math.PI/2);if(t<tb)return 1-0.05*Math.pow((t-0.3)/(tb-0.3),2);const k=(t-tb)/(1-tb);return 0.95*Math.pow(Math.cos(k*Math.PI/2),0.6)};
+  const pt=(u,t,s)=>{const b=bottom(u),T=Math.max(b+0.03,top(u)),y=b+(T-b)*t;return [u*L-L/2,y,s*half(u)*wAt(u,t)]};
+  return {L,W,H,top,bottom,half,belt,wAt,pt,G0,G1,axles}}
+ /* the shell: rings along u; each ring = underside (flat-ish) + side up to the crown, mirrored. Triangle groups: 0 paint, 1 glass, 2 satin black */
+ function shellGeo(S,N,M,u0=0,u1=1,glassOn=true){const pos=[],uv=[],grp=[[],[],[]],ring=[];
+  const tS=[];for(let j=0;j<=M;j++){const k=j/M;tS.push(k<0.5?0.5-0.5*Math.cos(Math.PI*k):k)} /* denser near the sill and crown */
+  const us=[];for(let i=0;i<=N;i++){const k=i/N;us.push(u0+(u1-u0)*(0.5-0.5*Math.cos(Math.PI*k)))}
+  for(const u of us){const r=[];const bz=S.half(u)*S.wAt(u,0);const B=6;for(let k=0;k<B;k++){const z=-bz+2*bz*k/B;const b=S.bottom(u);r.push([u*S.L-S.L/2,b,z,0,-1])}
+   for(const t of tS){const p=S.pt(u,t,1);r.push([...p,t,1])}for(let j=tS.length-2;j>=1;j--){const p=S.pt(u,tS[j],-1);r.push([...p,tS[j],-1])}ring.push(r)}
+  const C=ring[0].length;for(const r of ring)for(const p of r){pos.push(p[0],p[1],p[2]);uv.push(p[0]*0.5,p[1]*0.5)}
+  for(let i=0;i<us.length-1;i++)for(let j=0;j<C;j++){const a=i*C+j,b=(i+1)*C+j,c=(i+1)*C+(j+1)%C,d=i*C+(j+1)%C;const p=ring[i][j],q=ring[i+1][(j+1)%C],u=(us[i]+us[i+1])/2,t=Math.min(p[3],q[3]),y=(p[1]+q[1])/2,zr=Math.abs(p[2])/Math.max(0.05,S.half(u));
+   let m=0;if(glassOn&&u>S.G0&&u<S.G1&&y>S.belt(u)+0.004&&(u>0.6||zr>0.42))m=1; /* canopy glass; the roof centre stays painted behind the windshield */
+   if(t<0.16&&p[4]!==0)m=2;if(p[4]===0)m=2; /* lower cladding + underside */
+   grp[m].push(a,b,c,a,c,d)}
+  /* Kamm-tail cap (flat, satin black frame) at u0 when it starts at the tail */
+  if(u0===0){const r=ring[0],base=pos.length/3;let cx=0,cy=0;for(const p of r){cx+=p[0];cy+=p[1]}cx/=r.length;cy/=r.length;for(const p of r){pos.push(p[0],p[1],p[2]);uv.push(p[2],p[1])}pos.push(cx-0.01,cy,0);uv.push(0,0);
+   const c=base+r.length;for(let j=0;j<r.length;j++)grp[2].push(c,base+(j+1)%r.length,base+j)}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  const all=[...grp[0],...grp[1],...grp[2]];g.setIndex(all);g.addGroup(0,grp[0].length,0);g.addGroup(grp[0].length,grp[1].length,1);g.addGroup(grp[0].length+grp[1].length,grp[2].length,2);
+  g.computeVertexNormals();/* outward winding check */g.computeBoundingBox();const n=g.attributes.normal,p=g.attributes.position;let bi=0;for(let i=0;i<p.count;i++)if(p.getZ(i)>p.getZ(bi))bi=i;
+  if(n.getZ(bi)<0){const ix=g.index.array;for(let i=0;i<ix.length;i+=3){const t=ix[i+1];ix[i+1]=ix[i+2];ix[i+2]=t}g.index.needsUpdate=true;g.computeVertexNormals()}
+  return g}
+ const CACHE=new Map();
+ function kit(spec,lod){const k=spec.L+'|'+spec.W+'|'+spec.H+(lod?':lod':'');let c=CACHE.get(k);if(c)return c;const S=shape(spec);
+  c={S,shell:shellGeo(S,lod?60:180,lod?14:40),hood:shellGeo(S,lod?16:50,lod?10:30,0.76,1,false)};CACHE.set(k,c);return c}
+ /* a tube that hugs the body surface along a list of (u,t,side) points, pushed out a little along the normal */
+ function seam(S,pts,r,mat,out=0.004){const v=pts.map(([u,t,s])=>{const p=S.pt(u,t,s),q=S.pt(u,Math.min(1,t+0.01),s),e=S.pt(Math.min(1,u+0.005),t,s);const a=new THREE.Vector3(q[0]-p[0],q[1]-p[1],q[2]-p[2]),b=new THREE.Vector3(e[0]-p[0],e[1]-p[1],e[2]-p[2]),n=a.cross(b).normalize().multiplyScalar(s>0?-1:1);
+  return new THREE.Vector3(p[0],p[1],p[2]).addScaledVector(n,out)});const curve=new THREE.CatmullRomCurve3(v);const m=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(8,v.length*4),r,6,false),mat);return m}
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts={}){const g=_bc.apply(this,arguments);if(!spec||spec.id!=='cybercab'||!g)return g;try{upgrade(g,spec,colorHex,opts)}catch(err){console.warn('cyberkab body',err)}return g};
+ function upgrade(g,spec,colorHex,opts){const ud=g.userData,lod=!!(opts&&opts.lod),K=kit(spec,lod),S=K.S;
+  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.75,roughness:0.28,clearcoat:1,clearcoatRoughness:0.03,envMapIntensity:1.2});
+  if(typeof FLAKE!=='undefined'){paint.normalMap=FLAKE;paint.normalScale=new THREE.Vector2(0.05,0.05)}
+  const glass=new THREE.MeshPhysicalMaterial({color:0x1d2228,metalness:0.2,roughness:0.03,transparent:true,opacity:0.5,clearcoat:1,depthWrite:false,side:THREE.DoubleSide,envMapIntensity:1.4});
+  const satin=new THREE.MeshStandardMaterial({color:0x14161a,roughness:0.55,metalness:0.2});
+  /* keep: wheels, interior, and the three toggled shells (re-shaped). Hide the generic body add-ons that no longer sit on the skin */
+  const keep=new Set([ud.body,ud.cab,ud.hood,ud.interior]);for(const w of ud.wheels||[])keep.add(w.piv);
+  for(const ch of [...g.children])if(!keep.has(ch)&&!ch.isLight)ch.visible=false;
+  if(ud.body){ud.body.geometry=K.shell;ud.body.material=[paint,glass,satin];ud.body.castShadow=true}
+  if(ud.cab){ud.cab.geometry=new THREE.BufferGeometry();} /* the canopy is part of the one-piece shell now */
+  if(ud.hood){ud.hood.geometry=K.hood;ud.hood.material=[paint,glass,satin]}
+  ud.paint=paint;
+  const det=new THREE.Group();g.add(det);ud.ckDetail=det;
+  /* light bars: front wraps the nose just under the hood line, rear spans the Kamm tail */
+  const L=ud.lights||{};const head=L.head||new THREE.MeshBasicMaterial({color:0xdddddd}),tail=L.tail||new THREE.MeshBasicMaterial({color:0x550808});
+  {const pts=[];for(let i=0;i<=24;i++){const k=i/24,s=k<0.5?1:-1,u=0.86+0.14*Math.sin((k<0.5?k:1-k)*Math.PI);pts.push([Math.min(0.995,u),0.62,s])}det.add(seam(S,pts,0.012,head,0.006))}
+  {const r0=S.half(0)*S.wAt(0,0.62)*0.94,y=S.bottom(0)+(S.top(0)-S.bottom(0))*0.62,bar=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.035,r0*2),tail);bar.position.set(-S.L/2-0.006,y,0);det.add(bar);
+   const sl=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.012,r0*2),L.sigL||tail);sl.position.set(-S.L/2-0.007,y-0.04,0);det.add(sl)}
+  if(L.sigL)for(const s of [1,-1]){const m=new THREE.Mesh(new THREE.SphereGeometry(0.018,8,6),s>0?L.sigR||L.sigL:L.sigL);const p=S.pt(0.94,0.62,s);m.position.set(p[0],p[1],p[2]);det.add(m)}
+  /* butterfly door seams + canopy frame, belt line */
+  if(!lod){const blk=new THREE.MeshStandardMaterial({color:0x07080a,roughness:0.6});
+   for(const s of [1,-1]){
+    det.add(seam(S,[[0.38,0.2,s],[0.38,0.45,s],[0.385,0.7,s],[0.4,0.88,s]],0.004,blk)); /* door rear edge */
+    det.add(seam(S,[[0.66,0.2,s],[0.665,0.45,s],[0.68,0.62,s]],0.004,blk)); /* door front edge */
+    const lo=[];for(let i=0;i<=12;i++)lo.push([0.38+0.28*i/12,0.2,s]);det.add(seam(S,lo,0.004,blk)); /* door bottom */
+    const bl=[];for(let i=0;i<=24;i++){const u=S.G0+0.01+(S.G1-S.G0-0.02)*i/24,b=S.bottom(u),T=S.top(u);bl.push([u,cl((S.belt(u)-b)/((T-b)||1),0,1),s])}det.add(seam(S,bl,0.006,satin)); /* canopy frame along the belt */}
+   /* aero wheel covers: flush champagne discs with a fine spiral of slots */
+   const cov=new THREE.MeshPhysicalMaterial({color:0xd9d4c6,metalness:0.8,roughness:0.25,clearcoat:0.6});for(const w of ud.wheels||[]){const sp=w.spin;if(!sp)continue;const r=spec.wr*0.78,d=new THREE.Mesh(new THREE.CylinderGeometry(r,r,0.02,48).rotateX(Math.PI/2),cov);d.position.z=(w.sign||1)*0.115;sp.add(d);
+    for(let k=0;k<8;k++){const sl=new THREE.Mesh(new THREE.BoxGeometry(r*0.5,0.012,0.004),satin);const a=k*Math.PI/4;sl.position.set(Math.cos(a)*r*0.55,Math.sin(a)*r*0.55,(w.sign||1)*0.127);sl.rotation.z=a+0.5;sp.add(sl)}}
+   /* camera pods (camera-only FSDish): a dark lens above the windshield and on each fender */
+   const lens=new THREE.MeshPhysicalMaterial({color:0x050608,roughness:0.05,clearcoat:1});for(const [u,t,s] of [[0.62,0.995,1],[0.8,0.55,1],[0.8,0.55,-1]]){const p=S.pt(u,t,s),m=new THREE.Mesh(new THREE.SphereGeometry(0.025,12,8),lens);m.position.set(p[0],p[1],p[2]);det.add(m)}}
+  det.traverse(o=>{if(o.isMesh)o.castShadow=true});ud.cyberkab=true}
+ MODS.push({id:'cyberkab',frame(){const G=typeof game!=='undefined'?game:null;const m=G&&G.ego&&G.ego.mesh;const U=m&&m.userData;if(!U||!U.ckDetail)return;U.ckDetail.visible=G.cam!=='in'}});
+})();
+</script>
 <script>/* mods/62-trams.js */
 /* (44) Trams & cable cars on the real OSM tram / light-rail lines near your route. Modern two-section light-rail
    vehicles (pantograph, white with a coloured band); inside San Francisco they're classic cable cars (wood-and-red
