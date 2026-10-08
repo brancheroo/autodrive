@@ -1482,9 +1482,8 @@ function fixWinding(g,probe){g.computeVertexNormals();const n=g.attributes.norma
 function loftLower(P,u0=0,u1=1,N=HIGH?200:110,M=HIGH?44:32,hole=null){
  const pos=[],idx=[],uv=[],upv=[];const st=[];for(let i=0;i<=N;i++){const t=i/N;st.push(u0+(u1-u0)*(0.5-0.5*Math.cos(Math.PI*t)))}
  for(const u of st){const b0=P.bottom(u),t0=Math.max(b0+0.02,Math.min(P.top(u),P.belt(u))),a=P.half(u),yc=(b0+t0)/2,hh=(t0-b0)/2,x=P.xOf(u);
-  const ue=Math.min(u,1-u)/0.06,er=ue<1?Math.sqrt(1-Math.pow(1-ue,2)):1; /* last 6 % of length: the body rolls over into the bumper (0 → 1) */
   const ex=P.sh.box||0.4,eUp=lerp(ex,1,0.25),eLo=lerp(ex,1,0.55); /* rounder than before: gentle shoulder, strong tuck-under to the rockers */
-  for(let j=0;j<M;j++){const th=j/M*Math.PI*2;const cy=-Math.cos(th),cz=Math.sin(th);const y=yc+hh*(0.35+0.65*er)*sp(cy,lerp(0.75,0.5,er));const up=(y-yc)/(hh||1);const z=a*(0.82+0.18*er)*sp(cz,up>0?eUp:eLo)*(up>0?1-0.1*up*up:1-0.18*up*up);pos.push(x,y,z);uv.push(x,y);upv.push(up)}}
+  for(let j=0;j<M;j++){const th=j/M*Math.PI*2;const cy=-Math.cos(th),cz=Math.sin(th);const y=yc+hh*sp(cy,0.5);const up=(y-yc)/(hh||1);const z=a*sp(cz,up>0?eUp:eLo)*(up>0?1-0.1*up*up:1-0.18*up*up);pos.push(x,y,z);uv.push(x,y);upv.push(up)}}
  for(let i=0;i<N;i++)for(let j=0;j<M;j++){const a=i*M+j,b=(i+1)*M+j,c=(i+1)*M+(j+1)%M,d=i*M+(j+1)%M;
   if(hole&&st[i]>=hole.u0&&st[i+1]<=hole.u1&&upv[a]>hole.up&&upv[b]>hole.up&&upv[c]>hole.up&&upv[d]>hole.up)continue; /* open cabin: no lid over the passenger compartment */
   idx.push(a,b,c,a,c,d)}
