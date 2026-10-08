@@ -231,6 +231,9 @@ const CARS=[
 {id:'solarcar',name:'Sunbeam Teardrop',sub:'Solar-powered streamliner',style:'coupe',L:4.9,W:1.8,H:1.1,wb:2.6,wr:0.28,hp:7,z60:25,top:75,range:'~250 mi on battery · recharges in sunlight',weight:'~660 lb',drive:'Solar array + 5 kWh battery · single in-wheel motor',level:'SAE Level 2 · supervised',
  tech:'A teardrop-shaped solar car in the style of the cross-continent solar races. Its whole upper shell is covered in solar cells that recharge the small 5 kWh battery in daylight, so on a sunny day it keeps going indefinitely. The teardrop shape gives it almost no air drag, so a motor of only a few kilowatts is enough for highway speed.',
  colors:[['Solar Blue','#1b3a8a'],['Race White','#f2f3f0'],['Sun Orange','#ff8a1f']],dash:'waymo',wheel:'round',sensors:'gm',sound:'ev',driver:true,plim:true,solarcar:true},
+{id:'rideshare',name:'RideNow Coralla',sub:'Rideshare · human driver',style:'sedan',L:4.63,W:1.78,H:1.44,wb:2.7,wr:0.32,hp:169,z60:8.2,top:115,range:'~550 mi (50 mpg hybrid)',weight:'3,100 lb',drive:'1.8L hybrid · CVT · FWD',level:'Human driver (rideshare)',
+ tech:'An ordinary compact hybrid sedan from a rideshare app, with a real person at the wheel. You ride in the back right seat. There are no self-driving sensors: the panel shows what the driver sees through the windscreen.',
+ colors:[['Silver Mist','#b8bdc2'],['Midnight Black','#141517'],['Classic White','#eeeeea'],['Slate Blue','#4a5a72']],dash:'center-mb',wheel:'round',sensors:'none',sound:'i4',driver:true,rideshare:true},
 {id:'gargantua',name:'Gargantua',sub:'Six-wheel street-legal super-tug',style:'van',L:8.4,W:4.2,H:4.4,wb:6.3,wr:1.44,hp:18000,z60:1.1,top:250,range:'~1,500,000 mi (est.) · 1 GWh',weight:'~14,000 lb',drive:'6 independent 3,000 ehp hub motors · 360° omni-directional wheels',level:'SAE Level 4 · full Predictacar autonomy stack + tracking satellite (fictional)',
  tech:'Shaped like a giant airport aircraft tug and twice the width of a normal car (4.2 m), so it takes more than a full lane. Six independent wheels, each twice the normal width and height, carry their own 3,000 ehp hub motor (18,000 ehp in total) and can point and drive in any direction: it crabs sideways, moves diagonally and spins on the spot. A 1 GWh battery pack fills the flat chassis between the axles. It carries every self-driving technology in the game: the Predictacar OmniSense suite (1 km see-through lidar, radar, cameras, thermal, ultrasonics) and the tracking satellite, always on. The low wedge nose and towbar hitch come straight from the airport apron; the full-width glass cab seats six in three rows.',
  colors:[['Apron Yellow','#f2c200'],['Tug Orange','#ff7a00'],['Runway White','#eef0f2'],['Hangar Grey','#5b6168']],dash:'waymo',wheel:'round',sensors:'hyper',sound:'ev',driver:true,gargantua:true,omni:true},
@@ -2280,6 +2283,7 @@ const ENERGY={
  'idbuzz':{epa:234,kwh:86,kg:2690,cda:0.92,crr:0.010,dc:200,port:'CCS'},
  'starfire':{epa:290,ice:true,tankL:76,kg:1950,cda:0.78,crr:0.012,bte:0.17,idleKW:3.5,cityMul:2.4},
  'boosthatch':{epa:220,ice:true,tankL:68,kg:1320,cda:0.75,crr:0.012,bte:0.30,idleKW:6,cityMul:2.0},
+ 'rideshare':{epa:550,ice:true,tankL:43,kg:1400,cda:0.62,crr:0.009,bte:0.40,idleKW:1.5,cityMul:0.9},
  'yugo':{epa:235,ice:true,tankL:31.8,kg:980,cda:0.70,crr:0.011,bte:0.20,idleKW:3,cityMul:2.6}, // → ~26 city / 32 hwy / 23 mpg at 75 (EPA '87: 26/30)
  's580':{epa:380,ice:true,tankL:76,kg:2220,cda:0.61,crr:0.010,bte:0.27,idleKW:2.2},
  'i7':{epa:318,kwh:101.7,kg:2715,cda:0.62,crr:0.009,dc:160,port:'CCS'},
@@ -7869,6 +7873,28 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   const hov=window.HOVER&&HOVER.on&&G.spec&&G.spec.hyper;const txt=[mode,hov?'🛸 HOVER':''].filter(Boolean).join(' · ');
   if(!txt){b.style.display='none';return}const c=COL[mode]||['#2a3a52','#e8eef5'];b.style.background=c[0];b.style.color=c[1];b.textContent=txt;b.style.display='block'},500);
  MODS.push({id:'modebadge'});
+})();
+</script>
+<script>/* mods/87-rideshare.js */
+/* Rideshare: a compact sedan with a human driver. You ride in the back right seat (the one exception to the driver's-seat
+   camera rule). The perception panel becomes a plain DRIVER'S VIEW: the panel camera sits at the driver's eyes looking ahead,
+   with no detection boxes, no sensor-mode buttons, no planner line and no radar plot. The driver figure stays visible. */
+(function(){
+ const _eye=window.eyePos;
+ const driverEye=spec=>_eye.apply(window,[spec]);
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.rideshare){const d=_eye.apply(this,arguments);return new THREE.Vector3(d.x-0.95,d.y-0.03,Math.abs(d.z))} /* back right seat */return _eye.apply(this,arguments)};
+ const _rv=window.riderView;
+ if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.rideshare){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r&&r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=!o.userData.keepHidden;return} /* the human driver is always visible */return _rv.apply(this,arguments)};
+ const on=()=>{const G=typeof game!=='undefined'?game:null;return !!(G&&G.spec&&G.spec.rideshare&&G.ego&&G.ego.mesh)};
+ const _pre=scene.onBeforeRender;
+ scene.onBeforeRender=function(r,sc,cam){if(_pre)_pre.apply(this,arguments);if(cam!==cvCam||!on())return;const m=game.ego.mesh,e=driverEye(game.spec);m.updateMatrixWorld(true);
+  const p=m.localToWorld(e.clone()),t=m.localToWorld(new THREE.Vector3(e.x+20,e.y-0.6,e.z));cam.position.copy(p);if(cam.fov!==70){cam.fov=70;cam.updateProjectionMatrix()}cam.lookAt(t);cam.updateMatrixWorld(true)};
+ const HIDE=['cvOv','cvBev','cvStats','cvAct','radarBox'];
+ function panel(rs){const t=document.getElementById('cvTitle');if(t)t.textContent=rs?"DRIVER'S VIEW":'PERCEPTION';
+  for(const id of HIDE){const el=document.getElementById(id);if(el)el.style.display=rs?'none':''}
+  const w=document.getElementById('cvWrap');if(w)for(const b of w.querySelectorAll('button'))b.style.display=rs?'none':'';
+  if(!rs&&cvCam.fov!==58){cvCam.fov=58;cvCam.updateProjectionMatrix()}}
+ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
 })();
 </script>
 <script>/* mods/90-selftest.js */
