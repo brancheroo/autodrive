@@ -159,7 +159,7 @@ const CARS=[
 {id:'waymo-zeekr',name:'Wayfro Ojai (Zeekro)',sub:'6th-gen Wayfro Driver',style:'van',L:4.86,W:1.99,H:1.86,wb:3.005,wr:0.36,hp:268,z60:6.9,top:100,range:'~260 mi (est.)',weight:'~5,300 lb',drive:'Single motor EV',level:'SAE Level 4 · rider-only',
  tech:'Purpose-built robotaxi with a flat floor, sliding doors and no B-pillar. The 6th-gen Driver uses 13 cameras, 4 lidars and 6 radars plus acoustic sensors, with heated sensor cleaning for winter.',
  colors:[['Wayfro Fleet White','#f1f2f0'],['Graphite','#3a3d42']],dash:'waymo',wheel:'round',sensors:'waymo6',sound:'ev',driver:true},
-{id:'cybercab',name:'Teslo Cyberkab',sub:'Two-seat robotaxi',style:'coupe',L:4.20,W:1.95,H:1.35,wb:2.85,wr:0.36,hp:'~200 (est.)',z60:'n/a',top:'~85 (est.)',range:'~275 mi (est.)',weight:'~3,500 lb (est.)',drive:'Single motor EV · inductive charging',level:'SAE Level 4 target · no wheel or pedals',
+{id:'cybercab',name:'Teslo Cyberkab',sub:'Two-seat robotaxi',style:'coupe',L:4.20,W:1.95,H:1.41,wb:2.85,wr:0.36,hp:'~200 (est.)',z60:'n/a',top:'~85 (est.)',range:'~275 mi (est.)',weight:'~3,500 lb (est.)',drive:'Single motor EV · inductive charging',level:'SAE Level 4 target · no wheel or pedals',
  tech:'Camera-only Teslo FSDish running on the AI5-class computer. Butterfly doors, two seats, one 20.5" centre screen. It has no steering wheel, pedals or side mirrors. Figures are from the 2024 unveiling or estimates.',
  colors:[['Cyberkab Gold','#c9b27c'],['Brushed Silver','#b8bcc0']],dash:'cybercab',wheel:'none',sensors:'tesla',sound:'ev',driver:false},
 {id:'model-y',name:'Teslo Model Why',sub:'FSDish (Supervised)',style:'cross',L:4.79,W:1.92,H:1.62,wb:2.89,wr:0.35,hp:'~460 (LR AWD)',z60:4.6,top:125,range:'327 mi (EPA)',weight:'4,398 lb',drive:'Dual motor AWD EV',level:'SAE Level 2 · supervised',
@@ -7785,8 +7785,8 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    for(const t of tS){const p=S.pt(u,t,1);r.push([...p,t,1])}for(let j=tS.length-2;j>=1;j--){const p=S.pt(u,tS[j],-1);r.push([...p,tS[j],-1])}ring.push(r)}
   const C=ring[0].length;for(const r of ring)for(const p of r){pos.push(p[0],p[1],p[2]);uv.push(p[0]*0.5,p[1]*0.5)}
   for(let i=0;i<us.length-1;i++)for(let j=0;j<C;j++){const a=i*C+j,b=(i+1)*C+j,c=(i+1)*C+(j+1)%C,d=i*C+(j+1)%C;const p=ring[i][j],q=ring[i+1][(j+1)%C],u=(us[i]+us[i+1])/2,t=Math.min(p[3],q[3]),y=(p[1]+q[1])/2,zr=Math.abs(p[2])/Math.max(0.05,S.half(u));
-   let m=0;if(glassOn&&u>S.G0&&u<S.G1&&y>S.belt(u)+0.004&&(u>0.42||zr>0.42))m=1; /* glass roof over the seats; painted roof only behind them */ /* canopy glass; the roof centre stays painted behind the windshield */
-   if(t<0.16&&p[4]!==0)m=2;if(p[4]===0)m=2; /* lower cladding + underside */
+   let m=0;if(glassOn&&u>S.G0&&u<S.G1&&y>S.belt(u)+0.004&&(u>0.5||zr>0.42))m=1; /* metal roof over the occupants (like the real car), long raked windshield starting just ahead of your head */ /* canopy glass; the roof centre stays painted behind the windshield */
+   if(t<0.07&&p[4]!==0)m=2; /* paint runs almost to the ground; only a thin dark sill */if(p[4]===0)m=2; /* lower cladding + underside */
    grp[m].push(a,b,c,a,c,d)}
   /* Kamm-tail cap (flat, satin black frame) at u0 when it starts at the tail */
   if(u0===0){const r=ring[0],base=pos.length/3;let cx=0,cy=0;for(const p of r){cx+=p[0];cy+=p[1]}cx/=r.length;cy/=r.length;for(const p of r){pos.push(p[0],p[1],p[2]);uv.push(p[2],p[1])}pos.push(cx-0.01,cy,0);uv.push(0,0);
@@ -7819,7 +7819,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const det=new THREE.Group();g.add(det);ud.ckDetail=det;
   /* light bars: front wraps the nose just under the hood line, rear spans the Kamm tail */
   const L=ud.lights||{};const head=L.head||new THREE.MeshBasicMaterial({color:0xdddddd}),tail=L.tail||new THREE.MeshBasicMaterial({color:0x550808});
-  {const pts=[];for(let i=0;i<=24;i++){const k=i/24,s=k<0.5?1:-1,u=0.86+0.14*Math.sin((k<0.5?k:1-k)*Math.PI);pts.push([Math.min(0.995,u),0.62,s])}det.add(seam(S,pts,0.012,head,0.006))}
+  {const pts=[];for(let i=0;i<=24;i++){const k=i/24,s=k<0.5?1:-1,u=0.86+0.14*Math.sin((k<0.5?k:1-k)*Math.PI);pts.push([Math.min(0.995,u),0.8,s])}det.add(seam(S,pts,0.01,head,0.006))} /* "Megalamp": thin, near full width, right under the hood edge */
   {const r0=S.half(0)*S.wAt(0,0.84)*0.92,y=S.bottom(0)+(S.top(0)-S.bottom(0))*0.84,bar=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.035,r0*2),tail);bar.position.set(-S.L/2-0.006,y,0);det.add(bar);
    const sl=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.012,r0*2),L.sigL||tail);sl.position.set(-S.L/2-0.007,y-0.04,0);det.add(sl)}
   if(L.sigL)for(const s of [1,-1]){const m=new THREE.Mesh(new THREE.SphereGeometry(0.018,8,6),s>0?L.sigR||L.sigL:L.sigL);const p=S.pt(0.94,0.62,s);m.position.set(p[0],p[1],p[2]);det.add(m)}
@@ -7831,7 +7831,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
     const lo=[];for(let i=0;i<=12;i++)lo.push([0.38+0.28*i/12,0.2,s]);det.add(seam(S,lo,0.004,blk)); /* door bottom */
     const bl=[];for(let i=0;i<=24;i++){const u=S.G0+0.01+(S.G1-S.G0-0.02)*i/24,b=S.bottom(u),T=S.top(u);bl.push([u,cl((S.belt(u)-b)/((T-b)||1),0,1),s])}det.add(seam(S,bl,0.006,satin)); /* canopy frame along the belt */}
    /* aero wheel covers: flush champagne discs with a fine spiral of slots */
-   const cov=new THREE.MeshPhysicalMaterial({color:0xd9d4c6,metalness:0.8,roughness:0.25,clearcoat:0.6});for(const w of ud.wheels||[]){const sp=w.spin;if(!sp)continue;const r=spec.wr*0.78;sp.updateMatrixWorld(true);let face=0;sp.traverse(o=>{if(o.isMesh&&o.geometry){o.geometry.computeBoundingBox();face=Math.max(face,Math.abs(o.geometry.boundingBox.max.z),Math.abs(o.geometry.boundingBox.min.z))}}); /* sit clearly outside the existing rim face (no z-fighting) */
+   const cov=paint; /* fully shielded wheel covers in body colour */for(const w of ud.wheels||[]){const sp=w.spin;if(!sp)continue;const r=spec.wr*0.84;for(const o of sp.children)if(o.isMesh&&o.material&&o.material.map&&o.material.map===(typeof TREAD!=='undefined'?TREAD:null)){o.material=o.material.clone();o.material.map=null;o.material.color.set(0x141414);o.material.roughness=0.75} /* smooth low-profile rubber, no off-road tread */sp.updateMatrixWorld(true);let face=0;sp.traverse(o=>{if(o.isMesh&&o.geometry){o.geometry.computeBoundingBox();face=Math.max(face,Math.abs(o.geometry.boundingBox.max.z),Math.abs(o.geometry.boundingBox.min.z))}}); /* sit clearly outside the existing rim face (no z-fighting) */
     for(const sd of [1,-1]){const fz=sd*(face+0.012),d=new THREE.Mesh(new THREE.CylinderGeometry(r,r,0.016,48).rotateX(Math.PI/2),cov);d.position.z=fz;sp.add(d); /* both faces: whichever points outward is seen */
      for(let k=0;k<8;k++){const sl=new THREE.Mesh(new THREE.BoxGeometry(r*0.5,0.012,0.004),satin);const a=k*Math.PI/4;sl.position.set(Math.cos(a)*r*0.55,Math.sin(a)*r*0.55,fz+sd*0.01);sl.rotation.z=a+0.5;sp.add(sl)}}}
    /* camera pods (camera-only FSDish): a dark lens above the windshield and on each fender */
@@ -7849,7 +7849,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    if(sz.y<0.4&&sz.x<0.6&&sz.z<0.6&&o.parent!==I&&!(o.material&&o.material.side===THREE.DoubleSide)){o.position.y-=over} /* seat parts (headrests): drop to fit */
    else if(sz.y<0.4&&o.parent===I&&!(o.material&&o.material.side===THREE.DoubleSide)){o.visible=false;o.userData.inOnly=0} /* loose cabin bits (visors…) with nowhere to go */ /* headrests, grab handles, visors… */
    else{o.visible=false;o.userData.inOnly=0; /* the camera re-shows inOnly parts in the interior view */if(!hl&&o.material&&o.material.side===THREE.DoubleSide)hl=o.material}}); /* headliner, roof pillars */
-  const pos=[],idx=[],N=30,M=12,u0=S.G0,u1=0.42; /* painted roof behind the seats only: everything over and ahead of you is glass */
+  const pos=[],idx=[],N=30,M=12,u0=S.G0,u1=0.5; /* under the metal roof only: the windshield ahead stays clear */
   for(let i=0;i<=N;i++){const u=u0+(u1-u0)*i/N,b=S.bottom(u),T=S.top(u),tb=cl((S.belt(u)-b)/((T-b)||1),0.5,0.92);for(let j=0;j<=M;j++){const k=j/M,s=k<0.5?1:-1,tt=1-Math.abs(1-2*k),zMax=0.42*S.half(u);let t=1;for(let q=1;q>tb;q-=0.01){if(S.half(u)*S.wAt(u,q)>zMax*tt){t=q;break}t=q}const p=S.pt(u,t,s);pos.push(p[0],p[1]-0.03,Math.sign(p[2]||s)*Math.min(Math.abs(p[2]),zMax*tt)*0.97)}}
   for(let i=0;i<N;i++)for(let j=0;j<M;j++){const a=i*(M+1)+j,b=a+M+1;idx.push(a,b,a+1,b,b+1,a+1)}
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setIndex(idx);geo.computeVertexNormals();
