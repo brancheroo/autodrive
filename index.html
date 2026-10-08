@@ -4728,9 +4728,9 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  let sf=0;
  /* new tiles: reveal their meshes a few per frame so GPU uploads are spread out instead of one long hitch */
  const RQ=[];const hideNew=k=>{try{const T=TILES.get(k);if(T&&T.group){for(const m of T.group.children)if(m.visible){m.visible=false;RQ.push(m)}}}catch(e){}};window.onTileBuilt=hideNew;const _bt=window.buildTile;if(_bt)window.buildTile=function(k){const r=_bt.apply(this,arguments);hideNew(k);return r};
- function reveal(){let n=0,t0=performance.now();while(RQ.length&&n<6){const m=RQ.shift();if(m.parent)m.visible=true;n++}}
+ function reveal(){let n=0,t0=performance.now();const lim=typeof game!=='undefined'&&game&&game.ego&&game.ego.v>40?14:6; /* reveal faster at speed */while(RQ.length&&n<lim){const m=RQ.shift();if(m.parent)m.visible=true;n++}}
  MODS.push({id:'perf',
-  preRender(){if(typeof btStep==='function')btStep(window.GFX&&GFX.get()==='ultra'?7:5); /* a few ms of tile building per frame */reveal();const lit=typeof sun!=='undefined'&&sun.intensity>0.03;if(typeof sun!=='undefined'&&sun.castShadow!==lit)sun.castShadow=lit;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=lit} /* night: the sun casts nothing – skip the whole shadow pass */}); /* shadows refresh every frame (skipping frames made moving shadows lag); only the perception pass reuses the main shadow map */
+  preRender(){if(typeof btStep==='function'){const v=typeof game!=='undefined'&&game&&game.ego?game.ego.v:0;btStep((window.GFX&&GFX.get()==='ultra'?7:5)+(v>40?4:0)+(v>150?4:0))} /* a few ms of tile building per frame, more at speed so the road ahead keeps up */reveal();const lit=typeof sun!=='undefined'&&sun.intensity>0.03;if(typeof sun!=='undefined'&&sun.castShadow!==lit)sun.castShadow=lit;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=lit} /* night: the sun casts nothing – skip the whole shadow pass */}); /* shadows refresh every frame (skipping frames made moving shadows lag); only the perception pass reuses the main shadow map */
 })();
 </script>
 <script>/* mods/02c-gc.js */
