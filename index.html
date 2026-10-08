@@ -2452,7 +2452,7 @@ function rebase(){XWG.clear(); // floating origin: keep numbers small over long 
  game.peds.forEach(p=>remPed(p));game.peds=[];
  game.agents.filter(a=>a.kind==='way').forEach(a=>scene.remove(a.mesh));game.agents=game.agents.filter(a=>a.kind!=='way');
  CONTROLS.forEach(c=>{c.x=toX(c.lon);c.z=toZ(c.lat)}); // recompute after origin change below
- setOrigin(lat,lon);CONTROLS.forEach(c=>{c.x=toX(c.lon);c.z=toZ(c.lat)});satRebase();RAWROADS.clear();
+ const ox=e.x,oz=e.z;setOrigin(lat,lon);{const dx=toX(lon)-ox,dz=toZ(lat)-oz,G=game,S=G.sideCam; /* carry the camera rigs across the origin shift, or they jump km away for a frame */if(S){S.x+=dx;S.z+=dz;S.look.x+=dx;S.look.z+=dz}for(const k of ['followP','droneP','heliP','heliL'])if(G[k]){G[k].x+=dx;G[k].z+=dz}camera.position.x+=dx;camera.position.z+=dz}CONTROLS.forEach(c=>{c.x=toX(c.lon);c.z=toZ(c.lat)});satRebase();RAWROADS.clear();
  game.bio=biome(lat,lon,new Date(game.simTime*1000));applyBiome();
 }
 function speedLimitAt(idx){
@@ -3100,7 +3100,7 @@ function approxTZ(lat,lon,d){const mo=d.getUTCMonth();const dst=mo>=2&&mo<=9;let
 function fastTravel(){const G=game,rate=G.scale*Math.max(G.ego.v,1);if(G.charging||G.tow)return G.fast=false;G.fast=G.scale>1&&(G.fast?rate>250:rate>400);return G.fast} /* scenery is only dropped when game time is sped up – a fast car at normal time keeps its world, even above 1,000 mph */
 function manageTiles(){
  const G=game,e=G.ego;
- if(Math.hypot(e.x,e.z)>4000){rebase()}
+ if(Math.hypot(e.x,e.z)>(e.v>90?16000:4000)){rebase()} /* at hypercar speed rebase less often: each one reloads every tile (a visible hitch); float32 is still mm-accurate at 16 km */
  if(fastTravel()){ // scenery can't be seen at this speed: drop it and drive on a lightweight ribbon
   for(const k of [...TILES.keys()])unloadTile(k);
   for(const [k,t] of SAT.tiles){scene.remove(t.m);t.m.geometry.dispose();t.m.material.map&&t.m.material.map.dispose();t.m.material.dispose();SAT.tiles.delete(k)}
