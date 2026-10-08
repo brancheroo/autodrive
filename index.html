@@ -7711,10 +7711,10 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const half=u=>{let a=W/2*(0.9+0.1*sm(cl(u/0.32,0,1)))*(1-0.03*cl((u-0.6)/0.4,0,1));const dF=(1-u)*L,rF=W*0.5,dR=u*L,rR=0.3;
    if(dF<rF)a*=Math.sqrt(Math.max(0,1-Math.pow(1-dF/rF,2)))*0.82+0.18*(dF/rF);if(dR<rR)a-=rR*(1-Math.sqrt(Math.max(0,1-Math.pow(1-dR/rR,2))))*0.8;return Math.max(0.02,a)};
   /* glass: belt height (canopy edge) and the canopy's span along the car */
-  const G0=0.24,G1=0.86,belt=u=>cr([[0.24,1.0*H/1.35],[0.5,0.93*H/1.35],[0.7,0.9*H/1.35],[0.86,0.86*H/1.35]],cl(u,0.24,0.86));
+  const G0=0.3,G1=0.86,belt=u=>cr([[0.24,1.0*H/1.35],[0.5,0.93*H/1.35],[0.7,0.9*H/1.35],[0.86,0.86*H/1.35]],cl(u,0.24,0.86));
   /* width across height t (0 = underside, 1 = crown) with tumblehome above the belt */
   const wAt=(u,t)=>{const b=bottom(u),T=top(u),tb=cl((belt(u)-b)/((T-b)||1),0.45,0.92);
-   if(t<0.3)return 0.84+0.16*Math.sin(t/0.3*Math.PI/2);if(t<tb)return 1-0.05*Math.pow((t-0.3)/(tb-0.3),2);const k=(t-tb)/(1-tb);return 0.95*Math.pow(Math.cos(k*Math.PI/2),0.32)}; /* flatter crown: full headroom across both seats */
+   if(t<0.3)return 0.84+0.16*Math.sin(t/0.3*Math.PI/2);if(t<tb)return 1-0.05*Math.pow((t-0.3)/(tb-0.3),2);const k=(t-tb)/(1-tb);return 0.95*Math.pow(Math.cos(k*Math.PI/2),0.45)}; /* fairly flat crown, but smooth (no wrinkles at its edge) */
   const pt=(u,t,s)=>{const b=bottom(u),T=Math.max(b+0.03,top(u)),y=b+(T-b)*t;return [u*L-L/2,y,s*half(u)*wAt(u,t)]};
   return {L,W,H,top,bottom,half,belt,wAt,pt,G0,G1,axles}}
  /* the shell: rings along u; each ring = underside (flat-ish) + side up to the crown, mirrored. Triangle groups: 0 paint, 1 glass, 2 satin black */
@@ -7725,12 +7725,12 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    for(const t of tS){const p=S.pt(u,t,1);r.push([...p,t,1])}for(let j=tS.length-2;j>=1;j--){const p=S.pt(u,tS[j],-1);r.push([...p,tS[j],-1])}ring.push(r)}
   const C=ring[0].length;for(const r of ring)for(const p of r){pos.push(p[0],p[1],p[2]);uv.push(p[0]*0.5,p[1]*0.5)}
   for(let i=0;i<us.length-1;i++)for(let j=0;j<C;j++){const a=i*C+j,b=(i+1)*C+j,c=(i+1)*C+(j+1)%C,d=i*C+(j+1)%C;const p=ring[i][j],q=ring[i+1][(j+1)%C],u=(us[i]+us[i+1])/2,t=Math.min(p[3],q[3]),y=(p[1]+q[1])/2,zr=Math.abs(p[2])/Math.max(0.05,S.half(u));
-   let m=0;if(glassOn&&u>S.G0&&u<S.G1&&y>S.belt(u)+0.004&&(u>0.6||zr>0.42)&&u>S.G0+0.16*cl((y-S.belt(u))/Math.max(0.05,S.top(u)-S.belt(u)),0,1))m=1; /* rear edge of the glass sweeps forward as it rises (raked C-pillar, no bulkhead step) */ /* canopy glass; the roof centre stays painted behind the windshield */
+   let m=0;if(glassOn&&u>S.G0&&u<S.G1&&y>S.belt(u)+0.004&&(u>0.6||zr>0.42))m=1; /* canopy glass; the roof centre stays painted behind the windshield */
    if(t<0.16&&p[4]!==0)m=2;if(p[4]===0)m=2; /* lower cladding + underside */
    grp[m].push(a,b,c,a,c,d)}
   /* Kamm-tail cap (flat, satin black frame) at u0 when it starts at the tail */
   if(u0===0){const r=ring[0],base=pos.length/3;let cx=0,cy=0;for(const p of r){cx+=p[0];cy+=p[1]}cx/=r.length;cy/=r.length;for(const p of r){pos.push(p[0],p[1],p[2]);uv.push(p[2],p[1])}pos.push(cx-0.01,cy,0);uv.push(0,0);
-   const c=base+r.length;for(let j=0;j<r.length;j++)grp[2].push(c,base+j,base+(j+1)%r.length)} /* faces backwards (−x) */
+   const c=base+r.length;for(let j=0;j<r.length;j++)grp[0].push(c,base+j,base+(j+1)%r.length)} /* painted tail panel */ /* faces backwards (−x) */
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
   const all=[...grp[0],...grp[1],...grp[2]];g.setIndex(all);g.addGroup(0,grp[0].length,0);g.addGroup(grp[0].length,grp[1].length,1);g.addGroup(grp[0].length+grp[1].length,grp[2].length,2);
   g.computeVertexNormals();/* outward winding check */g.computeBoundingBox();const n=g.attributes.normal,p=g.attributes.position;let bi=0;for(let i=0;i<p.count;i++)if(p.getZ(i)>p.getZ(bi))bi=i;
@@ -7738,7 +7738,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   return g}
  const CACHE=new Map();
  function kit(spec,lod){const k=spec.L+'|'+spec.W+'|'+spec.H+(lod?':lod':'');let c=CACHE.get(k);if(c)return c;const S=shape(spec);
-  c={S,shell:shellGeo(S,lod?60:180,lod?14:40),hood:shellGeo(S,lod?16:50,lod?10:30,0.76,1,false)};CACHE.set(k,c);return c}
+  c={S,shell:shellGeo(S,lod?60:300,lod?14:64),hood:shellGeo(S,lod?16:50,lod?10:30,0.76,1,false)};CACHE.set(k,c);return c}
  /* a tube that hugs the body surface along a list of (u,t,side) points, pushed out a little along the normal */
  function seam(S,pts,r,mat,out=0.004){const v=pts.map(([u,t,s])=>{const p=S.pt(u,t,s),q=S.pt(u,Math.min(1,t+0.01),s),e=S.pt(Math.min(1,u+0.005),t,s);const a=new THREE.Vector3(q[0]-p[0],q[1]-p[1],q[2]-p[2]),b=new THREE.Vector3(e[0]-p[0],e[1]-p[1],e[2]-p[2]),n=a.cross(b).normalize().multiplyScalar(s>0?-1:1);
   return new THREE.Vector3(p[0],p[1],p[2]).addScaledVector(n,out)});const curve=new THREE.CatmullRomCurve3(v);const m=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(8,v.length*4),r,6,false),mat);return m}
