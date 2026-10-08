@@ -1463,7 +1463,12 @@ function shapeOf(spec){return Object.assign({},SHAPE_T[spec.style],(MODEL[spec.i
 // procedural fine-detail maps (paint flake, tyre tread, plate)
 function noiseNormal(size,amp){const c=document.createElement('canvas');c.width=c.height=size;const x=c.getContext('2d'),im=x.createImageData(size,size);for(let i=0;i<im.data.length;i+=4){im.data[i]=128+(Math.random()-0.5)*amp;im.data[i+1]=128+(Math.random()-0.5)*amp;im.data[i+2]=255;im.data[i+3]=255}x.putImageData(im,0,0);const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(8,8);return t}
 const FLAKE=noiseNormal(256,70);
-function treadTex(){const c=document.createElement('canvas');c.width=512;c.height=64;const x=c.getContext('2d');x.fillStyle='#1b1b1b';x.fillRect(0,0,512,64);x.fillStyle='#0a0a0a';for(let i=0;i<512;i+=16){x.fillRect(i,8,5,48);x.save();x.translate(i+8,32);x.rotate(0.5);x.fillRect(-1,-20,3,40);x.restore()}x.fillRect(0,20,512,3);x.fillRect(0,42,512,3);const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;return t}
+function treadTex(){const c=document.createElement('canvas');c.width=1024;c.height=64;const x=c.getContext('2d');x.fillStyle='#181818';x.fillRect(0,0,1024,64); /* lathe UV: x = around the tyre, y = across the profile (sidewall · tread · sidewall) */
+ x.fillStyle='#202020';x.fillRect(0,22,1024,20); /* tread face, slightly lighter (worn rubber) */
+ x.fillStyle='#0b0b0b';for(const y of [25,30,35,39])x.fillRect(0,y,1024,1.6); /* circumferential grooves */
+ for(let i=0;i<1024;i+=9){x.fillRect(i,22,1.2,3);x.fillRect(i+4,31,1.2,3);x.fillRect(i,40,1.2,2)} /* fine sipes */
+ x.fillStyle='#262626';for(let i=0;i<1024;i+=128){x.fillRect(i+10,6,60,2.5);x.fillRect(i+10,55,60,2.5)} /* faint sidewall lettering band */
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;t.anisotropy=8;return t}
 const TREAD=treadTex();
 function plateTex(){const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d');x.scale(2,2);x.fillStyle='#f4f4f2';x.fillRect(0,0,256,128);x.strokeStyle='#223';x.lineWidth=4;x.strokeRect(4,4,248,120);x.fillStyle='#b01c1c';x.font='italic bold 26px serif';x.textAlign='center';x.fillText('Autodrive',128,34);x.fillStyle='#1a2a6c';x.font='bold 58px monospace';const r='ABCDEFGHJKLMNPRSTUVWXYZ';x.fillText(Math.floor(Math.random()*9+1)+r[Math.floor(Math.random()*23)]+r[Math.floor(Math.random()*23)]+r[Math.floor(Math.random()*23)]+Math.floor(Math.random()*900+100),128,100);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t}
 
@@ -1528,8 +1533,8 @@ function loftGreen(P,N=HIGH?200:110){
 function surfX(P,front,z,y){const hw=u=>P.halfAt?P.halfAt(u,y):P.half(u);if(front){for(let u=1;u>0.6;u-=0.002)if(hw(u)>=Math.abs(z)+0.01&&P.bottom(u)<=y&&P.top(u)>=y)return P.xOf(u)}else{for(let u=0;u<0.4;u+=0.002)if(hw(u)>=Math.abs(z)+0.01&&P.bottom(u)<=y&&P.top(u)>=y)return P.xOf(u)}return front?P.xOf(0.97):P.xOf(0.03)}
 const wheelCache={};
 function wheelSet(spec,rim,cal,lod){
- const key=spec.wr+rim.style+rim.n+rim.col+cal+(lod?':lod':'');if(wheelCache[key])return wheelCache[key];
- const wr=spec.wr,tw=0.25,rr=wr*0.66;
+ const key=spec.wr+rim.style+rim.n+rim.col+cal+(spec.id||spec.style)+(lod?':lod':'');if(wheelCache[key])return wheelCache[key];
+ const wr=spec.wr,tw=0.25,rr=wr*(/^(yugo|starfire|taxi|h2saab|isetta|rideshare)$/.test(spec.id||'')?0.64:/suv|van|pod/.test(spec.style)?0.71:0.76); /* modern low-profile tyres; classics and SUVs keep taller sidewalls */
  const prof=[[rr*0.98,-tw/2],[wr-0.04,-tw/2],[wr-0.008,-tw/2+0.03],[wr,-tw/2+0.06],[wr,tw/2-0.06],[wr-0.008,tw/2-0.03],[wr-0.04,tw/2],[rr*0.98,tw/2]].map(p=>new THREE.Vector2(p[0],p[1]));
  const tireG=new THREE.LatheGeometry(prof,lod?16:HIGH?72:48).rotateX(Math.PI/2);
  const tireM=new THREE.MeshStandardMaterial({color:0xffffff,map:TREAD,roughness:0.92});
