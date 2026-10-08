@@ -1474,7 +1474,7 @@ function mkProfile(spec){
  const ax=spec.style==='pod'?0:-0.05,axles=[ax+wb/2,ax-wb/2],R=wr+0.065;
  const bottom=u=>{const x=u*L-L/2;let b=sh.clr+(u<0.08?Math.pow((0.08-u)/0.08,2)*0.1:0)+(u>0.94?Math.pow((u-0.94)/0.06,2)*0.07:0); /* real bumpers are tall faces: only a slight lift at the very ends, no beak */for(const w of axles){const d=Math.abs(x-w);if(d<R)b=Math.max(b,wr+Math.sqrt(R*R-d*d)*0.98)}return b};
  const belt=u=>Math.min(sh.belt*H+(0.5-u)*0.05,top(u));
- const half=u=>{let a=W/2*(1-sh.ft*Math.pow(clamp((u-0.8)/0.2,0,1),2)-sh.rt*Math.pow(clamp((0.2-u)/0.2,0,1),2));const d=Math.min(u,1-u)*L,r=Math.max(sh.endR,Math.min(W*0.42,0.8));if(d<r)a-=r*(1-Math.sqrt(Math.max(0,1-Math.pow(1-d/r,2))));return Math.max(0.05,a)};
+ const half=u=>{let a=W/2*(1-sh.ft*Math.pow(clamp((u-0.8)/0.2,0,1),2)-sh.rt*Math.pow(clamp((0.2-u)/0.2,0,1),2));const d=Math.min(u,1-u)*L,r=Math.max(sh.endR,Math.min(W*0.22,0.42)); /* real plan-view corner radii (~0.3–0.45 m): rounded, but with a proper front/rear face for the lamps */if(d<r)a-=r*(1-Math.sqrt(Math.max(0,1-Math.pow(1-d/r,2))));return Math.max(0.05,a)};
  /* halfAt: the lower body's real half-width at height y (same superellipse as loftLower), so parts on the nose/tail sit on the skin */
  const halfAt=(u,y)=>{const b0=bottom(u),t0=Math.max(b0+0.02,Math.min(top(u),belt(u))),yc=(b0+t0)/2,hh=(t0-b0)/2||1,up=clamp((y-yc)/hh,-1,1),cy=Math.sign(up)*Math.pow(Math.abs(up),1/0.5),cz=Math.sqrt(Math.max(0,1-cy*cy)),ex=sh.box||0.4,e=up>0?lerp(ex,1,0.12):lerp(ex,1,0.55);return half(u)*Math.pow(cz,e)*(up>0?1-0.1*up*up:1-0.18*up*up)};
  return {sh,top,bottom,belt,half,halfAt,axles,R,xOf:u=>u*L-L/2};
