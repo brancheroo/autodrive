@@ -1470,11 +1470,11 @@ function plateTex(){const c=document.createElement('canvas');c.width=512;c.heigh
 function mkProfile(spec){
  const sh=shapeOf(spec),{L,W,H,wb,wr}=spec,sm=t=>t*t*(3-2*t);
  const k=[[0,sh.deck*H*0.93],[sh.tail,sh.deck*H],[sh.roofR,H],[sh.roofF,H],[sh.cowl,sh.hood*H],[1,sh.nose*H]];
- const top=u=>{for(let i=0;i<k.length-1;i++){if(u<=k[i+1][0]||i===k.length-2){const a=k[i],b=k[i+1];let t=clamp((u-a[0])/((b[0]-a[0])||1),0,1);const glassSeg=i===1||i===3;t=lerp(t,sm(t),glassSeg?0.3:0.85);let y=lerp(a[1],b[1],t);if(i===2)y+=Math.sin(t*Math.PI)*0.015*H;if(i===4)y+=Math.sin(t*Math.PI)*0.02*H;return y}}return k[k.length-1][1]};
+ const top=u=>{for(let i=0;i<k.length-1;i++){if(u<=k[i+1][0]||i===k.length-2){const a=k[i],b=k[i+1];let t=clamp((u-a[0])/((b[0]-a[0])||1),0,1);const glassSeg=i===1||i===3;t=lerp(t,sm(t),glassSeg?0.55:1); /* softer roofline, hood and deck transitions */let y=lerp(a[1],b[1],t);if(i===2)y+=Math.sin(t*Math.PI)*0.015*H;if(i===4)y+=Math.sin(t*Math.PI)*0.02*H;return y}}return k[k.length-1][1]};
  const ax=spec.style==='pod'?0:-0.05,axles=[ax+wb/2,ax-wb/2],R=wr+0.065;
  const bottom=u=>{const x=u*L-L/2;let b=sh.clr+(u<0.12?Math.pow((0.12-u)/0.12,2)*0.2:0)+(u>0.9?Math.pow((u-0.9)/0.1,2)*0.16:0);for(const w of axles){const d=Math.abs(x-w);if(d<R)b=Math.max(b,wr+Math.sqrt(R*R-d*d)*0.98)}return b};
  const belt=u=>Math.min(sh.belt*H+(0.5-u)*0.05,top(u));
- const half=u=>{let a=W/2*(1-sh.ft*Math.pow(clamp((u-0.8)/0.2,0,1),2)-sh.rt*Math.pow(clamp((0.2-u)/0.2,0,1),2));const d=Math.min(u,1-u)*L,r=sh.endR;if(d<r)a-=r*(1-Math.sqrt(Math.max(0,1-Math.pow(1-d/r,2))));return Math.max(0.05,a)};
+ const half=u=>{let a=W/2*(1-sh.ft*Math.pow(clamp((u-0.8)/0.2,0,1),2)-sh.rt*Math.pow(clamp((0.2-u)/0.2,0,1),2));const d=Math.min(u,1-u)*L,r=Math.max(sh.endR,Math.min(W*0.42,0.8));if(d<r)a-=r*(1-Math.sqrt(Math.max(0,1-Math.pow(1-d/r,2))));return Math.max(0.05,a)};
  return {sh,top,bottom,belt,half,axles,R,xOf:u=>u*L-L/2};
 }
 const sp=(v,e)=>Math.sign(v)*Math.pow(Math.abs(v),e);
@@ -1482,7 +1482,9 @@ function fixWinding(g,probe){g.computeVertexNormals();const n=g.attributes.norma
 function loftLower(P,u0=0,u1=1,N=HIGH?200:110,M=HIGH?44:32,hole=null){
  const pos=[],idx=[],uv=[],upv=[];const st=[];for(let i=0;i<=N;i++){const t=i/N;st.push(u0+(u1-u0)*(0.5-0.5*Math.cos(Math.PI*t)))}
  for(const u of st){const b0=P.bottom(u),t0=Math.max(b0+0.02,Math.min(P.top(u),P.belt(u))),a=P.half(u),yc=(b0+t0)/2,hh=(t0-b0)/2,x=P.xOf(u);
-  for(let j=0;j<M;j++){const th=j/M*Math.PI*2;const cy=-Math.cos(th),cz=Math.sin(th);const y=yc+hh*sp(cy,0.45);const up=(y-yc)/(hh||1);const z=a*sp(cz,P.sh.box||0.4)*(up>0?1-0.07*up*up:1-0.1*up*up);pos.push(x,y,z);uv.push(x,y);upv.push(up)}}
+  const ue=Math.min(u,1-u)/0.06,er=ue<1?Math.sqrt(1-Math.pow(1-ue,2)):1; /* last 6 % of length: the body rolls over into the bumper (0 → 1) */
+  const ex=P.sh.box||0.4,eUp=lerp(ex,1,0.25),eLo=lerp(ex,1,0.55); /* rounder than before: gentle shoulder, strong tuck-under to the rockers */
+  for(let j=0;j<M;j++){const th=j/M*Math.PI*2;const cy=-Math.cos(th),cz=Math.sin(th);const y=yc+hh*(0.35+0.65*er)*sp(cy,lerp(0.75,0.5,er));const up=(y-yc)/(hh||1);const z=a*(0.82+0.18*er)*sp(cz,up>0?eUp:eLo)*(up>0?1-0.1*up*up:1-0.18*up*up);pos.push(x,y,z);uv.push(x,y);upv.push(up)}}
  for(let i=0;i<N;i++)for(let j=0;j<M;j++){const a=i*M+j,b=(i+1)*M+j,c=(i+1)*M+(j+1)%M,d=i*M+(j+1)%M;
   if(hole&&st[i]>=hole.u0&&st[i+1]<=hole.u1&&upv[a]>hole.up&&upv[b]>hole.up&&upv[c]>hole.up&&upv[d]>hole.up)continue; /* open cabin: no lid over the passenger compartment */
   idx.push(a,b,c,a,c,d)}
