@@ -8515,7 +8515,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   const N=[[notice('fare','FARES',['Flag drop  $3.00','Per mile  $2.50','Waiting /min  $0.70','Night surcharge $1.00','Tolls extra'],'#fffbe6','#111'),0.3,0.95],
    [notice('nosm','NO SMOKING',['No smoking, vaping','or open alcohol','in this vehicle','','Fine up to $100'],'#ffffff','#c00000'),-0.05,1.02],
    [notice('belt','BUCKLE UP',['Seat belts are','required for all','passengers.','','Safety first!'],'#fff2d0','#0a3a8a'),-0.36,0.95],
-   [notice('rights','RIDER RIGHTS',['Choose your route','Air conditioning','Quiet ride on request','Receipt on request','Complaints: dial 311'],'#eef6ff','#111'),0.32,0.55]];
+   [notice('rights','RIDER RIGHTS',['Choose your route','Air conditioning','Quiet ride on request','Receipt on request','Complaints: dial 311'],'#eef6ff','#111'),-0.32,0.6]];
   for(const [t,z,y] of N){const n=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.2),new THREE.MeshStandardMaterial({map:t,roughness:0.7}));n.rotation.y=-Math.PI/2;n.position.set(-0.045,fy+y,z); /* well clear of the panel/plexi so they don't z-fight */P.add(n)}
   /* back-seat TV in the partition, in front of the right rear seat */
   const tvT=tex('tv',256,160,(x,w,h)=>{const gr=x.createLinearGradient(0,0,w,h);gr.addColorStop(0,'#1a2a6a');gr.addColorStop(1,'#6a1a5a');x.fillStyle=gr;x.fillRect(0,0,w,h);x.fillStyle='#ffd21a';x.font='900 34px Arial';x.textAlign='center';x.fillText('TAXI TV',w/2,60);x.fillStyle='#fff';x.font='600 18px Arial';x.fillText('Tonight: city news & weather',w/2,100);x.fillText('Tap to pay · Fare $ 12.40',w/2,135)});
