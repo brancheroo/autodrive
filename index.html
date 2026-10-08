@@ -1721,7 +1721,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
  const {P,lo,gh}=profCache[pk],sh=P.sh;
  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.6,roughness:0.38,clearcoat:1,clearcoatRoughness:0.04,normalMap:FLAKE,normalScale:new THREE.Vector2(0.12,0.12)});ENVMATS.push(paint);if(ENVMATS.length>400)ENVMATS.splice(5,100);
- const glass=new THREE.MeshPhysicalMaterial({color:0x26313b,metalness:0.0,roughness:0.02,transparent:true,opacity:0.55, /* tinted like real car glass: the cabin shows through, dimmed */depthWrite:false,envMapIntensity:1.6,clearcoat:1,clearcoatRoughness:0.02,reflectivity:0.9,side:THREE.FrontSide});
+ const glass=new THREE.MeshPhysicalMaterial({color:0x1a2128,metalness:0.0,roughness:0.02,transparent:true,opacity:0.72, /* tinted like real car glass: the cabin shows through, dimmed */depthWrite:false,envMapIntensity:1.6,clearcoat:1,clearcoatRoughness:0.02,reflectivity:0.9,side:THREE.FrontSide});
  const gloss=new THREE.MeshPhysicalMaterial({color:0x08090a,metalness:0.3,roughness:0.15,clearcoat:1});
  const chrome=new THREE.MeshStandardMaterial({color:0xdddddd,metalness:1,roughness:0.08});
  const matte=new THREE.MeshStandardMaterial({color:0x151617,roughness:0.75});
@@ -1738,7 +1738,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
    bx(0.9,0.2,0.26,trimM,sx+0.35,fl+0.2,0);
    if(spec.wheel!=='none'){const wl=new THREE.Mesh(new THREE.TorusGeometry(0.18,0.025,8,20),trimM);wl.rotation.y=Math.PI/2;wl.rotation.x=0.35;wl.position.set(e0.x+0.38+0.42,bl+0.02,-dz);T.add(wl)}
    const scr=new THREE.Mesh(new THREE.PlaneGeometry(0.28,0.16),new THREE.MeshBasicMaterial({color:0x2d6db3}));scr.position.set(front-0.5,bl+0.05,0);scr.rotation.y=-Math.PI/2;scr.rotation.x=-0.2;T.add(scr)}}g.userData.paint=paint;
- if(!opts.interior){glass.opacity=0.42;glass.envMapIntensity=0.45;glass.clearcoat=0.25;glass.reflectivity=0.3;glass.color.set(0x1c252e)} // outside cars: see the people inside
+ if(!opts.interior){glass.opacity=0.6;glass.envMapIntensity=0.45;glass.clearcoat=0.25;glass.reflectivity=0.3;glass.color.set(0x1c252e)} // outside cars: see the people inside
  const cab=new THREE.Mesh(gh,[paint,glass,gloss]);cab.castShadow=true;if(!spec.roadster)g.add(cab);g.userData.cab=cab;
  if(spec.roadster){ /* open-air roadster: no roof or side glass — low wraparound screen, twin roll hoops with speed humps, open cockpit tub */
   const P0=profCache[pk].P,sh0=P0.sh,cf=new THREE.MeshStandardMaterial({color:0x111114,roughness:0.3,metalness:0.4}),tub=new THREE.MeshStandardMaterial({color:0x0c0c0e,roughness:0.9});
