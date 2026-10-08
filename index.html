@@ -216,7 +216,7 @@ const CARS=[
 {id:'smaht',name:'Smaht ForTwo VSR',sub:'Ultra-compact electric city hatchback',style:'sedan',L:2.72,W:1.66,H:1.56,wb:1.87,wr:0.29,hp:95,z60:10.5,top:81,range:'~100 mi (est.) · 17.6 kWh',weight:'2,300 lb',drive:'Rear-mounted motor EV · RWD · 2 seats',level:'SAE Level 2 · supervised',
  tech:'A two-seat micro hatchback barely longer than a parking space. The tall, stubby body, tridion-style safety cell and rear-mounted motor give it a tiny turning circle and about 100 miles of city range. Camera and radar lane keeping, traffic-aware cruise and auto-braking are standard.',
  colors:[['Cool Silver','#b8bcc0'],['Signal Red','#c0202a'],['Electric Blue','#2f6fb5'],['Lime Pop','#9ccc2e'],['Pure White','#eeeeea'],['Deep Black','#131416']],dash:'center-mb',wheel:'round',sensors:'mb',sound:'ev',driver:true,seats2:true},
-{id:'ezpt',name:'MKAY e-ZPT',sub:'Electric armored carrier',style:'suv',L:6.10,W:2.55,H:2.45,wb:3.60,wr:0.58,hp:470,z60:11.5,top:68,range:'~185 mi (est.)',weight:'~33,000 lb (combat)',drive:'Twin motor 4×4 EV · central tire inflation',level:'SAE Level 4 · convoy autonomy (fictional)',
+{id:'ezpt',name:'MKAY e-ZPT',sub:'Electric armored carrier',style:'suv',L:6.10,W:2.55,H:2.45,wb:3.60,wr:0.58,hp:470,z60:11.5,top:200,range:'~185 mi (est.)',weight:'~330,000 lb (combat)',drive:'Twin motor 4×4 EV · central tire inflation',level:'SAE Level 4 · convoy autonomy (fictional)',
  tech:'Parody of a Turkish electric 4×4 APC. Monocoque V-hull with STANAG-level armor, run-flat tires and a roof weapon station (unarmed in Autodrive). At 15 tonnes it shrugs off PITs, and in chase mode it rams roadblocks instead of detouring.',
  colors:[['Olive Drab','#4b5320'],['Desert Tan','#b59a6a'],['Urban Grey','#5d6266'],['Gendarmerie Blue','#27364f']],dash:'rivian',wheel:'round',sensors:'none',sound:'ev',driver:true,apc:true},
 {id:'hyper',name:'Morrows Predictacar',sub:'Open-air electric hyper-roadster',style:'coupe',L:4.78,W:2.06,H:1.12,wb:2.75,wr:0.36,hp:2100,z60:1.7,top:1522,range:'~62,000 mi (est.) · 24,000 kWh',weight:'4,300 lb',drive:'Quad motor torque-vectoring AWD · 1,000 V',level:'SAE Level 4 · track-capable autonomy (fictional)',
@@ -2291,7 +2291,7 @@ const ENERGY={
  'icecream':{epa:150,kwh:120,kg:5000,cda:1.35,crr:0.011,dc:150,port:'CCS'},
  'solarcar':{epa:250,kwh:5,kg:300,cda:0.07,crr:0.004,dc:5,port:'J1772'},
  'ecosemi':{epa:500,kwh:900,kg:29000,cda:4.0,crr:0.0055,dc:1000,port:'NACS'},
- 'ezpt':{epa:185,kwh:220,kg:15000,cda:3.4,crr:0.016,dc:150,port:'CCS'},
+ 'ezpt':{epa:185,kwh:220,kg:150000,cda:3.4,crr:0.016,dc:150,port:'CCS'},
  'r1s':{epa:410,kwh:140,kg:3150,cda:0.98,crr:0.011,dc:220,port:'NACS'},
 };
 const FUEL_KWH_L=8.9,RESERVE=0.10;
@@ -2782,7 +2782,7 @@ function chaseSpinYaw(){return CHASE.spin>0?CHASE.spinDir*Math.sin((1.6-CHASE.sp
 // masses and impact angle set each vehicle's new velocity and spin. Both then slide out of control, decelerating at μ·g
 // (road grip from the weather), until they stop — the slide distance is v²/(2μg) along the impulse direction.
 const CRASH={shake:0,log:[]};
-function massOf(spec,kind){if(spec.apc)return 15000;if(kind==='ego'){const E=ENERGY[spec.id];if(E&&E.kg)return E.kg}if(spec.style==='harley')return 420;if(spec.style==='dualie')return 4100;if(spec.style==='semi')return 30000;if(spec.style==='box')return 8000;if(spec.style==='step')return 5500;if(kind==='cop')return 2000;return Math.round(1500*(spec.L*spec.W)/(4.8*1.85))}
+function massOf(spec,kind){if(spec.apc)return 150000;if(kind==='ego'){const E=ENERGY[spec.id];if(E&&E.kg)return E.kg}if(spec.style==='harley')return 420;if(spec.style==='dualie')return 4100;if(spec.style==='semi')return 30000;if(spec.style==='box')return 8000;if(spec.style==='step')return 5500;if(kind==='cop')return 2000;return Math.round(1500*(spec.L*spec.W)/(4.8*1.85))}
 function vehBodies(){const G=game,B=[];if(!G||!G.ego)return B;const e=G.ego;
  B.push({ref:e,kind:'ego',m:massOf(G.spec,'ego'),L:G.spec.L,W:G.spec.W,get y(){return e.mesh.position.y},get x(){return e.loose?e.loose.x:e.mesh.position.x},get z(){return e.loose?e.loose.z:e.mesh.position.z},get h(){return e.loose?e.loose.h:e.mesh.rotation.y}});
  for(const a of G.agents)if(a.mesh&&a.mesh.visible!==false&&a.spec.L>8&&!a.loose&&(a.kind==='route'||a.kind==='oncoming')){ /* long vehicles (semis, buses, RVs): one box per ~6 m segment laid along the road's actual curve, not a single straight 21 m slab that sweeps across the next lane on bends */
