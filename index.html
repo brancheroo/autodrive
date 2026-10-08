@@ -8488,7 +8488,12 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
  function livery(g,spec){const{L,W,H,wr}=spec,ud=g.userData;
   /* checker band + door decals on both sides */
   for(const sd of [1,-1]){const band=new THREE.Mesh(new THREE.PlaneGeometry(L*0.9,0.12),new THREE.MeshStandardMaterial({map:checker(),roughness:0.6}));band.position.set(0,wr+0.47,sd*(W/2+0.012));if(sd<0)band.rotation.y=Math.PI;g.add(band);
-   for(const dx of [0.55,-0.55]){const d=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.31),new THREE.MeshStandardMaterial({map:doorTxt(),transparent:true,roughness:0.6}));d.position.set(dx,wr+0.27,sd*(W/2+0.014));if(sd<0)d.rotation.y=Math.PI;g.add(d)}}
+   for(const dx of [0.5,-0.42]){const d=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.31),new THREE.MeshStandardMaterial({map:doorTxt(),transparent:true,roughness:0.6}));d.position.set(dx,wr+0.27,sd*(W/2+0.014));if(sd<0)d.rotation.y=Math.PI;g.add(d)}}
+  /* four doors: black B-pillar between the side windows, door seams and a handle on each door (the lofted body has one long greenhouse) */
+  const blk=new THREE.MeshStandardMaterial({color:0x111214,roughness:0.5}),chr=new THREE.MeshStandardMaterial({color:0xd0d4d8,metalness:1,roughness:0.2}),belt=H*0.6,ph=H-belt-0.02,bx=0.05;
+  for(const sd of [1,-1]){const z0=sd*W/2*0.97,z1=sd*W/2*0.76,pil=new THREE.Mesh(new THREE.BoxGeometry(0.1,Math.hypot(ph,z0-z1),0.03),blk);pil.position.set(bx,belt+ph/2,(z0+z1)/2);pil.rotation.x=Math.atan2(z1-z0,ph)*-1;g.add(pil);
+   for(const x of [0.97,bx,-0.9]){const seam=new THREE.Mesh(new THREE.BoxGeometry(0.012,belt-wr*0.75,0.006),blk);seam.position.set(x,wr*0.75+(belt-wr*0.75)/2,sd*(W/2+0.008));g.add(seam)}
+   for(const x of [bx+0.18,-0.75]){const hd=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.03,0.025),chr);hd.position.set(x,belt-0.08,sd*(W/2+0.01));g.add(hd)}}
   /* roof sign: a triangular-prism TAXI light box on a black base */
   const S=new THREE.Group();S.position.set(-0.25,H+0.02,0);g.add(S);
   S.add(new THREE.Mesh(new THREE.BoxGeometry(0.62,0.04,0.3),new THREE.MeshStandardMaterial({color:0x111111,roughness:0.6})));
