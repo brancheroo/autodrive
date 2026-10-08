@@ -222,6 +222,9 @@ const CARS=[
 {id:'hyper',name:'Morrows Predictacar',sub:'Open-air electric hyper-roadster',style:'coupe',L:4.78,W:2.06,H:1.12,wb:2.75,wr:0.36,hp:2100,z60:1.7,top:1522,range:'~62,000 mi (est.) · 24,000 kWh',weight:'4,300 lb',drive:'Quad motor torque-vectoring AWD · 1,000 V',level:'SAE Level 4 · track-capable autonomy (fictional)',
  tech:'An invented 2,100 hp quad-motor hypercar. There is no steering wheel. Instead, a wall of active screens shows telemetry, a g-meter, battery temps, mirror cams and the route. An active rear wing flattens for top speed, tilts up in corners and flips vertical as an airbrake. In Express or Chase mode it runs flat out to 300 mph where the road allows. Its planner forecasts every moving thing ahead 4 s and tests 35 escape plans ten times a second. If a crash is unavoidable, it protects pedestrians first, then steers away from the heaviest vehicles.',
  colors:[['Toxic Lime','#9dff00'],['Hyper Magenta','#ff1fb4'],['Volt Orange','#ff6a00'],['Ultraviolet','#6b2cff'],['Cyber Teal','#00e5d4'],['Acid Yellow','#f4ff2e']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',driver:true,hyper:true,roadster:true},
+{id:'icecream',name:'Frosty eScoop',sub:'Electric ice cream truck',style:'van',L:6.2,W:2.2,H:2.8,wb:3.7,wr:0.42,hp:300,z60:9.5,top:75,range:'~150 mi (est.) · 120 kWh',weight:'~11,000 lb',drive:'Single motor RWD EV · battery-powered freezers',level:'SAE Level 2 · supervised',
+ tech:'An all-electric ice cream truck. The battery runs the drive motor and the freezers, so it can sit at the park all afternoon in silence – no idling diesel. On the roof, a giant three-scoop cone turns slowly so kids can spot it from down the street.',
+ colors:[['Bubblegum Pink','#ff9ccf'],['Mint Chip','#9fe3c3'],['Vanilla Cream','#fff4d6'],['Sky Blue','#8fd3ff'],['Lemon Sherbet','#ffe76a']],dash:'center-ford',wheel:'round',sensors:'gm',sound:'ev',driver:true,icecream:true},
 {id:'gargantua',name:'Gargantua',sub:'Six-wheel street-legal super-tug',style:'van',L:8.4,W:2.1,H:4.4,wb:6.3,wr:1.44,hp:18000,z60:1.1,top:250,range:'~1,500,000 mi (est.) · 1 GWh',weight:'~14,000 lb',drive:'6 independent 3,000 ehp hub motors · 360° omni-directional wheels',level:'SAE Level 4 · full Predictacar autonomy stack + tracking satellite (fictional)',
  tech:'Shaped like a giant airport aircraft tug but built to normal road width and fully street legal. Six independent wheels, each twice the normal width and height, carry their own 3,000 ehp hub motor (18,000 ehp in total) and can point and drive in any direction: it crabs sideways, moves diagonally and spins on the spot. A 1 GWh battery pack fills the flat chassis between the axles. It carries every self-driving technology in the game: the Predictacar OmniSense suite (1 km see-through lidar, radar, cameras, thermal, ultrasonics) and the tracking satellite, always on. The low wedge nose and towbar hitch come straight from the airport apron; the full-width glass cab seats six in three rows.',
  colors:[['Apron Yellow','#f2c200'],['Tug Orange','#ff7a00'],['Runway White','#eef0f2'],['Hangar Grey','#5b6168']],dash:'waymo',wheel:'round',sensors:'hyper',sound:'ev',driver:true,gargantua:true,omni:true},
@@ -2276,6 +2279,7 @@ const ENERGY={
  'lucid':{epa:512,kwh:112,kg:2375,cda:0.45,crr:0.008,dc:300,port:'NACS'},
  'hyper':{epa:62000,kwh:24000,kg:2150,cda:0.55,crr:0.008,dc:50000,port:'CCS'},
  'gargantua':{epa:1500000,kwh:1000000,kg:6350,cda:1.9,crr:0.011,dc:50000,port:'CCS'},
+ 'icecream':{epa:150,kwh:120,kg:5000,cda:1.35,crr:0.011,dc:150,port:'CCS'},
  'ecosemi':{epa:500,kwh:900,kg:29000,cda:4.0,crr:0.0055,dc:1000,port:'NACS'},
  'ezpt':{epa:185,kwh:220,kg:15000,cda:3.4,crr:0.016,dc:150,port:'CCS'},
  'r1s':{epa:410,kwh:140,kg:3150,cda:0.98,crr:0.011,dc:220,port:'NACS'},
@@ -7027,6 +7031,30 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   preRender(){const G=game;if(!G||!G.route)return;const t=performance.now()/1000;for(const T of TV.trailers.slice())if(!G.agents.includes(T.a)){scene.remove(T.g);TV.trailers.splice(TV.trailers.indexOf(T),1)} /* vehicle despawned → trailer / towed car goes too */for(const a of G.agents){if(a.mesh&&a.mesh.userData.beacon)a.mesh.userData.beacon.material.color.setHex(((t*2)|0)%2?0xffa000:0x553300);const T=a.trailer2;if(!T)continue;if(!G.agents.includes(a)||a.loose){scene.remove(T.g);a.trailer2=null;continue}
     const s=a.s-T.back,lat=(a.off??1.85)+(a.offAdd||0),p=routeXZ(Math.max(0,s),lat),h=Math.atan2(-p[3],p[2]);T.g.position.set(p[0],routeY(Math.max(0,s),lat),p[1]);T.g.rotation.y=h}
   }});
+})();
+</script>
+<script>/* mods/61b-icecream.js */
+/* Ice cream truck: adds a giant three-scoop cone on the roof of any vehicle whose spec has `icecream` (the Frosty eScoop),
+   and turns it slowly. The cone is built once per vehicle mesh; the spin uses the real frame time. */
+(function(){
+ let waffle=null;
+ function waffleTex(){if(waffle)return waffle;const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');
+  x.fillStyle='#d9a35b';x.fillRect(0,0,128,128);x.strokeStyle='#a8722f';x.lineWidth=5;
+  for(let i=-128;i<256;i+=22){x.beginPath();x.moveTo(i,0);x.lineTo(i+128,128);x.stroke();x.beginPath();x.moveTo(i+128,0);x.lineTo(i,128);x.stroke()}
+  waffle=new THREE.CanvasTexture(c);waffle.wrapS=waffle.wrapT=THREE.RepeatWrapping;waffle.repeat.set(3,2);waffle.encoding=THREE.sRGBEncoding;return waffle}
+ function addCone(g,spec){
+  const cone=new THREE.Group();cone.position.set(-0.2,spec.H+0.05,0);g.add(cone);g.userData.iceCone=cone;
+  const wf=new THREE.Mesh(new THREE.ConeGeometry(0.55,1.4,24,1,true),new THREE.MeshStandardMaterial({map:waffleTex(),roughness:0.8,side:THREE.DoubleSide}));
+  wf.rotation.x=Math.PI;wf.position.y=0.7;wf.castShadow=true;cone.add(wf);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.06,8,24),new THREE.MeshStandardMaterial({color:0xc58a42,roughness:0.7}));rim.rotation.x=Math.PI/2;rim.position.y=1.4;cone.add(rim);
+  const scoop=(col,y,r)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(r,20,14),new THREE.MeshStandardMaterial({color:col,roughness:0.55}));m.position.y=y;m.castShadow=true;cone.add(m);return m};
+  scoop(0x5a3420,1.62,0.58);scoop(0xfff1d8,2.1,0.52);scoop(0xff8fb8,2.52,0.46);
+  for(let k=0;k<14;k++){const sp=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.04,0.12),new THREE.MeshBasicMaterial({color:[0xff3b3b,0x3bb0ff,0xffe23b,0x6bff6b][k%4]}));const a=k*2.4,r=0.42;sp.position.set(Math.cos(a)*r,2.62+Math.sin(k)*0.12,Math.sin(a)*r);sp.rotation.set(a,k,0);cone.add(sp)}
+  const ch=new THREE.Mesh(new THREE.SphereGeometry(0.13,12,10),new THREE.MeshStandardMaterial({color:0xd0102a,roughness:0.3}));ch.position.y=3.0;cone.add(ch)}
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec){const g=_bc.apply(this,arguments);try{if(spec&&spec.icecream&&g&&!g.userData.iceCone)addCone(g,spec)}catch(err){}return g};
+ let last=performance.now();
+ MODS.push({id:'icecream',frame(){const now=performance.now(),dt=Math.min(0.1,(now-last)/1000);last=now;const G=typeof game!=='undefined'?game:null;const m=G&&G.ego&&G.ego.mesh;if(m&&m.userData.iceCone)m.userData.iceCone.rotation.y+=dt*0.9}});
 })();
 </script>
 <script>/* mods/62-trams.js */
