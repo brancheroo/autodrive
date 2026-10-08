@@ -2400,7 +2400,7 @@ function arrivalSoc(route,E,soc,s=0){return soc-energyBetween(route,s,route.tota
 // ============================================================ SIM
 function startGame(spec,color,A,B,route){
  setOrigin(A.lat,A.lon);
- const date=new Date(route.departUTC||Date.now());
+ const date=new Date(route.departUTC||(()=>{try{const tz=route.tz||approxIANA(A.lat,A.lon),ds=new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());return zonedToUtc(ds+'T12:00',tz)}catch(err){return Date.now()}})()); /* default start: noon today at the start location (a custom departure time still wins) */
  game={tz:route.tz,spec,color,A,B,route,simTime:date.getTime()/1000,t0:date.getTime()/1000,scale:1,paused:false,agents:[],peds:[],upcoming:[],sig:0,sigHold:0,blinkOn:false,lightsOn:false,dark:false,
   limitMph:25,rpm:800,soc:startSoc(),status:'',statusShort:'',clockStr:'',etaStr:'',destShort:B.short||B.label,arrived:false,bio:biome(A.lat,A.lon,date),nextStep:null,lastRebase:0,cam:'in',yaw:0,pitch:0,zoom:1,fov:70};
  const ego=buildCar(spec,color,{interior:true});scene.add(ego);
