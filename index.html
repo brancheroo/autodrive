@@ -1501,8 +1501,8 @@ function loftLower(P,u0=0,u1=1,N=HIGH?200:110,M=HIGH?44:32,hole=null){
 function loftGreen(P,N=HIGH?200:110){
  const sh=P.sh,pos=[],grp=[[],[],[]],uv=[];const st=[];for(let i=0;i<=N;i++)st.push(i/N);
  const mid=(sh.roofR+sh.roofF)/2;
- for(const u of st){const bl=P.belt(u),ty=Math.max(bl,P.top(u)),a=P.half(u)*clamp((ty-bl)/0.05,0,1),aB=Math.min(a*0.955,P.halfAt?P.halfAt(u,bl-0.03)*clamp((ty-bl)/0.05,0,1):a),aT=Math.min(a*sh.tum,aB*0.97),rr=Math.min(0.1,(ty-bl)*0.5),x=P.xOf(u);
-  const R=[[aB,bl-0.03],[lerp(aB,aT,0.5),lerp(bl,ty-rr,0.5)],[aT,ty-rr],[aT-rr*0.3,ty-rr*0.3],[aT-rr,ty],[0,ty+0.004]];
+ for(const u of st){const bl=P.belt(u),ty=Math.max(bl,P.top(u)),a=P.half(u)*clamp((ty-bl)/0.05,0,1),yH=bl-0.035*(bl-P.bottom(u)),aB=Math.min(a*0.955,P.halfAt?P.halfAt(u,yH)*clamp((ty-bl)/0.05,0,1):a), /* start exactly at the lower body's cabin-opening edge (up≈0.93): no gap, no overhang */aT=Math.min(a*sh.tum,aB*0.97),rr=Math.min(0.1,(ty-bl)*0.5),x=P.xOf(u);
+  const R=[[aB,yH],[lerp(aB,aT,0.5),lerp(bl,ty-rr,0.5)],[aT,ty-rr],[aT-rr*0.3,ty-rr*0.3],[aT-rr,ty],[0,ty+0.004]];
   const pts=[...R.slice().reverse().map(p=>[-p[0],p[1]]).slice(0,5),...R.slice().reverse().slice(0,0),[0,ty+0.004],...R.slice(0,5).reverse()];
   // pts order: left belt → roof center → right belt (11 points)
   const ordered=[[-R[0][0],R[0][1]],[-R[1][0],R[1][1]],[-R[2][0],R[2][1]],[-R[3][0],R[3][1]],[-R[4][0],R[4][1]],R[5],R[4],R[3],R[2],R[1],R[0]];
