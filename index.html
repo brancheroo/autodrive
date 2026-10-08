@@ -2519,6 +2519,10 @@ function plan(a,dt,lead,isEgo){
  if(!isEgo&&game.protest&&game.protest.state!=='dispersing'&&a.kind!=='way'){const P=game.protest,d=a.dir>0?P.s-6-a.s:a.s-(P.s+6);if(d>-3&&d<70){const v=allow(0,Math.max(0,d));if(v<target)target=v}}
 // acceleration
  if(window.PLAN_HOOKS)for(const hk of PLAN_HOOKS){try{const r=hk(a,isEgo,lead,allow,look,idx,dt,chase);if(r&&(r.v<target||r.force)){target=Math.max(0,r.v);if(r.reason)reason=r.reason}}catch(err){}} /* feature modules: cyclists, school buses, roundabouts, gap acceptance… */
+ if(isEgo&&window.CANNON&&CANNON.on&&!a.loose){ /* Cannonball magic: always flat out at the car's top speed – obstacles, curves, weather and traffic are ignored (the guardian field in updateCollisions phases them aside); only planned charging stops and arrival slow it */
+  let v=(a.spec.aegis?a.spec.top/MPH:a.spec.hyper?447:(typeof a.spec.top==='number'?a.spec.top:85)/MPH),why='💣 CANNONBALL · flat out';
+  if(game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const w=allow(0,d-1.5);if(w<v){v=w;why=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):why}}}
+  {const w=allow(0,R.total-a.s-1);if(w<v){v=w;why='Arriving'}}target=v;reason=why}
  if(isEgo&&a.spec.basicAD&&!smartOn()&&!(window.CANNON&&CANNON.on)){target=Math.min(target,55/MPH)}if(isEgo&&window.EGO_CAP!=null)target=Math.min(target,window.EGO_CAP); /* modules (emergency pull-over, delivery stops) */ /* dashcam autopilot: 55 mph max */
  const top=(isEgo&&a.spec.hyper&&chase?1522:(typeof a.spec.top==='number'?a.spec.top:85))/MPH;target=Math.min(target,top);
  const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){if(!chase)target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
@@ -2847,7 +2851,7 @@ function updateCollisions(dt){const G=game;if(!G||!G.ego||dt<=0||G.fast)return;c
  for(let i=0;i<bodies.length;i++){const A=bodies[i];for(let j=i+1;j<bodies.length;j++){const B=bodies[j];const R=(A.L+B.L)/2+0.5;if(Math.abs(A.x-B.x)>R||Math.abs(A.z-B.z)>R)continue;if(A.y!=null&&B.y!=null&&Math.abs(A.y-B.y)>3)continue; /* different levels: overpass above / road below */
    if(A.kind!=='ego'&&B.kind!=='ego'&&A.kind===B.kind&&A.kind!=='chaos'&&A.kind!=='cop')continue; // same scripted lane stream: they queue, they don't overlap by design
    if((A.ref._age??9)<1.5||(B.ref._age??9)<1.5)continue;const c=satOverlap(A,B);if(!c)continue;
-   if(G.spec.hyper&&(A.kind==='ego'||B.kind==='ego')&&!G.ego.loose){ /* Predictacar guardian: it is never in a collision – whatever touches its shield field is deflected softly, no impact, no damage */
+   if((G.spec.hyper||window.CANNON&&CANNON.on)&&(A.kind==='ego'||B.kind==='ego')&&!G.ego.loose){ /* also every car in Cannonball */ /* Predictacar guardian: it is never in a collision – whatever touches its shield field is deflected softly, no impact, no damage */
     const O=A.kind==='ego'?B:A,sg=A.kind==='ego'?1:-1,vo=velOf(O,dt),vn=vo.vx*c.n[0]*sg+vo.vz*c.n[1]*sg;makeLoose(O,{vx:vo.vx-Math.min(0,vn)*c.n[0]*sg+c.n[0]*sg*0.6,vz:vo.vz-Math.min(0,vn)*c.n[1]*sg+c.n[1]*sg*0.6,w:vo.w*0.3});O.ref.loose.x+=sg*c.n[0]*(c.o+0.05);O.ref.loose.z+=sg*c.n[1]*(c.o+0.05);O.ref.loose.soft=true;continue}
    const va=velOf(A,dt),vb=velOf(B,dt),n=c.n,ra=[c.p[0]-A.x,c.p[1]-A.z],rb=[c.p[0]-B.x,c.p[1]-B.z],IA=A.m*(A.L*A.L+A.W*A.W)/12,IB=B.m*(B.L*B.L+B.W*B.W)/12;
    const pa=[va.vx+va.w*ra[1],va.vz-va.w*ra[0]],pb=[vb.vx+vb.w*rb[1],vb.vz-vb.w*rb[0]],rel=[pb[0]-pa[0],pb[1]-pa[1]],vn=rel[0]*n[0]+rel[1]*n[1];
