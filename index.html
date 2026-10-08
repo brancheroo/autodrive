@@ -7882,7 +7882,9 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
 (function(){
  const _eye=window.eyePos;
  const driverEye=spec=>_eye.apply(window,[spec]);
- if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.rideshare){const d=_eye.apply(this,arguments);return new THREE.Vector3(d.x-0.95,d.y-0.03,-d.z)} /* back right seat: behind the front passenger (the driver sits on +z) */return _eye.apply(this,arguments)};
+ let inCam=false;const _uc=window.updateCamera; /* only the player camera moves to the back seat: the interior, seats, wheel and driver figure are laid out from the driver's eye as usual */
+ if(typeof _uc==='function')window.updateCamera=function(){inCam=true;try{return _uc.apply(this,arguments)}finally{inCam=false}};
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.rideshare&&inCam){const d=_eye.apply(this,arguments);return new THREE.Vector3(d.x-0.95,d.y-0.03,-d.z)} /* back right seat: behind the front passenger (the driver sits on +z) */return _eye.apply(this,arguments)};
  const _rv=window.riderView;
  if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.rideshare){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r&&r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=!o.userData.keepHidden;return} /* the human driver is always visible */return _rv.apply(this,arguments)};
  const on=()=>{const G=typeof game!=='undefined'?game:null;return !!(G&&G.spec&&G.spec.rideshare&&G.ego&&G.ego.mesh)};
