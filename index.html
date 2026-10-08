@@ -7635,17 +7635,17 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    shoe=new THREE.MeshStandardMaterial({color:0xf2f2f2,roughness:0.7}),helm=new THREE.MeshStandardMaterial({color:0x202024,roughness:0.4});
   const box=(w,h,d,m,x,y,z)=>mesh(new THREE.BoxGeometry(w,h,d),m,x,y,z,R);
   const limb=(w,h,d,m,x0,y0,x1,y1,z)=>{const o=box(Math.hypot(x1-x0,y1-y0)+w,h,d,m,(x0+x1)/2,(y0+y1)/2,z);o.rotation.z=Math.atan2(y1-y0,x1-x0);return o};
-  limb(0.2,0.2,0.32,hood,0,0.02,0.12,0.5,0); /* torso, slight forward lean */
-  const hd=mesh(new THREE.SphereGeometry(0.1,14,10),skin,0.16,0.68,0,R);const hm=mesh(new THREE.SphereGeometry(0.115,14,8,0,Math.PI*2,0,Math.PI/2),helm,0.15,0.7,0,R);hm.scale.set(1.2,0.9,1);
-  const hoodBack=box(0.08,0.12,0.2,hood,0.02,0.56,0);
+  limb(0.1,0.2,0.32,hood,0,0.04,0.1,0.42,0); /* torso, slight forward lean */
+  const hd=mesh(new THREE.SphereGeometry(0.1,14,10),skin,0.14,0.58,0,R);const hm=mesh(new THREE.SphereGeometry(0.115,14,8,0,Math.PI*2,0,Math.PI/2),helm,0.13,0.6,0,R);hm.scale.set(1.2,0.9,1);
+  const hoodBack=box(0.08,0.1,0.2,hood,0.02,0.47,0);
   const hx=HT[0]+0.02-R.position.x,hy=HT[1]+0.15-R.position.y;
-  for(const sd of [1,-1]){limb(0.04,0.08,0.08,hood,0.1,0.44,hx-0.18,hy+0.06,sd*0.18);limb(0.03,0.07,0.07,hood,hx-0.18,hy+0.06,hx,hy,sd*0.24);box(0.06,0.05,0.05,skin,hx,hy,sd*0.25); /* arms */
+  for(const sd of [1,-1]){limb(0.04,0.08,0.08,hood,0.1,0.38,hx-0.18,hy+0.06,sd*0.18);limb(0.03,0.07,0.07,hood,hx-0.18,hy+0.06,hx,hy,sd*0.24);box(0.06,0.05,0.05,skin,hx,hy,sd*0.25); /* arms */
    const kx=0.32,ky=-0.06,px=BB[0]-R.position.x+(sd>0?0.12:-0.12),py=BB[1]-R.position.y+(sd>0?0.05:-0.05);
    limb(0.05,0.12,0.12,jeans,0,-0.02,kx,ky,sd*0.1);limb(0.04,0.1,0.1,jeans,kx,ky,px,py,sd*0.1);box(0.18,0.06,0.09,shoe,px+0.03,py-0.03,sd*0.1)} /* legs on the pedals */
   const I=new THREE.Group();g.add(I);ud.interior=I;ud.hood=new THREE.Group();g.add(ud.hood);ud.seats=[new THREE.Vector3(ST[0],ST[1]+0.15,0)];
   ud.ebike=true;return g};
  const _eye=window.eyePos;
- if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.ebike)return new THREE.Vector3(-0.02,spec.wr+1.36,0);return _eye.apply(this,arguments)};
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.ebike)return new THREE.Vector3(-0.06,spec.wr+1.26,0);return _eye.apply(this,arguments)};
  const _ra=window.riderAttach;if(typeof _ra==='function')window.riderAttach=function(){const r=_ra.apply(this,arguments);try{const G=game,m=G&&G.ego&&G.ego.mesh;if(G&&G.spec&&G.spec.ebike&&m&&m.userData.rider){m.remove(m.userData.rider);m.userData.rider=null}}catch(err){}return r};
  let last=performance.now(),leanA=0;
  MODS.push({id:'ebike',frame(){const now=performance.now(),dt=Math.min(0.1,(now-last)/1000);last=now;const G=typeof game!=='undefined'?game:null;const m=G&&G.ego&&G.ego.mesh;const U=m&&m.userData;if(!U||!U.ebike)return;
