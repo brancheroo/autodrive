@@ -7043,7 +7043,8 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   for(let i=-128;i<256;i+=22){x.beginPath();x.moveTo(i,0);x.lineTo(i+128,128);x.stroke();x.beginPath();x.moveTo(i+128,0);x.lineTo(i,128);x.stroke()}
   waffle=new THREE.CanvasTexture(c);waffle.wrapS=waffle.wrapT=THREE.RepeatWrapping;waffle.repeat.set(3,2);waffle.encoding=THREE.sRGBEncoding;return waffle}
  function addCone(g,spec){
-  const cone=new THREE.Group();cone.position.set(-0.2,spec.H+0.05,0);g.add(cone);g.userData.iceCone=cone;
+  g.updateMatrixWorld(true);const top=new THREE.Box3().setFromObject(g).max.y; /* the drawn roof sits below spec.H, so measure it */
+  const cone=new THREE.Group();cone.position.set(-0.2,(isFinite(top)?top:spec.H)-0.02,0);g.add(cone);g.userData.iceCone=cone;
   const wf=new THREE.Mesh(new THREE.ConeGeometry(0.55,1.4,24,1,true),new THREE.MeshStandardMaterial({map:waffleTex(),roughness:0.8,side:THREE.DoubleSide}));
   wf.rotation.x=Math.PI;wf.position.y=0.7;wf.castShadow=true;cone.add(wf);
   const rim=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.06,8,24),new THREE.MeshStandardMaterial({color:0xc58a42,roughness:0.7}));rim.rotation.x=Math.PI/2;rim.position.y=1.4;cone.add(rim);
