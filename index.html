@@ -3120,7 +3120,7 @@ function manageTiles(){
   return}
  const lat=toLat(e.z),lon=toLon(e.x);
  const want=new Set();const ci=Math.floor(lat/TS),cj=Math.floor(lon/TS);
- const rad=e.v>100?0:1; /* above ~225 mph only the tile underneath plus the route ahead: side tiles would never arrive in time */for(let i=-rad;i<=rad;i++)for(let j=-rad;j<=rad;j++)want.add((ci+i)+'_'+(cj+j));
+ const pre=!!(window.PREFETCH&&PREFETCH.ready===G.route),rad=e.v>100&&!pre?0:1; /* above ~225 mph only the tile underneath plus the route ahead: side tiles would never arrive in time – unless the route environment was preloaded (all in the local cache) */for(let i=-rad;i<=rad;i++)for(let j=-rad;j<=rad;j++)want.add((ci+i)+'_'+(cj+j));
  /* tiles ahead along the route: look-ahead scales with speed (about 9 s of travel, 1–4.5 km), each remembered with how far ahead it is */
  const ahead=new Map(),reach=Math.max(0,Math.min(G.route.total-e.s,Math.max(HIGH?2000:1000,Math.min(8000,e.v*12))));for(let d=0;d<=reach;d+=250){const p=routeLLnh(Math.min(G.route.total,e.s+d)),k=tileKey(p[1],p[0]);if(!ahead.has(k)){ahead.set(k,d);want.add(k)}}
  for(const k of [...TILES.keys()])if(!want.has(k)){const [i,j]=k.split('_').map(Number);if(Math.abs(i-ci)>2||Math.abs(j-cj)>2)unloadTile(k)}
@@ -4759,7 +4759,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  const RQ=[];const hideNew=k=>{try{const T=TILES.get(k);if(T&&T.group){for(const m of T.group.children)if(m.visible){m.visible=false;RQ.push(m)}}}catch(e){}};window.onTileBuilt=hideNew;const _bt=window.buildTile;if(_bt)window.buildTile=function(k){const r=_bt.apply(this,arguments);hideNew(k);return r};
  function reveal(){let n=0,t0=performance.now();const lim=typeof game!=='undefined'&&game&&game.ego&&game.ego.v>40?14:6; /* reveal faster at speed */while(RQ.length&&n<lim){const m=RQ.shift();if(m.parent)m.visible=true;n++}}
  MODS.push({id:'perf',
-  preRender(){if(typeof btStep==='function'){const v=typeof game!=='undefined'&&game&&game.ego?game.ego.v:0;btStep((window.GFX&&GFX.get()==='ultra'?7:5)+(v>40?4:0)+(v>150?4:0))} /* a few ms of tile building per frame, more at speed so the road ahead keeps up */reveal();const lit=typeof sun!=='undefined'&&sun.intensity>0.03;if(typeof sun!=='undefined'&&sun.castShadow!==lit)sun.castShadow=lit;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=lit} /* night: the sun casts nothing – skip the whole shadow pass */}); /* shadows refresh every frame (skipping frames made moving shadows lag); only the perception pass reuses the main shadow map */
+  preRender(){if(typeof btStep==='function'){const v=typeof game!=='undefined'&&game&&game.ego?game.ego.v:0;btStep((window.GFX&&GFX.get()==='ultra'?7:5)+(v>40?4:0)+(v>150?4:0)+(v>150&&window.PREFETCH&&PREFETCH.ready===game.route?8:0))} /* preloaded route at hypercar speed: extra build time so the side tiles keep up too */ /* a few ms of tile building per frame, more at speed so the road ahead keeps up */reveal();const lit=typeof sun!=='undefined'&&sun.intensity>0.03;if(typeof sun!=='undefined'&&sun.castShadow!==lit)sun.castShadow=lit;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=lit} /* night: the sun casts nothing – skip the whole shadow pass */}); /* shadows refresh every frame (skipping frames made moving shadows lag); only the perception pass reuses the main shadow map */
 })();
 </script>
 <script>/* mods/02c-gc.js */
@@ -4816,19 +4816,30 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
    it loads from disk in a fraction of a second instead of waiting several seconds for the map server. The janitor still
    frees far-off tile data from memory; it reloads quickly from the cache. */
 (function(){
- const P={keys:[],route:null,done:0};window.PREFETCH=P;
+ const P={keys:[],route:null,done:0,ready:null};window.PREFETCH=P;
  function plan(G){P.route=G.route;P.keys=[];const seen=new Set();for(let d=0;d<=G.route.total;d+=400){const p=routeLLnh(d),k=tileKey(p[1],p[0]);if(!seen.has(k)){seen.add(k);P.keys.push({k,d})}}}
  setInterval(()=>{const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego||G.fast)return;if(P.route!==G.route)plan(G);
   const busy=typeof netBusy!=='undefined'?netBusy:0;if(busy>0)return; /* only when nothing else is downloading */
   const e=G.ego;for(const it of P.keys){if(it.d<e.s-500)continue;if(it.d>e.s+40000)break;if(RAW.has(it.k)||PENDING.has(it.k)||TILES.has(it.k)||it.got)continue;it.got=true;P.done++;try{fetchTile(it.k)}catch(err){}break}},700);
- /* ⬇ Preload route (⚙ Options): pause, download every tile on the route into the cache (3 at a time, with progress), resume.
-    Use before a very high-speed run on a route the game has not seen: live downloading cannot keep up above ~500 mph. */
- async function preload(btn){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||P.busy)return;P.busy=true;plan(G);const was=G.paused;G.paused=true;
-  const todo=P.keys.map(x=>x.k).filter(k=>!RAW.has(k));const total=todo.length;let i=0;const t0=performance.now();
+ /* ⬇ Preload route (⚙ Options, or ticked on the planning screen): pause, download the whole route environment – map tiles on and
+    beside the route, satellite imagery, terrain – with progress, then resume. Once done (P.ready) manageTiles keeps the side
+    tiles even at hypercar speed and the per-frame build budget goes up, so the full scenery keeps up at top speed. */
+ async function preload(btn){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||P.busy)return;P.busy=true;plan(G);const was=G.paused;G.paused=true;const t0=performance.now();
   const banner=UIX.banner('preBan','top:200px;left:50%;transform:translateX(-50%);background:#0e141df0;color:#e8eef5;padding:8px 14px;border-radius:10px;font:600 13px system-ui');banner.style.display='block';
-  while(i<todo.length||(typeof netBusy!=='undefined'&&netBusy>0)){if(performance.now()-t0>240000)break;if(i<todo.length&&(typeof netBusy==='undefined'||netBusy<3)){const k=todo[i++];if(!RAW.has(k)&&!PENDING.has(k))try{fetchTile(k)}catch(err){}}
-   banner.textContent='⬇ Preloading route map: '+Math.min(i,total)+' / '+total+' tiles';await new Promise(r=>setTimeout(r,150))}
-  banner.textContent='✅ Route preloaded ('+total+' tiles)';setTimeout(()=>{banner.style.display='none'},3000);G.paused=was;P.busy=false;if(btn)btn.textContent='⬇ Preload route'}
+  /* map tiles: every tile on the route plus the ring beside it (the scenery you see out of the side windows) */
+  const set=new Set();for(const it of P.keys){const [i,j]=it.k.split('_').map(Number);for(let di=-1;di<=1;di++)for(let dj=-1;dj<=1;dj++)set.add((i+di)+'_'+(j+dj))}
+  const todo=[...set].filter(k=>!RAW.has(k)&&!TILES.has(k)),total=todo.length;let i=0;
+  while(i<todo.length||(typeof netBusy!=='undefined'&&netBusy>0)){if(performance.now()-t0>600000)break;if(i<todo.length&&(typeof netBusy==='undefined'||netBusy<4)){const k=todo[i++];if(!RAW.has(k)&&!PENDING.has(k))try{fetchTile(k)}catch(err){}}
+   banner.textContent='⬇ Preloading route environment · map '+Math.min(i,total)+' / '+total;await new Promise(r=>setTimeout(r,120))}
+  /* satellite imagery (the zooms used at speed: z17 along the road, z14 around it) into the browser cache, and terrain heights into memory */
+  const urls=new Set(),R=G.route,TZ=typeof TERR!=='undefined'?TERR.z:14;
+  for(let d=0;d<=R.total;d+=150){const p=routeLLnh(d),lat=p[1],lon=p[0];
+   {const x=lon2tx(lon,17),y=lat2ty(lat,17);for(let a=-1;a<=1;a++)for(let b2=-1;b2<=1;b2++)urls.add(`17/${y+b2}/${x+a}`)}
+   {const x=lon2tx(lon,14),y=lat2ty(lat,14);for(let a=-1;a<=1;a++)for(let b2=-1;b2<=1;b2++)urls.add(`14/${y+b2}/${x+a}`)}
+   if(typeof loadTerr==='function')try{loadTerr(lon2tx(lon,TZ),lat2ty(lat,TZ))}catch(err){}}
+  const list=[...urls];let done=0,next=0;await new Promise(res=>{const pump=()=>{while(next<list.length&&next-done<6){const u=list[next++],im=new Image();im.crossOrigin='anonymous';im.onload=im.onerror=()=>{done++;banner.textContent='⬇ Preloading route environment · imagery '+done+' / '+list.length;if(done>=list.length)res();else pump()};im.src='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/'+u}if(!list.length||performance.now()-t0>600000)res()};pump()});
+  P.ready=G.route; /* full environment is local: the game keeps side scenery and builds faster at hypercar speed */
+  banner.textContent='✅ Route environment preloaded ('+total+' map tiles, '+list.length+' imagery tiles)';setTimeout(()=>{banner.style.display='none'},3000);G.paused=was;P.busy=false;if(btn)btn.textContent='⬇ Preload route'}
  P.preload=preload;
  /* planning screen: "Preload route environment before driving" – when ticked, the ride starts paused and downloads every map
     tile along the route first (same as ⬇ Preload route), then drives off */
