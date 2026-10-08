@@ -8495,6 +8495,9 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   for(const sd of [1,-1]){const z0=sd*W/2*0.97,z1=sd*W/2*0.76,pil=new THREE.Mesh(new THREE.BoxGeometry(0.1,Math.hypot(ph,z0-z1),0.03),blk);pil.position.set(bx,belt+ph/2,(z0+z1)/2);pil.rotation.x=Math.atan2(z1-z0,ph)*-1;g.add(pil);
    for(const x of [0.97,bx,-0.9]){const seam=new THREE.Mesh(new THREE.BoxGeometry(0.012,belt-wr*0.75,0.006),blk);seam.position.set(x,wr*0.75+(belt-wr*0.75)/2,sd*(W/2+0.008));g.add(seam)}
    for(const x of [bx+0.18,-0.75]){const hd=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.03,0.025),chr);hd.position.set(x,belt-0.08,sd*(W/2+0.01));g.add(hd)}}
+  /* solid painted steel roof over the greenhouse (the lofted sedan leaves it open/glass) */
+  {const sh=(MODEL[spec.id]||{}).shape||{},rr=(sh.roofR??0.315),rf=(sh.roofF??0.585),x0=(rr-0.5)*L+0.05,x1=(rf-0.5)*L-0.05,rw=W*(sh.tum??0.74)-0.06;
+   const roof=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,0.04,rw),ud.paint||new THREE.MeshStandardMaterial({color:0xffef00,roughness:0.4}));roof.position.set((x0+x1)/2,H-0.025,0);roof.castShadow=true;g.add(roof);ud.taxiRoof=roof}
   /* roof sign: a triangular-prism TAXI light box on a black base */
   const S=new THREE.Group();S.position.set(-0.25,H+0.02,0);g.add(S);
   S.add(new THREE.Mesh(new THREE.BoxGeometry(0.62,0.04,0.3),new THREE.MeshStandardMaterial({color:0x111111,roughness:0.6})));
