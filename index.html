@@ -7882,14 +7882,14 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
 (function(){
  const _eye=window.eyePos;
  const driverEye=spec=>_eye.apply(window,[spec]);
- if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.rideshare){const d=_eye.apply(this,arguments);return new THREE.Vector3(d.x-0.95,d.y-0.03,Math.abs(d.z))} /* back right seat */return _eye.apply(this,arguments)};
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.rideshare){const d=_eye.apply(this,arguments);return new THREE.Vector3(d.x-0.95,d.y-0.03,-d.z)} /* back right seat: behind the front passenger (the driver sits on +z) */return _eye.apply(this,arguments)};
  const _rv=window.riderView;
  if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.rideshare){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r&&r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=!o.userData.keepHidden;return} /* the human driver is always visible */return _rv.apply(this,arguments)};
  const on=()=>{const G=typeof game!=='undefined'?game:null;return !!(G&&G.spec&&G.spec.rideshare&&G.ego&&G.ego.mesh)};
  const _pre=scene.onBeforeRender;
  scene.onBeforeRender=function(r,sc,cam){if(_pre)_pre.apply(this,arguments);if(cam!==cvCam||!on())return;const m=game.ego.mesh,e=driverEye(game.spec);m.updateMatrixWorld(true);
   const p=m.localToWorld(e.clone()),t=m.localToWorld(new THREE.Vector3(e.x+20,e.y-0.6,e.z));cam.position.copy(p);if(cam.fov!==70){cam.fov=70;cam.updateProjectionMatrix()}cam.lookAt(t);cam.updateMatrixWorld(true)};
- const HIDE=['cvOv','cvBev','cvStats','cvAct','radarBox'];
+ const HIDE=['cvOv','svOv','cvWhy','cvBev','cvStats','cvAct','radarBox'];
  function panel(rs){const t=document.getElementById('cvTitle');if(t)t.textContent=rs?"DRIVER'S VIEW":'PERCEPTION';
   for(const id of HIDE){const el=document.getElementById(id);if(el)el.style.display=rs?'none':''}
   const w=document.getElementById('cvWrap');if(w)for(const b of w.querySelectorAll('button'))b.style.display=rs?'none':'';
