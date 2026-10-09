@@ -8118,15 +8118,17 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const I=new THREE.Group();g.add(I);ud.interior=I;ud.hood=new THREE.Group();g.add(ud.hood);sb(0.5,0.08,0.4,blk,-0.25,0.42,0,0.03,I);sb(0.08,0.4,0.4,blk,-0.48,0.6,0,0.03,I);
   ud.seats=[new THREE.Vector3(-0.2,0.5,0)];ud.cab=new THREE.Group();g.add(ud.cab);
   /* sponsor livery: fictional brands on every flat surface */
+  const POOL=[['VOLTZY','#ffe600','#111'],['Quantum Kola','#e8112d','#fff'],['NEBULA·NET','#111','#33e0ff'],['HYPERNAP','#fff','#5a2ca0'],['GRIPZ','#111','#ffb000'],['ZAPPLE','#fff','#111'],['BOLTBURGER','#ff6a00','#fff'],['LUNAR LUBE','#0a1a40','#ffd700'],['SNAKKO','#2ecc40','#111'],['FIZZWHIP','#ff4fa8','#fff'],['ORBITEL','#1f5fe0','#fff'],['CRUNCHTRON','#111','#ff3b2f'],['MEGAMILK','#e8f6ff','#0a3a8a'],['PIXELPANTS','#7a2cff','#ffe600'],['TURBOTEA','#0b6b3a','#fff'],['DRONEDASH','#ff9a1f','#111'],['SOLARSOX','#ffd400','#c4252a'],['BYTEBANK','#0a0a0a','#2ef2a8'],['GLOWGUM','#ff2fd6','#111'],['TOWERCOIN','#f2c200','#111'],['RAPID RAMEN','#c4252a','#fff'],['ZOOMSURE','#003c71','#fff']];
+  const deck=POOL.slice().sort(()=>Math.random()-0.5);let di=0;const pick=()=>deck[di++%deck.length]; /* a fresh sponsor line-up every build */
   const dec=(txt,bg,fg,w,h,x,y,z,ry=0,rx=0,p=body)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map:adTexFE(txt,bg,fg),transparent:true,roughness:0.4,polygonOffset:true,polygonOffsetFactor:-2}));m.position.set(x,y,z);m.rotation.set(rx,ry,0);p.add(m);return m};
   for(const s of [1,-1]){const ry=s>0?0:Math.PI,z=s*0.645;
-   dec('VOLTZY','#ffe600','#111',0.9,0.2,-0.55,0.32,z,ry);dec('Quantum Kola','#e8112d','#fff',0.5,0.13,-0.05,0.33,z,ry); /* sidepods */
-   dec('NEBULA·NET','#111','#33e0ff',0.7,0.16,-1.05,0.66,s*0.26,ry); /* engine cover */
-   dec('HYPERNAP mattresses','#ffffff','#5a2ca0',0.5,0.36,-L/2+0.28,0.86,s*(W*0.43+0.012),ry); /* rear endplates */
-   dec('GRIPZ','#111','#ffb000',0.44,0.18,L/2-0.3,0.2,s*(W*0.49+0.012),ry) /* front endplates */}
-  dec('ZAPPLE','#ffffff','#111',0.55,0.14,L/2-0.6,0.53,0,0,-Math.PI/2); /* nose top */
-  dec('BOLTBURGER','#ff6a00','#fff',W*0.8,0.3,-L/2+0.2,1.0+0.022,0,0,-Math.PI/2); /* rear wing top */
-  dec('LUNAR LUBE','#0a1a40','#ffd700',W*0.8,0.2,L/2-0.25,0.137,0,0,-Math.PI/2); /* front wing top */
+   dec(...pick(),0.9,0.2,-0.55,0.32,z,ry);dec(...pick(),0.5,0.13,-0.05,0.33,z,ry); /* sidepods */
+   dec(...pick(),0.7,0.16,-1.05,0.66,s*0.26,ry); /* engine cover */
+   dec(...pick(),0.5,0.36,-L/2+0.28,0.86,s*(W*0.43+0.012),ry); /* rear endplates */
+   dec(...pick(),0.44,0.18,L/2-0.3,0.2,s*(W*0.49+0.012),ry) /* front endplates */}
+  dec(...pick(),0.55,0.14,L/2-0.6,0.53,0,0,-Math.PI/2); /* nose top */
+  dec(...pick(),W*0.8,0.3,-L/2+0.2,1.0+0.022,0,0,-Math.PI/2); /* rear wing top */
+  dec(...pick(),W*0.8,0.2,L/2-0.25,0.137,0,0,-Math.PI/2); /* front wing top */
   dec('#00','#000','#fff',0.3,0.3,0.5,0.6,0,0,-Math.PI/2); /* race number on the nose */
   ud.formulae=true;return g};
  const ADC=new Map();function adTexFE(txt,bg,fg){const k=txt+bg+fg;if(ADC.has(k))return ADC.get(k);const c=document.createElement('canvas');c.width=512;c.height=160;const x=c.getContext('2d');
