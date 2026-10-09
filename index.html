@@ -3145,7 +3145,7 @@ function step(){
  hemi.intensity=0.05+0.32*day;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.82; /* darker, richer daylight — no washed-out whites */ /* less flat fill, more sun contrast = readable shading */weatherLighting(hz,top);G.lightsOn=G.lightsOn||WX.key!=='clear';
  MAT.bld.emissiveIntensity=G.dark?0.9:0;for(const k in FACMAT)FACMAT[k].emissiveIntensity=G.dark?(k==='store'?1.1:0.85):0;for(const m of ENVMATS)m.envMapIntensity=0.05+0.95*day;
  horizon.position.set(camera.position.x,0,camera.position.z);horizon.children.forEach(m=>m.material.color.copy(m.userData.base).lerp(hz,0.35).multiplyScalar(0.25+0.75*day));
- ground.position.set(e.x,e.mesh.position.y-3,e.z);horizon.position.y=TERR.ref===null?0:(elev0-TERR.ref);
+ ground.position.set(e.x,e.mesh.position.y-3-(window.FLY&&G.spec.vtol?FLY.alt:0),e.z); /* flying car: the ground stays on the ground, not 3 m under the aircraft */horizon.position.y=TERR.ref===null?0:(elev0-TERR.ref);
  // car lights
  const braking=(e.acc||0)<-0.3||e.v<0.1;
  {const hz=G.sig===2&&Math.floor(G.simTime*1.5)%2===0;setLights(e.mesh,{head:true,brake:braking,sigL:hz||G.sig===-1&&G.blinkOn,sigR:hz||G.sig===1&&G.blinkOn,dark:G.dark})}
