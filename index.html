@@ -8276,7 +8276,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  for(const [id,k,p,num] of [['cMood','mood','value'],['cN','n','value',1],['cK','kids','value',1],['cCat','cat','checked'],['cParrot','parrot','checked']]){const el=document.getElementById(id);el[p]=C[k];el.addEventListener('change',()=>{C[k]=num?clamp(+el.value||0,0,3):el[p];if(k==='kids')C.kids=Math.min(C.kids,C.n);save()})}
  /* seat → eye position (interior camera + your rider follow it) */
  const SEATS={driver:[0,-1],front:[0,1],rearL:[1,-1],rearR:[1,1]};
- C.seat='driver';const _ep=window.eyePos;window.eyePos=function(spec){const e=_ep(spec);if(!C.ready||!game||!game.spec||spec!==game.spec||spec.style==='pod'||spec.hyper)return e;const out=e.clone();out.z=-spec.W*0.2;return out}; /* you always ride in the driver's seat (front left) */
+ C.seat='driver';const _ep=window.eyePos;window.eyePos=function(spec){const e=_ep(spec);if(!C.ready||!game||!game.spec||spec!==game.spec||spec.style==='pod'||spec.hyper||spec.formulae||spec.hbike||spec.ebike||spec.isetta||spec.solarcar||spec.dronewagon) /* single-seaters: always on the centreline */return e;const out=e.clone();out.z=-spec.W*0.2;return out}; /* you always ride in the driver's seat (front left) */
  function mySeat(){return 'driver'}
  /* companions */
  const NAMES=['Maya','Jordan','Priya','Leo','Sam','Aiko','Diego','Grace','Omar','Zoe','Theo','Nia'];const KIDN=['Lily','Max','Ava','Noah','Ruby','Eli'];
