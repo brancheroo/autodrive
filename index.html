@@ -267,6 +267,9 @@ const CARS=[
 {id:'delivan',name:'Amazom Prima Van',sub:'Electric last-mile delivery van',style:'van',L:6.4,W:2.11,H:2.77,wb:4.06,wr:0.42,hp:320,z60:9.5,top:75,range:'~150 mi (est.) · 135 kWh',weight:'~9,500 lb',drive:'Single motor FWD EV',level:'SAE Level 2 · supervised',
  tech:'A tall electric step van from a (very) fictional online megastore, shaped like the real purpose-built last-mile vans: short sloping nose, huge windshield, full-height cargo box with a sliding side door and a roll-up rear door. Its sides are one giant logo – a fat lowercase "amazom" with an orange grin-arrow – so nobody can miss it double-parked on their street.',
  colors:[['Prima Fleet Blue-Grey','#c9d4dc'],['Delivery White','#f1f2f2']],dash:'center-ford',wheel:'round',sensors:'gm',sound:'ev',driver:true,delivan:true},
+{id:'gwagen',name:'Mercedez-AMB G 580 EQ Ultra',sub:'Electric G-wagon · ultra-luxury · DRIVE PILOTE assist',style:'suv',L:4.73,W:1.93,H:1.99,wb:2.89,wr:0.39,hp:579,z60:3.6,top:112,range:'239 mi (EPA) · 116 kWh',weight:'6,800 lb',drive:'Quad motor EV (one per wheel) · G-Turn tank turn',level:'SAE Level 2 · hands-on Distronic + Active Steering',
+ tech:'The electric G-wagon in AMG ultra-luxury trim: the same upright brick body, flat glass and round headlights as since 1979, with four individual motors (one per wheel), so it can spin on the spot. Exposed door hinges, wing-top indicators and square arch flares outside; the EV carries a square design box on the side-hinged rear door instead of a spare wheel. Inside: diamond-quilted Nappa leather, open-pore walnut and two 12.3" screens.',
+ colors:[['Obsidian Black','#0f1012'],['Polar White','#eceeee'],['Manufaktur Olive','#5b6a3a'],['South Seas Blue','#2a6fb8'],['Opalite White Magno','#d9dbd8']],dash:'mercedes',wheel:'round',sensors:'mb',sound:'ev',driver:true,gwagen:true},
 {id:'h2saab',name:'Sahb 900 H2',sub:'Hydrogen fuel-cell hatchback',style:'sedan',L:4.69,W:1.69,H:1.42,wb:2.52,wr:0.32,hp:240,z60:7.2,top:130,range:'~400 mi on 6.2 kg of hydrogen',weight:'3,300 lb',drive:'Hydrogen fuel cell + 1.6 kWh buffer battery · FWD electric',level:'SAE Level 2 · supervised',
  tech:'The classic Swedish 3-door hatch with its upright wraparound windscreen and ignition between the seats, rebuilt around a hydrogen fuel cell. Two carbon-fibre tanks hold 6.2 kg of hydrogen for about 400 miles, it refuels in five minutes, and the only thing out of the tailpipe is water.',
  colors:[['Talladega Red','#a8121c'],['Cirrus White','#efefea'],['Scarab Green','#1e4a3a'],['Le Mans Blue','#1f3f7a'],['Black Pearl','#121316'],['Silver Metallic','#a9adb2']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,hydrogen:true},
@@ -1438,6 +1441,7 @@ const SHAPE_T={
 };
 // Per-model styling taken from manufacturer photos/spec sheets
 const MODEL={
+ 'gwagen':{prof:{ax:.02,g:[.015,.03,.64,.7],top:[[0,.84],[.012,.96],[.03,.99],[.2,1],[.6,1],[.64,.97],[.7,.6],[.75,.59],[.9,.58],[.97,.56],[.995,.5],[1,.44]],half:[[0,.95],[.015,.99],[.04,1],[.96,1],[.985,.98],[1,.93]],belt:[[.015,.62],[.3,.62],[.64,.62],[.7,.6]],bot:[[0,.14],[.04,.12],[.96,.12],[1,.14]]},epa:239,shape:{box:.12,clr:.12,roof:'paint',cpil:true,endR:.12,ft:.02,rt:.01,tum:.86},grille:'mb',drl:'round',tailL:'pair',rim:{n:5,style:'split',col:0x2a2c30},mirror:'big',handles:'bar',seat:'sport',int:{seat:0x6b3a24,mat:'leather',trim:'walnut',dash:0x1c1a18}},
  'delivan':{prof:{ax:.3,g:[.76,.78,.84,.9],top:[[0,.96],[.02,.99],[.1,1],[.8,1],[.85,.9],[.9,.62],[.95,.57],[.985,.5],[1,.42]],half:[[0,.94],[.03,.99],[.1,1],[.9,1],[.96,.96],[.99,.88],[1,.8]],belt:[[.76,.62],[.84,.6],[.9,.6]],bot:[[0,.1],[.04,.08],[.96,.08],[1,.1]]}},
  'rideshare':{prof:{ax:.06,g:[.18,.3,.58,.7],top:[[0,.66],[.03,.72],[.1,.75],[.18,.77],[.3,.95],[.42,1],[.52,.99],[.58,.95],[.64,.81],[.7,.69],[.8,.67],[.9,.64],[.97,.6],[1,.52]],half:[[0,.82],[.03,.92],[.1,.98],[.3,1],[.7,1],[.88,.98],[.95,.92],[.99,.82],[1,.68]],belt:[[.18,.74],[.4,.68],[.58,.67],[.7,.69]],bot:[[0,.16],[.05,.11],[.95,.11],[1,.14]]}},
  'taxi':{prof:{ax:.0,g:[.2,.31,.58,.7],top:[[0,.58],[.03,.64],[.1,.66],[.2,.68],[.31,.94],[.42,1],[.52,1],[.58,.96],[.64,.82],[.7,.68],[.8,.66],[.9,.64],[.97,.61],[1,.55]],half:[[0,.86],[.03,.94],[.1,.99],[.3,1],[.7,1],[.9,.99],[.96,.96],[.99,.9],[1,.84]],belt:[[.2,.67],[.4,.63],[.58,.62],[.7,.66]],bot:[[0,.15],[.05,.1],[.95,.1],[1,.13]]},epa:400,mirror:'chrome',badge:'oval',shape:{clr:.15,nose:.42,hood:.57,cowl:.68,roofF:.585,roofR:.315,tail:.07,deck:.64,belt:.6,tum:.74,endR:.14,ft:.1,rt:.08,roof:'paint',cpil:true},grille:'ford',drl:'ford',tailL:'pair',rim:{n:10,style:'spoke',col:0xc8ccd0},cal:0x333333,int:{seat:0x24252a,mat:'cloth',trim:'none',dash:0x1c1d20}},
@@ -2406,6 +2410,7 @@ const ENERGY={
  'keitruck':{epa:95,kwh:20,kg:850,cda:0.75,crr:0.011,dc:30,port:'CCS'},
  'aegis':{epa:200000,kwh:30000,kg:1800,cda:0.3,crr:0.007,dc:200000,port:'CCS'},
  'isetta':{epa:45,kwh:6,kg:295,cda:0.45,crr:0.009,dc:7,port:'J1772'},
+ 'gwagen':{epa:239,kwh:116,kg:3085,cda:1.25,crr:0.011,dc:200,port:'CCS'},
  'delivan':{epa:150,kwh:135,kg:4300,cda:2.6,crr:0.011,dc:150,port:'CCS'},
  'ebike':{epa:30,kwh:1.5,kg:110,cda:0.5,crr:0.008,dc:1,port:'J1772'},
  'hyperbike':{epa:3000,kwh:500,kg:270,cda:0.2,crr:0.006,dc:500,port:'CCS'},
@@ -6184,7 +6189,8 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   idbuzz:{sys:'Travel Assist',odd:'lanes',max:99,lc:'signal',hands:'on'},
   starfire:{sys:'bolt-on openpilot-style kit',odd:'lanes',max:90,lc:'signal',hands:'eyes'},
   smaht:{sys:'cruise control only',odd:'none',max:0,lc:'none',hands:'on'},
-  delivan:{sys:'Highway Assist',odd:'hwy',max:70,lc:'none',hands:'on'},
+  gwagen:{sys:'Distronic + Active Steering',odd:'lanes',max:130,lc:'auto',hands:'on'},
+ delivan:{sys:'Highway Assist',odd:'hwy',max:70,lc:'none',hands:'on'},
  };
  const A={st:null,eng:false,l3:false,why:'',okT:0,last:''};window.ADAS=A;
  const spec=()=>{const G=typeof game!=='undefined'?game:null;return G&&G.spec?S[G.spec.id]:null};
@@ -8021,6 +8027,43 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const rear=new THREE.Mesh(new THREE.PlaneGeometry(W*0.8,W*0.8*0.375),m);rear.position.set(-L/2-0.015,H*0.6,0);rear.rotation.y=-Math.PI/2;g.add(rear);
   const stripeM=new THREE.MeshStandardMaterial({color:0x1f8fd6,roughness:0.5});for(const s of [1,-1]){const st=new THREE.Mesh(new THREE.BoxGeometry(L*0.86,0.12,0.01),stripeM);st.position.set(-L*0.02,wr+0.18,s*(hw(0.5)+0.01));g.add(st)}}
  MODS.push({id:'delivan'});
+})();
+</script>
+<script>/* mods/61s-gwagen.js */
+/* Mercedez-AMB G 580 EQ Ultra (spec.gwagen): the electric G-Class shape (W465 "G 580 with EQ Technology") with AMG
+   ultra-luxury trim. The lofted body supplies the brick; this adds the G's signature hardware:
+   black square wheel-arch flares, running boards, indicator pods on the wing tops, exposed door hinges and the
+   chunky door-handle push buttons, the square "design box" on the side-hinged rear door (EV's spare-wheel replacement)
+   with its star, a roof spoiler lip and AMG badges. */
+(function(){
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.gwagen&&g&&!g.userData.gw){g.userData.gw=1;kit(g,spec,colorHex)}}catch(e){console.warn('gwagen',e)}return g};
+ function kit(g,spec,col){const{L,W,H,wr}=spec,P=(profCache[spec.id]||{}).P;if(!P)return;
+  const blk=new THREE.MeshStandardMaterial({color:0x141518,roughness:0.6}),gloss=new THREE.MeshPhysicalMaterial({color:0x0b0c0e,roughness:0.15,clearcoat:1}),
+   chrome=new THREE.MeshStandardMaterial({color:0xe2e4e8,metalness:1,roughness:0.12}),paint=new THREE.MeshPhysicalMaterial({color:col,metalness:0.6,roughness:0.25,clearcoat:1}),
+   amb=new THREE.MeshBasicMaterial({color:0x6b4400});
+  const add=(geo,m,x,y,z,ry=0)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.rotation.y=ry;o.castShadow=true;g.add(o);return o};
+  const side=(u,y)=>P.halfAt?P.halfAt(u,y):W/2;
+  for(const s of [1,-1]){
+   /* square-cut wheel-arch flares (the G's arches are flat-topped, not round) */
+   for(const ax of P.axles){const fl=add(new THREE.BoxGeometry(P.R*2+0.16,0.07,0.06),blk,ax,wr+P.R+0.03,s*(side((ax+L/2)/L,wr+P.R)+0.03));
+    for(const dx of [-1,1])add(new THREE.BoxGeometry(0.07,P.R+0.05,0.06),blk,ax+dx*(P.R+0.05),wr+P.R*0.45,s*(side((ax+L/2)/L,wr)+0.03))}
+   /* running board between the arches */
+   const x0=P.axles[1]+P.R+0.12,x1=P.axles[0]-P.R-0.12;add(new THREE.BoxGeometry(x1-x0,0.05,0.22),blk,(x0+x1)/2,0.36,s*(W/2-0.02));
+   add(new THREE.BoxGeometry(x1-x0-0.1,0.012,0.18),chrome,(x0+x1)/2,0.39,s*(W/2-0.02));
+   /* indicator pods on the wing tops */
+   const uw=0.9,yw=P.top(uw);add(new THREE.BoxGeometry(0.16,0.06,0.09),paint,P.xOf(uw),yw+0.03,s*(side(uw,yw-0.05)-0.12));add(new THREE.BoxGeometry(0.12,0.035,0.092),amb,P.xOf(uw)+0.035,yw+0.03,s*(side(uw,yw-0.05)-0.12));
+   /* exposed door hinges (front edge of each door) */
+   for(const u of [P.sh.cowl-0.02,(P.sh.roofR+P.sh.roofF)/2+0.01])for(const y of [H*0.38,H*0.55]){const z=s*(side(u,y)+0.012);add(new THREE.BoxGeometry(0.07,0.06,0.025),blk,P.xOf(u),y,z)}}
+  /* rear: side-hinged door with the EV's square design box + star */
+  const xr=-L/2-0.02,yb=H*0.5;add(new THREE.BoxGeometry(0.16,0.62,0.66),paint,xr-0.08,yb,0.04);add(new THREE.BoxGeometry(0.01,0.5,0.54),gloss,xr-0.165,yb,0.04);
+  const star=new THREE.Mesh(new THREE.TorusGeometry(0.09,0.012,8,28),chrome);star.rotation.y=Math.PI/2;star.position.set(xr-0.172,yb,0.04);g.add(star);
+  for(let k=0;k<3;k++){const a=k*Math.PI*2/3+Math.PI/2,sp=add(new THREE.BoxGeometry(0.008,0.09,0.012),chrome,xr-0.172,yb+Math.sin(a)*0.045,0.04+Math.cos(a)*0.045);sp.rotation.x=-a+Math.PI/2}
+  /* roof lip + AMG badges */
+  add(new THREE.BoxGeometry(L*0.12,0.03,W*0.8),gloss,-L/2+L*0.06,H+0.005,0);
+  const amg=new THREE.MeshBasicMaterial({color:0xe2e4e8});for(const s of [1,-1])add(new THREE.BoxGeometry(0.16,0.03,0.005),amg,P.xOf(0.8),H*0.36,s*(side(0.8,H*0.36)+0.006));
+  g.userData.gwKit=true}
+ MODS.push({id:'gwagen'});
 })();
 </script>
 <script>/* mods/62-trams.js */
