@@ -9123,8 +9123,16 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   mono.add(new THREE.Mesh(new THREE.TorusGeometry(0.13,0.016,10,32),gold));
   mono.add(new THREE.Mesh(new THREE.CircleGeometry(0.128,32),new THREE.MeshPhysicalMaterial({color:0xddeeff,transparent:true,opacity:0.3,roughness:0,clearcoat:1,side:THREE.DoubleSide})));
   for(let k=0;k<10;k++){const l=new THREE.Mesh(new THREE.TorusGeometry(0.014,0.004,6,10),gold);l.position.set(-0.03*Math.sin(k*0.5),-0.15-k*0.028,0);l.rotation.y=k%2?Math.PI/2:0;mono.add(l)}
-  for(const sd of [1,-1])for(let k=0;k<9;k++){const t=k/8,tuft=new THREE.Mesh(new THREE.SphereGeometry(0.075-t*0.03,10,8),hair);
-   tuft.position.set(nx+0.04-t*0.05,hy-0.34+Math.pow(t,2)*0.3,sd*(0.03+t*0.42));tuft.scale.set(0.6,0.8,1.5);tuft.rotation.x=sd*(-0.3-t*0.7);g.add(tuft)}}
+  /* bushy walrus moustache: three staggered layers of tufts, high in the middle, drooping down at the ends */
+  for(const sd of [1,-1])for(let L=0;L<3;L++)for(let k=0;k<12;k++){const t=k/11,tuft=new THREE.Mesh(new THREE.SphereGeometry(0.095-t*0.035,10,8),hair);
+   tuft.position.set(nx+0.05-t*0.07+L*0.02,hy-0.26-L*0.05-Math.pow(t,1.8)*0.24+((k*7+L*3)%5-2)*0.008,sd*(0.02+t*0.44+L*0.015));tuft.scale.set(0.7,0.9,1.4);tuft.rotation.x=sd*(0.35+t*0.8);g.add(tuft)}
+  /* top hat on the roof */
+  const sh=P&&P.sh,ru=sh?(sh.roofR+sh.roofF)/2:0.45,rx=P&&P.xOf?P.xOf(ru):0,ry=P&&P.top?P.top(ru):spec.H,silk=new THREE.MeshPhysicalMaterial({color:0x0a0a0c,roughness:0.35,sheen:1,clearcoat:0.3});
+  const hat=new THREE.Group();hat.position.set(rx,ry,0);hat.rotation.z=-0.08;g.add(hat);
+  const brim=new THREE.Mesh(new THREE.CylinderGeometry(0.48,0.48,0.03,40),silk);brim.position.y=0.015;brim.scale.z=0.85;hat.add(brim);
+  const crown=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.28,0.62,40),silk);crown.position.y=0.34;crown.scale.z=0.85;hat.add(crown);
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(0.287,0.282,0.1,40),new THREE.MeshStandardMaterial({color:0x5a0f14,roughness:0.6}));band.position.y=0.1;band.scale.z=0.86;hat.add(band);
+  for(const o of [brim,crown,band])o.castShadow=true}
 MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
 })();
 </script>
