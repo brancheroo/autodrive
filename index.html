@@ -8086,23 +8086,29 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const add=(geo,m,x,y,z,p=body)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;p.add(o);return o};
   const sb=(w,h,d,m,x,y,z,r=0.03,p)=>add(typeof softBox==='function'?softBox(w,h,d,r):new THREE.BoxGeometry(w,h,d),m,x,y,z,p);
   const fa=wb/2,ra=-wb/2,fy=wr; /* axle x, wheel centre y */
-  /* monocoque + needle nose (lathe, flattened) */
-  const tub=sb(1.9,0.42,0.62,paint,-0.1,0.42,0,0.12);
-  const nose=add(new THREE.LatheGeometry([[0.001,0],[0.15,0.15],[0.2,0.6],[0.22,1.3],[0.24,1.7]].map(([r,y])=>new THREE.Vector2(r,y)),24),paint,L/2-0.08,0.36,0);nose.rotation.z=Math.PI/2;nose.scale.set(1,1,0.75);
-  /* front wing: two elements + endplates */
-  sb(0.36,0.03,W*0.98,carbon,L/2-0.25,0.12,0,0.01);sb(0.22,0.025,W*0.9,paint,L/2-0.42,0.2,0,0.01);for(const s of [1,-1])sb(0.5,0.22,0.02,carbon,L/2-0.3,0.18,s*W*0.49,0.01);
-  /* sidepods + floor */
-  for(const s of [1,-1]){sb(1.5,0.34,0.32,paint,-0.45,0.3,s*0.48,0.1);sb(0.06,0.3,0.34,blk,0.31,0.3,s*0.48,0.02)} /* inlets */
-  sb(3.2,0.04,1.34,carbon,-0.25,0.08,0,0.01);
-  /* engine cover with shark fin, roll hoop with sensor pod */
-  const cov=sb(1.3,0.42,0.5,paint,-1.0,0.62,0,0.18);sb(1.1,0.3,0.02,paint,-1.2,0.92,0,0.01);
-  sb(0.14,0.32,0.12,carbon,-0.45,0.95,0,0.04);const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.08,16),blk);lid.position.set(-0.45,1.15,0);body.add(lid);
-  /* halo */
-  const halo=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.03,8,32,Math.PI*1.25),carbon);halo.rotation.set(Math.PI/2,0,Math.PI*0.875);halo.position.set(-0.05,0.86,0);body.add(halo);
-  sb(0.05,0.3,0.06,carbon,0.3,0.72,0,0.02);
-  /* rear wing on swan-neck + diffuser */
-  sb(0.34,0.04,W*0.86,carbon,-L/2+0.2,0.98,0,0.01);sb(0.22,0.03,W*0.86,paint,-L/2+0.36,1.06,0,0.01);for(const s of [1,-1])sb(0.55,0.42,0.02,carbon,-L/2+0.28,0.88,s*W*0.43,0.01);
-  sb(0.06,0.3,0.06,carbon,-L/2+0.4,0.74,0,0.02);sb(0.4,0.16,1.0,carbon,-L/2+0.2,0.16,0,0.02);
+  /* one continuous fuselage: a lathe from nose tip to tail (along x), flattened – needle nose, swelling into the cockpit
+     and engine cover, tapering to the gearbox. No separate boxes, nothing jutting. */
+  const FP=[[0.004,0],[0.07,0.12],[0.12,0.45],[0.17,1.1],[0.24,1.9],[0.33,2.5],[0.34,3.0],[0.3,3.6],[0.22,4.3],[0.12,4.85],[0.004,L]].map(([r,y])=>new THREE.Vector2(r,y*(L/5.02)));
+  const fus=add(new THREE.LatheGeometry(FP,40),paint,L/2,0.46,0);fus.rotation.z=Math.PI/2;fus.scale.set(1,1,0.82); /* nose points +x */
+  /* sidepods: long teardrops blended into the fuselage */
+  const SP=[[0.004,0],[0.16,0.25],[0.2,0.7],[0.19,1.2],[0.12,1.6],[0.004,1.85]].map(([r,y])=>new THREE.Vector2(r,y));
+  for(const sdd of [1,-1]){const pod=add(new THREE.LatheGeometry(SP,28),paint,0.45,0.32,sdd*0.42);pod.rotation.z=Math.PI/2;pod.scale.set(1.15,1,1.5);
+   const inl=add(new THREE.CircleGeometry(0.12,24),blk,0.46,0.32,sdd*0.42);inl.rotation.y=Math.PI/2;inl.scale.set(1,0.7,1)} /* flush inlet */
+  /* floor & diffuser: thin, rounded */
+  sb(3.4,0.035,1.36,carbon,-0.25,0.08,0,0.017);sb(0.5,0.12,1.0,carbon,-L/2+0.28,0.14,0,0.05);
+  /* shark fin faired into the engine cover */
+  const fin=new THREE.Shape([[0,0],[1.2,0],[1.2,0.06],[0.2,0.34],[0,0.34]].map(([x,y])=>new THREE.Vector2(x,y)));const fg=new THREE.ExtrudeGeometry(fin,{depth:0.016,bevelEnabled:true,bevelSize:0.006,bevelThickness:0.006,bevelSegments:2});fg.translate(0,0,-0.008);add(fg,paint,-1.75,0.7,0);
+  /* halo (smooth torus + faired centre strut) with a flush sensor dome on top of the airbox */
+  const halo=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.028,10,40,Math.PI*1.25),carbon);halo.rotation.set(Math.PI/2,0,Math.PI*0.875);halo.position.set(-0.05,0.86,0);body.add(halo);
+  const st=add(new THREE.CapsuleGeometry(0.025,0.25,6,12),carbon,0.27,0.72,0);st.rotation.z=-0.5;
+  const dome=add(new THREE.SphereGeometry(0.11,24,12,0,Math.PI*2,0,Math.PI/2),new THREE.MeshPhysicalMaterial({color:0x101216,roughness:0.05,clearcoat:1}),-0.5,0.78,0);dome.scale.set(1.6,0.7,1); /* airbox + flush lidar/camera dome */
+  /* wings: rounded aerofoil planks, swept endplates, no sharp ends */
+  const wing=(span,ch,th,m,x,y)=>{const w=sb(ch,th,span,m,x,y,0,th*0.48);w.rotation.z=0.08;return w};
+  wing(W*0.98,0.34,0.03,carbon,L/2-0.25,0.12);wing(W*0.88,0.2,0.025,paint,L/2-0.42,0.19);
+  for(const sdd of [1,-1]){const ep=sb(0.5,0.2,0.018,carbon,L/2-0.32,0.18,sdd*W*0.49,0.009);ep.rotation.z=0.25}
+  wing(W*0.84,0.34,0.035,carbon,-L/2+0.22,0.98);wing(W*0.84,0.2,0.028,paint,-L/2+0.38,1.06);
+  for(const sdd of [1,-1]){const ep=sb(0.55,0.4,0.018,carbon,-L/2+0.28,0.88,sdd*W*0.42,0.009);ep.rotation.z=-0.12}
+  const neck=add(new THREE.CapsuleGeometry(0.03,0.3,6,12),carbon,-L/2+0.42,0.78,0);neck.rotation.z=0.3; /* swan neck, round */
   /* lights: thin LED strips (FE cars run a rear rain light) */
   const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
   sb(0.02,0.02,0.3,head,L/2+0.02,0.36,0,0.005);sb(0.02,0.05,0.2,tail,-L/2+0.02,0.6,0,0.01);for(const s of [1,-1])sb(0.02,0.02,0.05,s<0?sigL:sigR,L/2-0.42,0.22,s*W*0.45,0.005);
@@ -8111,8 +8117,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const tyre=new THREE.CylinderGeometry(wr,wr,0.3,40).rotateX(Math.PI/2),rim=new THREE.CylinderGeometry(wr*0.72,wr*0.72,0.31,40).rotateX(Math.PI/2),tm=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.85}),wheels=[];
   for(const [x,front] of [[fa,true],[ra,false]])for(const s of [1,-1]){const piv=new THREE.Group();piv.position.set(x,fy,s*(W/2-0.16));const holder=new THREE.Group();piv.add(holder);const spin=new THREE.Group();holder.add(spin);
    spin.add(new THREE.Mesh(tyre,tm));const r=new THREE.Mesh(rim,paint);spin.add(r);for(let k=0;k<5;k++){const sl=new THREE.Mesh(new THREE.BoxGeometry(wr*0.5,0.02,0.32),blk);sl.rotation.z=k*Math.PI*2/5;spin.add(sl)}g.add(piv);wheels.push({piv,spin,front,sign:s});
-   if(front)add(new THREE.BoxGeometry(0.62,0.08,0.34),carbon,x,fy+wr+0.05,s*(W/2-0.16)); /* front wheel pod */
-   const arm=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.03,W/2-0.36),carbon);arm.position.set(x,fy,s*(W/4));body.add(arm)} /* suspension arms */
+   const arm=new THREE.Mesh(new THREE.CapsuleGeometry(0.016,W/2-0.42,4,8),carbon);arm.rotation.x=Math.PI/2;arm.position.set(x,fy,s*(W/4));body.add(arm)} /* round, slim suspension arms */ /* suspension arms */
   ud.wheels=wheels;
   /* cockpit: seat, wheel-less (autonomous) */
   const I=new THREE.Group();g.add(I);ud.interior=I;ud.hood=new THREE.Group();g.add(ud.hood);sb(0.5,0.08,0.4,blk,-0.25,0.42,0,0.03,I);sb(0.08,0.4,0.4,blk,-0.48,0.6,0,0.03,I);
