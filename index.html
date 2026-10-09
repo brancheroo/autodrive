@@ -409,7 +409,7 @@ const TEX={win:windowTex(false),winN:windowTex(true)};
 const texLoader=new THREE.TextureLoader();texLoader.setCrossOrigin('anonymous');
 /* same URL loaded again → clone of the first texture: clones share one Source, so one download and one GPU upload, while each
    clone keeps its own repeat/offset/wrap/encoding (concrete alone was being uploaded 5× = 112 MB) */
-{const _ld=texLoader.load.bind(texLoader),C=new Map();texLoader.load=function(url,onLoad,onProg,onErr){let e=C.get(url);if(!e){const t=_ld(url,tx=>{e.ok=true;for(const f of e.wait)try{f()}catch(x){}e.wait=[];if(onLoad)onLoad(tx)},onProg,er=>{C.delete(url);if(onErr)onErr(er)});e={t,ok:false,wait:[]};C.set(url,e);return t}
+{const _ld=texLoader.load.bind(texLoader),C=new Map();texLoader.load=function(url,onLoad,onProg,onErr){if(!/polyhaven/.test(url))return _ld(url,onLoad,onProg,onErr); /* only the fixed material set – never per-tile imagery (would hold every image forever) */let e=C.get(url);if(!e){const t=_ld(url,tx=>{e.ok=true;for(const f of e.wait)try{f()}catch(x){}e.wait=[];if(onLoad)onLoad(tx)},onProg,er=>{C.delete(url);if(onErr)onErr(er)});e={t,ok:false,wait:[]};C.set(url,e);return t}
  const c=e.t.clone();const fire=()=>{c.needsUpdate=true;if(onLoad)onLoad(c)};if(e.ok)setTimeout(fire,0);else e.wait.push(fire);return c}}
 const ANISO=renderer.capabilities.getMaxAnisotropy();
 const TEXRES=HIGH?'2k':'1k';
