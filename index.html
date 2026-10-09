@@ -7947,9 +7947,9 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.delivan&&g&&!g.userData.delivan){g.userData.delivan=1;livery(g,spec)}}catch(e){console.warn('delivan',e)}return g};
  function livery(g,spec){const{L,W,H,wr}=spec,P=(profCache[spec.id]||{}).P,m=new THREE.MeshStandardMaterial({map:logoTex(),transparent:true,roughness:0.5,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2});
   const hw=u=>P&&P.halfAt?P.halfAt(u,H*0.55):W/2;
-  for(const s of [1,-1]){const pl=new THREE.Mesh(new THREE.PlaneGeometry(L*0.62,L*0.62*0.375),m);pl.position.set(-L*0.1,H*0.56,s*(hw(0.4)+0.012));if(s<0)pl.rotation.y=Math.PI;g.add(pl)} /* huge side logos */
+  for(const s of [1,-1]){const pl=new THREE.Mesh(new THREE.PlaneGeometry(L*0.8,L*0.8*0.375),m);pl.position.set(-L*0.08,H*0.58,s*(hw(0.4)+0.012));if(s<0)pl.rotation.y=Math.PI;g.add(pl)} /* huge side logos */
   const rear=new THREE.Mesh(new THREE.PlaneGeometry(W*0.8,W*0.8*0.375),m);rear.position.set(-L/2-0.015,H*0.6,0);rear.rotation.y=-Math.PI/2;g.add(rear);
-  const stripeM=new THREE.MeshStandardMaterial({color:0x1f8fd6,roughness:0.5});for(const s of [1,-1]){const st=new THREE.Mesh(new THREE.BoxGeometry(L*0.86,0.12,0.01),stripeM);st.position.set(-L*0.02,wr*2+0.12,s*(hw(0.5)+0.01));g.add(st)}}
+  const stripeM=new THREE.MeshStandardMaterial({color:0x1f8fd6,roughness:0.5});for(const s of [1,-1]){const st=new THREE.Mesh(new THREE.BoxGeometry(L*0.86,0.12,0.01),stripeM);st.position.set(-L*0.02,wr+0.18,s*(hw(0.5)+0.01));g.add(st)}}
  MODS.push({id:'delivan'});
 })();
 </script>
