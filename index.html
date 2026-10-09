@@ -8264,8 +8264,8 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   preRender(){const G=typeof game!=='undefined'?game:null;if(!isV()||!G||!G.ego||!scene.fog)return;
    if(F.alt>20){if(!F.fog0)F.fog0=[scene.fog.near,scene.fog.far];const clr=(WX.cloud||0)<0.3,n0=F.fog0[0],f0=F.fog0[1];
     if(clr){scene.fog.near=1e9;scene.fog.far=2e9}else{scene.fog.near=Math.max(n0,F.alt*0.6);scene.fog.far=Math.max(f0,F.alt*4)} /* clear weather: no fog at all in flight; overcast/rain/snow keep theirs */
-    const far=Math.max(6000,F.alt*20);if(camera.far!==far){camera.far=far;camera.updateProjectionMatrix()}
-    if(typeof ground!=='undefined'){const k=Math.max(1,Math.min(60,F.alt*30/9000));ground.scale.set(k,k,1)}}
+    const far=Math.max(20000,F.alt*20);if(camera.far!==far){camera.far=far;camera.updateProjectionMatrix()}
+    if(typeof ground!=='undefined'){const k=Math.max(5,Math.min(60,F.alt*30/9000));ground.scale.set(k,k,1)}}
    else if(F.fog0){scene.fog.near=F.fog0[0];scene.fog.far=F.fog0[1];F.fog0=null;camera.far=6000;camera.updateProjectionMatrix();if(typeof ground!=='undefined')ground.scale.set(1,1,1)}},
   frame(){const now=performance.now(),dt=Math.min(0.1,(now-last)/1000);last=now;const G=typeof game!=='undefined'?game:null;const b=badge();
    if(!isV()||!G.ego||!G.ego.mesh){b.style.display='none';return}const e=G.ego,m=e.mesh,U=m.userData;
