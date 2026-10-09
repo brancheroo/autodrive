@@ -9121,7 +9121,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   const xr=-spec.L/2,gy0=spec.H*0.66,gy1=spec.H*0.95,gw=spec.W*0.78;
   const gl=new THREE.Mesh(new THREE.PlaneGeometry(gw,gy1-gy0),new THREE.MeshPhysicalMaterial({color:0x10202c,roughness:0.05,metalness:0.3,clearcoat:1}));gl.position.set(xr-0.025,(gy0+gy1)/2,0);gl.rotation.y=-Math.PI/2;g.add(gl);
   const fr=new THREE.Mesh(new THREE.BoxGeometry(0.02,gy1-gy0+0.05,gw+0.05),chrome);fr.position.set(xr-0.012,(gy0+gy1)/2,0);g.add(fr);
-  const tw=new THREE.Mesh(new THREE.PlaneGeometry(gw,0.2),wood);tw.position.set(xr-0.025,spec.H*0.5,0);tw.rotation.y=-Math.PI/2;g.add(tw);
+  const tw=new THREE.Mesh(new THREE.PlaneGeometry(spec.W*0.5,0.2),wood);tw.position.set(xr-0.025,spec.H*0.5,0);tw.rotation.y=-Math.PI/2;g.add(tw);
   const bp=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.13,spec.W*0.98),chrome);bp.position.set(xr-0.04,0.42,0);g.add(bp)}
  function stache(g,spec){const P=(profCache[spec.id]||{}).P,nx=spec.L/2,hy=P&&P.top?P.top(0.97):0.75;
   const gold=new THREE.MeshStandardMaterial({color:0xd4af37,metalness:1,roughness:0.2}),hair=new THREE.MeshStandardMaterial({color:0x0b0b0b,roughness:0.95});
