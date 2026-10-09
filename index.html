@@ -6146,6 +6146,70 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    document.body.appendChild(box);document.getElementById('tripSumX').onclick=()=>box.remove();setTimeout(()=>{if(box.parentNode)box.remove()},60000)}});
 })();
 </script>
+<script>/* mods/29j-adas.js */
+/* Real-world driver-assist suites. Cars with a real counterpart now drive only where (and how) their real system can,
+   in Normal, Comfort and Express alike; outside that, the owner drives (the badge says who is driving and why).
+   Fictional cars keep their fictional autonomy. Cannonball and the hypercar/satellite planner are untouched.
+   odd: all (everywhere) · urban (no freeways) · hwy (mapped divided highways) · lanes (any road with lane lines; does
+        NOT handle traffic lights/stop signs – the driver takes over approaching one) · none (no lane centring: driver drives)
+   l3:  eyes-off traffic-jam pilot (motorway, ≤ l3max mph, behind a lead car, daylight, dry) on top of the L2 fallback
+   lc:  auto (system changes lanes itself) · signal (driver taps the indicator, system completes it) · none
+   max: system speed limit while engaged (mph) · hands: free / eyes (hands-free with eye monitoring) / on / driverless */
+(function(){
+ const S={
+  'waymo-ipace':{sys:'Wayfro Driver (5th gen)',odd:'all',max:65,lc:'auto',hands:'driverless'},
+  'waymo-zeekr':{sys:'Wayfro Driver (6th gen)',odd:'all',max:65,lc:'auto',hands:'driverless'},
+  cybercab:{sys:'FSDish (Unsupervised)',odd:'all',max:65,lc:'auto',hands:'driverless'},
+  'model-y':{sys:'FSDish (Supervised)',odd:'all',max:85,lc:'auto',hands:'eyes'},
+  'model-3':{sys:'FSDish (Supervised)',odd:'all',max:85,lc:'auto',hands:'eyes'},
+  'model-s':{sys:'FSDish (Supervised)',odd:'all',max:85,lc:'auto',hands:'eyes'},
+  zoox:{sys:'Zooks autonomy',odd:'urban',max:45,lc:'auto',hands:'driverless'},
+  s580:{sys:'Distronic + Active Steering',odd:'lanes',max:130,lc:'auto',hands:'on',l3:'DRIVE PILOTE',l3max:40},
+  i7:{sys:'Highway Assistunt',odd:'hwy',max:85,lc:'signal',hands:'free',l3:'Personal Pilote',l3max:37},
+  'escalade-iq':{sys:'Super Snooze',odd:'hwy',max:85,lc:'auto',hands:'free'},
+  mache:{sys:'BlueSnooze 1.4',odd:'hwy',max:80,lc:'signal',hands:'free'},
+  lucid:{sys:'DreamyDrive Pro',odd:'hwy',max:85,lc:'signal',hands:'free'},
+  r1s:{sys:'Autonomyish+',odd:'hwy',max:85,lc:'auto',hands:'free'},
+  r2:{sys:'Autonomyish+',odd:'hwy',max:85,lc:'auto',hands:'free'},
+  ex90:{sys:'Pilot Assist',odd:'lanes',max:80,lc:'signal',hands:'on'},
+  taycan:{sys:'Active Lane Keeping + ACC',odd:'lanes',max:130,lc:'none',hands:'on'},
+  whaletail:{sys:'Lane Keeping + ACC',odd:'lanes',max:130,lc:'none',hands:'on'},
+  ioniq5:{sys:'Highway Driving Assist 2',odd:'hwy',max:95,lc:'signal',hands:'on'},
+  idbuzz:{sys:'Travel Assist',odd:'lanes',max:99,lc:'signal',hands:'on'},
+  starfire:{sys:'bolt-on openpilot-style kit',odd:'lanes',max:90,lc:'signal',hands:'eyes'},
+  smaht:{sys:'cruise control only',odd:'none',max:0,lc:'none',hands:'on'},
+  delivan:{sys:'Highway Assist',odd:'hwy',max:70,lc:'none',hands:'on'},
+ };
+ const A={st:null,eng:false,l3:false,why:'',okT:0,last:''};window.ADAS=A;
+ const spec=()=>{const G=typeof game!=='undefined'?game:null;return G&&G.spec?S[G.spec.id]:null};
+ const bypass=()=>(window.CANNON&&CANNON.on)||(typeof smartOn==='function'&&smartOn())||(window.DRV&&DRV.manual);
+ function road(){const G=game,i=routeLLnh(G.ego.s)[2],n=NODEINFO.get(G.route.nodes[i])||{};return n.hw||''}
+ function controlAhead(){const G=game,e=G.ego;for(const c of G.upcoming||[]){const d=Math.hypot(c.x-e.x,c.z-e.z);if(d<160)return c.type==='signal'?'a traffic light':'a stop sign'}return null}
+ function leadNear(){const G=game,e=G.ego;return G.agents.some(a=>a.kind==='route'&&!a.loose&&a.s>e.s&&a.s-e.s<60)}
+ /* is the system available right here? returns '' if yes, else the reason the driver has it */
+ function oddWhy(s){const hw=road(),fwy=/^(motorway|trunk)(_link)?$/.test(hw),marked=/^(motorway|trunk|primary|secondary|tertiary)(_link)?$/.test(hw);
+  switch(s.odd){case'all':return '';case'none':return `no lane centring – ${s.sys}`;
+   case'urban':return fwy?'it doesn\'t drive on freeways':'';
+   case'hwy':return fwy?'':'only works on mapped divided highways';
+   case'lanes':{if(!marked)return 'needs clearly marked lanes';const c=controlAhead();return c?`doesn't handle intersections – ${c} ahead`:''}}return ''}
+ function l3ok(s){if(!s.l3)return false;const G=game;return /^motorway$/.test(road())&&G.ego.v*MPH<=s.l3max&&!G.dark&&(WX.key==='clear')&&leadNear()}
+ function update(dt){const s=spec();A.st=s;if(!s||bypass()){A.eng=false;A.l3=false;A.why='';return}
+  const why=oddWhy(s);A.okT=why?0:A.okT+dt;const was=A.eng;A.eng=!why&&(A.okT>1.5||was); /* engage after 1.5 s of valid conditions, drop out immediately */A.why=why;A.l3=A.eng&&l3ok(s)}
+ /* engaged: system speed limit (L3 has its own lower one) */
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo)=>{if(!isEgo||!A.st||!A.eng||bypass())return null;const cap=A.l3?A.st.l3max:A.st.max;return cap?{v:cap/MPH,reason:A.l3?`${A.st.l3} · L3 limit ${cap} mph`:`${A.st.sys} · max ${cap} mph`}:null});
+ /* lane changes: systems without (auto) lane change don't pass on their own; mandatory ones (exits, merges, closures) become the driver's */
+ A.blockLC=why=>{if(!A.st||!A.eng||bypass())return false;const discretionary=/Passing|Keeping right|tailgater|Express Lane|merging traffic/.test(why||'');if(A.st.lc==='none')return discretionary;return false};
+ A.lcNote=()=>A.st&&A.eng?(A.st.lc==='signal'?' · driver taps the indicator':A.st.lc==='none'?' · driver changes lanes':''):'';
+ /* badge */
+ let el=null;function badge(){if(!el){el=document.createElement('div');el.id='adasBadge';el.style.cssText='position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:40;padding:5px 12px;border-radius:14px;font:600 12px system-ui;color:#fff;pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px #0006';document.body.appendChild(el)}return el}
+ function show(){const s=A.st,b=badge();if(!s||bypass()||!game||!game.route){b.style.display='none';return}b.style.display='block';
+  let t,bg;if(A.eng){const h={driverless:'no one at the wheel',free:'hands-free',eyes:'hands-free · eyes on road',on:'hands on wheel'}[s.hands];
+   if(A.l3){t=`🟢 ${s.l3} (L3) · eyes-off · ≤${s.l3max} mph`;bg='#0f8a5f'}else{t=`${s.hands==='driverless'?'🟢':s.hands==='on'?'🟡':'🔵'} ${s.sys} · ${h}${A.lcNote()}`;bg=s.hands==='on'?'#8a6d0f':s.hands==='driverless'?'#0f8a5f':'#1f5fbf'}}
+  else{t=`👤 Driver is driving – ${s.sys}: ${A.why||'engaging…'}`;bg='#3a3f47'}
+  if(t!==A.last){A.last=t;b.textContent=t;b.style.background=bg}}
+ MODS.push({id:'adas',start(){A.eng=false;A.okT=0;A.last=''},sim(dt){try{if(typeof game!=='undefined'&&game&&game.route&&game.ego)update(dt)}catch(e){}},frame(){try{show()}catch(e){}}});
+})();
+</script>
 <script>/* mods/30-isect.js */
 /* (3) Four-way stop negotiation. Every stop-controlled node keeps an arrival queue shared by your car, route
    traffic and cross-street traffic. After the legal full stop a vehicle may only go when it is first in the
@@ -6227,7 +6291,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
    const ahead=L.count(e.s+Math.max(120,e.v*8));if(want>ahead-1){want=ahead-1;why='Lane ends ahead – merging right'}
    for(let k=want,step=0;step<n;step++){if(!blocked(k,e.s-10,e.s+250))break;const b=blocked(k,e.s-10,e.s+250);why=b.why||'Lane closed ahead';k=k>0?k-1:k+1;if(k<0||k>=n)break;want=k}
    L.tk=clamp(want,0,n-1);L.why=why;
-   if(L.tk!==L.k&&L.cool<=0&&!(window.DRV&&DRV.manual)){const nk=L.k+Math.sign(L.tk-L.k);if(gapOK(nk)){L.k=nk;L.cool=8;L.chg=3;L.slowT=0;L.clearT=0}else if(why)L.why=why+' · waiting for a gap'}
+   if(L.tk!==L.k&&L.cool<=0&&!(window.DRV&&DRV.manual)&&!(window.ADAS&&ADAS.blockLC&&ADAS.blockLC(why))){ /* real assist suites without lane change don't pass on their own */const nk=L.k+Math.sign(L.tk-L.k);if(gapOK(nk)){L.k=nk;L.cool=8;L.chg=3;L.slowT=0;L.clearT=0}else if(why)L.why=why+' · waiting for a gap'}
    let xb=0;for(const k in (window.XB||{}))xb+=XB[k]||0;const tgt=-L.k*L.laneW+xb;{const cur=window.LANEBIAS||0,dir=tgt-cur;if(!(Math.abs(dir)>0.05&&window.ENVELOPE&&ENVELOPE.sideBlocked(dir)))window.LANEBIAS=lerp(cur,tgt,Math.min(1,dt*(DRIVE.profile==='Comfort'?0.4:0.7)))} /* never slide sideways into an occupied space (lateral + is right; body frame left is +l) */ /* comfort: slower, gentler lane changes */L.chg-=dt;window.SIGOVR=L.chg>0||L.tk!==L.k?(L.tk>L.k||L.chg>0&&tgt<(window.LANEBIAS||0)-0.3?-1:1):0;if(Math.abs(tgt-window.LANEBIAS)<0.3&&L.tk===L.k)window.SIGOVR=0},
   preRender(){const st=game&&game.status||'';if(L.why&&game&&game.route&&(L.tk!==L.k||Math.abs(-L.k*L.laneW-(window.LANEBIAS||0))>0.4)&&(/^(Cruising|Following vehicle)/.test(st)||!st))game.status='↔️ '+L.why}});
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(isEgo){if(L.k>0&&L.tk<L.k){for(let x=10;x<200;x+=10)if(L.count(a.s+x)<=L.k)return {v:allow(0,Math.max(0,x-8)),reason:'↔️ Our lane ends – waiting for a gap to merge'}}return null}if(!a.dropWait)return null;let d=40;for(let x=10;x<200;x+=10)if(L.count(a.s+x)<=a.laneK){d=x;break}return {v:allow(0,Math.max(0,d-8))}}); /* lane ends and no gap yet: stop short of the end rather than squeeze */
