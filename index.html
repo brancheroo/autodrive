@@ -9114,7 +9114,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
  function woody(g,spec){const P=(profCache[spec.id]||{}).P;if(!P)return;const c=document.createElement('canvas');c.width=512;c.height=64;const x=c.getContext('2d');x.fillStyle='#6a3f1c';x.fillRect(0,0,512,64);
   for(let k=0;k<40;k++){x.strokeStyle=k%3?'#4e2c12':'#87532a';x.lineWidth=1+Math.random()*2;x.beginPath();const y=Math.random()*64;x.moveTo(0,y);for(let i=0;i<=512;i+=32)x.lineTo(i,y+Math.sin(i/60+k)*4);x.stroke()}
   const tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;tex.userData.own=true;const wood=new THREE.MeshStandardMaterial({map:tex,roughness:0.55}),chrome=new THREE.MeshStandardMaterial({color:0xe2e4e8,metalness:1,roughness:0.12});
-  const x0=-spec.L/2+0.15,x1=spec.L/2-1.3,y0=0.5,y1=spec.H*0.6,len=x1-x0,cx=(x0+x1)/2,cy=(y0+y1)/2;
+  const x0=-spec.L/2+0.15,x1=spec.L/2-1.3,y0=0.74,y1=spec.H*0.63,len=x1-x0,cx=(x0+x1)/2,cy=(y0+y1)/2;
   for(const sd of [1,-1]){const z=sd*((P.halfAt?P.halfAt(0.4,cy):spec.W/2)+0.008);const pn=new THREE.Mesh(new THREE.PlaneGeometry(len,y1-y0),wood);pn.position.set(cx,cy,z);pn.rotation.y=sd>0?0:Math.PI;g.add(pn);
    for(const y of [y0,y1]){const tr=new THREE.Mesh(new THREE.BoxGeometry(len,0.02,0.015),chrome);tr.position.set(cx,y,z);g.add(tr)}}}
  function stache(g,spec){const P=(profCache[spec.id]||{}).P,nx=spec.L/2,hy=P&&P.top?P.top(0.97):0.75;
