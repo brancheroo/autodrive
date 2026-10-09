@@ -8781,6 +8781,31 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   if(U.taxiMeter&&now-lastT>500){lastT=now;const x=U.taxiMeter.canvas.getContext('2d'),w=256;x.fillStyle='#0a0a0a';x.fillRect(0,0,w,96);x.fillStyle='#ff2a1a';x.font='700 54px Courier New, monospace';x.textAlign='right';x.fillText('$'+fare.toFixed(2),w-14,64);x.font='700 16px Arial';x.textAlign='left';x.fillText(G.arrived?'TIME OFF':'HIRED',12,88);U.taxiMeter.tex.needsUpdate=true}}});
 })();
 </script>
+<script>/* mods/89-trafficlevel.js */
+/* Traffic level (planning screen + live in the ⚙ panel): none / light / medium / heavy / jam / varied / live.
+   Scales trafficFactor (how many cars spawn) and, for heavy & jam, caps how fast other traffic moves so queues form.
+   • varied: density drifts smoothly as you travel (free-flowing stretches, busy patches, the odd jam), new pattern every ~2 km
+   • live: no free live-traffic feed exists (TomTom/HERE/Google need paid keys), so "live" is the typical traffic for the
+     current real local time of day at your location – the game's own time-of-day curve evaluated at today's actual clock. */
+(function(){
+ const LV=[['none','🚫 None'],['light','🟢 Light'],['medium','🟡 Medium'],['heavy','🟠 Heavy'],['jam','🔴 Jam'],['varied','🔀 Varied (changes as you travel)'],['live','📡 Live (real time of day)']];
+ const T={level:UIX.load('trafficLevel','medium')};window.TRAFFIC_LEVEL=T;
+ try{UIX.section('Traffic',`<select id="trafSel" style="width:100%;${UIX.sel}">${LV.map(([k,t])=>`<option value="${k}">${t}</option>`).join('')}</select><div style="font-size:11px;color:var(--dim)">How busy the roads are. Varied changes as you travel; Live uses typical traffic for the real current time where you are (no free live-traffic feed exists).</div>`,/Driving style|Graphics quality/);
+  const s=document.getElementById('trafSel');s.value=T.level;s.onchange=()=>{T.level=s.value;UIX.save('trafficLevel',s.value)}}catch(e){}
+ /* smooth 1-D value noise along the route (metres) → 0..1 */
+ const h=i=>{const x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x)},noise=s=>{const i=Math.floor(s),f=s-i,u=f*f*(3-2*f);return h(i)*(1-u)+h(i+1)*u};
+ function varied(){const G=game,s=(G&&G.ego?G.ego.s:0)/2000;const n=noise(s)*0.7+noise(s*3.1+9)*0.3;return n<0.12?4.5:n<0.3?0.25:n<0.6?1:n<0.85?1.8:3} /* jam / light / normal / busy / heavy */
+ function liveHour(){const G=game;try{const lat=toLat(G.ego.z),lon=toLon(G.ego.x),tz=G.tz||approxIANA(lat,lon);return +new Intl.DateTimeFormat('en-US',{timeZone:tz,hour:'numeric',hour12:false}).format(new Date())%24}catch(e){return new Date().getHours()}}
+ const CURVE=[.12,.08,.06,.06,.1,.25,.55,.95,1,.75,.6,.65,.7,.68,.7,.8,.95,1,.85,.6,.45,.35,.25,.18];
+ T.mult=()=>{switch(T.level){case'none':return 0;case'light':return 0.35;case'heavy':return 2.2;case'jam':return 4.5;case'varied':return varied();case'live':return null;default:return 1}};
+ const _tf=window.trafficFactor;
+ window.trafficFactor=function(){const m=T.mult();if(T.level==='live'){const base=_tf(),tod=(()=>{try{return trafficFactor0()}catch(e){return 1}})()||1;return base/tod*CURVE[liveHour()]} /* swap sim-clock hour for the real local hour */return m===0?0:_tf()*m};
+ /* heavy / jam: other traffic crawls, so you queue behind it */
+ (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo)=>{if(isEgo)return null;const m=T.level==='varied'?varied():T.mult();if(m==null||m<1.7)return null;const cap=m>=4?2.5+3*noise((a.s||0)/40):m>=2.8?6:9;return {v:cap}});
+ /* none: clear existing traffic once */
+ MODS.push({id:'trafficlevel',frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.agents||T.level!=='none'||!G.agents.length)return;for(const a of G.agents)scene.remove(a.mesh);G.agents.length=0}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
