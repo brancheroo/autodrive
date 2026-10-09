@@ -1850,7 +1850,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  if(md.chromeBelt||md.band){for(const s of [1,-1]){const N=40,pts=[];for(let i=0;i<=N;i++){const u=lerp(md.band?0.2:sh.tail+0.02,md.band?0.8:sh.cowl-0.01,i/N);const y=md.band?sh.clr+0.3:P.belt(u)+0.005;pts.push(new THREE.Vector3(P.xOf(u),y,s*((P.halfAt?P.halfAt(u,md.band?y:y-0.03):P.half(u)*0.955)+0.004)))} /* chrome belt / side band follow the rounded skin */
   const tube=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),60,md.band?0.05:0.012,6),md.band?gloss:chrome);if(md.band)tube.scale.set(1,1,1);g.add(tube)}}
  if(md.rocker){for(const s of [1,-1]){const r=new THREE.Mesh(new THREE.BoxGeometry(wb-2*P.R,0.14,0.05),gloss);r.position.set(P.axles[0]-wb/2,sh.clr+0.08,s*(W/2-0.04));g.add(r)}}
- if(md.rails){for(const s of [1,-1]){const r=new THREE.Mesh(new THREE.BoxGeometry(L*(sh.roofF-sh.roofR)*0.9,0.03,0.04),matte);r.position.set(P.xOf((sh.roofF+sh.roofR)/2),H+0.03,s*W*sh.tum*0.42);g.add(r)}}
+ if(md.rails){for(const s of [1,-1]){const r=new THREE.Mesh(new THREE.BoxGeometry(L*(sh.roofF-sh.roofR)*0.9,0.03,0.04),matte);const um=(sh.roofF+sh.roofR)/2;r.position.set(P.xOf(um),P.top(um)+0.01,s*W*sh.tum*0.42); /* sit on the actual roof */g.add(r)}}
  // sensors
  const sens=new THREE.MeshStandardMaterial({color:0x1a1c1f,roughness:0.35,metalness:0.4}),white=new THREE.MeshPhysicalMaterial({color:0xf0f0f0,roughness:0.3,clearcoat:1});
  if(spec.sensors==='waymo5'||spec.sensors==='waymo6'){
