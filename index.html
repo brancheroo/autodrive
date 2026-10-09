@@ -8229,7 +8229,39 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   ud.wheels=wheels;
   const I=new THREE.Group();g.add(I);ud.interior=I;ud.hood=new THREE.Group();g.add(ud.hood);
   const seat=new THREE.MeshStandardMaterial({color:0xe9e2d0,roughness:0.6});add(new THREE.BoxGeometry(0.55,0.1,0.55),seat,0.2,0.6,0,I);add(new THREE.BoxGeometry(0.1,0.6,0.55),seat,-0.08,0.88,0,I);
+  /* glass cockpit: one wide LCD (flight display + systems display) on a dash shroud, facing the pilot */
+  const dc=document.createElement('canvas');dc.width=1024;dc.height=320;const dtex=new THREE.CanvasTexture(dc);dtex.encoding=THREE.sRGBEncoding;ud.dash={c:dc.getContext('2d'),t:dtex,last:0};
+  const shroud=add(new THREE.BoxGeometry(0.22,0.26,0.9),dark,1.05,1.05,0,I);shroud.rotation.z=0.35;
+  const lcd=new THREE.Mesh(new THREE.PlaneGeometry(0.84,0.26),new THREE.MeshBasicMaterial({map:dtex}));lcd.position.set(0.935,1.08,0);lcd.rotation.order='YXZ';lcd.rotation.set(0,-Math.PI/2,0);lcd.rotateX(-0.35);I.add(lcd);
+  /* side-stick on the right console */
+  add(new THREE.BoxGeometry(0.5,0.12,0.16),dark,0.45,0.82,0.36,I);const stk=new THREE.Group();stk.position.set(0.55,0.88,0.36);I.add(stk);
+  const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.018,0.16,12),dark);shaft.position.y=0.08;stk.add(shaft);
+  const grip=new THREE.Mesh(new THREE.CapsuleGeometry(0.03,0.08,6,12),new THREE.MeshStandardMaterial({color:0x2a2c30,roughness:0.7}));grip.position.y=0.19;grip.rotation.z=-0.2;stk.add(grip);
+  const trig=new THREE.Mesh(new THREE.SphereGeometry(0.012,10,8),new THREE.MeshBasicMaterial({color:0xff3b2f}));trig.position.set(0.02,0.25,0);stk.add(trig);ud.stick=stk;
   ud.seats=[new THREE.Vector3(0.25,0.72,0)];ud.vtol=true;return g};
+ /* draws the LCD: left = flight display (horizon, speed & altitude tapes, Mach, vertical speed), right = systems */
+ function drawDash(D,e,dt){const x=D.c,W=1024,H=320,mid=W/2;x.fillStyle='#03060a';x.fillRect(0,0,W,H);
+  const pitch=Math.atan2(F.vz,Math.max(e.v,1)),roll=clamp(-(e.steer||0)*1.2,-0.6,0.6);
+  /* attitude indicator */
+  x.save();x.beginPath();x.rect(130,20,250,280);x.clip();x.translate(255,160);x.rotate(roll);const py=pitch*300;
+  x.fillStyle='#2a6fd6';x.fillRect(-300,-400+py,600,400);x.fillStyle='#7a4a22';x.fillRect(-300,py,600,400);x.strokeStyle='#fff';x.lineWidth=2;x.beginPath();x.moveTo(-300,py);x.lineTo(300,py);x.stroke();
+  x.font='12px monospace';x.fillStyle='#fff';x.textAlign='center';for(const d of [-20,-10,10,20]){const y=py-d*300*Math.PI/180;x.beginPath();x.moveTo(-30,y);x.lineTo(30,y);x.stroke();x.fillText(d,45,y+4)}
+  x.restore();x.strokeStyle='#ffd400';x.lineWidth=4;x.beginPath();x.moveTo(205,160);x.lineTo(240,160);x.lineTo(255,172);x.lineTo(270,160);x.lineTo(305,160);x.stroke();
+  /* speed tape (left) & altitude tape (right) */
+  const tape=(x0,val,unit,step,lbl)=>{x.fillStyle='#0b1220';x.fillRect(x0,20,110,280);x.fillStyle='#cfe';x.font='14px monospace';x.textAlign='center';
+   for(let k=-3;k<=3;k++){const v=Math.round(val/step)*step+k*step;const y=160-(v-val)/step*40;if(y<28||y>292)continue;x.fillText(Math.max(0,v).toLocaleString(),x0+55,y+5)}
+   x.fillStyle='#000';x.strokeStyle='#ffd400';x.lineWidth=2;x.fillRect(x0+4,140,102,40);x.strokeRect(x0+4,140,102,40);x.fillStyle='#fff';x.font='700 20px monospace';x.fillText(Math.round(val).toLocaleString(),x0+55,167);x.fillStyle='#8ab';x.font='12px system-ui';x.fillText(lbl,x0+55,16+0)};
+  tape(14,e.v*1.944,'kt',20,'KTS');tape(386,F.alt*3.281,'ft',500,'FT');
+  x.fillStyle='#8ab';x.font='13px system-ui';x.textAlign='left';x.fillText('MACH',140,316);x.fillStyle='#fff';x.font='700 15px monospace';x.fillText(F.mach.toFixed(2),186,316);
+  x.fillStyle='#8ab';x.font='13px system-ui';x.fillText('V/S',290,316);x.fillStyle=F.vz>1?'#2ef2a8':F.vz<-1?'#ffb000':'#fff';x.font='700 15px monospace';x.fillText(Math.round(F.vz*196.85).toLocaleString()+' fpm',320,316);
+  /* systems display */
+  const X0=mid+20;x.fillStyle='#0b1220';x.fillRect(X0,20,W-X0-14,280);x.textAlign='left';
+  const row=(t,v,c,y)=>{x.fillStyle='#8ab';x.font='15px system-ui';x.fillText(t,X0+18,y);x.fillStyle=c||'#fff';x.font='700 17px monospace';x.fillText(v,X0+170,y)};
+  row('PHASE',(F.phase||'Ready').toUpperCase(),'#2ef2a8',50);row('MODE',(window.CANNON&&CANNON.on)?'HYPERSONIC':'SUBSONIC  M<1','#ffd400',78);
+  row('FANS',F.alt<60?'VTOL · VERTICAL':(e.v>150?'CRUISE · TILTED':'TRANSITION'),'#fff',106);row('SCRAMJET',F.mach>1.2?'LIT · '+Math.round(e.v*2.237).toLocaleString()+' MPH':'STANDBY',F.mach>1.2?'#ff6a10':'#fff',134);
+  row('GEAR',F.alt>8?'UP':'DOWN · 3 GREEN',F.alt>8?'#fff':'#2ef2a8',162);row('DIST',fmtDist(Math.max(0,game.route.total-e.s))+' to pad','#fff',190);
+  row('AUTOPILOT','AUTONOMOUS · L5','#2ef2a8',218);row('POWER','FUSION 100%','#2ef2a8',246);
+  x.strokeStyle='#1c2733';x.lineWidth=3;x.strokeRect(2,2,W-4,H-4);D.t.needsUpdate=true}
  const _eye=window.eyePos;if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.vtol)return new THREE.Vector3(0.42,1.33,0) /* head ~0.15 m under the canopy top (1.61 m) */;return _eye.apply(this,arguments)};
  /* ---- flight: replaces the road planner for the ego ---- */
  const _plan=window.plan;
@@ -8273,6 +8305,8 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    for(const f of U.fans||[]){f.piv.rotation.z=-tilt*Math.PI/2;f.rot.rotation.y+=dt*(40+60*(1-tilt))}
    const gearUp=F.alt>8;for(const w of U.wheels||[]){w.piv.visible=!gearUp;if(w.strut)w.strut.visible=!gearUp}
    if(U.flame){U.flame.visible=F.mach>1.2;U.flame.scale.set(1,0.6+Math.min(2,F.mach/5),1)}
+   if(U.dash&&now-U.dash.last>120){U.dash.last=now;drawDash(U.dash,e,dt)}
+   if(U.stick){const p=clamp(F.vz/60,-1,1)*0.3,r=clamp(e.steer||0,-0.6,0.6)*0.5;U.stick.rotation.z+=( -p-U.stick.rotation.z)*Math.min(1,dt*6);U.stick.rotation.x+=(r-U.stick.rotation.x)*Math.min(1,dt*6)} /* side-stick follows the autopilot's pitch & roll */
    b.style.display='block';b.textContent=`✈️ ${F.phase||'Ready'} · ${Math.round(F.alt*3.281).toLocaleString()} ft · Mach ${F.mach.toFixed(1)} · ${Math.round(e.v*2.237).toLocaleString()} mph`}});
 })();
 </script>
