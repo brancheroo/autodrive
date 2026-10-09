@@ -345,7 +345,7 @@ renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputEncoding=THREE.sRGBEncoding;
 // real objects rarely have knife edges: every box gets rounded edges scaled to its size (thin plates stay crisp)
 const SharpBox=THREE.BoxGeometry;THREE.BoxGeometry=function(w=1,h=1,d=1,sx,sy,sz){if(sx||sy||sz)return new SharpBox(w,h,d,sx,sy,sz);const r=Math.min(0.035,Math.min(w,h,d)*0.18);return r<0.0015?new SharpBox(w,h,d):roundBox(w,h,d,r,2)};
-const scene=new THREE.Scene();
+const scene=new THREE.Scene();{const _rm=scene.remove.bind(scene);scene.remove=function(...objs){const r=_rm(...objs);for(const o of objs)try{if(typeof freeOwn==='function')freeOwn(o)}catch(e){}return r}} /* objects leaving the scene release their own canvas textures (re-uploaded automatically if ever re-added) */
 const camera=new THREE.PerspectiveCamera(70,1,0.1,6000);
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
 addEventListener('resize',resize);resize();
