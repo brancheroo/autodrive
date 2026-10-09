@@ -8240,12 +8240,12 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const trig=new THREE.Mesh(new THREE.SphereGeometry(0.012,10,8),new THREE.MeshBasicMaterial({color:0xff3b2f}));trig.position.set(0.02,0.25,0);stk.add(trig);ud.stick=stk;
   /* distinguished nose: monocle (gold rim, glass lens, chain) over the right "eye" and a bushy black moustache */
   {const gold=new THREE.MeshStandardMaterial({color:0xd4af37,metalness:1,roughness:0.2}),hair=new THREE.MeshStandardMaterial({color:0x0b0b0b,roughness:0.95}),nx=L/2;
-   const mono=new THREE.Group();mono.position.set(nx-0.42,0.98,0.2);mono.rotation.y=Math.PI/2+0.5;g.add(mono);
+   const mono=new THREE.Group();mono.position.set(nx-0.42,1.0,0.27);mono.rotation.y=Math.PI/2+0.5;g.add(mono);
    mono.add(new THREE.Mesh(new THREE.TorusGeometry(0.085,0.012,10,32),gold));
    const lens=new THREE.Mesh(new THREE.CircleGeometry(0.083,32),new THREE.MeshPhysicalMaterial({color:0xddeeff,transparent:true,opacity:0.35,roughness:0,clearcoat:1,side:THREE.DoubleSide}));mono.add(lens);
    for(let k=0;k<8;k++){const l=new THREE.Mesh(new THREE.TorusGeometry(0.012,0.003,6,10),gold);l.position.set(0.02*Math.sin(k),-0.1-k*0.025,0.01);l.rotation.y=k%2?Math.PI/2:0;mono.add(l)}
    for(const sd of [1,-1]){for(let k=0;k<7;k++){const t=k/6,tuft=new THREE.Mesh(new THREE.SphereGeometry(0.05-t*0.022,10,8),hair);
-     tuft.position.set(nx-0.36-t*0.06,0.74-t*0.02+Math.pow(t,2.2)*0.1,sd*(0.03+t*0.26));tuft.scale.set(0.7,0.75,1.5);tuft.rotation.x=sd*(-0.3-t*0.6);g.add(tuft)}}}
+     tuft.position.set(nx-0.34-t*0.06,0.66-t*0.02+Math.pow(t,2.2)*0.1,sd*(0.03+t*0.26));tuft.scale.set(0.7,0.75,1.5);tuft.rotation.x=sd*(-0.3-t*0.6);g.add(tuft)}}}
   ud.seats=[new THREE.Vector3(0.25,0.72,0)];ud.vtol=true;return g};
  /* draws the LCD: left = flight display (horizon, speed & altitude tapes, Mach, vertical speed), right = systems */
  function drawDash(D,e,dt){const x=D.c,W=1024,H=320,mid=W/2;x.fillStyle='#03060a';x.fillRect(0,0,W,H);
