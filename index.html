@@ -270,6 +270,9 @@ const CARS=[
 {id:'gwagen',name:'Mercedez-AMB G 580 EQ Ultra',sub:'Electric G-wagon · ultra-luxury · Distronic assist',style:'suv',L:4.73,W:1.93,H:1.99,wb:2.89,wr:0.39,hp:579,z60:3.6,top:112,range:'239 mi (EPA) · 116 kWh',weight:'6,800 lb',drive:'Quad motor EV (one per wheel) · G-Turn tank turn',level:'SAE Level 2 · hands-on Distronic + Active Steering',
  tech:'The electric G-wagon in AMG ultra-luxury trim: the same upright brick body, flat glass and round headlights as since 1979, with four individual motors (one per wheel), so it can spin on the spot. Exposed door hinges, wing-top indicators and square arch flares outside; the EV carries a square design box on the side-hinged rear door instead of a spare wheel. Inside: diamond-quilted Nappa leather, open-pore walnut and two 12.3" screens.',
  colors:[['Obsidian Black','#0f1012'],['Polar White','#eceeee'],['Manufaktur Olive','#5b6a3a'],['South Seas Blue','#2a6fb8'],['Opalite White Magno','#d9dbd8']],dash:'mercedes',wheel:'round',sensors:'mb',sound:'ev',driver:true,gwagen:true},
+{id:'formulae',name:'Volt-E GEN-X Autonomous',sub:'Self-driving Formula E-style racer · 350 mph',style:'coupe',L:5.02,W:1.7,H:1.02,wb:2.97,wr:0.33,hp:1300,z60:0.7,top:350,range:'~60 mi race stint (est.) · 51 kWh',weight:'1,900 lb',drive:'Twin motor AWD EV · 4 g downforce',level:'SAE Level 4 · autonomous racing stack (fictional)',
+ tech:'A Gen3-Evo-sized open-wheel electric racer driven by an autonomous racing stack (think autonomous race leagues): cameras and lidar on the roll hoop and nose, no driver. Fictional powertrain and aero: 1,300 hp, four g of downforce grip for a 0.7 s 0–60, and a 350 mph top end. Covered in fictional sponsors. You ride in the cockpit under the halo.',
+ colors:[['Voltzy Yellow','#ffe600'],['Team Electric Blue','#1f5fe0'],['Carbon Black','#16171a'],['Pace Red','#e8112d']],dash:'hyper',wheel:'none',sensors:'gm',sound:'ev',formulae:true,gripG:4},
 {id:'h2saab',name:'Sahb 900 H2',sub:'Hydrogen fuel-cell hatchback',style:'sedan',L:4.69,W:1.69,H:1.42,wb:2.52,wr:0.32,hp:240,z60:7.2,top:130,range:'~400 mi on 6.2 kg of hydrogen',weight:'3,300 lb',drive:'Hydrogen fuel cell + 1.6 kWh buffer battery · FWD electric',level:'SAE Level 2 · supervised',
  tech:'The classic Swedish 3-door hatch with its upright wraparound windscreen and ignition between the seats, rebuilt around a hydrogen fuel cell. Two carbon-fibre tanks hold 6.2 kg of hydrogen for about 400 miles, it refuels in five minutes, and the only thing out of the tailpipe is water.',
  colors:[['Talladega Red','#a8121c'],['Cirrus White','#efefea'],['Scarab Green','#1e4a3a'],['Le Mans Blue','#1f3f7a'],['Black Pearl','#121316'],['Silver Metallic','#a9adb2']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,hydrogen:true},
@@ -1740,7 +1743,7 @@ function buildEcoSemi(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}=s
  ud.wheels=wheels;ud.ecosemi=true;
  if(typeof contactShadow==='function'){const c1=contactShadow(g,7.4,W*1.1);if(c1&&c1.position)c1.position.x=6.6;const c2=contactShadow(tr,TL*1.04,W*1.1);if(c2&&c2.position)c2.position.x=tcx}
  return g}
-function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.ebike&&window.buildEbike)return buildEbike(spec,colorHex,opts);if(spec.hbike&&window.buildHyperbike)return buildHyperbike(spec,colorHex,opts);if(spec.dronewagon&&window.buildDroneWagon)return buildDroneWagon(spec,colorHex,opts);if(spec.coach&&window.buildCoach)return buildCoach(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
+function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.formulae&&window.buildFormulaE)return buildFormulaE(spec,colorHex,opts);if(spec.ebike&&window.buildEbike)return buildEbike(spec,colorHex,opts);if(spec.hbike&&window.buildHyperbike)return buildHyperbike(spec,colorHex,opts);if(spec.dronewagon&&window.buildDroneWagon)return buildDroneWagon(spec,colorHex,opts);if(spec.coach&&window.buildCoach)return buildCoach(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
  const lod=!opts.interior&&opts.lod!==false&&!(window.GFX&&GFX.get()==='ultra'); /* traffic / parked cars on Low & High: ~7× fewer body triangles */
  const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=(spec.id||spec.style+L+W+H)+(lod?':lod':'');
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
@@ -2410,6 +2413,7 @@ const ENERGY={
  'keitruck':{epa:95,kwh:20,kg:850,cda:0.75,crr:0.011,dc:30,port:'CCS'},
  'aegis':{epa:200000,kwh:30000,kg:1800,cda:0.3,crr:0.007,dc:200000,port:'CCS'},
  'isetta':{epa:45,kwh:6,kg:295,cda:0.45,crr:0.009,dc:7,port:'J1772'},
+ 'formulae':{epa:60,kwh:51,kg:860,cda:0.9,crr:0.012,dc:600,port:'CCS'},
  'gwagen':{epa:239,kwh:116,kg:3085,cda:1.25,crr:0.011,dc:200,port:'CCS'},
  'delivan':{epa:150,kwh:135,kg:4300,cda:2.6,crr:0.011,dc:150,port:'CCS'},
  'ebike':{epa:30,kwh:1.5,kg:110,cda:0.5,crr:0.008,dc:1,port:'J1772'},
@@ -2614,7 +2618,7 @@ function plan(a,dt,lead,isEgo){
  const top=(isEgo&&a.spec.hyper&&chase?(a.spec.hbike?a.spec.top:1522):(typeof a.spec.top==='number'?a.spec.top:85))/MPH;target=Math.min(target,top);
  const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){if(!chase)target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
  const fanG=isEgo&&a.spec.hyper?1+2*((game.fans||[0,0,0,0]).reduce((q,v)=>q+v,0)/4):1;
- const amax=isEgo&&a.spec.hyper?Math.min(26.8/1.7*(chase?1:0.35)*DP.acc,WX.mu*9.81*(chase?1.6:0.6)*fanG):(isEgo&&chase&&+a.spec.z60>0?perfA(a.spec,a.v,WX.mu*9.81*1.5):Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc))*(chase?2.3:1):1.8,WX.mu*9.81*(chase?0.7:0.35))); /* flat out: published 0-60 */ // traction-limited on wet/snow/ice
+ const amax=isEgo&&a.spec.hyper?Math.min(26.8/1.7*(chase?1:0.35)*DP.acc,WX.mu*9.81*(chase?1.6:0.6)*fanG):(isEgo&&chase&&+a.spec.z60>0?perfA(a.spec,a.v,WX.mu*9.81*(a.spec.gripG||1.5)):Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc))*(chase?2.3:1):1.8,WX.mu*9.81*(chase?0.7:0.35))); /* flat out: published 0-60 */ // traction-limited on wet/snow/ice
  let acc=target>a.v?amax*(1-Math.pow(a.v/Math.max(target,0.1),4)):clamp((target-a.v)*1.6*(isEgo&&!chase?(DP.dg||1):1),(isEgo&&a.spec.hyper?-(hyperBrakeCap(a.v)*1.2):isEgo&&window.AEBSAT&&AEBSAT.hold>0?-Math.min(8.8,WX.mu*9.81*0.9):-6.5)*(isEgo&&window.EGO_DECEL?EGO_DECEL:1),0);
  if(isEgo&&a.spec.plim&&acc>0){const E=ES(),vv=Math.max(a.v,2.5),Pw=a.spec.hp*745.7*0.85,drag=0.5*1.2*E.cda*vv*vv+E.crr*E.kg*9.81,gr=(a.grade||0)*E.kg*9.81;acc=Math.min(acc,Math.max(0,(Pw/vv-drag-gr)/E.kg),2.6)} // power-limited: slow 0–60, runs out of breath near 86 mph
  if(target>a.v&&target-a.v<0.2)acc=0;
@@ -2795,7 +2799,7 @@ const hp=new THREE.Vector3();d.head.getWorldPosition(hp); // head position in do
  {car.updateMatrixWorld(true);const hw=new THREE.Vector3();d.head.getWorldPosition(hw);car.worldToLocal(hw);const uu=clamp((hw.x+Lh/2)/Lh,0,1),hz=P?P.half(uu):spec.W/2,want=d.hd*sz*1.1+0.05,outBy=-hw.z-hz,dl=want-outBy;
   if(dl>0){const n0=d.neck.position.clone();d.neck.position.z-=dl/sz;const ext=new THREE.Mesh(new THREE.CylinderGeometry(d.B.g*0.55,d.B.g*0.65,dl/sz+d.B.g,10),d.neck.children[0].material);ext.rotation.x=Math.PI/2;ext.position.set(n0.x+0.02,n0.y+d.B.g*0.45,n0.z-dl/sz/2);d.body.add(ext);d.ext=ext}
   for(let it=0;it<3;it++){let lift=0;car.updateMatrixWorld(true);d.neck.traverse(o=>{if(!o.isMesh)return;const pos=o.geometry.attributes.position;for(let i=0;i<pos.count;i+=2){v.fromBufferAttribute(pos,i).applyMatrix4(o.matrixWorld);car.worldToLocal(v);const u2=clamp((v.x+Lh/2)/Lh,0,1);if(-v.z>(P?P.half(u2):spec.W/2))lift=Math.max(lift,(P?P.belt(u2):spec.H*0.6)+0.02-v.y)}});if(lift<=0.005)break;dog.position.y+=lift}}
- car.userData.wdogH=holder;car.userData.wdog=dog;if(G.spec.solarcar||G.spec.isetta||G.spec.dronewagon||G.spec.hbike||G.spec.ebike||G.spec.taxi)holder.visible=false; /* single-seaters: no room for the dog */if((G.spec.gargantua||G.spec.ecosemi||G.spec.j800||G.spec.coach)&&car.userData.seats){dog.position.set(0,0,0);holder.position.copy(car.userData.seats[Math.min(2,car.userData.seats.length-1)]);holder.position.y+=0.08} /* Gargantua: the dog rides in the cab, middle row right seat */Object.assign(dog.userData,{barkT:0,next:2,seen:new Map(),look:0,lookT:0})}
+ car.userData.wdogH=holder;car.userData.wdog=dog;if(G.spec.solarcar||G.spec.isetta||G.spec.dronewagon||G.spec.hbike||G.spec.ebike||G.spec.taxi||G.spec.formulae)holder.visible=false; /* single-seaters: no room for the dog */if((G.spec.gargantua||G.spec.ecosemi||G.spec.j800||G.spec.coach)&&car.userData.seats){dog.position.set(0,0,0);holder.position.copy(car.userData.seats[Math.min(2,car.userData.seats.length-1)]);holder.position.y+=0.08} /* Gargantua: the dog rides in the cab, middle row right seat */Object.assign(dog.userData,{barkT:0,next:2,seen:new Map(),look:0,lookT:0})}
 function wdogUpdate(rdt){const G=game;if(!G||!G.ego)return;const dog=G.ego.mesh.userData.wdog;if(!dog)return;const d=dog.userData.dog,U=dog.userData,v=G.ego.v,t=performance.now()/1000,dt=Math.min(0.05,rdt);
  const wind=Math.min(1,v/25);d.ears.forEach((e,i)=>{e.rotation.x=(i?-1:1)*(0.3+wind*1.1+Math.sin(t*(18+i*3))*0.25*wind);e.rotation.z=wind*0.9+Math.sin(t*23+i)*0.15*wind});
  d.head.rotation.z=0.12+Math.sin(t*1.7)*0.05-(G.ego.acc||0)*0.02;d.body.position.y=d.by+Math.sin(t*9)*0.004+Math.abs(Math.sin(t*2.1))*0.004*wind;
@@ -8064,6 +8068,73 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const amg=new THREE.MeshBasicMaterial({color:0xe2e4e8});for(const s of [1,-1])add(new THREE.BoxGeometry(0.16,0.03,0.005),amg,P.xOf(0.8),H*0.36,s*(side(0.8,H*0.36)+0.006));
   g.userData.gwKit=true}
  MODS.push({id:'gwagen'});
+})();
+</script>
+<script>/* mods/61t-formulae.js */
+/* Volt-E GEN-X autonomous Formula E-style racer (spec.formulae). Gen3-Evo proportions (5.02 m × 1.70 m × 1.02 m, 2.97 m
+   wheelbase, 18" covered-rim tyres) with a fictional 350 mph top end and ~4 g of downforce grip (0–60 in ~0.7 s).
+   Body: needle nose with a two-element front wing, raised monocoque, halo, sidepods, engine cover with shark fin,
+   two-element rear wing on a swan-neck, diffuser, four exposed wheels with wheel pods. Self-driving: the "driver" is the
+   autonomy stack (no human) – camera/lidar pods on the roll hoop and nose; you ride in the cockpit. */
+(function(){
+ window.buildFormulaE=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{L,W,H,wr,wb}=spec;
+  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.4,roughness:0.25,clearcoat:1,clearcoatRoughness:0.05}),
+   carbon=new THREE.MeshStandardMaterial({color:0x17181c,roughness:0.35,metalness:0.3,map:typeof CARBON!=='undefined'?CARBON:null}),
+   blk=new THREE.MeshStandardMaterial({color:0x0e0e10,roughness:0.6}),white=new THREE.MeshStandardMaterial({color:0xf2f2f2,roughness:0.4});
+  if(paint.map===undefined){}
+  const body=new THREE.Group();g.add(body);ud.body=body;ud.paint=paint;
+  const add=(geo,m,x,y,z,p=body)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;p.add(o);return o};
+  const sb=(w,h,d,m,x,y,z,r=0.03,p)=>add(typeof softBox==='function'?softBox(w,h,d,r):new THREE.BoxGeometry(w,h,d),m,x,y,z,p);
+  const fa=wb/2,ra=-wb/2,fy=wr; /* axle x, wheel centre y */
+  /* monocoque + needle nose (lathe, flattened) */
+  const tub=sb(1.9,0.42,0.62,paint,-0.1,0.42,0,0.12);
+  const nose=add(new THREE.LatheGeometry([[0.001,0],[0.15,0.15],[0.2,0.6],[0.22,1.3],[0.24,1.7]].map(([r,y])=>new THREE.Vector2(r,y)),24),paint,L/2-0.08,0.36,0);nose.rotation.z=Math.PI/2;nose.scale.set(1,1,0.75);
+  /* front wing: two elements + endplates */
+  sb(0.36,0.03,W*0.98,carbon,L/2-0.25,0.12,0,0.01);sb(0.22,0.025,W*0.9,paint,L/2-0.42,0.2,0,0.01);for(const s of [1,-1])sb(0.5,0.22,0.02,carbon,L/2-0.3,0.18,s*W*0.49,0.01);
+  /* sidepods + floor */
+  for(const s of [1,-1]){sb(1.5,0.34,0.32,paint,-0.45,0.3,s*0.48,0.1);sb(0.06,0.3,0.34,blk,0.31,0.3,s*0.48,0.02)} /* inlets */
+  sb(3.2,0.04,1.34,carbon,-0.25,0.08,0,0.01);
+  /* engine cover with shark fin, roll hoop with sensor pod */
+  const cov=sb(1.3,0.42,0.5,paint,-1.0,0.62,0,0.18);sb(1.1,0.3,0.02,paint,-1.2,0.92,0,0.01);
+  sb(0.14,0.32,0.12,carbon,-0.45,0.95,0,0.04);const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.08,16),blk);lid.position.set(-0.45,1.15,0);body.add(lid);
+  /* halo */
+  const halo=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.03,8,32,Math.PI*1.25),carbon);halo.rotation.set(Math.PI/2,0,Math.PI*0.875);halo.position.set(-0.05,0.86,0);body.add(halo);
+  sb(0.05,0.3,0.06,carbon,0.3,0.72,0,0.02);
+  /* rear wing on swan-neck + diffuser */
+  sb(0.34,0.04,W*0.86,carbon,-L/2+0.2,0.98,0,0.01);sb(0.22,0.03,W*0.86,paint,-L/2+0.36,1.06,0,0.01);for(const s of [1,-1])sb(0.55,0.42,0.02,carbon,-L/2+0.28,0.88,s*W*0.43,0.01);
+  sb(0.06,0.3,0.06,carbon,-L/2+0.4,0.74,0,0.02);sb(0.4,0.16,1.0,carbon,-L/2+0.2,0.16,0,0.02);
+  /* lights: thin LED strips (FE cars run a rear rain light) */
+  const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
+  sb(0.02,0.02,0.3,head,L/2+0.02,0.36,0,0.005);sb(0.02,0.05,0.2,tail,-L/2+0.02,0.6,0,0.01);for(const s of [1,-1])sb(0.02,0.02,0.05,s<0?sigL:sigR,L/2-0.42,0.22,s*W*0.45,0.005);
+  ud.lights={head,tail,sigL,sigR};
+  /* wheels: 18" covered rims, slick-ish tyres, front wheel pods */
+  const tyre=new THREE.CylinderGeometry(wr,wr,0.3,40).rotateX(Math.PI/2),rim=new THREE.CylinderGeometry(wr*0.72,wr*0.72,0.31,40).rotateX(Math.PI/2),tm=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.85}),wheels=[];
+  for(const [x,front] of [[fa,true],[ra,false]])for(const s of [1,-1]){const piv=new THREE.Group();piv.position.set(x,fy,s*(W/2-0.16));const holder=new THREE.Group();piv.add(holder);const spin=new THREE.Group();holder.add(spin);
+   spin.add(new THREE.Mesh(tyre,tm));const r=new THREE.Mesh(rim,paint);spin.add(r);for(let k=0;k<5;k++){const sl=new THREE.Mesh(new THREE.BoxGeometry(wr*0.5,0.02,0.32),blk);sl.rotation.z=k*Math.PI*2/5;spin.add(sl)}g.add(piv);wheels.push({piv,spin,front,sign:s});
+   if(front)add(new THREE.BoxGeometry(0.62,0.08,0.34),carbon,x,fy+wr+0.05,s*(W/2-0.16)); /* front wheel pod */
+   const arm=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.03,W/2-0.36),carbon);arm.position.set(x,fy,s*(W/4));body.add(arm)} /* suspension arms */
+  ud.wheels=wheels;
+  /* cockpit: seat, wheel-less (autonomous) */
+  const I=new THREE.Group();g.add(I);ud.interior=I;ud.hood=new THREE.Group();g.add(ud.hood);sb(0.5,0.08,0.4,blk,-0.25,0.42,0,0.03,I);sb(0.08,0.4,0.4,blk,-0.48,0.6,0,0.03,I);
+  ud.seats=[new THREE.Vector3(-0.2,0.5,0)];ud.cab=new THREE.Group();g.add(ud.cab);
+  /* sponsor livery: fictional brands on every flat surface */
+  const dec=(txt,bg,fg,w,h,x,y,z,ry=0,rx=0,p=body)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map:adTexFE(txt,bg,fg),transparent:true,roughness:0.4,polygonOffset:true,polygonOffsetFactor:-2}));m.position.set(x,y,z);m.rotation.set(rx,ry,0);p.add(m);return m};
+  for(const s of [1,-1]){const ry=s>0?0:Math.PI,z=s*0.645;
+   dec('VOLTZY','#ffe600','#111',0.9,0.2,-0.55,0.32,z,ry);dec('Quantum Kola','#e8112d','#fff',0.5,0.13,-0.05,0.33,z,ry); /* sidepods */
+   dec('NEBULA·NET','#111','#33e0ff',0.7,0.16,-1.05,0.66,s*0.26,ry); /* engine cover */
+   dec('HYPERNAP mattresses','#ffffff','#5a2ca0',0.5,0.36,-L/2+0.28,0.86,s*(W*0.43+0.012),ry); /* rear endplates */
+   dec('GRIPZ','#111','#ffb000',0.44,0.18,L/2-0.3,0.2,s*(W*0.49+0.012),ry) /* front endplates */}
+  dec('ZAPPLE','#ffffff','#111',0.55,0.14,L/2-0.6,0.53,0,0,-Math.PI/2); /* nose top */
+  dec('BOLTBURGER','#ff6a00','#fff',W*0.8,0.3,-L/2+0.2,1.0+0.022,0,0,-Math.PI/2); /* rear wing top */
+  dec('LUNAR LUBE','#0a1a40','#ffd700',W*0.8,0.2,L/2-0.25,0.137,0,0,-Math.PI/2); /* front wing top */
+  dec('#00','#000','#fff',0.3,0.3,0.5,0.6,0,0,-Math.PI/2); /* race number on the nose */
+  ud.formulae=true;return g};
+ const ADC=new Map();function adTexFE(txt,bg,fg){const k=txt+bg+fg;if(ADC.has(k))return ADC.get(k);const c=document.createElement('canvas');c.width=512;c.height=160;const x=c.getContext('2d');
+  x.fillStyle=bg;x.beginPath();x.roundRect?x.roundRect(4,4,504,152,24):x.rect(4,4,504,152);x.fill();x.fillStyle=fg;x.textAlign='center';x.textBaseline='middle';let fs=110;x.font=`italic 900 ${fs}px Arial Black, Arial, sans-serif`;while(x.measureText(txt).width>470&&fs>30){fs-=6;x.font=`italic 900 ${fs}px Arial Black, Arial, sans-serif`}x.fillText(txt,256,84);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;ADC.set(k,t);return t}
+ const _eye=window.eyePos;
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.formulae)return new THREE.Vector3(-0.05,0.95,0);return _eye.apply(this,arguments)};
+ MODS.push({id:'formulae'});
 })();
 </script>
 <script>/* mods/62-trams.js */
