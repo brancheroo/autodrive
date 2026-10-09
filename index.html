@@ -419,8 +419,8 @@ const PH={
 };
 const ENVMATS=[];
 function phSet(name,rep,diff='diff',res){const RS=res||TEXRES,u=m=>`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/${RS}/${name}/${name}_${m}_${RS}.jpg`; /* every map (incl. AO/rough/metal) at the requested resolution */const ld=(m,srgb)=>{TEXSTAT.n++;const t=texLoader.load(u(m),()=>TEXSTAT.ok++,undefined,()=>TEXSTAT.fail++);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep,rep);t.anisotropy=ANISO;if(srgb)t.encoding=THREE.sRGBEncoding;return t};const arm=ld('arm');return{map:ld(diff,true),normalMap:ld('nor_gl'),roughnessMap:arm,aoMap:arm}}
-const INTRES=TEXRES; /* 2k on capable machines, 1k otherwise: 4k interior sets were ~1.5 GB of GPU memory and crashed tabs */ /* interiors are seen from 0.5 m away: always at least 2k, 4k on capable machines */
-const INT={leather:phSet('leather_white',3,'diff',INTRES),cloth:phSet('caban',4,'diff',INTRES),soft:phSet('fabric_leather_02',3,'diff',INTRES),walnut:phSet('american_walnut_veneer',2,'diff',INTRES),oak:phSet('black_oak_veneer',2,'diff',INTRES),suede:phSet('scuba_suede',4,'diff',INTRES)};
+const INTRES=TEXRES,INTRES2='1k'; /* seats (leather/cloth) at TEXRES; small trim surfaces at 1k */ /* 2k on capable machines, 1k otherwise: 4k interior sets were ~1.5 GB of GPU memory and crashed tabs */ /* interiors are seen from 0.5 m away: always at least 2k, 4k on capable machines */
+const INT={leather:phSet('leather_white',3,'diff',INTRES),cloth:phSet('caban',4,'diff',INTRES),soft:phSet('fabric_leather_02',3,'diff',INTRES2),walnut:phSet('american_walnut_veneer',2,'diff',INTRES2),oak:phSet('black_oak_veneer',2,'diff',INTRES2),suede:phSet('scuba_suede',4,'diff',INTRES2)};
 function carbonTex(){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');for(let i=0;i<8;i++)for(let j=0;j<8;j++){const g=x.createLinearGradient(i*8,j*8,i*8+8,j*8+8);const a=(i+j)%2?['#2a2a2c','#0c0c0d']:['#0c0c0d','#2a2a2c'];g.addColorStop(0,a[0]);g.addColorStop(1,a[1]);x.fillStyle=g;x.fillRect(i*8,j*8,8,8)}const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(6,6);t.encoding=THREE.sRGBEncoding;return t}
 const CARBON=carbonTex();
 /* softBox: a box with rounded edges/corners (radius r) for interior trim and upholstery – a segmented box whose vertices are pulled
@@ -479,7 +479,8 @@ function stopSignTex(){const c=document.createElement('canvas');c.width=c.height
 function limitTex(mph){const c=document.createElement('canvas');c.width=96;c.height=128;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,96,128);x.strokeStyle='#000';x.lineWidth=5;x.strokeRect(6,6,84,116);x.fillStyle='#000';x.textAlign='center';x.font='bold 17px Arial';x.fillText('SPEED',48,34);x.fillText('LIMIT',48,54);x.font='bold 50px Arial';x.fillText(mph,48,106);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t}
 const STOPMAT=new THREE.MeshLambertMaterial({map:stopSignTex(),transparent:true});
 const limitMats={};function limitMat(m){return limitMats[m]||(limitMats[m]=new THREE.MeshLambertMaterial({map:limitTex(m)}))}
-function nameTex(txt){const c=document.createElement('canvas');c.width=256;c.height=48;const x=c.getContext('2d');x.fillStyle='#0b6b3a';x.fillRect(0,0,256,48);x.strokeStyle='#fff';x.lineWidth=3;x.strokeRect(3,3,250,42);x.fillStyle='#fff';x.font='bold 26px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(txt.slice(0,18),128,26);const t=new THREE.CanvasTexture(c);t.userData.own=1;t.encoding=THREE.sRGBEncoding;return t}
+const NAMETEX=new Map();function nameTex(txt){txt=String(txt).slice(0,18);let t=NAMETEX.get(txt);if(t){NAMETEX.delete(txt);NAMETEX.set(txt,t);return t}t=nameTex0(txt);NAMETEX.set(txt,t);if(NAMETEX.size>250){const [k,o]=NAMETEX.entries().next().value;NAMETEX.delete(k);o.dispose()}return t} /* shared per street name, at most 250 kept (an evicted one still on screen simply re-uploads) */
+function nameTex0(txt){const c=document.createElement('canvas');c.width=256;c.height=48;const x=c.getContext('2d');x.fillStyle='#0b6b3a';x.fillRect(0,0,256,48);x.strokeStyle='#fff';x.lineWidth=3;x.strokeRect(3,3,250,42);x.fillStyle='#fff';x.font='bold 26px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(txt.slice(0,18),128,26);const t=new THREE.CanvasTexture(c);t.userData.own=1;t.encoding=THREE.sRGBEncoding;return t}
 
 // ============================================================ GEOMETRY BUILDER
 /* geometry builder: growable typed arrays written in place (the old version grew plain JS arrays with spread pushes
@@ -858,7 +859,7 @@ function bridgeStruct(t,pts,w,bufs){const L=[0];for(let i=1;i<pts.length;i++)L.p
 // ============================================================ BUILDINGS: facades, roofs, parts, storefront signs (OSM Simple 3D Buildings)
 // Facade textures = Poly Haven photo material + procedurally painted windows for the style; 1 texture tile = 2 bays (8 m) × 2 floors (6.6 m)
 const FAC={},FACMAT={},ROOFMAT={};
-const FS=HIGH?2048:1024;
+const FS=1024; /* facade atlases: 12 × 2048² was ~270 MB of GPU memory */
 function facadeCanvas(style,night){const c=document.createElement('canvas');c.width=c.height=FS;const x=c.getContext('2d'),R=rng(style.length*7+(night?3:1));x.scale(FS/512,FS/512);
  const bg={siding:'#e6e2da',brick:'#9b4a38',stucco:'#e9e1d2',concrete:'#b9b6ae',glass:'#2b3a48',metal:'#9aa1a6',store:'#3a3d42'}[style];x.fillStyle=night?'#000':bg;x.fillRect(0,0,512,512);
  const win=(X,Y,W,H,frame)=>{if(night){x.fillStyle=R()<0.42?(R()<0.5?'#ffd99a':'#cfe3ff'):'#000';x.fillRect(X,Y,W,H);return}x.fillStyle=frame||'#f2f2ee';x.fillRect(X-5,Y-5,W+10,H+10);const g=x.createLinearGradient(X,Y,X+W,Y+H);g.addColorStop(0,'#27313b');g.addColorStop(0.6,'#4f6275');g.addColorStop(1,'#1f272f');x.fillStyle=g;x.fillRect(X,Y,W,H);x.fillStyle=frame||'#f2f2ee';x.fillRect(X+W/2-2,Y,4,H);x.fillRect(X,Y+H*0.45,W,4)};
