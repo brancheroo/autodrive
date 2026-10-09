@@ -4793,7 +4793,8 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
    const mg=new THREE.BufferGeometry();mg.setAttribute('position',new THREE.BufferAttribute(P,3));mg.setAttribute('normal',new THREE.BufferAttribute(N,3));if(U)mg.setAttribute('uv',new THREE.BufferAttribute(U,2));if(C)mg.setAttribute('color',new THREE.BufferAttribute(C,3));mg.computeBoundingSphere();
    const mesh=new THREE.Mesh(mg,m);mesh.castShadow=k.cast;mesh.receiveShadow=k.recv;mesh.userData.bakedFrom=k.items.length;own.add(mesh);for(const o of k.items)o.parent&&o.parent.remove(o);PF.savedCalls+=k.items.length-1;made++}return made}
  PF.bake=bake;
- const _na=window.newAgent;window.newAgent=function(){const a=_na.apply(this,arguments);try{if(a&&a.mesh&&!/^(harley)$/.test(a.spec&&a.spec.style))bake(a.mesh)}catch(e){console.warn('bake',e)}return a};
+ const BAKEQ=[];const _na=window.newAgent;window.newAgent=function(){const a=_na.apply(this,arguments);if(a&&a.mesh&&!/^(harley)$/.test(a.spec&&a.spec.style))BAKEQ.push(a.mesh);return a}; /* bake later, one car per frame, instead of a ~10 ms spike in the spawn frame */
+ MODS.push({id:'bakeq',frame(){const t0=performance.now();while(BAKEQ.length&&performance.now()-t0<4){const m=BAKEQ.shift();if(m.parent)try{bake(m)}catch(e){console.warn('bake',e)}}}});
  if(typeof buildCop==='function'){const _bc=window.buildCop;window.buildCop=function(){const g=_bc.apply(this,arguments);try{bake(g)}catch(e){}return g}}
  /* ---------- 2. perception camera via render target ---------- */
  const _rp=window.renderPerception;let rt=null,fr=0;const bcam=new THREE.OrthographicCamera(-1,1,1,-1,0,1),bscene=new THREE.Scene(),bmat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,uniforms:{map:{value:null},mode:{value:0},t:{value:0}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',
