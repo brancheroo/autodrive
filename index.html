@@ -9115,7 +9115,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   for(let k=0;k<40;k++){x.strokeStyle=k%3?'#4e2c12':'#87532a';x.lineWidth=1+Math.random()*2;x.beginPath();const y=Math.random()*64;x.moveTo(0,y);for(let i=0;i<=512;i+=32)x.lineTo(i,y+Math.sin(i/60+k)*4);x.stroke()}
   const tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;tex.userData.own=true;const wood=new THREE.MeshStandardMaterial({map:tex,roughness:0.55}),chrome=new THREE.MeshStandardMaterial({color:0xe2e4e8,metalness:1,roughness:0.12});
   const x0=-spec.L/2+0.15,x1=spec.L/2-1.3,y0=0.74,y1=spec.H*0.63,len=x1-x0,cx=(x0+x1)/2,cy=(y0+y1)/2;
-  for(const sd of [1,-1]){const z=sd*((P.halfAt?P.halfAt(0.4,cy):spec.W/2)+0.008);const pn=new THREE.Mesh(new THREE.PlaneGeometry(len,y1-y0),wood);pn.position.set(cx,cy,z);pn.rotation.y=sd>0?0:Math.PI;g.add(pn);
+  for(const sd of [1,-1]){let hw=0;for(let u=0.05;u<0.75;u+=0.05)hw=Math.max(hw,P.halfAt?P.halfAt(u,cy):spec.W/2);const z=sd*(hw+0.01);const pn=new THREE.Mesh(new THREE.PlaneGeometry(len,y1-y0),wood);pn.position.set(cx,cy,z);pn.rotation.y=sd>0?0:Math.PI;g.add(pn);
    for(const y of [y0,y1]){const tr=new THREE.Mesh(new THREE.BoxGeometry(len,0.02,0.015),chrome);tr.position.set(cx,y,z);g.add(tr)}}}
  function stache(g,spec){const P=(profCache[spec.id]||{}).P,nx=spec.L/2,hy=P&&P.top?P.top(0.97):0.75;
   const gold=new THREE.MeshStandardMaterial({color:0xd4af37,metalness:1,roughness:0.2}),hair=new THREE.MeshStandardMaterial({color:0x0b0b0b,roughness:0.95});
@@ -9124,7 +9124,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   mono.add(new THREE.Mesh(new THREE.CircleGeometry(0.128,32),new THREE.MeshPhysicalMaterial({color:0xddeeff,transparent:true,opacity:0.3,roughness:0,clearcoat:1,side:THREE.DoubleSide})));
   for(let k=0;k<10;k++){const l=new THREE.Mesh(new THREE.TorusGeometry(0.014,0.004,6,10),gold);l.position.set(-0.03*Math.sin(k*0.5),-0.15-k*0.028,0);l.rotation.y=k%2?Math.PI/2:0;mono.add(l)}
   for(const sd of [1,-1])for(let k=0;k<9;k++){const t=k/8,tuft=new THREE.Mesh(new THREE.SphereGeometry(0.075-t*0.03,10,8),hair);
-   tuft.position.set(nx+0.04-t*0.05,hy-0.3+Math.pow(t,2.2)*0.16,sd*(0.03+t*0.42));tuft.scale.set(0.6,0.8,1.5);tuft.rotation.x=sd*(-0.3-t*0.7);g.add(tuft)}}
+   tuft.position.set(nx+0.04-t*0.05,hy-0.34+Math.pow(t,2)*0.3,sd*(0.03+t*0.42));tuft.scale.set(0.6,0.8,1.5);tuft.rotation.x=sd*(-0.3-t*0.7);g.add(tuft)}}
 MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
 })();
 </script>
