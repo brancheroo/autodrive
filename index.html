@@ -3430,7 +3430,7 @@ function weatherLighting(hz,top){const W=WX,G=game,day=clamp((sunPos(new Date(G.
  const over=new THREE.Color(W.snow?0xc9ced4:W.key==='hurricane'?0x3a4048:0x8a939c).multiplyScalar(0.15+0.85*day);
  hz.lerp(over,W.cloud);top.lerp(over.clone().multiplyScalar(W.key==='hurricane'?0.6:0.9),W.cloud);
  if(W.flash>0){hz.lerp(new THREE.Color(0xdfe7ff),W.flash*0.8);top.lerp(new THREE.Color(0xdfe7ff),W.flash*0.8)}
- skyMat.uniforms.top.value.copy(top);skyMat.uniforms.hor.value.copy(hz);scene.fog.color.copy(hz);scene.fog.near=W.vis<300?4:Math.min(120,W.vis*0.08);scene.fog.far=W.vis;
+ skyMat.uniforms.top.value.copy(top);skyMat.uniforms.hor.value.copy(hz);scene.fog.color.copy(hz);scene.fog.near=W.vis<300?4:Math.min(120,W.vis*0.08);scene.fog.far=W.vis;if(W.key==='clear'){scene.fog.near=5200;scene.fog.far=5900} /* clear day: no haze – only a thin fade right at the edge of the drawn world (camera far 6 km) to hide where scenery ends */
  sun.intensity*=1-W.cloud*0.85;hemi.intensity=hemi.intensity*(1-W.cloud*0.3)+W.flash*2.5;horizon.visible=W.vis>400;
  skyMat.uniforms.sunCol.value.setScalar(1-W.cloud)}
 
