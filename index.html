@@ -4919,7 +4919,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  function warm(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego)return;const t0=performance.now(),grp=new THREE.Group();grp.position.set(G.ego.x,-500,G.ego.z);
   const specs=[...(typeof CARS!=='undefined'?CARS:[]),...(typeof TRAFFIC_SPECS!=='undefined'?TRAFFIC_SPECS:[])];
   for(const sp of specs){try{const g=buildCar(sp,sp.colors?sp.colors[0][1]:'#888',{} );grp.add(g)}catch(e){}}
-  scene.add(grp);try{renderer.compile(scene,camera)}catch(e){}scene.remove(grp); /* compile() uploads no geometry, so nothing to free; the cars' own textures are released by scene.remove */
+  scene.add(grp);try{renderer.compile(scene,camera);if(typeof cvCam!=='undefined')renderer.compile(scene,cvCam);if(window.renderPerception)renderPerception()}catch(e){} /* the perception panel's pass too (it compiled ~20 programs on its first frame) */scene.remove(grp); /* compile() uploads no geometry, so nothing to free; the cars' own textures are released by scene.remove */
   window.WARMUP_MS=Math.round(performance.now()-t0)}
  MODS.push({id:'warmup',start(){setTimeout(warm,0)}});
 })();
