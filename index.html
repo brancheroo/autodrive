@@ -7558,10 +7558,10 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  const K={store:0,cap:2e6,deploy:false};window.KERS=K;let el=null,prevV=0;
  function gauge(){if(el)return el;el=document.createElement('div');el.id='kersBox';el.style.cssText='position:fixed;top:128px;left:50%;transform:translateX(-50%);z-index:61;font:700 11px system-ui;padding:3px 9px;border-radius:7px;background:#0e141dcc;color:#e8eef5;pointer-events:none;display:none';document.body.appendChild(el);return el}
  MODS.push({id:'kers',
-  start(){const G0=game;K.cap=G0&&G0.spec&&G0.spec.kersCap||2e6;K.kw=(G0&&G0.spec&&G0.spec.kersKW||1000)*746/1000*1000/746;K.store=K.cap*0.5;prevV=0;if(G0&&G0.spec&&G0.spec.kersTop){G0.spec.top0=G0.spec.top0||G0.spec.top;G0.spec.top=G0.spec.top0}const G=game;gauge().style.display=G&&G.spec&&G.spec.kers?'block':'none'},
+  start(){const G0=game;K.cap=G0&&G0.spec&&G0.spec.kersCap||2e6;K.kw=(G0&&G0.spec&&G0.spec.kersKW||1000)*746/1000*1000/746;K.store=K.cap*(G0&&G0.spec&&G0.spec.kersTop?1:0.5);prevV=0;if(G0&&G0.spec&&G0.spec.kersTop){G0.spec.top0=G0.spec.top0||G0.spec.top;G0.spec.top=G0.spec.top0}const G=game;gauge().style.display=G&&G.spec&&G.spec.kers?'block':'none'},
   sim(dt){const G=typeof game!=='undefined'?game:null;if(!G||!G.spec||!G.spec.kers||!G.ego||dt<=0)return;const e=G.ego,a=e.acc||0,m=ENERGY[G.spec.id]&&ENERGY[G.spec.id].kg||1700;
    if(a<-0.5&&e.v>2){K.store=Math.min(K.cap,K.store+0.6*m*e.v*(-a)*dt);K.deploy=false} /* 60% of braking energy recovered */
-   else if(K.store>0&&(a>2&&e.v>1||G.spec.kersTop&&a>0.2&&e.v>45)){K.store=Math.max(0,K.store-(G.spec.kersKW?G.spec.kersKW*1000:746000)*dt);K.deploy=true}else K.deploy=false; /* boost cars also deploy while pushing at speed */
+   else if(K.store>0&&(!G.spec.kersTop&&a>2&&e.v>1||G.spec.kersTop&&a>-0.3&&e.v*MPH>=(G.spec.top0||G.spec.top)-5)){K.store=Math.max(0,K.store-(G.spec.kersKW?G.spec.kersKW*1000:746000)*dt);K.deploy=true}else K.deploy=false; /* boost cars also deploy while pushing at speed */
    if(G.spec.kersTop){G.spec.top0=G.spec.top0||G.spec.top;G.spec.top=K.deploy?G.spec.kersTop:G.spec.top0}}, /* KERS boost unlocks the higher top speed while it lasts */
   frame(){const G=typeof game!=='undefined'?game:null;if(!el||!G||!G.spec||!G.spec.kers)return;el.textContent='⚡ KERS '+Math.round(K.store/K.cap*100)+'%'+(K.deploy?(G.spec.kersTop?' · BOOST → '+G.spec.kersTop+' mph':' · DEPLOY'):'');el.style.background=K.deploy?'#ff6a10cc':'#0e141dcc'}});
 })();
