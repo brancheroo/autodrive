@@ -8238,14 +8238,6 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.018,0.16,12),dark);shaft.position.y=0.08;stk.add(shaft);
   const grip=new THREE.Mesh(new THREE.CapsuleGeometry(0.03,0.08,6,12),new THREE.MeshStandardMaterial({color:0x2a2c30,roughness:0.7}));grip.position.y=0.19;grip.rotation.z=-0.2;stk.add(grip);
   const trig=new THREE.Mesh(new THREE.SphereGeometry(0.012,10,8),new THREE.MeshBasicMaterial({color:0xff3b2f}));trig.position.set(0.02,0.25,0);stk.add(trig);ud.stick=stk;
-  /* distinguished nose: monocle (gold rim, glass lens, chain) over the right "eye" and a bushy black moustache */
-  {const gold=new THREE.MeshStandardMaterial({color:0xd4af37,metalness:1,roughness:0.2}),hair=new THREE.MeshStandardMaterial({color:0x0b0b0b,roughness:0.95}),nx=L/2;
-   const mono=new THREE.Group();mono.position.set(nx-0.42,1.0,0.27);mono.rotation.y=Math.PI/2+0.5;g.add(mono);
-   mono.add(new THREE.Mesh(new THREE.TorusGeometry(0.085,0.012,10,32),gold));
-   const lens=new THREE.Mesh(new THREE.CircleGeometry(0.083,32),new THREE.MeshPhysicalMaterial({color:0xddeeff,transparent:true,opacity:0.35,roughness:0,clearcoat:1,side:THREE.DoubleSide}));mono.add(lens);
-   for(let k=0;k<8;k++){const l=new THREE.Mesh(new THREE.TorusGeometry(0.012,0.003,6,10),gold);l.position.set(0.02*Math.sin(k),-0.1-k*0.025,0.01);l.rotation.y=k%2?Math.PI/2:0;mono.add(l)}
-   for(const sd of [1,-1]){for(let k=0;k<7;k++){const t=k/6,tuft=new THREE.Mesh(new THREE.SphereGeometry(0.05-t*0.022,10,8),hair);
-     tuft.position.set(nx-0.34-t*0.06,0.66-t*0.02+Math.pow(t,2.2)*0.1,sd*(0.03+t*0.26));tuft.scale.set(0.7,0.75,1.5);tuft.rotation.x=sd*(-0.3-t*0.6);g.add(tuft)}}}
   ud.seats=[new THREE.Vector3(0.25,0.72,0)];ud.vtol=true;return g};
  /* draws the LCD: left = flight display (horizon, speed & altitude tapes, Mach, vertical speed), right = systems */
  function drawDash(D,e,dt){const x=D.c,W=1024,H=320,mid=W/2;x.fillStyle='#03060a';x.fillRect(0,0,W,H);
@@ -9111,7 +9103,17 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
   for(const id of HIDE){const el=document.getElementById(id);if(el)el.style.display=rs?'none':''}
   const w=document.getElementById('cvWrap');if(w)for(const b of w.querySelectorAll('button'))b.style.display=rs?'none':'';
   if(!rs&&cvCam.fov!==58){cvCam.fov=58;cvCam.updateProjectionMatrix()}}
- MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
+  /* distinguished front: a gold monocle over the right headlight and a bushy black moustache across the grille (Coralla only, not the taxi) */
+ const _bcR=window.buildCar;if(typeof _bcR==='function')window.buildCar=function(spec,colorHex,opts){const g=_bcR.apply(this,arguments);try{if(spec&&spec.id==='rideshare'&&g&&!g.userData.stache){g.userData.stache=1;stache(g,spec)}}catch(e){console.warn('stache',e)}return g};
+ function stache(g,spec){const P=(profCache[spec.id]||{}).P,nx=spec.L/2,hy=P&&P.top?P.top(0.97):0.75;
+  const gold=new THREE.MeshStandardMaterial({color:0xd4af37,metalness:1,roughness:0.2}),hair=new THREE.MeshStandardMaterial({color:0x0b0b0b,roughness:0.95});
+  const mono=new THREE.Group();mono.position.set(nx+0.03,hy-0.08,-spec.W*0.33);mono.rotation.y=Math.PI/2;g.add(mono);
+  mono.add(new THREE.Mesh(new THREE.TorusGeometry(0.13,0.016,10,32),gold));
+  mono.add(new THREE.Mesh(new THREE.CircleGeometry(0.128,32),new THREE.MeshPhysicalMaterial({color:0xddeeff,transparent:true,opacity:0.3,roughness:0,clearcoat:1,side:THREE.DoubleSide})));
+  for(let k=0;k<10;k++){const l=new THREE.Mesh(new THREE.TorusGeometry(0.014,0.004,6,10),gold);l.position.set(-0.03*Math.sin(k*0.5),-0.15-k*0.028,0);l.rotation.y=k%2?Math.PI/2:0;mono.add(l)}
+  for(const sd of [1,-1])for(let k=0;k<9;k++){const t=k/8,tuft=new THREE.Mesh(new THREE.SphereGeometry(0.075-t*0.03,10,8),hair);
+   tuft.position.set(nx+0.04-t*0.05,hy-0.3+Math.pow(t,2.2)*0.16,sd*(0.03+t*0.42));tuft.scale.set(0.6,0.8,1.5);tuft.rotation.x=sd*(-0.3-t*0.7);g.add(tuft)}}
+MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
 })();
 </script>
 <script>/* mods/88-taxi.js */
