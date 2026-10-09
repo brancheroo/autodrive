@@ -1155,8 +1155,7 @@ function btAbort(){const T=BT.T;if(T&&!TILES.has(T.key))for(const id of T.ids)BU
 function btFinish(){if(!BT.gen)return;if(ORIGIN.lon!==BT.ox||ORIGIN.lat!==BT.oy){btAbort();return}const g=BT.gen;BT.gen=null;BT_DEADLINE=Infinity;try{while(!g.next().done){}}catch(e){console.warn('tile build failed',e)}BT.key=null}
 function buildTile(key){btFinish();BT_DEADLINE=Infinity;const g=buildTileGen(key);try{while(!g.next().done){}}catch(e){console.warn('tile build failed',e)}}
 function btStart(key){if(BT.gen)return false;window.BTN=(window.BTN||0)+1;BT.gen=buildTileGen(key);BT.key=key;BT.ox=ORIGIN.lon;BT.oy=ORIGIN.lat;BT.T=null;return true}
-function btStep(ms){if(!BT.gen)return;const __ph0=BT.ph,__t0=performance.now();try{return __btStep(ms)}finally{const d=performance.now()-__t0;if(d>25){(window.BTSLOW=window.BTSLOW||[]).push([Math.round(d),__ph0,BT.ph])}}}
-function __btStep(ms){if(!BT.gen)return;if(ORIGIN.lon!==BT.ox||ORIGIN.lat!==BT.oy){btAbort();return}BT_DEADLINE=performance.now()+ms;let r;try{r=BT.gen.next()}catch(e){console.warn('tile build failed',e);r={done:true}}BT_DEADLINE=Infinity;if(r.done){const k=BT.key;BT.gen=null;BT.key=null;if(window.onTileBuilt)try{onTileBuilt(k)}catch(e){}}}
+function btStep(ms){if(!BT.gen)return;if(ORIGIN.lon!==BT.ox||ORIGIN.lat!==BT.oy){btAbort();return}BT_DEADLINE=performance.now()+ms;let r;try{r=BT.gen.next()}catch(e){console.warn('tile build failed',e);r={done:true}}BT_DEADLINE=Infinity;if(r.done){const k=BT.key;BT.gen=null;BT.key=null;if(window.onTileBuilt)try{onTileBuilt(k)}catch(e){}}}
 
 function* buildTileGen(key){
  if(TILES.has(key)||!RAW.has(key)||TERR.ref===null||!tileTerrReady(key))return;
@@ -1164,11 +1163,11 @@ function* buildTileGen(key){
  const bRoad=new Buf(),bRoad2=new Buf(),bPath=new Buf(),bY=new Buf(),bW=new Buf(),bB=new Buf(),bR=new Buf(),bG=new Buf(),bWa=new Buf();MK.red=new Buf();MK.dec=new Buf();
  const trees=[];const bio=game.bio;const nodeWays=new Map();
  const BC={bio,walls:new Map(),roofs:new Map(),parapet:new Buf(),canopy:new Buf(),storeIds:new Set(),group:T.group},bRecs=[],partRings=[],pois=[];const SFBT=data.sfb||SFB.get(key)||null;const BROADS=tileRoads(key),RQ=roadIndex(BROADS);CUR_RQ=RQ;CUR_RQG=roadIndex(BROADS.filter(w=>!w.bridge)); /* ground-level roads only: piers must clear these */T.missing=neighbourKeys(key).filter(k=>!RAW.has(k));
- for(const el of data.elements){BT.ph=1;if(performance.now()>BT_DEADLINE)yield;const t=el.tags||{};if(el.type==='way'&&el.geometry&&t['building:part']&&t['building:part']!=='no')partRings.push(el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]));if(el.type==='node'&&t.name&&(t.shop||t.amenity||t.tourism))pois.push({x:toX(el.lon),z:toZ(el.lat),name:t.brand||t.name,shop:!!t.shop||/restaurant|cafe|fast_food|bank|pharmacy|bar|pub|ice_cream/.test(t.amenity||'')})}
+ for(const el of data.elements){if(performance.now()>BT_DEADLINE)yield;const t=el.tags||{};if(el.type==='way'&&el.geometry&&t['building:part']&&t['building:part']!=='no')partRings.push(el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]));if(el.type==='node'&&t.name&&(t.shop||t.amenity||t.tourism))pois.push({x:toX(el.lon),z:toZ(el.lat),name:t.brand||t.name,shop:!!t.shop||/restaurant|cafe|fast_food|bank|pharmacy|bar|pub|ice_cream/.test(t.amenity||'')})}
  // mark buildings that contain a shop/restaurant POI (storefront ground floor)
- for(const el of data.elements){BT.ph=2;if(performance.now()>BT_DEADLINE)yield;if(el.type==='way'&&el.geometry&&(el.tags||{}).building){const ring=el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);if(pois.some(p=>p.shop&&pip([p.x,p.z],ring)))BC.storeIds.add(el.id)}}const roadBufs=new Map(),bWall=new Buf(),bPier=new Buf(),bCurb=new Buf();const rb=k=>{if(!roadBufs.has(k))roadBufs.set(k,new Buf());return roadBufs.get(k)};
+ for(const el of data.elements){if(performance.now()>BT_DEADLINE)yield;if(el.type==='way'&&el.geometry&&(el.tags||{}).building){const ring=el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);if(pois.some(p=>p.shop&&pip([p.x,p.z],ring)))BC.storeIds.add(el.id)}}const roadBufs=new Map(),bWall=new Buf(),bPier=new Buf(),bCurb=new Buf();const rb=k=>{if(!roadBufs.has(k))roadBufs.set(k,new Buf());return roadBufs.get(k)};
  const P=g=>g.map(p=>[toX(p.lon),toZ(p.lat)]);
- for(const el of data.elements){BT.ph=3;if(performance.now()>BT_DEADLINE)yield;
+ for(const el of data.elements){if(performance.now()>BT_DEADLINE)yield;
   if(el.type!=='way'||!el.geometry)continue;const t=el.tags||{};
   if(t.highway){ // register nodes for speed limit/names even when way already built
    const spd=parseSpeed(t.maxspeed)||DEF_SPD[t.highway]||null;
@@ -1245,7 +1244,7 @@ function* buildTileGen(key){
    const r=rng(el.id);for(let k=0,tries=0;k<n&&tries<n*4;tries++){const p=[lerp(minx,maxx,r()),lerp(minz,maxz,r())];if(pip(p,ring)){trees.push([p[0],p[1],el.id+k]);k++}}
   }
  }
- for(const el of data.elements){BT.ph=4;if(performance.now()>BT_DEADLINE)yield;
+ for(const el of data.elements){if(performance.now()>BT_DEADLINE)yield;
   if(el.type!=='node')continue;const t=el.tags||{},x=toX(el.lon),z=toZ(el.lat);
   if(t.traffic_sign&&t.traffic_sign!=='none'&&t.highway!=='stop'&&t.highway!=='give_way'){ // stop/yield nodes already get their own signs
 placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
@@ -1270,7 +1269,7 @@ placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
    
    let done=false;for(let r=0.5;r<=15&&!done;r+=0.5)for(let k=0;k<24;k++){const an=k/24*Math.PI*2,qx=x+Math.cos(an)*r,qz=z+Math.sin(an)*r;if(!RQ.inside(qx,qz,0.6)){o.position.x=qx;o.position.z=qz;done=true;break}}if(!done)o.visible=false}}
  placeBillboards(T,key,RQ,bRecs);placeFoodCarts(T,key,RQ,bRecs);
- BT.ph=5;if(performance.now()>BT_DEADLINE)yield;
+ if(performance.now()>BT_DEADLINE)yield;
  if(SFBT){ // LiDAR footprints + measured heights; OSM supplies style tags / names where a mapped building overlaps
   const osmB=data.elements.filter(el=>el.type==='way'&&el.geometry&&(el.tags||{}).building).map(el=>({t:el.tags,ring:el.geometry.map(p=>[toX(p.lon),toZ(p.lat)])}));
   for(const b of SFBT){let ring=b.r.map(p=>[toX(p[0]),toZ(p[1])]);if(ring.length>3&&ring[0][0]===ring[ring.length-1][0])ring.pop();if(ring.length<3)continue;ring=fitBuilding(ring,BROADS);if(!ring)continue;bAdd(ring,key);const cx=ring.reduce((a,p)=>a+p[0],0)/ring.length,cz=ring.reduce((a,p)=>a+p[1],0)/ring.length;
@@ -1281,7 +1280,7 @@ placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
  for(const o of T.group.children)if(!o.userData.merged)o.position.y+=groundY(o.position.x,o.position.z);
  {const used=new Map();for(const p of pois){let rec=bRecs.find(b=>pip([p.x,p.z],b.ring));if(!rec){let bd=18;for(const b of bRecs){const d=Math.hypot(b.cx-p.x,b.cz-p.z);if(d<bd){bd=d;rec=b}}}if(!rec)continue;const n=used.get(rec.id)||0;if(n>=2)continue;used.set(rec.id,n+1);placeSign(BC,rec,p.x,p.z,p.name,typeof ffBrand==='function'?ffBrand(p.name):null)}}
  // ---- draw-call reduction: signal lamps → one InstancedMesh per tile; every other static fixture merged per shared material
- BT.ph=6;if(performance.now()>BT_DEADLINE)yield;
+ if(performance.now()>BT_DEADLINE)yield;
  T.group.updateMatrixWorld(true);
  {const lamps=[];for(const sg of T.signals)for(const h of sg.heads){h.idx=[];for(const m of h.L){h.idx.push(lamps.length);lamps.push(m)}}
   if(lamps.length){const im=new THREE.InstancedMesh(SIGGEO.lamp,new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false}),lamps.length);const c=new THREE.Color(0x222222);
@@ -1293,17 +1292,17 @@ placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
   // drop now-empty helper groups
   for(const o of [...T.group.children])if(o.isGroup&&!o.children.length)T.group.remove(o)}
  const add=(b,m,sh)=>{const g=b.geo();if(g){const mesh=new THREE.Mesh(g,m);mesh.userData.merged=true;mesh.receiveShadow=true;if(sh)mesh.castShadow=true;T.group.add(mesh)}};
- BT.ph=7;if(performance.now()>BT_DEADLINE)yield;for(const [k,b] of roadBufs)add(b,surfMat(k));for(const [k,b] of BC.walls)add(b,facadeMat(k),true);for(const [k,b] of BC.roofs)add(b,roofMat(k),true);add(BC.parapet,MAT.wall,true);add(BC.canopy,MAT.wall,true);add(bWall,MAT.wall,true);add(bPier,MAT.pier,true);add(bCurb,MAT.path);
- BT.ph=8;if(performance.now()>BT_DEADLINE)yield;add(bG,new THREE.MeshLambertMaterial({vertexColors:true}));add(bWa,MAT.water);add(bPath,MAT.path);add(bRoad,MAT.road);add(bRoad2,MAT.road2);add(bY,MAT.yellow);add(bW,MAT.white);add(MK.red,MAT.busRed||(MAT.busRed=new THREE.MeshLambertMaterial({color:0xa3262a,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})));add(MK.dec,decalMat());MK.red=MK.dec=null;add(bB,MAT.bld,true);add(bR,MAT.roof,true);
+ if(performance.now()>BT_DEADLINE)yield;for(const [k,b] of roadBufs)add(b,surfMat(k));for(const [k,b] of BC.walls)add(b,facadeMat(k),true);for(const [k,b] of BC.roofs)add(b,roofMat(k),true);add(BC.parapet,MAT.wall,true);add(BC.canopy,MAT.wall,true);add(bWall,MAT.wall,true);add(bPier,MAT.pier,true);add(bCurb,MAT.path);
+ if(performance.now()>BT_DEADLINE)yield;add(bG,new THREE.MeshLambertMaterial({vertexColors:true}));add(bWa,MAT.water);add(bPath,MAT.path);add(bRoad,MAT.road);add(bRoad2,MAT.road2);add(bY,MAT.yellow);add(bW,MAT.white);add(MK.red,MAT.busRed||(MAT.busRed=new THREE.MeshLambertMaterial({color:0xa3262a,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})));add(MK.dec,decalMat());MK.red=MK.dec=null;add(bB,MAT.bld,true);add(bR,MAT.roof,true);
  // trunk ≥1 m behind the kerb; canopy (radius 2.6·scale) may not reach over a lane → trees beside the road are scaled to fit, or dropped
  for(let i=trees.length-1;i>=0;i--){const c=RQ.clear(trees[i][0],trees[i][1]);if(c<1.0){trees.splice(i,1);continue}if(c<4)trees[i].push((c+0.1)/2.6)}
- BT.ph=9;if(performance.now()>BT_DEADLINE)yield;if(trees.length){const by={broad:[],conifer:[],palm:[]};for(const t of trees)by[treeSpecies(t,bio)].push(t);
+ if(performance.now()>BT_DEADLINE)yield;if(trees.length){const by={broad:[],conifer:[],palm:[]};for(const t of trees)by[treeSpecies(t,bio)].push(t);
   const m=new THREE.Matrix4(),q=new THREE.Quaternion(),s=new THREE.Vector3(),p=new THREE.Vector3(),col=new THREE.Color();
   for(const sp in by){const L=by[sp];if(!L.length)continue;const G=TREESP[sp],wood=new THREE.InstancedMesh(G.wood,MAT.bark,L.length),leaf=new THREE.InstancedMesh(G.leaf,G.mat,L.length);
    L.forEach((t,i)=>{const r=rng(t[2]),sc=Math.min((sp==='conifer'?0.75:0.7)+r()*0.6,t[3]||9);q.setFromAxisAngle(UPV,r()*6.283);s.set(sc,sc*(0.85+r()*0.35),sc);p.set(t[0],groundY(t[0],t[1])-0.1,t[1]);m.compose(p,q,s);wood.setMatrixAt(i,m);leaf.setMatrixAt(i,m);
     col.setHSL((sp==='palm'?0.23:0.26)+(r()-0.5)*0.05,0.9,0.95-r()*0.25);if(WX.snow>0.3&&sp!=='palm')col.lerp(new THREE.Color(0xffffff),0.35);leaf.setColorAt(i,col)});
-   wood.castShadow=true;leaf.castShadow=true;leaf.receiveShadow=true;wood.frustumCulled=leaf.frustumCulled=false;T.group.add(wood,leaf);BT.ph=10;if(performance.now()>BT_DEADLINE)yield;}}
- BT.ph=11;if(performance.now()>BT_DEADLINE)yield;
+   wood.castShadow=true;leaf.castShadow=true;leaf.receiveShadow=true;wood.frustumCulled=leaf.frustumCulled=false;T.group.add(wood,leaf);if(performance.now()>BT_DEADLINE)yield;}}
+ if(performance.now()>BT_DEADLINE)yield;
  T.swept=roadSweep(T.group,RQ);scene.add(T.group);TILES.set(key,T);setTimeout(()=>mkTile(key),0);
 
 }
