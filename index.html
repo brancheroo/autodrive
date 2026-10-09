@@ -8264,7 +8264,8 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    for(const f of U.fans||[]){f.piv.rotation.z=-tilt*Math.PI/2;f.rot.rotation.y+=dt*(40+60*(1-tilt))}
    const gearUp=F.alt>8;for(const w of U.wheels||[]){w.piv.visible=!gearUp;if(w.strut)w.strut.visible=!gearUp}
    if(U.flame){U.flame.visible=F.mach>1.2;U.flame.scale.set(1,0.6+Math.min(2,F.mach/5),1)}
-   const hi=F.alt>3000;camera.far=hi?160000:6000;camera.updateProjectionMatrix();if(scene.fog){if(hi){if(!F.fog0)F.fog0=[scene.fog.near,scene.fog.far];scene.fog.near=Math.min(20000,F.alt*0.8);scene.fog.far=Math.max(60000,F.alt*6)}else if(F.fog0){scene.fog.near=F.fog0[0];scene.fog.far=F.fog0[1];F.fog0=null}}
+   const hi=F.alt>3000;camera.far=hi?160000:6000;camera.updateProjectionMatrix();if(scene.fog){if(hi){if(!F.fog0)F.fog0=[scene.fog.near,scene.fog.far];const clr=(WX.cloud||0)<0.3;scene.fog.near=F.alt*(clr?2:0.6);scene.fog.far=F.alt*(clr?15:4)}else if(F.fog0){scene.fog.near=F.fog0[0];scene.fog.far=F.fog0[1];F.fog0=null}} /* clear air: a light haze far out, not an undercast; overcast weather keeps it thick */
+   if(typeof ground!=='undefined'){const want=hi?45:1;if(ground.scale.x!==want){ground.scale.set(want,want,1)}} /* the 9 km ground plane reaches the horizon from altitude (×45 ≈ 400 km) */
    b.style.display='block';b.textContent=`✈️ ${F.phase||'Ready'} · ${Math.round(F.alt*3.281).toLocaleString()} ft · Mach ${F.mach.toFixed(1)} · ${Math.round(e.v*2.237).toLocaleString()} mph`}});
 })();
 </script>
