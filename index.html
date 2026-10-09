@@ -434,7 +434,7 @@ function softBox(w,h,d,r){r=Math.min(r??0.012,w*0.45,h*0.45,d*0.45);const k=[w,h
  if(r<0.002){g=new THREE.BoxGeometry(w,h,d)}else{const sg=3;g=new THREE.BoxGeometry(w,h,d,sg*2,sg*2,sg*2);const P=g.attributes.position,v=new THREE.Vector3(),hw=w/2-r,hh=h/2-r,hd=d/2-r;
   for(let i=0;i<P.count;i++){v.fromBufferAttribute(P,i);const cx=Math.max(-hw,Math.min(hw,v.x)),cy=Math.max(-hh,Math.min(hh,v.y)),cz=Math.max(-hd,Math.min(hd,v.z)),dx=v.x-cx,dy=v.y-cy,dz=v.z-cz,l=Math.hypot(dx,dy,dz)||1;P.setXYZ(i,cx+dx/l*r,cy+dy/l*r,cz+dz/l*r)}
   g.computeVertexNormals()}
- g.setAttribute('uv2',g.attributes.uv);SOFTBOX.set(k,g);return g}
+ g.setAttribute('uv2',g.attributes.uv);g.userData.shared=true;SOFTBOX.set(k,g);return g}
 {const pm=new THREE.PMREMGenerator(renderer);texLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/kloofendal_48d_partly_cloudy_puresky.jpg',t=>{let src=t;if(t.image){ /* Low graphics: convert a 512×256 copy – the sky reflections look the same at this size and the full-size conversion caused a ~0.6 s hitch */const c=document.createElement('canvas');c.width=HIGH?1024:512;c.height=HIGH?512:256;c.getContext('2d').drawImage(t.image,0,0,c.width,c.height); /* full 8k source made a 6144×8192 PMREM (~200–400 MB) */src=new THREE.CanvasTexture(c);src.encoding=THREE.sRGBEncoding}src.mapping=THREE.EquirectangularReflectionMapping;scene.environment=pm.fromEquirectangular(src).texture;if(src!==t)src.dispose();t.dispose();TEXSTAT.ok++},undefined,()=>TEXSTAT.fail++);TEXSTAT.n++}
 
 // ============================================================ MATERIALS
@@ -1418,7 +1418,7 @@ function addSignal(T,x,z,dir,w,id){
 const LAMPGEO={pole:new THREE.CylinderGeometry(0.07,0.1,8,6),head:new THREE.BoxGeometry(0.7,0.18,0.35)};
 function addLamp(T,x,z){const p=new THREE.Mesh(LAMPGEO.pole,MAT.pole);p.position.set(x,4,z);const h=new THREE.Mesh(LAMPGEO.head,MAT.lampOff);h.position.set(x,8,z);T.group.add(p,h);T.lamps.push(h)}
 /* free per-object canvas textures (tagged userData.own) and the materials that use them; shared/cached textures are untouched */
-function freeOwn(root){if(!root||!root.traverse)return;root.traverse(o=>{const ms=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];for(const m of ms){let hit=false;for(const k of ['map','emissiveMap','alphaMap']){const t=m[k];if(t&&t.userData&&t.userData.own){t.dispose();hit=true}}if(hit)m.dispose()}})}
+function freeOwn(root){if(!root||!root.traverse)return;root.traverse(o=>{if(o.geometry&&o.geometry.dispose&&!(o.geometry.userData&&o.geometry.userData.shared)&&!o.isInstancedMesh)o.geometry.dispose(); /* per-object geometry (shared caches are marked userData.shared) */const ms=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];for(const m of ms){let hit=false;for(const k of ['map','emissiveMap','alphaMap']){const t=m[k];if(t&&t.userData&&t.userData.own){t.dispose();hit=true}}if(hit)m.dispose()}})}
 function unloadTile(key){const T=TILES.get(key);if(!T)return;bDrop(key);scene.remove(T.group);freeOwn(T.group);T.group.traverse(o=>{if(o.geometry&&!o.geometry.userData.shared&&!Object.values(SIGGEO).includes(o.geometry)&&!Object.values(LAMPGEO).includes(o.geometry))o.geometry.dispose()});T.ids.forEach(i=>BUILTWAYS.delete(i));TILES.delete(key)}
 
 // traffic signal timing: 64 s cycle, two axes
@@ -1568,7 +1568,7 @@ function wheelSet(spec,rim,cal,lod){
  // brake disc & caliper
  parts.push([new THREE.CylinderGeometry(rr*0.85,rr*0.85,0.02,28).rotateX(Math.PI/2).translate(0,0,-0.03),new THREE.MeshStandardMaterial({color:0x6d6d6d,metalness:0.9,roughness:0.45})]);
  const calG=new THREE.BoxGeometry(0.1,rr*0.55,0.07).translate(-rr*0.62,rr*0.25,0);
- const out={tireG,tireM,parts,calG,calM:new THREE.MeshStandardMaterial({color:cal||0x3a3a3a,roughness:0.5})};wheelCache[key]=out;return out}
+ const out={tireG,tireM,parts,calG,calM:new THREE.MeshStandardMaterial({color:cal||0x3a3a3a,roughness:0.5})};for(const pr of parts)if(pr[0]&&pr[0].userData)pr[0].userData.shared=true;for(const k2 of ['tireG','calG'])if(out[k2]&&out[k2].userData)out[k2].userData.shared=true;wheelCache[key]=out;return out}
 const profCache={};
 /* contact shadow: a soft dark footprint under vehicles/people so they sit on the ground (ambient occlusion the shadow map can't give) */
 let CSHTEX=null,CSHGEO=null;
@@ -1740,6 +1740,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  const lod=!opts.interior&&opts.lod!==false&&!(window.GFX&&GFX.get()==='ultra'); /* traffic / parked cars on Low & High: ~7× fewer body triangles */
  const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=(spec.id||spec.style+L+W+H)+(lod?':lod':'');
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
+ for(const v of Object.values(profCache[pk]))if(v&&v.isBufferGeometry)v.userData.shared=true; /* cached body shells: never freed on remove */
  const {P,lo,gh}=profCache[pk],sh=P.sh;
  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.6,roughness:0.38,clearcoat:1,clearcoatRoughness:0.04,normalMap:FLAKE,normalScale:new THREE.Vector2(0.12,0.12)});ENVMATS.push(paint);if(ENVMATS.length>400)ENVMATS.splice(5,100);
  const glass=new THREE.MeshPhysicalMaterial({color:0x1a2128,metalness:0.0,roughness:0.02,transparent:true,opacity:0.72, /* tinted like real car glass: the cabin shows through, dimmed */depthWrite:false,envMapIntensity:0.7,clearcoat:0.6,clearcoatRoughness:0.03,reflectivity:0.5, /* sky reflections that don't wash the tint out to grey */side:THREE.DoubleSide}); /* the greenhouse's side panels wind inward: draw both faces or the near windows vanish */
@@ -7934,7 +7935,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   return g}
  const CACHE=new Map();
  function kit(spec,lod){const k=spec.L+'|'+spec.W+'|'+spec.H+(lod?':lod':'');let c=CACHE.get(k);if(c)return c;const S=shape(spec);
-  c={S,shell:shellGeo(S,lod?60:300,lod?14:64),hood:shellGeo(S,lod?16:50,lod?10:30,0.76,1,false)};CACHE.set(k,c);return c}
+  c={S,shell:shellGeo(S,lod?60:300,lod?14:64),hood:shellGeo(S,lod?16:50,lod?10:30,0.76,1,false)};c.shell.userData.shared=c.hood.userData.shared=true;CACHE.set(k,c);return c}
  /* a tube that hugs the body surface along a list of (u,t,side) points, pushed out a little along the normal */
  function seam(S,pts,r,mat,out=0.004){const v=pts.map(([u,t,s])=>{const p=S.pt(u,t,s),q=S.pt(u,Math.min(1,t+0.01),s),e=S.pt(Math.min(1,u+0.005),t,s);const a=new THREE.Vector3(q[0]-p[0],q[1]-p[1],q[2]-p[2]),b=new THREE.Vector3(e[0]-p[0],e[1]-p[1],e[2]-p[2]),n=a.cross(b).normalize().multiplyScalar(s>0?-1:1);
   return new THREE.Vector3(p[0],p[1],p[2]).addScaledVector(n,out)});const curve=new THREE.CatmullRomCurve3(v);const m=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(8,v.length*4),r,6,false),mat);return m}
