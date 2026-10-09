@@ -2593,7 +2593,7 @@ function plan(a,dt,lead,isEgo){
  const top=(isEgo&&a.spec.hyper&&chase?(a.spec.hbike?a.spec.top:1522):(typeof a.spec.top==='number'?a.spec.top:85))/MPH;target=Math.min(target,top);
  const DP=isEgo?DRIVE_P[DRIVE.profile]:DRIVE_P.Standard;if(isEgo){if(!chase)target=Math.min(target,lim*WX.speedF*DP.spd);if(game.pullOver){target=0;reason='Pulling over (rider request)'}}
  const fanG=isEgo&&a.spec.hyper?1+2*((game.fans||[0,0,0,0]).reduce((q,v)=>q+v,0)/4):1;
- const amax=isEgo&&a.spec.hyper?Math.min(26.8/1.7*(chase?1:0.35)*DP.acc,WX.mu*9.81*(chase?1.6:0.6)*fanG):Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc))*(chase?2.3:1):1.8,WX.mu*9.81*(chase?0.7:0.35)); // traction-limited on wet/snow/ice
+ const amax=isEgo&&a.spec.hyper?Math.min(26.8/1.7*(chase?1:0.35)*DP.acc,WX.mu*9.81*(chase?1.6:0.6)*fanG):(isEgo&&chase&&+a.spec.z60>0?perfA(a.spec,a.v,WX.mu*9.81*1.5):Math.min(isEgo?(a.spec.plim?2.6*DP.acc:Math.min(2.4*DP.acc,26.8/((+a.spec.z60)||7)*0.55*DP.acc))*(chase?2.3:1):1.8,WX.mu*9.81*(chase?0.7:0.35))); /* flat out: published 0-60 */ // traction-limited on wet/snow/ice
  let acc=target>a.v?amax*(1-Math.pow(a.v/Math.max(target,0.1),4)):clamp((target-a.v)*1.6*(isEgo&&!chase?(DP.dg||1):1),(isEgo&&a.spec.hyper?-(hyperBrakeCap(a.v)*1.2):isEgo&&window.AEBSAT&&AEBSAT.hold>0?-Math.min(8.8,WX.mu*9.81*0.9):-6.5)*(isEgo&&window.EGO_DECEL?EGO_DECEL:1),0);
  if(isEgo&&a.spec.plim&&acc>0){const E=ES(),vv=Math.max(a.v,2.5),Pw=a.spec.hp*745.7*0.85,drag=0.5*1.2*E.cda*vv*vv+E.crr*E.kg*9.81,gr=(a.grade||0)*E.kg*9.81;acc=Math.min(acc,Math.max(0,(Pw/vv-drag-gr)/E.kg),2.6)} // power-limited: slow 0–60, runs out of breath near 86 mph
  if(target>a.v&&target-a.v<0.2)acc=0;
@@ -4570,6 +4570,9 @@ const SATL={n:0,down:0,useT:0,flash:0,on:(()=>{try{const v=localStorage.getItem(
 function satActive(){const G=game;return !!(G&&G.spec&&(G.spec.hyper||G.spec.allaids||SATL.on))} /* hypercar: satellite is built in, always on */
 function smartOn(){return satActive()}
 setInterval(()=>{const b=document.getElementById('satBtn');if(b)b.style.display=game&&game.spec&&game.spec.hyper?'none':''},400); /* no toggle while driving the hypercar */
+/* published-performance acceleration: traction-limited A up to vb, then constant power (A·vb/v); A fitted so 0–60 mph takes exactly spec.z60 s.
+   0→vb: vb/A; vb→26.8: (26.8²−vb²)/(2·A·vb). vb = 12 m/s (~27 mph) */
+function perfA(spec,v,G=14.7){const z=+spec.z60;let vb=12,A=(vb+(26.8*26.8-vb*vb)/(2*vb))/z;if(A>G){const q=G*z;A=G;vb=q*q>718.24?q-Math.sqrt(q*q-718.24):26.8} /* grip-limited cars: hold the launch longer instead of exceeding grip */return v<=vb?A:A*vb/Math.max(v,0.1)}
 function egoBrake(v){const G=game;return G&&G.spec&&G.spec.hyper?hyperBrakeCap(v):6.5} /* each car keeps its own braking */
 function satToggle(){if(game&&game.spec&&game.spec.hyper)return;SATL.on=!SATL.on;try{localStorage.setItem('satOn',SATL.on?'1':'0')}catch(e){}const b=document.getElementById('satBtn');if(b)b.textContent='🛰 '+(SATL.on?'On':'Off');if(game&&!smartOn()){game.hp=null;game.pred=null;game.threat=null;CHASE.evade=0}}
 setTimeout(()=>{const b=document.getElementById('satBtn');if(b)b.textContent='🛰 '+(SATL.on?'On':'Off')},0);
