@@ -509,7 +509,7 @@ const TERR={z:HIGH?15:14,tiles:new Map(),ref:null,ver:0};
 function terrTileOf(lat,lon){const n=2**TERR.z,r=lat*Math.PI/180;return[(lon+180)/360*n,(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n]}
 function loadTerr(tx,ty){const k=tx+'_'+ty;let t=TERR.tiles.get(k);if(t){t.used=performance.now();return t}t={ready:false,used:performance.now()};TERR.tiles.set(k,t);
  const img=new Image();img.crossOrigin='anonymous';
- img.onload=()=>{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0);const d=x.getImageData(0,0,256,256).data,h=new Float32Array(65536);for(let i=0;i<65536;i++)h[i]=d[i*4]*256+d[i*4+1]+d[i*4+2]/256-32768;t.h=h;t.ready=true;TERR.ver++};
+ img.onload=()=>{const x=TERR.cx||(TERR.cx=(()=>{const c=document.createElement('canvas');c.width=c.height=256;return c.getContext('2d',{willReadFrequently:true})})());x.clearRect(0,0,256,256);x.drawImage(img,0,0); /* one reused decode canvas (was a new canvas per tile) */const d=x.getImageData(0,0,256,256).data,h=new Float32Array(65536);for(let i=0;i<65536;i++)h[i]=d[i*4]*256+d[i*4+1]+d[i*4+2]/256-32768;t.h=h;t.ready=true;TERR.ver++};
  const remote=`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${TERR.z}/${tx}/${ty}.png`,n2=2**TERR.z,tlon=(tx+0.5)/n2*360-180,tlat=180/Math.PI*Math.atan(Math.sinh(Math.PI-2*Math.PI*(ty+0.5)/n2)),reg=regionAt(tlat,tlon,0.02),local=reg&&reg.m.terrain_zoom===TERR.z?`${reg.path}terrain/${TERR.z}/${tx}/${ty}.png`:null;
  img.onerror=()=>{if(local&&img.src.indexOf(local)>=0){img.src=remote}else{t.ready=true;t.h=null}};img.src=local||remote;return t}
 function terrReadyLL(lat,lon){const [fx,fy]=terrTileOf(lat,lon);return loadTerr(Math.floor(fx),Math.floor(fy)).ready}
@@ -531,7 +531,7 @@ function tileTerrReady(key){const [i,j]=key.split('_').map(Number);let ok=terrRe
  if(ok)d._terrOK=true;return ok}
 function manageTerrain(){const G=game,lat=toLat(G.ego.z),lon=toLon(G.ego.x),[fx,fy]=terrTileOf(lat,lon);if(G.fast){loadTerr(Math.floor(fx),Math.floor(fy));return}const TR=HIGH?3:2;for(let i=-TR;i<=TR;i++)for(let j=-TR;j<=TR;j++)loadTerr(Math.floor(fx)+i,Math.floor(fy)+j);
  for(const d of [1200,2400,3600]){const p=routeLLnh(G.ego.s+d);terrReadyLL(p[1],p[0])}
- if(TERR.tiles.size>(HIGH?80:48)){const arr=[...TERR.tiles.entries()].sort((a,b)=>a[1].used-b[1].used);for(let k=0;k<arr.length-(HIGH?70:40);k++)TERR.tiles.delete(arr[k][0])}}
+ if(TERR.tiles.size>(HIGH?200:120)){const arr=[...TERR.tiles.entries()].sort((a,b)=>a[1].used-b[1].used);for(let k=0;k<arr.length-(HIGH?170:100);k++)TERR.tiles.delete(arr[k][0])} /* 0.26 MB each; the old 80/70 window was smaller than the working set and thrashed (reload + re-decode every few frames) */}
 function waitFor(fn,ms){return new Promise(res=>{const t0=performance.now();const c=()=>{if(fn()||performance.now()-t0>ms)res();else setTimeout(c,100)};c()})}
 
 // ---- geometry helpers: points may carry an explicit height as p[2] (bridges / tunnels); otherwise they sit on the terrain
