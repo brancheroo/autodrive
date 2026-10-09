@@ -4911,6 +4911,19 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
   const cb=document.getElementById('preStart');if(cb&&cb.checked){const go=()=>{const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego)return setTimeout(go,200);if(b)b.textContent='⬇ Preloading…';preload(b)};setTimeout(go,0)}}});
 })();
 </script>
+<script>/* mods/02f-warmup.js */
+/* Shader warm-up: the first time a new kind of material is drawn, WebGL compiles its program in the middle of a frame
+   (a 50–100 ms hitch). At the start of each ride, build one of every car in the catalog plus the generic traffic shapes
+   out of sight, compile all programs while the loading screen is up, then throw them away. */
+(function(){
+ function warm(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego)return;const t0=performance.now(),grp=new THREE.Group();grp.position.set(G.ego.x,-500,G.ego.z);
+  const specs=[...(typeof CARS!=='undefined'?CARS:[]),...(typeof TRAFFIC_SPECS!=='undefined'?TRAFFIC_SPECS:[])];
+  for(const sp of specs){try{const g=buildCar(sp,sp.colors?sp.colors[0][1]:'#888',{interior:sp===G.spec});grp.add(g)}catch(e){}}
+  scene.add(grp);try{renderer.compile(scene,camera)}catch(e){}scene.remove(grp); /* compile() uploads no geometry, so nothing to free; the cars' own textures are released by scene.remove */
+  window.WARMUP_MS=Math.round(performance.now()-t0)}
+ MODS.push({id:'warmup',start(){setTimeout(warm,0)}});
+})();
+</script>
 <script>/* mods/03-quality.js */
 /* Graphics quality setting (Low / High / Ultra) on the start screen and HUD, plus a small FPS readout. */
 (function(){
