@@ -264,6 +264,9 @@ const CARS=[
 {id:'ebike',name:'Zoomr 100 E-Bike',sub:'Cheap self-riding e-bike that somehow does 100 mph',style:'coupe',L:1.8,W:0.65,H:1.6,wb:1.1,wr:0.33,hp:25,z60:6,top:100,range:'~30 mi (est.) · 1.5 kWh',weight:'~75 lb',drive:'Rear hub motor (definitely not street legal)',level:'SAE Level 2 · supervised',
  tech:'A $899 bargain-bin e-bike from an online marketplace with a motor nobody can explain. Thin steel frame, spoked wheels, a fat rear hub motor and a battery brick zip-tied to the down tube, a cheap LED headlight and your phone on a wobbly mount. It rides itself (badly supervised) and tops out at 100 mph. You sit upright in a hoodie, jeans and a bike helmet, in the opposite colour to the frame, and it leans into every curve.',
  colors:[['Matte Black','#26272a'],['Safety Yellow','#f2d21a'],['Mint','#6fd8b0'],['Coral','#ff6f5a'],['Sky Blue','#5aaaf0']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',plim:true,ebike:true},
+{id:'delivan',name:'Amazom Prima Van',sub:'Electric last-mile delivery van',style:'van',L:6.4,W:2.11,H:2.77,wb:4.06,wr:0.42,hp:320,z60:9.5,top:75,range:'~150 mi (est.) · 135 kWh',weight:'~9,500 lb',drive:'Single motor FWD EV',level:'SAE Level 2 · supervised',
+ tech:'A tall electric step van from a (very) fictional online megastore, shaped like the real purpose-built last-mile vans: short sloping nose, huge windshield, full-height cargo box with a sliding side door and a roll-up rear door. Its sides are one giant logo – a fat lowercase "amazom" with an orange grin-arrow – so nobody can miss it double-parked on their street.',
+ colors:[['Prima Fleet Blue-Grey','#c9d4dc'],['Delivery White','#f1f2f2']],dash:'center-ford',wheel:'round',sensors:'gm',sound:'ev',driver:true,delivan:true},
 {id:'h2saab',name:'Sahb 900 H2',sub:'Hydrogen fuel-cell hatchback',style:'sedan',L:4.69,W:1.69,H:1.42,wb:2.52,wr:0.32,hp:240,z60:7.2,top:130,range:'~400 mi on 6.2 kg of hydrogen',weight:'3,300 lb',drive:'Hydrogen fuel cell + 1.6 kWh buffer battery · FWD electric',level:'SAE Level 2 · supervised',
  tech:'The classic Swedish 3-door hatch with its upright wraparound windscreen and ignition between the seats, rebuilt around a hydrogen fuel cell. Two carbon-fibre tanks hold 6.2 kg of hydrogen for about 400 miles, it refuels in five minutes, and the only thing out of the tailpipe is water.',
  colors:[['Talladega Red','#a8121c'],['Cirrus White','#efefea'],['Scarab Green','#1e4a3a'],['Le Mans Blue','#1f3f7a'],['Black Pearl','#121316'],['Silver Metallic','#a9adb2']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,hydrogen:true},
@@ -1430,6 +1433,7 @@ const SHAPE_T={
 };
 // Per-model styling taken from manufacturer photos/spec sheets
 const MODEL={
+ 'delivan':{prof:{ax:-.15,g:[0,.03,.8,.88],top:[[0,.96],[.02,.99],[.1,1],[.8,1],[.84,.9],[.88,.66],[.93,.6],[.98,.52],[1,.42]],half:[[0,.94],[.03,.99],[.1,1],[.9,1],[.96,.96],[.99,.88],[1,.8]],belt:[[.02,.98],[.6,.98],[.8,.7],[.88,.62]],bot:[[0,.1],[.04,.08],[.96,.08],[1,.1]]}},
  'rideshare':{prof:{ax:.06,g:[.18,.3,.58,.7],top:[[0,.66],[.03,.72],[.1,.75],[.18,.77],[.3,.95],[.42,1],[.52,.99],[.58,.95],[.64,.81],[.7,.69],[.8,.67],[.9,.64],[.97,.6],[1,.52]],half:[[0,.82],[.03,.92],[.1,.98],[.3,1],[.7,1],[.88,.98],[.95,.92],[.99,.82],[1,.68]],belt:[[.18,.74],[.4,.68],[.58,.67],[.7,.69]],bot:[[0,.16],[.05,.11],[.95,.11],[1,.14]]}},
  'taxi':{prof:{ax:.0,g:[.2,.31,.58,.7],top:[[0,.58],[.03,.64],[.1,.66],[.2,.68],[.31,.94],[.42,1],[.52,1],[.58,.96],[.64,.82],[.7,.68],[.8,.66],[.9,.64],[.97,.61],[1,.55]],half:[[0,.86],[.03,.94],[.1,.99],[.3,1],[.7,1],[.9,.99],[.96,.96],[.99,.9],[1,.84]],belt:[[.2,.67],[.4,.63],[.58,.62],[.7,.66]],bot:[[0,.15],[.05,.1],[.95,.1],[1,.13]]},epa:400,mirror:'chrome',badge:'oval',shape:{clr:.15,nose:.42,hood:.57,cowl:.68,roofF:.585,roofR:.315,tail:.07,deck:.64,belt:.6,tum:.74,endR:.14,ft:.1,rt:.08,roof:'paint',cpil:true},grille:'ford',drl:'ford',tailL:'pair',rim:{n:10,style:'spoke',col:0xc8ccd0},cal:0x333333,int:{seat:0x24252a,mat:'cloth',trim:'none',dash:0x1c1d20}},
  'waymo-ipace':{prof:{ax:.0,g:[.05,.16,.6,.74],top:[[0,.66],[.02,.75],[.05,.82],[.16,.95],[.3,1],[.5,.99],[.6,.93],[.67,.76],[.74,.66],[.84,.64],[.93,.61],[.98,.56],[1,.5]],half:[[0,.84],[.03,.93],[.1,.99],[.3,1],[.7,1],[.88,.98],[.95,.93],[.99,.84],[1,.72]],belt:[[.05,.72],[.3,.64],[.6,.63],[.74,.65]],bot:[[0,.17],[.05,.12],[.95,.12],[1,.15]]},epa:234,mirror:'aero',handles:'flush',shape:{roofR:.12,roofF:.62,cowl:.72,tail:.02,deck:.72,hood:.6,nose:.47,clr:.17,belt:.63,tum:.72,endR:.3},grille:'jaguar',drl:'jaguar',tailL:'pair',rim:{n:10,style:'multi',col:0x1a1b1d},cal:0x333333,cladding:true,band:true,int:{seat:0x2b2d31,mat:'cloth',trim:'none',dash:0x1d1f22}},
@@ -2396,6 +2400,7 @@ const ENERGY={
  'keitruck':{epa:95,kwh:20,kg:850,cda:0.75,crr:0.011,dc:30,port:'CCS'},
  'aegis':{epa:200000,kwh:30000,kg:1800,cda:0.3,crr:0.007,dc:200000,port:'CCS'},
  'isetta':{epa:45,kwh:6,kg:295,cda:0.45,crr:0.009,dc:7,port:'J1772'},
+ 'delivan':{epa:150,kwh:135,kg:4300,cda:2.6,crr:0.011,dc:150,port:'CCS'},
  'ebike':{epa:30,kwh:1.5,kg:110,cda:0.5,crr:0.008,dc:1,port:'J1772'},
  'hyperbike':{epa:3000,kwh:500,kg:270,cda:0.2,crr:0.006,dc:500,port:'CCS'},
  'dronewagon':{epa:40,kwh:12,kg:190,cda:0.6,crr:0.012,dc:10,port:'J1772'},
@@ -7924,6 +7929,28 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   /* warm ambient light line along the dash */
   {const u=0.68,b0=S.bottom(u),T=S.top(u),y=b0+(T-b0)*0.5,hw=S.half(u)*0.88,strip=new THREE.Mesh(new THREE.BoxGeometry(0.008,0.006,hw*2),new THREE.MeshBasicMaterial({color:0xffd9a0}));strip.position.set(u*S.L-S.L/2-0.12,Math.min(y,S.belt(u)-0.06),0);strip.userData.inOnly=1;I.add(strip)}}
  MODS.push({id:'cyberkab',frame(){const G=typeof game!=='undefined'?game:null;const m=G&&G.ego&&G.ego.mesh;const U=m&&m.userData;if(!U||!U.ckDetail)return;U.ckDetail.visible=G.cam!=='in'}});
+})();
+</script>
+<script>/* mods/61r-delivan.js */
+/* Amazom Prima delivery van (spec.delivan): parody brand on a tall electric step-van body. Huge fictional logo – a fat
+   lowercase "amazom" wordmark with an orange grin-swoosh underneath – covering both sides, plus a smaller one on the rear doors.
+   Light blue-grey body ("Prima Smile Blue" stripe along the bottom). */
+(function(){
+ let LOGO=null;
+ function logoTex(){if(LOGO)return LOGO;const c=document.createElement('canvas');c.width=2048;c.height=768;const x=c.getContext('2d');
+  x.fillStyle='#1b2733';x.font='900 360px "Arial Rounded MT Bold", Arial Black, Arial, sans-serif';x.textAlign='center';x.textBaseline='alphabetic';x.fillText('amazom',1024,430);
+  x.strokeStyle='#ff9a1f';x.lineCap='round';x.lineWidth=58;x.beginPath();x.moveTo(330,520);x.quadraticCurveTo(1024,760,1640,520);x.stroke(); /* the grin */
+  x.fillStyle='#ff9a1f';x.beginPath();x.moveTo(1600,440);x.lineTo(1760,505);x.lineTo(1610,610);x.closePath();x.fill(); /* arrow tip */
+  x.font='700 92px Arial, sans-serif';x.fillStyle='#1b2733';x.fillText('P R I M A   ·   1 - D A Y   E V E R Y T H I N G',1024,700);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=8;return LOGO=t}
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.delivan&&g&&!g.userData.delivan){g.userData.delivan=1;livery(g,spec)}}catch(e){console.warn('delivan',e)}return g};
+ function livery(g,spec){const{L,W,H,wr}=spec,P=(profCache[spec.id]||{}).P,m=new THREE.MeshStandardMaterial({map:logoTex(),transparent:true,roughness:0.5,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2});
+  const hw=u=>P&&P.halfAt?P.halfAt(u,H*0.55):W/2;
+  for(const s of [1,-1]){const pl=new THREE.Mesh(new THREE.PlaneGeometry(L*0.62,L*0.62*0.375),m);pl.position.set(-L*0.1,H*0.56,s*(hw(0.4)+0.012));if(s<0)pl.rotation.y=Math.PI;g.add(pl)} /* huge side logos */
+  const rear=new THREE.Mesh(new THREE.PlaneGeometry(W*0.8,W*0.8*0.375),m);rear.position.set(-L/2-0.015,H*0.6,0);rear.rotation.y=-Math.PI/2;g.add(rear);
+  const stripeM=new THREE.MeshStandardMaterial({color:0x1f8fd6,roughness:0.5});for(const s of [1,-1]){const st=new THREE.Mesh(new THREE.BoxGeometry(L*0.86,0.12,0.01),stripeM);st.position.set(-L*0.02,wr*2+0.12,s*(hw(0.5)+0.01));g.add(st)}}
+ MODS.push({id:'delivan'});
 })();
 </script>
 <script>/* mods/62-trams.js */
