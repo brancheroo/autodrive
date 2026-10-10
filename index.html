@@ -273,7 +273,7 @@ const CARS=[
 {id:'gwagen',name:'Mercedez-AMB G 580 EQ Ultra',sub:'Electric G-wagon · ultra-luxury · Distronic assist',style:'suv',L:4.73,W:1.93,H:1.99,wb:2.89,wr:0.39,hp:579,z60:3.6,top:112,range:'239 mi (EPA) · 116 kWh',weight:'6,800 lb',drive:'Quad motor EV (one per wheel) · G-Turn tank turn',level:'SAE Level 2 · hands-on Distronic + Active Steering',
  tech:'The electric G-wagon in AMG ultra-luxury trim: the same upright brick body, flat glass and round headlights as since 1979, with four individual motors (one per wheel), so it can spin on the spot. Exposed door hinges, wing-top indicators and square arch flares outside; the EV carries a square design box on the side-hinged rear door instead of a spare wheel. Inside: diamond-quilted Nappa leather, open-pore walnut and two 12.3" screens.',
  colors:[['Obsidian Black','#0f1012'],['Polar White','#eceeee'],['Manufaktur Olive','#5b6a3a'],['South Seas Blue','#2a6fb8'],['Opalite White Magno','#d9dbd8']],dash:'mercedes',wheel:'round',sensors:'mb',sound:'ev',driver:true,gwagen:true},
-{id:'hummer',name:'Hummr EV Bastion',sub:'Giant armoured electric super-truck · Super Snooze',style:'suv',L:6.3,W:2.5,H:2.4,wb:3.95,wr:0.55,hp:1000,z60:4.4,top:99,range:'260 mi (est.) · 246 kWh',weight:'13,400 lb (armoured)',drive:'Tri-motor e4WD · 4-wheel steer CrabWalk · 44" run-flat tyres',level:'SAE Level 2 · Super Snooze hands-free on mapped highways',
+{id:'hummer',name:'Hummr EV Bastion',sub:'Giant armoured electric super-truck · Super Snooze',style:'suv',L:6.3,W:2.5,H:2.4,wb:3.95,wr:0.55,hp:1000,z60:2.4,top:99,range:'260 mi (est.) · 246 kWh',weight:'13,400 lb (armoured)',drive:'Tri-motor e4WD · 57,500 lb-ft (5× Hummer EV) · 4-wheel steer CrabWalk · 44" run-flat tyres',level:'SAE Level 2 · Super Snooze hands-free on mapped highways',
  tech:'A super-sized, up-armoured take on the electric Hummer SUV: a slab-sided brick about 20% bigger than the real truck, with bolted-on steel armour plates (rivets and all), steel mesh over the side glass, a full-width ram bar with a winch, rock sliders, a roof rack with a light bar and a spare-wheel carrier on the tailgate. Still a 1,000 hp tri-motor EV underneath, with four-wheel-steer CrabWalk and Extract mode air suspension.',
  colors:[['Tactical Sand','#b9a27a'],['Gunmetal','#3c4046'],['OD Green','#4b5320'],['Interstellar White','#e9e9e4']],dash:'hyper',wheel:'round',sensors:'none',sound:'ev',driver:true,hummer:true},
 {id:'formulae',name:'Volt-E GEN-X Autonomous',sub:'Self-driving Formula E-style racer · 350 mph',style:'coupe',L:5.02,W:1.7,H:1.02,wb:2.97,wr:0.33,hp:1300,z60:0.7,top:350,range:'~2,350 mi (est.) · 2,000 kWh',weight:'1,900 lb',drive:'Twin motor AWD EV · 4 g downforce',level:'SAE Level 4 · autonomous racing stack (fictional)',
@@ -6209,6 +6209,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
   smaht:{sys:'cruise control only',odd:'none',max:0,lc:'none',hands:'on'},
   gwagen:{sys:'Distronic + Active Steering',odd:'lanes',max:130,lc:'auto',hands:'on'},
  delivan:{sys:'Highway Assist',odd:'hwy',max:70,lc:'none',hands:'on'},
+ hummer:{sys:'Super Snooze',odd:'hwy',max:85,lc:'auto',hands:'free'},
  };
  const A={st:null,eng:false,l3:false,why:'',okT:0,last:''};window.ADAS=A;
  const spec=()=>{const G=typeof game!=='undefined'?game:null;return G&&G.spec?S[G.spec.id]:null};
@@ -8359,6 +8360,43 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    const deg=Math.round(Math.abs(mean)*180/Math.PI);
    mode=G.uturn&&G.uturn.pivot?'PIVOT · spinning on the spot':spread<0.06&&deg>=4&&deg<=176?`CRAB ${deg}° ${mean>0?'left':'right'}`:deg>150?'REVERSE · pods swung 180°':spread>0.06?'4-WHEEL STEER':'STRAIGHT';
    hud(G.fast?'':'🛞 360° PODS · '+mode)}});
+})();
+</script>
+<script>/* mods/61w-hummer.js */
+/* Hummr EV Bastion (spec.hummer): armour kit on the lofted brick body – riveted steel plates on the doors and flanks,
+   steel mesh over the side glass, a full-width ram bar with winch, rock sliders, a roof rack + light bar, wheel-arch
+   armour and a spare on the tailgate. Placed from the measured body (P.halfAt / P.top) so it sits on the skin. */
+(function(){
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec,colorHex){const g=_bc.apply(this,arguments);try{if(spec&&spec.hummer&&g&&!g.userData.armour){g.userData.armour=1;kit(g,spec,colorHex)}}catch(e){console.warn('hummer',e)}return g};
+ function kit(g,spec,col){const{L,W,H,wr}=spec,P=(profCache[spec.id]||{}).P;if(!P)return;
+  const steel=new THREE.MeshStandardMaterial({color:new THREE.Color(col).multiplyScalar(0.8),metalness:0.55,roughness:0.55}),blk=new THREE.MeshStandardMaterial({color:0x151618,metalness:0.4,roughness:0.6}),
+   bolt=new THREE.MeshStandardMaterial({color:0x8a8d90,metalness:0.9,roughness:0.3}),lamp=new THREE.MeshBasicMaterial({color:0xfff6e0}),mesh=new THREE.MeshStandardMaterial({color:0x1a1b1d,metalness:0.6,roughness:0.5,transparent:true,opacity:0.55});
+  const add=(geo,m,x,y,z)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;g.add(o);return o};
+  let hw=0;for(let u=0.05;u<0.95;u+=0.05)hw=Math.max(hw,P.halfAt?P.halfAt(u,H*0.45):W/2);
+  const rivets=(x0,x1,y0,y1,z)=>{for(const y of [y0+0.04,y1-0.04])for(let x=x0+0.05;x<=x1-0.04;x+=0.16)add(new THREE.SphereGeometry(0.014,6,4),bolt,x,y,z)};
+  for(const sd of [1,-1]){const z=sd*(hw+0.03);
+   /* door / flank armour: two plates per side between the arches, rivet rows top and bottom */
+   const a0=P.axles[1]+P.R+0.15,a1=P.axles[0]-P.R-0.15,mid=(a0+a1)/2;
+   for(const [x0,x1] of [[a0,mid-0.02],[mid+0.02,a1]]){add(new THREE.BoxGeometry(x1-x0,H*0.3,0.04),steel,(x0+x1)/2,H*0.42,z);rivets(x0,x1,H*0.27,H*0.57,z+sd*0.022)}
+   /* arch armour: thick black flares */
+   for(const ax of P.axles){add(new THREE.BoxGeometry(P.R*2+0.3,0.1,0.14),blk,ax,wr+P.R+0.08,sd*(hw+0.05));for(const dx of [-1,1])add(new THREE.BoxGeometry(0.1,P.R*0.9,0.14),blk,ax+dx*(P.R+0.12),wr+P.R*0.5,sd*(hw+0.05))}
+   /* rock slider */
+   add(new THREE.BoxGeometry(a1-a0+0.2,0.1,0.14),blk,mid,0.42,sd*(hw-0.02));
+   /* steel mesh over the side glass */
+   const gx0=P.xOf(P.sh.roofR+0.03),gx1=P.xOf(P.sh.roofF-0.01),gy=H*0.77;const gm=add(new THREE.BoxGeometry(gx1-gx0,H*0.22,0.01),mesh,(gx0+gx1)/2,gy,sd*(P.halfAt?P.halfAt(0.45,gy)+0.025:W/2));
+   for(let x=gx0;x<=gx1;x+=0.09)add(new THREE.BoxGeometry(0.012,H*0.22,0.016),blk,x,gy,gm.position.z)}
+  /* ram bar + winch */
+  const xf=L/2+0.12;add(new THREE.BoxGeometry(0.18,0.26,W*1.02),blk,xf,0.62,0);for(const y of [0.8,0.95])add(new THREE.BoxGeometry(0.07,0.07,W*0.75),blk,xf+0.02,y,0);for(const zz of [-0.55,0,0.55])add(new THREE.BoxGeometry(0.07,0.45,0.07),blk,xf+0.02,0.85,zz);
+  const winch=add(new THREE.CylinderGeometry(0.1,0.1,0.42,16),bolt,xf+0.08,0.62,0);winch.rotation.x=Math.PI/2;
+  /* roof rack + light bar */
+  const rx0=P.xOf(P.sh.roofR+0.02),rx1=P.xOf(P.sh.roofF-0.02),ry=H+0.06,rw=W*0.82;
+  for(const zz of [rw/2,-rw/2])add(new THREE.BoxGeometry(rx1-rx0,0.05,0.05),blk,(rx0+rx1)/2,ry,zz);for(let x=rx0;x<=rx1;x+=0.35)add(new THREE.BoxGeometry(0.05,0.04,rw),blk,x,ry,0);
+  add(new THREE.BoxGeometry(0.1,0.12,rw*0.9),blk,rx1+0.03,ry+0.08,0);for(let k=0;k<8;k++)add(new THREE.BoxGeometry(0.012,0.08,0.13),lamp,rx1+0.085,ry+0.08,(k-3.5)*rw*0.11);
+  /* spare on the tailgate */
+  const sp=add(new THREE.CylinderGeometry(wr*0.95,wr*0.95,0.3,24),blk,-L/2-0.2,H*0.48,0);sp.rotation.z=Math.PI/2;
+  g.userData.armourKit=true}
+ MODS.push({id:'hummer'});
 })();
 </script>
 <script>/* mods/62-trams.js */
