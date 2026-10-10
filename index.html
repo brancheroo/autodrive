@@ -8319,6 +8319,43 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    b.style.display='block';b.textContent=`✈️ ${F.phase||'Ready'} · ${Math.round(F.alt*3.281).toLocaleString()} ft · Mach ${F.mach.toFixed(1)} · ${Math.round(e.v*2.237).toLocaleString()} mph`}});
 })();
 </script>
+<script>/* mods/61v-aegis-wheels.js */
+/* Aegis-X individually steered 360° wheel pods. Each wheel sits in its own motorised fork (a steering yoke + hub ring)
+   and is pointed, every frame, along the direction its own hub is actually travelling over the ground. That one rule gives:
+   crab (all four parallel and angled during lane changes), four-wheel steer (fronts in, rears out in turns), pivot
+   (wheels tangent to a circle when spinning on the spot) and reverse (wheels swing round through 180°) – with no angle
+   limit. The planner's crab and pivot logic for omni cars (spec.omni) is unchanged; this makes each wheel follow it. */
+(function(){
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec){const g=_bc.apply(this,arguments);try{if(spec&&spec.aegis&&g&&!g.userData.aegisPods)pods(g,spec)}catch(e){console.warn('aegis pods',e)}return g};
+ function pods(g,spec){const W=g.userData.wheels;if(!W||!W.length)return;g.userData.aegisPods=true;
+  const blk=new THREE.MeshStandardMaterial({color:0x17181b,metalness:0.6,roughness:0.35}),acc=new THREE.MeshBasicMaterial({color:0xff6a10});
+  const r=spec.wr;for(const w of W){const sd=w.piv.position.z>0?1:-1;
+   /* steering yoke: a vertical kingpin above the tyre, a crown, and fork arms either side (the hub sits between them) */
+   const y=new THREE.Group();w.piv.add(y);
+   const king=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.16,16),blk);king.position.y=r+0.12;y.add(king);
+   const crown=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.04,0.36),blk);crown.position.y=r+0.05;y.add(crown);
+   for(const s of [1,-1]){const arm=new THREE.Mesh(new THREE.BoxGeometry(0.1,r+0.05,0.035),blk);arm.position.set(0,(r+0.05)/2,s*0.165);y.add(arm)}
+   const ring=new THREE.Mesh(new THREE.TorusGeometry(0.055,0.012,8,24),acc);ring.position.set(0,r+0.21,0);ring.rotation.x=Math.PI/2;y.add(ring); /* orange slew ring: shows the pod's heading */
+   w.pod={prev:null,ang:w.piv.rotation.y}}}
+ const tmp=new THREE.Vector3(),inv=new THREE.Quaternion();let mode='',el=null;
+ function hud(t){if(!el){el=document.createElement('div');el.style.cssText='position:fixed;top:172px;left:50%;transform:translateX(-50%);z-index:61;font:700 11px system-ui;padding:3px 9px;border-radius:7px;background:#0e141dcc;color:#e8eef5;pointer-events:none';document.body.appendChild(el)}el.style.display=t?'block':'none';if(t&&el.textContent!==t)el.textContent=t}
+ const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
+ MODS.push({id:'aegis-wheels',
+  start(){mode='';hud('')},
+  frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.spec||!G.spec.aegis||!G.ego.mesh){if(el)hud('');return}
+   const m=G.ego.mesh,W=m.userData.wheels;if(!W||!m.userData.aegisPods)return;m.updateMatrixWorld(true);m.getWorldQuaternion(inv).invert();
+   let sum=0,n=0,spread=0;const angs=[];
+   for(const w of W){const P=w.pod;if(!P)continue;w.piv.getWorldPosition(tmp);const cur=tmp.clone();
+    if(P.prev){const d=cur.clone().sub(P.prev).applyQuaternion(inv),dist=Math.hypot(d.x,d.z);
+     if(dist>2e-4&&dist<30){const tgt=Math.atan2(-d.z,d.x);P.ang+=wrap(tgt-P.ang)*Math.min(1,0.35+Math.min(0.5,dist*4))}} /* turn the shortest way round; no ±90° stop */
+    P.prev=cur;w.piv.rotation.y=P.ang;angs.push(wrap(P.ang))}
+   for(const a of angs){sum+=a;n++}const mean=n?sum/n:0;for(const a of angs)spread=Math.max(spread,Math.abs(wrap(a-mean)));
+   const deg=Math.round(Math.abs(mean)*180/Math.PI);
+   mode=G.uturn&&G.uturn.pivot?'PIVOT · spinning on the spot':spread<0.06&&deg>=4&&deg<=176?`CRAB ${deg}° ${mean>0?'left':'right'}`:deg>150?'REVERSE · pods swung 180°':spread>0.06?'4-WHEEL STEER':'STRAIGHT';
+   hud(G.fast?'':'🛞 360° PODS · '+mode)}});
+})();
+</script>
 <script>/* mods/62-trams.js */
 /* (44) Trams & cable cars on the real OSM tram / light-rail lines near your route. Modern two-section light-rail
    vehicles (pantograph, white with a coloured band); inside San Francisco they're classic cable cars (wood-and-red
