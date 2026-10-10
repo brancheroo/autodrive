@@ -5412,14 +5412,14 @@ function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userDa
    body lurches forward on hard braking and gets thrown in a crash (spring-damped). */
 (function(){
  let lastV=null,lean=0,leanV=0,arms=0,yaw=0,lastLog=0;
- const parts=r=>{if(r.userData.anim)return r.userData.anim;const arm=r.children.filter(c=>c.isGroup&&Math.abs(c.position.y+0.26)<0.02);return r.userData.anim={arm,base:arm.map(a=>({z:a.rotation.z,x:a.rotation.x})),x0:r.position.x,y0:r.position.y}};
+ const parts=r=>{if(r.userData.anim)return r.userData.anim;const arm=r.children.filter(c=>c.isGroup&&Math.abs(c.position.y+0.26)<0.02);return r.userData.anim={arm,base:arm.map(a=>({z:a.rotation.z,x:a.rotation.x})),x0:r.position.x,y0:r.position.y,z0:r.rotation.z}};
  MODS.push({id:'rideranim',
   start(){lastV=null;lean=leanV=arms=yaw=0;lastLog=CRASH.log.length},
   frame(){const G=game;if(!G||!G.route||!G.ego||!G.ego.mesh)return;const r=G.ego.mesh.userData.rider;if(!r)return;const P=parts(r),e=G.ego,dt=1/60;
    const a=lastV==null?0:(e.v-lastV)/Math.max(1e-3,dt*Math.max(1,G.scale||1));lastV=e.v;const ac=G.paused?0:clamp(a,-30,30);
    let kick=0;if(CRASH.log.length>lastLog){const n=CRASH.log.slice(lastLog);lastLog=CRASH.log.length;const c=n.find(c=>c.a==='ego'||c.b==='ego');if(c)kick=Math.min(3,c.mph/12)}
    leanV+=(-ac*0.012-lean)*dt*60*0.25+kick;leanV*=0.82;lean=clamp(lean+leanV*dt*6,-0.35,0.6);
-   r.rotation.z=-lean*0.6;r.position.x=P.x0+lean*0.08;
+   r.rotation.z=P.z0-lean*0.6; /* keep any seat recline (Formula E) */r.position.x=P.x0+lean*0.08;
    const want=ac>5.5?1:0;arms+=(want-arms)*Math.min(1,dt*(want?8:2));P.arm.forEach((g,i)=>{g.rotation.z=P.base[i].z-arms*2.2;g.rotation.x=P.base[i].x+(i?-1:1)*arms*0.35});
    let ty=0;const pr=G.pred&&G.pred.length?G.pred.filter(p=>p.d<40).sort((p,q)=>p.d-q.d)[0]:null;
    if(pr){const dx=pr.x-e.x,dz=pr.z-e.z,f=dx*Math.cos(e.head)-dz*Math.sin(e.head),l=dx*Math.sin(e.head)+dz*Math.cos(e.head);if(f>0)ty=clamp(Math.atan2(l,f),-1.1,1.1)}
