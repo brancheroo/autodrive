@@ -8399,6 +8399,42 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  MODS.push({id:'hummer'});
 })();
 </script>
+<script>/* mods/61x-wedge-engine.js */
+/* Lamborgo Cuneo (id 'wedge'): rear-mounted 4.0 L W24 on show under a clear dome on the engine deck – four banks of six
+   cylinder heads in a W, red crackle cam covers, a ring of 24 turbochargers (one per cylinder) whose hot sides glow
+   harder as the car accelerates, intake plenum and polished headers. The dome is tilted to follow the sloping deck. */
+(function(){
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec){const g=_bc.apply(this,arguments);try{if(spec&&spec.id==='wedge'&&g&&!g.userData.w24)kit(g,spec)}catch(e){console.warn('w24',e)}return g};
+ function kit(g,spec){const P=(profCache[spec.id]||{}).P;if(!P)return;const u0=0.04,u1=0.27,x0=P.xOf(u0),x1=P.xOf(u1),y0=P.top(u0),y1=P.top(u1);
+  const cx=(x0+x1)/2,cy=(y0+y1)/2,len=Math.abs(x1-x0),tilt=Math.atan2(y1-y0,x1-x0),wid=Math.min(spec.W*0.55,1.15);
+  const bay=new THREE.Group();bay.position.set(cx,cy,0);bay.rotation.z=tilt;g.add(bay);g.userData.w24=bay;
+  const alu=new THREE.MeshStandardMaterial({color:0xb8bcc2,metalness:0.9,roughness:0.3}),red=new THREE.MeshStandardMaterial({color:0xb3121a,metalness:0.3,roughness:0.75}),
+   blk=new THREE.MeshStandardMaterial({color:0x101113,roughness:0.6}),pipe=new THREE.MeshStandardMaterial({color:0xd8c9a8,metalness:1,roughness:0.18}),
+   hot=new THREE.MeshStandardMaterial({color:0x2a1408,emissive:0xff4a10,emissiveIntensity:0.4,metalness:0.8,roughness:0.4});
+  const add=(geo,m,x,y,z,p=bay)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);p.add(o);return o};
+  /* dark bay floor (hides the body skin under the dome) + carbon surround */
+  add(new THREE.BoxGeometry(len*0.98,0.02,wid),blk,0,0.0,0);
+  /* W24 block: four banks of six, splayed in a W, each with a red cam cover */
+  const eL=len*0.7;add(new THREE.BoxGeometry(eL,0.1,wid*0.5),alu,0,0.05,0);
+  [-0.42,-0.14,0.14,0.42].forEach((a,i)=>{const b=new THREE.Group();b.position.set(0,0.08,(i-1.5)*wid*0.12);b.rotation.x=a;bay.add(b);
+   add(new THREE.BoxGeometry(eL,0.1,wid*0.1),alu,0,0.06,0,b);add(new THREE.BoxGeometry(eL*0.96,0.035,wid*0.09),red,0,0.125,0,b);
+   for(let k=0;k<6;k++)add(new THREE.CylinderGeometry(0.012,0.012,0.03,8),blk,-eL/2+eL*(k+0.5)/6,0.155,0,b)}); /* coil packs */
+  /* intake plenum running down the middle */
+  const pl=add(new THREE.CylinderGeometry(0.05,0.05,eL*0.9,16),alu,0,0.2,0);pl.rotation.z=Math.PI/2;
+  /* 24 turbos: 12 per side in two rows, glowing hot sides, with polished headers down to them */
+  const T=[];for(const sd of [1,-1])for(let r=0;r<2;r++)for(let k=0;k<6;k++){const x=-eL/2+eL*(k+0.5)/6,z=sd*(wid*0.33+r*0.075),y=0.07+r*0.03;
+   const t=add(new THREE.TorusGeometry(0.028,0.016,8,16),hot,x,y,z);t.rotation.y=Math.PI/2;T.push(t);
+   add(new THREE.CylinderGeometry(0.018,0.018,0.04,8),alu,x,y,z-sd*0.03).rotation.x=Math.PI/2;
+   const h=add(new THREE.CylinderGeometry(0.01,0.01,wid*0.2,8),pipe,x,y+0.04,sd*wid*0.22);h.rotation.x=Math.PI/2+sd*0.5}
+  /* clear dome over it all */
+  const dome=add(new THREE.SphereGeometry(0.5,40,20,0,Math.PI*2,0,Math.PI/2),new THREE.MeshPhysicalMaterial({color:0xffffff,transmission:0,transparent:true,opacity:0.18,roughness:0.02,metalness:0,clearcoat:1,depthWrite:false,side:THREE.DoubleSide}),0,0.0,0);
+  dome.scale.set(len/1.0*1.02,0.62,wid/1.0*1.02);dome.renderOrder=2;
+  const rim=add(new THREE.TorusGeometry(0.5,0.012,8,48),blk,0,0.005,0);rim.rotation.x=Math.PI/2;rim.scale.set(len*1.02,wid*1.02,1);
+  g.userData.w24T=T}
+ MODS.push({id:'w24',frame(){const G=typeof game!=='undefined'?game:null,T=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.w24T;if(!T)return;const a=Math.max(0,G.ego.acc||0),k=0.35+Math.min(2.2,a*0.12)+Math.random()*0.08;for(const t of T)t.material.emissiveIntensity=k}}); /* boost glow: shared material, set once per frame */
+})();
+</script>
 <script>/* mods/62-trams.js */
 /* (44) Trams & cable cars on the real OSM tram / light-rail lines near your route. Modern two-section light-rail
    vehicles (pantograph, white with a coloured band); inside San Francisco they're classic cable cars (wood-and-red
