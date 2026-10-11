@@ -7624,8 +7624,8 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   sim(dt){if(!on()||dt<=0)return;const G=game,e=G.ego,a=e.acc||0,E=ENERGY.aegis;
    /* 0 → Mach 10 (7,600 mph) in 5 s whenever the planner is running flat out (Express / Chase / Cannonball) and not braking */
    const AM=(7600/MPH)/5,vTop=G.spec.top/MPH;
-   if(window.CANNON&&CANNON.on&&!G.paused){const rem=Math.max(0,G.route.total-e.s),vStop=Math.sqrt(2*AM*Math.max(0,rem-40)); /* Cannonball: magic avoidance, so drive the ideal profile: +Mach 10 per 5 s, and brake just as hard to arrive */
-    if(e.v>45||vStop>45)e.v=Math.max(Math.min(45,e.v),Math.min(e.v+AM*dt,vTop,vStop))}
+   if(window.CANNON&&CANNON.on&&!G.paused){const rem=Math.max(0,G.route.total-e.s),vStop=Math.sqrt(2*AM*Math.max(0,rem-1)); /* Cannonball: magic avoidance, so drive the ideal profile: +Mach 10 per 5 s, and brake just as hard to arrive */
+    if(rem>50||e.v>3)e.v=Math.min(e.v+AM*dt,vTop,vStop)}
    else if(typeof fastOn==='function'&&fastOn()&&a>-0.3&&!G.paused)e.v=Math.min(vTop,e.v+AM*dt);
    /* regen: 98% of braking energy back into the battery */
    if(a<0&&e.v>0.5){const cap=capJ(E);G.energy=Math.min(cap,G.energy+0.98*BASE_KG*e.v*(-a)*dt);G.soc=G.energy/cap}
