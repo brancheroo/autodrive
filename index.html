@@ -9417,6 +9417,30 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  MODS.push({id:'settings',start(){apply();UIX.btn('setBtn','⚙️','Features on/off',panel);for(const [k,id,ic,tip] of TOG){const b=UIX.btn(id,ic+' …',tip+' – on/off',null)||document.getElementById(id);if(b){b.onclick=()=>flip(k,ic,b);label(b,k,ic)}}for(const k of off)hide(k)}});
 })();
 </script>
+<script>/* mods/99-legfit.js */
+/* Leg fit: the high-detail rider sits with thighs forward and shins down, which suits upright cars but pokes the shins and
+   shoes out through the floor of low cars (hypercars, wedges, microcars, low EVs). After every other riderAttach wrapper has
+   placed the rider, swing the legs forward about the hips – a step at a time, like a sports-car driving position – until
+   every leg vertex has bodywork beneath it and sits above the floor. Riders with their own custom pose are left alone. */
+(function(){
+ const CUSTOM=s=>s.formulae||s.hbike||s.ebike||s.dronewagon||s.solarcar||s.vtol;
+ const rc=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0),v=new THREE.Vector3();
+ function fit(car,R){if(R.userData.legFit)return;R.userData.legFit=1;
+  const hip=new THREE.Vector3(-0.02,-0.78,0),legs=R.children.filter(o=>o.isMesh&&o.userData.keepMat&&o.position.y<-0.79&&o.position.x>0.05);if(!legs.length)return;
+  const pv=new THREE.Group();pv.position.copy(hip);R.add(pv);for(const o of legs){o.position.sub(hip);pv.add(o)}
+  const objs=[];car.traverse(o=>{if(!o.isMesh||!o.visible)return;let p=o;while(p){if(p===R)return;p=p.parent}objs.push(o)});
+  const sv=objs.map(o=>{const m=Array.isArray(o.material)?o.material[0]:o.material;const s=m.side;m.side=THREE.DoubleSide;return[m,s]});
+  const floor=car.position.y+0.06;
+  const bad=()=>{car.updateMatrixWorld(true);let n=0;for(const o of legs){const P=o.geometry.attributes.position;for(let i=0;i<P.count;i+=6){v.fromBufferAttribute(P,i).applyMatrix4(o.matrixWorld);if(v.y<floor){n++;continue}rc.set(v,down);rc.far=3;if(!rc.intersectObjects(objs,false).length)n++}}return n};
+  let best=0,bestN=bad();
+  for(let a=0.1;bestN>0&&a<=1.3001;a+=0.1){pv.rotation.z=a;const n=bad();if(n<bestN){bestN=n;best=a}}
+  pv.rotation.z=best;if(bestN>20)pv.visible=false; /* nothing fits (tiny cabins): hide the legs rather than show them through the floor */
+  for(const[m,s]of sv)m.side=s;car.updateMatrixWorld(true)}
+ const _ra=window.riderAttach;
+ if(typeof _ra==='function')window.riderAttach=function(){const r=_ra.apply(this,arguments);try{const G=game,m=G&&G.ego&&G.ego.mesh,R=m&&m.userData.rider;if(R&&G.spec&&!CUSTOM(G.spec))fit(m,R)}catch(e){console.warn('legfit',e)}return r};
+ window.__legFit=fit;MODS.push({id:'legfit'});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
