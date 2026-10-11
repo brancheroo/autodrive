@@ -8500,13 +8500,13 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    const quad=(a,b,c,d)=>pp.push(...a,...b,...c,...a,...c,...d);
    const sideWin=[[0.95,yw],[0.25,yr-0.04],[-0.25,yr-0.07],[-1.0,yw]];
    /* side caps */
-   for(const sd of [1,-1])for(let x=-L/2;x<L/2;x+=C)for(let y=yb;y<H;y+=C){const cx=x+C/2,cy=y+C/2;if(!inPoly(cx,cy,PR)||inPoly(cx,cy,sideWin))continue;
+   for(const sd of [1,-1])for(let x=-L/2;x<L/2;x+=C)for(let y=yb;y<H;y+=C){const cx=x+C/2,cy=y+C/2;if(!inPoly(cx,cy,PR)||(inPoly(x,y,sideWin)&&inPoly(x+C,y,sideWin)&&inPoly(x,y+C,sideWin)&&inPoly(x+C,y+C,sideWin)))continue; /* hole only where the whole cell is behind glass, so the lining overlaps the glass edge */
     const z=(yy)=>sd*(hw(yy)-0.03);quad([x,y,z(y)],[x+C,y,z(y)],[x+C,y+C,z(y+C)],[x,y+C,z(y+C)])}
    /* perimeter facets (nose, windscreen slope, rear slope, tail, underside) */
    for(let e=0;e<PR.length;e++){const p=PR[e],q=PR[(e+1)%PR.length],len=Math.hypot(q[0]-p[0],q[1]-p[1]),n=[-(q[1]-p[1])/len,(q[0]-p[0])/len],nT=Math.max(1,Math.ceil(len/C));
     for(let a=0;a<nT;a++){const t0=a/nT,t1=(a+1)/nT,tm=(t0+t1)/2,A=along(p,q,t0),B=along(p,q,t1),M=along(p,q,tm),half=hw(M[1])-0.03,nW=Math.ceil(half*2/C);
      for(let b=0;b<nW;b++){const w0=-1+2*b/nW,w1=-1+2*(b+1)/nW,wm=(w0+w1)/2*half;
-      if(e===1&&tm>0.38&&tm<0.97&&Math.abs(wm)<hw(M[1])-0.1)continue;if(e===2&&tm>0.03&&tm<0.16&&Math.abs(wm)<hw(M[1])-0.18)continue;
+      const wa=Math.max(Math.abs(w0),Math.abs(w1))*half;if(e===1&&t0>=0.38&&t1<=0.97&&wa<hw(M[1])-0.1)continue;if(e===2&&t0>=0.03&&t1<=0.16&&wa<hw(M[1])-0.18)continue;
       const P_=(T,w)=>[T[0]+n[0]*0.03,T[1]+n[1]*0.03,w*(hw(T[1])-0.03)];quad(P_(A,w0),P_(B,w0),P_(B,w1),P_(A,w1))}}}
    const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(pp,3));sg.computeVertexNormals();hood.add(new THREE.Mesh(sg,trim))}
   const fl=new THREE.Mesh(new THREE.BoxGeometry(2.7,0.04,hw(0.6)*2-0.1),trim);fl.position.set(0.1,0.6,0);hood.add(fl); /* floor */
