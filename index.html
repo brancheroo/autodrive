@@ -8489,10 +8489,11 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    /* sill: black strip along the bottom edge */
    sidePanel([[L/2-0.2,yb],[L/2-0.2,yb+0.08],[-L/2+0.2,yb+0.08],[-L/2+0.2,yb]],s,blk,0.009)}
   /* cabin lining: the steel shell only draws its outside, so line the cabin with dark trim everywhere except the glass */
+  const hood=new THREE.Group();g.add(hood);ud.hood=hood; /* cabin view hides ud.body and shows ud.hood: the lining lives here */
   const trim=new THREE.MeshStandardMaterial({color:0x2a2d31,roughness:0.85,side:THREE.DoubleSide,flatShading:true});
   const inPanel=(p,q,t0,t1)=>{const a=along(p,q,t0),b=along(p,q,t1),n=[-(q[1]-p[1]),q[0]-p[0]],nl=Math.hypot(...n),o=[n[0]/nl*0.04,n[1]/nl*0.04],w=y=>hw(y)-0.05;
-   const v=[[a[0]+o[0],a[1]+o[1],w(a[1])],[b[0]+o[0],b[1]+o[1],w(b[1])],[b[0]+o[0],b[1]+o[1],-w(b[1])],[a[0]+o[0],a[1]+o[1],-w(a[1])]];const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute([...v[0],...v[1],...v[2],...v[0],...v[2],...v[3]],3));gg.computeVertexNormals();body.add(new THREE.Mesh(gg,trim))};
-  const inSide=(pts,s)=>{const v=pts.map(([x,y])=>[x,y,s*(hw(y)-0.04)]);const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute([...v[0],...v[1],...v[2],...v[0],...v[2],...v[3]],3));gg.computeVertexNormals();body.add(new THREE.Mesh(gg,trim))};
+   const v=[[a[0]+o[0],a[1]+o[1],w(a[1])],[b[0]+o[0],b[1]+o[1],w(b[1])],[b[0]+o[0],b[1]+o[1],-w(b[1])],[a[0]+o[0],a[1]+o[1],-w(a[1])]];const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute([...v[0],...v[1],...v[2],...v[0],...v[2],...v[3]],3));gg.computeVertexNormals();hood.add(new THREE.Mesh(gg,trim))};
+  const inSide=(pts,s)=>{const v=pts.map(([x,y])=>[x,y,s*(hw(y)-0.04)]);const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute([...v[0],...v[1],...v[2],...v[0],...v[2],...v[3]],3));gg.computeVertexNormals();hood.add(new THREE.Mesh(gg,trim))};
   const yAt=(p,q,x)=>p[1]+(q[1]-p[1])*(x-p[0])/(q[0]-p[0]); /* height of a profile edge at x */
   inPanel(PR[1],PR[2],0,0.38); /* under the windscreen: dash top / cowl */
   inPanel(PR[2],PR[3],0.16,0.5); /* headliner behind the rear window */
@@ -8501,9 +8502,10 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    inSide([[1.45,yb+0.12],[1.45,yw],[-1.25,yw],[-1.25,yb+0.12]],sd); /* door cards up to the window line */
    const xf=0.95+0.5;inSide([[0.95,yw],[xf,yw],[xf,yAt(PR[1],PR[2],xf)],[0.25,yr-0.04]],sd); /* A-pillar fill between windscreen and side glass */
    inSide([[-1.0,yw],[-0.25,yr-0.07],[0.15,H-0.02],[-1.25,yAt(PR[2],PR[3],-1.25)]],sd)} /* C-pillar fill behind the side glass */
-  const fl=new THREE.Mesh(new THREE.BoxGeometry(2.7,0.04,hw(0.6)*2-0.1),trim);fl.position.set(0.1,0.6,0);body.add(fl); /* floor */
-  const rw=new THREE.Mesh(new THREE.BoxGeometry(0.04,yAt(PR[2],PR[3],-1.25)-0.6,hw(1)*2-0.1),trim);rw.position.set(-1.25,0.6+(yAt(PR[2],PR[3],-1.25)-0.6)/2,0);body.add(rw); /* rear cabin wall */
-  const fw=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.5,hw(0.8)*2-0.1),trim);fw.position.set(1.5,0.85,0);body.add(fw); /* footwell / firewall */
+  const fl=new THREE.Mesh(new THREE.BoxGeometry(2.7,0.04,hw(0.6)*2-0.1),trim);fl.position.set(0.1,0.6,0);hood.add(fl); /* floor */
+  const rw=new THREE.Mesh(new THREE.BoxGeometry(0.04,yAt(PR[2],PR[3],-1.25)-0.6,hw(1)*2-0.1),trim);rw.position.set(-1.25,0.6+(yAt(PR[2],PR[3],-1.25)-0.6)/2,0);hood.add(rw); /* rear cabin wall */
+  const fw=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.5,hw(0.8)*2-0.1),trim);fw.position.set(1.5,0.85,0);hood.add(fw); /* footwell / firewall */
+  for(const o of [...body.children])if(o.material===glass)hood.add(o.clone()); /* the glass tint is seen from the cabin too */
   /* light bars: full-width front bar across the nose top, full-width tail bar */
   const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
   const fb=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.025,hw(0.98)*2-0.08),head);fb.position.set(L/2+0.025,0.96,0);body.add(fb);
@@ -8517,7 +8519,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    spin.add(new THREE.Mesh(tg,tm));spin.add(new THREE.Mesh(cap,cm));g.add(piv);wheels.push({piv,spin,front,sign:s})}
   ud.wheels=wheels;
   /* cabin: two angular seats, a flat dash slab with one big landscape screen, a squared yoke */
-  const I=new THREE.Group();g.add(I);ud.interior=I;ud.hood=new THREE.Group();g.add(ud.hood);
+  const I=new THREE.Group();g.add(I);ud.interior=I;
   const seatM=new THREE.MeshStandardMaterial({color:0x1b1c1f,roughness:0.8,flatShading:true});
   for(const z of [0.44,-0.44]){const c=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.12,0.5),seatM);c.position.set(0.3,0.82,z);I.add(c);const b=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.7,0.5),seatM);b.position.set(0.03,1.15,z);b.rotation.z=0.18;I.add(b)}
   const dash=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.12,W*0.8),blk);dash.position.set(1.3,0.88,0);I.add(dash);
