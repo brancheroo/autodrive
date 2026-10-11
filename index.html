@@ -8505,10 +8505,51 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const seatM=new THREE.MeshStandardMaterial({color:0x1b1c1f,roughness:0.8,flatShading:true});
   for(const z of [0.42,-0.42]){const c=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.12,0.5),seatM);c.position.set(-0.2,0.72,z);I.add(c);const b=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.7,0.5),seatM);b.position.set(-0.47,1.05,z);b.rotation.z=0.18;I.add(b)}
   const dash=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.12,W*0.8),blk);dash.position.set(0.95,1.05,0);I.add(dash);
-  const scr=new THREE.Mesh(new THREE.PlaneGeometry(0.44,0.26),mk(0x2a6fd6));scr.position.set(0.8,1.2,0);scr.rotation.y=-Math.PI/2;scr.rotation.x=0;I.add(scr);
+  /* the giant centre panel: a 1.1 m x 0.62 m landscape screen on a faceted steel stalk, tilted toward the cabin */
+  const pc=document.createElement('canvas');pc.width=1600;pc.height=900;const pt=new THREE.CanvasTexture(pc);pt.encoding=THREE.sRGBEncoding;pt.anisotropy=4;pt.userData.own=true;
+  const scr=new THREE.Mesh(new THREE.PlaneGeometry(1.1,0.62),new THREE.MeshBasicMaterial({map:pt}));scr.position.set(0.74,1.3,0);scr.rotation.order='YXZ';scr.rotation.y=-Math.PI/2;scr.rotation.x=-0.12;I.add(scr);
+  const bez=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.66,1.14),blk);bez.position.set(0.755,1.3,0);bez.rotation.z=0.12;I.add(bez);
+  const stalk=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.05,0.25,6),steel);stalk.position.set(0.8,1.05,0);I.add(stalk);
+  ud.atPanel={c:pc.getContext('2d'),t:pt,last:0,hist:[]};
   const yoke=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.16,0.32),blk);yoke.position.set(0.62,1.08,0.42);I.add(yoke);
   ud.seats=[new THREE.Vector3(-0.2,0.78,0.42),new THREE.Vector3(-0.2,0.78,-0.42)];return g};
- MODS.push({id:'angletruck'});
+ /* excessive detail: map, 3 camera feeds, speed + power arcs, 96-cell battery grid, motor/inverter temps, tyre pressures,
+    live power graph, vehicle diagram, climate, media, weather, a scrolling CAN-bus log and status chips – redrawn ~4×/s */
+ function drawPanel(D,G){const x=D.c,W=1600,H=900,e=G.ego,t=performance.now()/1000,mph=Math.round((e.v||0)*2.237),kw=Math.round(Math.max(-250,Math.min(630,(e.acc||0)*3130*(e.v||0)/1000+8)));
+  D.hist.push(kw);if(D.hist.length>120)D.hist.shift();
+  x.fillStyle='#05070a';x.fillRect(0,0,W,H);const box=(X,Y,w,h,ttl)=>{x.fillStyle='#0d131b';x.fillRect(X,Y,w,h);x.strokeStyle='#26313d';x.lineWidth=2;x.strokeRect(X,Y,w,h);if(ttl){x.fillStyle='#7f93a8';x.font='600 15px system-ui';x.textAlign='left';x.fillText(ttl,X+10,Y+20)}};
+  const txt=(s,X,Y,f,c,al)=>{x.font=f;x.fillStyle=c;x.textAlign=al||'left';x.fillText(s,X,Y)};
+  /* top status bar */
+  x.fillStyle='#0a0f15';x.fillRect(0,0,W,46);txt(new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}),20,32,'700 24px system-ui','#e8eef5');
+  ['P R N D'.split(' ').map(g=>g==='D'?'['+g+']':g).join(' '),'LTE ▂▄▆█','🔒','⚠ 0','FSDish v13.9.4','72°F','SOC '+Math.round((G.soc||0.8)*100)+'%','ODO '+Math.round((G.odo||0)/1609)+' mi'].forEach((s,i)=>txt(s,330+i*160,32,'600 18px system-ui',i===4?'#2ef2a8':'#b8c6d4'));
+  /* map */
+  box(16,58,620,420,'NAVIGATION · '+(G.destShort||'—'));x.save();x.beginPath();x.rect(18,82,616,394);x.clip();x.translate(326,300);x.rotate(-(e.head||0));
+  x.strokeStyle='#1b2734';x.lineWidth=1;for(let k=-20;k<=20;k++){x.beginPath();x.moveTo(k*40,-900);x.lineTo(k*40,900);x.stroke();x.beginPath();x.moveTo(-900,k*40);x.lineTo(900,k*40);x.stroke()}
+  x.strokeStyle='#3a4a5c';x.lineWidth=7;for(let k=-6;k<=6;k++){x.beginPath();x.moveTo(k*120+((e.s||0)*0.3%120),-900);x.lineTo(k*120+((e.s||0)*0.3%120),900);x.stroke()}x.restore();
+  x.strokeStyle='#2f8cff';x.lineWidth=9;x.beginPath();x.moveTo(326,300);x.lineTo(326,90);x.stroke();x.fillStyle='#fff';x.beginPath();x.moveTo(326,284);x.lineTo(314,316);x.lineTo(326,308);x.lineTo(338,316);x.fill();
+  txt(fmtDist?fmtDist(Math.max(0,G.route?G.route.total-e.s:0)):'',30,465,'700 20px system-ui','#e8eef5');txt('ETA '+(G.etaStr||'--'),620,465,'700 20px system-ui','#e8eef5','right');
+  /* speed + power arcs */
+  box(648,58,440,420,'DRIVE');const arc=(cx,cy,r,f,col,w)=>{x.strokeStyle='#1d2731';x.lineWidth=w;x.beginPath();x.arc(cx,cy,r,Math.PI*0.75,Math.PI*2.25);x.stroke();x.strokeStyle=col;x.beginPath();x.arc(cx,cy,r,Math.PI*0.75,Math.PI*0.75+Math.PI*1.5*Math.max(0,Math.min(1,f)));x.stroke()};
+  arc(868,280,150,mph/130,'#2f8cff',22);arc(868,280,118,Math.abs(kw)/630,kw<0?'#2ef2a8':'#ffb000',12);txt(mph,868,300,'800 96px system-ui','#fff','center');txt('MPH',868,340,'600 20px system-ui','#7f93a8','center');
+  txt((kw<0?'REGEN ':'')+Math.abs(kw)+' kW',868,395,'700 24px system-ui',kw<0?'#2ef2a8':'#ffb000','center');for(let k=0;k<=13;k++){const a=Math.PI*0.75+Math.PI*1.5*k/13;txt(k*10,868+Math.cos(a)*190,280+Math.sin(a)*190+6,'12px monospace','#5d6f82','center')}
+  /* camera feeds */
+  ['FRONT','LEFT REPEATER','RIGHT REPEATER'].forEach((n,i)=>{const X=1100,Y=58+i*142;box(X,Y,484,132,n+' CAM · 36 FPS');const gr=x.createLinearGradient(0,Y+24,0,Y+130);gr.addColorStop(0,'#3a4f66');gr.addColorStop(0.5,'#6d7f90');gr.addColorStop(0.52,'#3b3f44');gr.addColorStop(1,'#25282c');x.fillStyle=gr;x.fillRect(X+4,Y+26,476,102);
+   x.strokeStyle='#e8e2c8';x.lineWidth=3;for(const sd of [-1,1]){x.beginPath();x.moveTo(X+242+sd*40,Y+80);x.lineTo(X+242+sd*230,Y+128);x.stroke()}x.strokeStyle='#2ef2a8';x.lineWidth=2;x.strokeRect(X+200+Math.sin(t+i)*60,Y+66,50,30);txt('car 0.97',X+202+Math.sin(t+i)*60,Y+62,'11px monospace','#2ef2a8');txt('● REC',X+430,Y+46,'700 12px system-ui','#ff3b2f')});
+  /* battery: 96 cells */
+  box(16,490,520,250,'HV PACK · 96s · 123 kWh');for(let k=0;k<96;k++){const cx=30+(k%16)*31,cy=520+((k/16)|0)*34,vv=3.92+Math.sin(k*1.7+t*0.3)*0.03;x.fillStyle=`hsl(${130-(vv-3.86)*900},70%,${38+Math.sin(k)*4}%)`;x.fillRect(cx,cy,27,28);txt(vv.toFixed(2),cx+13.5,cy+18,'9px monospace','#000','center')}
+  txt('ΔV 14 mV · 31.4 °C avg · balancing ON · isolation 4.2 MΩ',30,732,'13px monospace','#9fb0c2');
+  /* motors / inverters / tyres */
+  box(548,490,540,250,'POWERTRAIN · THERMAL · TYRES');['F MOTOR','RL MOTOR','RR MOTOR'].forEach((n,i)=>{const T=48+i*6+Math.sin(t*0.5+i)*3+Math.abs(kw)/40;txt(n,566,540+i*58,'700 16px system-ui','#cfe');txt(Math.round(T)+'°C · '+Math.round(4200+mph*95+i*37)+' rpm · '+Math.round(Math.abs(kw)/3)+' kW',566,562+i*58,'14px monospace','#9fb0c2');
+   x.fillStyle='#1d2731';x.fillRect(820,528+i*58,120,10);x.fillStyle=T>70?'#ffb000':'#2ef2a8';x.fillRect(820,528+i*58,Math.min(120,T*1.2),10)});
+  [['FL',42],['FR',42],['RL',44],['RR',44]].forEach(([n,p],i)=>{const X=960+(i%2)*64,Y=528+((i/2)|0)*100;x.strokeStyle='#5d6f82';x.lineWidth=2;x.strokeRect(X,Y,44,70);txt(n,X+22,Y+28,'700 13px system-ui','#cfe','center');txt(p+(Math.sin(t+i)>0.98?1:0),X+22,Y+50,'700 18px monospace','#2ef2a8','center');txt('psi',X+22,Y+66,'10px system-ui','#7f93a8','center')});
+  /* power graph */
+  box(1100,490,484,250,'POWER · last 30 s');x.strokeStyle='#26313d';x.lineWidth=1;for(let k=0;k<5;k++){x.beginPath();x.moveTo(1110,520+k*50);x.lineTo(1574,520+k*50);x.stroke()}x.strokeStyle='#ffb000';x.lineWidth=3;x.beginPath();D.hist.forEach((v,i)=>{const X=1110+i*3.87,Y=670-v*0.25;i?x.lineTo(X,Y):x.moveTo(X,Y)});x.stroke();
+  /* bottom dock: climate / media / weather / chips / CAN log */
+  box(16,752,1568,132,'');txt('❄ 68°F  ◀ ▶  AUTO  fan ▮▮▮▯▯  seat 🔥🔥▯  wheel 🔥',30,790,'600 20px system-ui','#cfe');txt('♪ AUTODRIVE FM 101.1 · ▶ 1:'+String((t|0)%60).padStart(2,'0')+' / 3:47',30,830,'600 20px system-ui','#b8c6d4');txt('☀ 72°F · wind 6 mph · UV 5 · AQI 31',30,868,'600 18px system-ui','#b8c6d4');
+  ['DOG MODE','SENTRY','CREEP','REGEN HIGH','4WS','AIR SUSP: STD','TOW: OFF','FRUNK: CLOSED'].forEach((s,i)=>{const X=640+(i%4)*150,Y=772+((i/4)|0)*48;x.fillStyle='#16202b';x.fillRect(X,Y,140,36);txt(s,X+70,Y+24,'700 13px system-ui',i===4?'#2ef2a8':'#9fb0c2','center')});
+  for(let k=0;k<6;k++){const id=(0x100+((t*7+k*13)|0)%0x6ff).toString(16).toUpperCase();txt(id+'  '+Array.from({length:8},(_,j)=>((t*97+k*31+j*17)|0)%256).map(b=>b.toString(16).padStart(2,'0')).join(' '),1250,780+k*17,'12px monospace','#4e6a55')}
+  D.t.needsUpdate=true}
+ MODS.push({id:'angletruck',frame(){const G=typeof game!=='undefined'?game:null,D=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.atPanel;if(!D)return;const now=performance.now();if(now-D.last<250)return;D.last=now;try{drawPanel(D,G)}catch(e){}}});
 })();
 </script>
 <script>/* mods/62-trams.js */
