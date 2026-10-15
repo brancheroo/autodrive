@@ -8523,7 +8523,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    const V=(a,i)=>new THREE.Vector3(a[i*3],a[i*3+1],a[i*3+2]),ex=new THREE.Vector3(),ey=new THREE.Vector3(),nz=new THREE.Vector3(),M=new THREE.Matrix4();
    for(const o of [...body.children]){if(o.material!==glass)continue;const A=o.geometry.attributes.position.array,q=[V(A,0),V(A,1),V(A,2),V(A,5)],c=q.reduce((s,v)=>s.add(v),new THREE.Vector3()).multiplyScalar(0.25);
     nz.subVectors(q[1],q[0]).cross(new THREE.Vector3().subVectors(q[2],q[0])).normalize();if(nz.dot(new THREE.Vector3(c.x,c.y-1,c.z))<0)nz.negate(); /* outward */
-    for(let k=0;k<4;k++){const a=q[k],b=q[(k+1)%4],len=a.distanceTo(b);if(len<0.02)continue;ex.subVectors(b,a).normalize();ey.crossVectors(nz,ex);const mid=a.clone().add(b).multiplyScalar(0.5);if(ey.dot(new THREE.Vector3().subVectors(c,mid))<0)ey.negate();M.makeBasis(ex,ey,nz);
+    for(let k=0;k<4;k++){const a=q[k],b=q[(k+1)%4],len=a.distanceTo(b);if(len<0.02)continue;ex.subVectors(b,a).normalize();ey.crossVectors(nz,ex);const mid=a.clone().add(b).multiplyScalar(0.5);if(ey.dot(new THREE.Vector3().subVectors(c,mid))<0){ey.negate();ex.negate()} /* flip two axes together: stays a proper rotation */M.makeBasis(ex,ey,nz);
      for(const [par,mat,w,th,off] of [[body,frameOut,0.05,0.016,0.006],[hood,frameIn,0.17,0.02,-0.03]]){const f=new THREE.Mesh(new THREE.BoxGeometry(len+w*0.9,w,th),mat);f.quaternion.setFromRotationMatrix(M);f.position.copy(mid).addScaledVector(ey,w*(par===body?0.25:0.2)).addScaledVector(nz,off);par.add(f)}}}}
   /* light bars: full-width front bar across the nose top, full-width tail bar */
   const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
