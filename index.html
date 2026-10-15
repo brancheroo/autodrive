@@ -4757,6 +4757,25 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
  if(P.state==='dispersing'){for(const q of P.people)q.f.position.y-=0;P.grp.children.forEach((o,i)=>{o.position.x+=Math.sin(i)*dt*1.2;o.position.z+=Math.cos(i)*dt*1.2});if(G.simTime-P.t0>P.dur+40)clearProtest()}
  if(d>600&&P.state==='bypassed')clearProtest()}
 </script>
+<script>/* mods/000a-route-resume.js */
+/* Route resume: mid-trip re-plans (charge/fuel stop, charger diversion, Express/Chase faster-route search, protest detours)
+   fetch the new route asynchronously from where the car was when they asked, then restart the car at s=0 on it. The car
+   keeps driving during the fetch (seconds – kilometres at hypercar speed), so it used to snap back and drive the same
+   stretch again. On the first sim tick after the route object changes, find the point on the new route nearest the car's
+   real position (its mesh has not been re-placed yet) and continue from there. New trips start at their origin, so the
+   nearest point is ~0 there and nothing changes. */
+(function(){
+ let lastRoute=null;const pos={x:0,z:0,ok:false};
+ MODS.push({id:'routeresume',
+  start(){lastRoute=null;pos.ok=false},
+  sim(){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego||!G.ego.mesh)return;const e=G.ego,R=G.route;
+   if(lastRoute&&R!==lastRoute&&pos.ok&&!G.arrived&&e.s<1){const tot=R.total||0,st=Math.max(4,tot/5000);let best=0,bd=Infinity;
+    for(let s=0;s<=tot;s+=st){const p=routeXZ(s,0),d=(p[0]-pos.x)**2+(p[1]-pos.z)**2;if(d<bd){bd=d;best=s}}
+    for(let s=Math.max(0,best-st);s<=Math.min(tot,best+st);s+=0.5){const p=routeXZ(s,0),d=(p[0]-pos.x)**2+(p[1]-pos.z)**2;if(d<bd){bd=d;best=s}}
+    if(best>2&&bd<45*45&&best<tot-5){e.s=best;console.info('[routeresume] new route: continuing at',Math.round(best),'m of',Math.round(tot),'(off by',Math.round(Math.sqrt(bd)),'m)')}}
+   lastRoute=R;pos.x=e.mesh.position.x;pos.z=e.mesh.position.z;pos.ok=true}});
+})();
+</script>
 <script>/* mods/01-net.js */
 /* Network resilience for every request the game makes: retry rate-limited / flaky responses (429, 5xx, network
    errors) with growing back-off honouring Retry-After, cap parallel requests per host so we stop tripping
