@@ -8477,6 +8477,11 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   function sidePanel(pts,s,m,out=0.006){const v=pts.map(([x,y])=>[x,y,s*(hw(y)+out)]);const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute([...v[0],...v[1],...v[2],...v[0],...v[2],...v[3]],3));gg.computeVertexNormals();const mm=new THREE.Mesh(gg,m);body.add(mm);return mm}
   /* windscreen on the long front slope, and a slim rear window just behind the apex */
   facePanel(PR[1],PR[2],0.38,0.97,0.1,glass);facePanel(PR[2],PR[3],0.03,0.16,0.18,glass);
+  /* black bed: the rear slope behind the cabin (from the rear cabin wall to the tailgate lip) in gloss-black bedliner, with bed rails */
+  {const bedM=new THREE.MeshPhysicalMaterial({color:0x0a0a0b,metalness:0.1,roughness:0.35,clearcoat:0.6,side:THREE.DoubleSide,flatShading:true}),t0=(PR[2][0]+1.25)/(PR[2][0]-PR[3][0]);
+   facePanel(PR[2],PR[3],t0,0.995,0.05,bedM);
+   for(const sd of [1,-1]){const a=along(PR[2],PR[3],t0),b=along(PR[2],PR[3],1),rail=new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(b[0]-a[0],b[1]-a[1]),0.03,0.035),bedM);
+    rail.position.set((a[0]+b[0])/2,(a[1]+b[1])/2+0.02,sd*(hw((a[1]+b[1])/2)-0.03));rail.rotation.z=Math.atan2(b[1]-a[1],b[0]-a[0]);body.add(rail)}}
   /* side glass: one trapezoid per side under the roof apex */
   const yr=H-0.06,yw=1.32;
   for(const s of [1,-1]){sidePanel([[0.95,yw],[0.25,yr-0.04],[-0.25,yr-0.07],[-1.0,yw]],s,glass);
