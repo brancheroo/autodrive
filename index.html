@@ -6559,7 +6559,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  const EV={cur:null,next:0};window.FAIL=EV;const rnd=(a,b)=>a+Math.random()*(b-a);
  function bang(){try{const C=audio.ctx;if(!C||!audio.master)return;const b=C.createBuffer(1,C.sampleRate*0.4,C.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(C.sampleRate*0.05));const s=C.createBufferSource(),g=C.createGain();g.gain.value=0.9;s.buffer=b;s.connect(g);g.connect(audio.master);s.start()}catch(e){}}
  function flatWheel(on){const w=(game.ego.mesh.userData.wheels||[])[1];if(!w)return;const t=w.spin||w;t.scale.y=on?0.78:1;if(!on&&t.children)t.traverse(o=>{if(o.isMesh&&o.material&&o.material.color){o.material=o.material.clone();o.material.color.multiplyScalar(0.7)}})}
- function start(kind){const G=game,S=sensorsOf();kind=kind||['blowout','fade','sensor'][Math.floor(Math.random()*3)];if(EV.cur)stop();
+ function start(kind){const G=game,S=sensorsOf();if(kind==='fade')kind=null;kind=kind||['blowout','sensor'][Math.floor(Math.random()*2)]; /* brake fade removed */if(EV.cur)stop();
   if(kind==='blowout'){EV.cur={kind,t:0,phase:'pull'};bang();CRASH.shake=0.7;flatWheel(true)}
   if(kind==='fade'){EV.cur={kind,t:0,heat:1};window.EGO_DECEL=0.55}
   if(kind==='sensor'){const opts=[S.lidar&&'lidar',S.radar&&'radar','front camera'].filter(Boolean),which=opts[Math.floor(Math.random()*opts.length)];EV.cur={kind,t:0,which,dur:rnd(70,120)};window.SENSOR_FAULT=which==='lidar'?0.35:which==='radar'?0.7:0.5}
@@ -6569,12 +6569,12 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  function msg(){const c=EV.cur;if(!c)return '';if(c.kind==='blowout')return {pull:'🛞 Tyre blowout! Hazards on, pulling onto the shoulder',fix:`🛞 Stopped on the shoulder – fitting the spare (${Math.max(0,Math.ceil(45-c.t))} s)`,limp:'🛞 Space-saver spare fitted · limited to 50 mph'}[c.phase];
   if(c.kind==='fade')return `🔥 Brake fade – braking at ${Math.round((window.EGO_DECEL||1)*100)} %, longer gaps, gentle speed`;return `📡 ${c.which} failure – perception at ${Math.round((window.SENSOR_FAULT||1)*100)} %, speed capped`}
  const menu=()=>{let d=document.getElementById('failMenu');if(d){d.remove();return}d=UIX.banner('failMenu','top:50%;left:50%;transform:translate(-50%,-50%);z-index:9998;background:#0e141df5;color:#e8eef5;border:1px solid #2a3a52;border-radius:12px;padding:12px 16px;pointer-events:auto;font:13px system-ui');
-  d.innerHTML='<b>⚠️ Trigger a failure</b><br>'+[['blowout','🛞 Tyre blowout'],['fade','🔥 Brake fade'],['sensor','📡 Sensor failure'],['clear','✅ Clear current failure']].map(([k,t])=>`<button data-k="${k}" style="display:block;width:100%;margin-top:6px;padding:7px;border-radius:8px">${t}</button>`).join('');d.querySelectorAll('button').forEach(b=>b.onclick=()=>{b.dataset.k==='clear'?stop():start(b.dataset.k);d.remove()})};
+  d.innerHTML='<b>⚠️ Trigger a failure</b><br>'+[['blowout','🛞 Tyre blowout'],['sensor','📡 Sensor failure'],['clear','✅ Clear current failure']].map(([k,t])=>`<button data-k="${k}" style="display:block;width:100%;margin-top:6px;padding:7px;border-radius:8px">${t}</button>`).join('');d.querySelectorAll('button').forEach(b=>b.onclick=()=>{b.dataset.k==='clear'?stop():start(b.dataset.k);d.remove()})};
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo,lead,allow)=>{if(!isEgo||!EV.cur)return null;const c=EV.cur;
   if(c.kind==='fade'&&lead){const gap=lead.s-a.s-(lead.spec.L+a.spec.L)/2,want=(4+3.2*a.v);return {v:Math.sqrt(Math.max(0,lead.v*lead.v+2*3*Math.max(0,gap-want))),reason:msg()}}
   if(c.kind==='sensor'){const S=sensorsOf(),R=Math.min(maxRange(S),250)*(window.SENSOR_FAULT||1)*WX.perc;return {v:Math.sqrt(2*3*Math.max(0,R*0.5)),reason:msg()}}return null});
  MODS.push({id:'failures',disable:stop,
-  start(){stop();EV.next=rnd(900,1800);UIX.btn('failBtn','⚠️','Trigger a failure (blowout, brake fade, sensor)',menu)},
+  start(){stop();EV.next=rnd(900,1800);UIX.btn('failBtn','⚠️','Trigger a failure (blowout, sensor)',menu)},
   sim(dt){const G=game,e=G.ego;if(!G.route||(window.BENCH&&BENCH.on))return;EV.next-=dt;if(EV.next<0){EV.next=rnd(900,1800);if(!EV.cur&&e.v>8&&!(typeof CHASE!=='undefined'&&CHASE.on))start()}
    const c=EV.cur;if(!c)return;c.t+=dt;
    if(c.kind==='blowout'){window.SIGOVR=2;if(c.phase==='pull'){XB.fail=lerp(XB.fail||0,(window.LANES?(LANES.count(e.s)-1)*0:0)+2.6,Math.min(1,dt*0.8));capSet('fail',Math.max(0,e.v-3.5*dt*3));if(c.t<1.5)CHASE.evade=(CHASE.evade||0)+Math.sin(c.t*20)*0.05;if(e.v<0.3&&c.t>3){c.phase='fix';c.t=0}}
