@@ -8717,7 +8717,12 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
     P(new THREE.CapsuleGeometry(0.055,0.18,6,12),plate,0,-0.15,0,sh);P(new THREE.SphereGeometry(0.06,12,8),plate,0,-0.29,0,sh);
     const el=new THREE.Group();el.position.set(0,-0.3,0);el.rotation.z=fore;sh.add(el);P(new THREE.CapsuleGeometry(0.05,0.17,6,12),plate,0,-0.13,0,el);
     const gl=P(new THREE.BoxGeometry(0.08,0.09,0.09),dark,0,-0.3,0,el);return {sh,el,gl}};
-   arm(-1,0.9,0.7);const R=arm(1,2.1,0.3);ud.knightArm=R.sh;
+   const Lh=arm(-1,0.75,1.1);const R=arm(1,2.1,0.3);ud.knightArm=R.sh;
+   /* left hand: a tall pole through the gauntlet with a red swallow-tailed pennant streaming back from the top */
+   {kn.updateMatrixWorld(true);const hp=Lh.gl.getWorldPosition(new THREE.Vector3());kn.worldToLocal(hp);
+    const pole=new THREE.Group();pole.position.copy(hp);kn.add(pole);P(new THREE.CylinderGeometry(0.014,0.016,1.9,8),M(0x6b4a2a,{roughness:0.7}),0,0.6,0,pole);P(new THREE.SphereGeometry(0.03,10,8),gold,0,1.56,0,pole);
+    const fg=new THREE.PlaneGeometry(0.9,0.32,18,3),fp=fg.attributes.position;for(let i=0;i<fp.count;i++){const x=fp.getX(i)+0.45,y=fp.getY(i);const taper=1-x/0.9*0.75;let yy=y*taper;if(x>0.62&&Math.abs(y)<0.06)yy*=0.2;fp.setXY(i,-x,yy)} /* tapers to a swallow tail */
+    fg.computeVertexNormals();fg.userData.base=Float32Array.from(fp.array);const flag=P(fg,red,0,1.35,0,pole);ud.knightFlag=flag}
    /* the weapon: a hot dog in a bun, held by the end like a sword, pointing forward-up */
    const wpn=new THREE.Group();wpn.position.set(0,-0.3,0);wpn.rotation.z=-Math.PI/2+0.2;R.el.add(wpn);
    P(new THREE.CapsuleGeometry(0.045,0.5,8,16).rotateZ(Math.PI/2),dogM,0.33,0,0,wpn);const wb=P(new THREE.CapsuleGeometry(0.05,0.42,8,16).rotateZ(Math.PI/2),bunM,0.32,-0.035,0,wpn);wb.scale.set(1,0.6,1.35);
@@ -8752,7 +8757,9 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  const _eye=window.eyePos;
  if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.wiener){const capX=(spec.L-0.2-2*RB)/2;return new THREE.Vector3(capX-0.45,1.28,-0.45)}return _eye.apply(this,arguments)};
  MODS.push({id:'wiener',frame(){const G=typeof game!=='undefined'?game:null,U=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData;if(!U||!U.knight)return;const t=performance.now()/1000,v=G.ego.v||0;
-  U.knightArm.rotation.z=2.1+Math.sin(t*3)*0.25*Math.min(1,v/10+0.3); /* brandishes the hot dog */U.knight.rotation.z=-Math.min(0.15,v*0.003); /* leans into the wind */U.knightCape.rotation.x=0.22+Math.min(0.9,v*0.02)+Math.sin(t*9)*0.05*Math.min(1,v/10)}});
+  U.knightArm.rotation.z=2.1+Math.sin(t*3)*0.25*Math.min(1,v/10+0.3); /* brandishes the hot dog */U.knight.rotation.z=-Math.min(0.15,v*0.003); /* leans into the wind */U.knightCape.rotation.x=0.22+Math.min(0.9,v*0.02)+Math.sin(t*9)*0.05*Math.min(1,v/10);
+  const F=U.knightFlag;if(F&&(!F.userData.t||t-F.userData.t>0.033)){F.userData.t=t;const g=F.geometry,P=g.attributes.position,B=g.userData.base,w=4+Math.min(14,v*0.4); /* pennant ripples faster with speed */
+   for(let i=0;i<P.count;i++){const x=-B[i*3];P.setZ(i,Math.sin(x*7-t*w)*0.06*Math.min(1,x*2))}P.needsUpdate=true;g.computeVertexNormals()}}});
 })();
 </script>
 <script>/* mods/62-trams.js */
