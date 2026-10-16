@@ -2638,7 +2638,7 @@ function plan(a,dt,lead,isEgo){
 // acceleration
  if(window.PLAN_HOOKS)for(const hk of PLAN_HOOKS){try{const r=hk(a,isEgo,lead,allow,look,idx,dt,chase);if(r&&(r.v<target||r.force)){target=Math.max(0,r.v);if(r.reason)reason=r.reason}}catch(err){}} /* feature modules: cyclists, school buses, roundabouts, gap acceptance… */
  if(isEgo&&window.CANNON&&CANNON.on&&!a.loose){ /* Cannonball magic: always flat out at the car's top speed – obstacles, curves, weather and traffic are ignored (the guardian field in updateCollisions phases them aside); only planned charging stops and arrival slow it */
-  let v=((a.spec.aegis||a.spec.hbike)?a.spec.top/MPH:a.spec.hyper?447:(typeof a.spec.top==='number'?a.spec.top:85)/MPH),why='💣 CANNONBALL · flat out';
+  let v=((a.spec.aegis||a.spec.hbike)?a.spec.top/MPH:a.spec.hyper?447:(typeof a.spec.top==='number'?a.spec.top:85)/MPH),why=window.DRIFT_ON?'🌀 DRIFT · flat out, sideways':'💣 CANNONBALL · flat out';
   if(game.stops&&game.stops[game.stopIdx]&&!game.charging){const d=game.stops[game.stopIdx].rs-a.s;if(d>-5){const w=allow(0,d-1.5);if(w<v){v=w;why=d<80?'Pulling into '+(ES().ice?'fuel station':'charger'):why}}}
   {const w=allow(0,R.total-a.s-1);if(w<v){v=w;why='Arriving'}}target=v;reason=why}
  if(isEgo&&a.spec.basicAD&&!smartOn()&&!(window.CANNON&&CANNON.on)){target=Math.min(target,55/MPH)}if(isEgo&&window.EGO_CAP!=null)target=Math.min(target,window.EGO_CAP); /* modules (emergency pull-over, delivery stops) */ /* dashcam autopilot: 55 mph max */
@@ -3511,7 +3511,7 @@ function renderPerception(){const G=game;if(!G||!G.route)return;const area=$('cv
   const lab=`${d.cls==='animal'?d.extra:d.cls==='light'?'light '+d.extra:d.cls==='stop'?'stop sign':d.cls==='ped'?'pedestrian':'vehicle'} ${d.conf.toFixed(2)} · ${Math.round(d.d)}m`;x.font=`${9*dpr}px system-ui`;const tw=x.measureText(lab).width+4*dpr;x.fillStyle=col;x.fillRect(x0,y0-11*dpr,tw,11*dpr);x.fillStyle='#000';x.fillText(lab,x0+2*dpr,y0-2.5*dpr)}
  if(G.spec.hyper)hyperOverlay(x,W,H,dpr,proj,dets);else if(satActive())satIcon(x,W,H,dpr);
  {const G=game,e=G.ego,mph=Math.round(e.v*MPH),acc=e.acc||0,verb=G.charging?'':acc>0.3?'accelerating':acc<-0.8?'braking':acc<-0.2?'easing off':'holding speed';const sig=G.sig<0?' · signalling left':G.sig>0?' · signalling right':'';
-  $('cvExp').style.display=EXPRESS.on?'block':'none';$('cvExp').textContent=window.CANNON&&CANNON.on?'CANNONBALL':'EXPRESS MODE';$('cvAct').textContent=`▶ ${G.status||'Cruising'}${verb&&mph>0?' · '+verb:''} · ${mph} mph${sig}`}
+  $('cvExp').style.display=EXPRESS.on?'block':'none';$('cvExp').textContent=window.CANNON&&CANNON.on?(window.DRIFT_ON?'DRIFT':'CANNONBALL'):'EXPRESS MODE';$('cvAct').textContent=`▶ ${G.status||'Cruising'}${verb&&mph>0?' · '+verb:''} · ${mph} mph${sig}`}
  game.seen={...counts};$('cvStats').textContent=`${counts.car} veh · ${counts.ped} ped${counts.animal?` · ${counts.animal} animal`:''} · ${counts.light} lights · ${counts.stop} stop`;if(!(game.spec&&game.spec.rideshare))$('cvTitle').textContent='PERCEPTION'; /* rideshare/taxi panels say DRIVER'S VIEW */
  drawBEV(dets,S)}
 /* HYPER perception: overwhelming data — per-object IDs, velocity vectors, 4 s predicted trajectories with TTC, threat lock,
@@ -9464,9 +9464,9 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
    COMFORT – plus 🛸 HOVER when hover is on. Normal driving shows nothing. */
 (function(){
  const b=document.createElement('div');b.id='modeBadge';b.style.cssText='position:fixed;top:92px;left:50%;transform:translateX(-50%);z-index:61;font:800 12px system-ui;letter-spacing:.12em;padding:4px 10px;border-radius:8px;pointer-events:none;display:none;box-shadow:0 2px 10px #0006';document.body.appendChild(b);
- const COL={CANNONBALL:['#e01b1b','#fff'],CHASE:['#ff6a00','#000'],EXPRESS:['#ffcf2e','#000'],COMFORT:['#7fc8ff','#000']};
+ const COL={DRIFT:['#9b3dff','#fff'],CANNONBALL:['#e01b1b','#fff'],CHASE:['#ff6a00','#000'],EXPRESS:['#ffcf2e','#000'],COMFORT:['#7fc8ff','#000']};
  setInterval(()=>{const G=typeof game!=='undefined'?game:null;if(!G||!G.route||G.arrived){b.style.display='none';return}
-  const mode=window.CANNON&&CANNON.on?'CANNONBALL':typeof CHASE!=='undefined'&&CHASE.on?'CHASE':typeof EXPRESS!=='undefined'&&EXPRESS.on?'EXPRESS':typeof DRIVE!=='undefined'&&DRIVE.profile==='Comfort'?'COMFORT':'';
+  const mode=window.CANNON&&CANNON.on?(window.DRIFT_ON?'DRIFT':'CANNONBALL'):typeof CHASE!=='undefined'&&CHASE.on?'CHASE':typeof EXPRESS!=='undefined'&&EXPRESS.on?'EXPRESS':typeof DRIVE!=='undefined'&&DRIVE.profile==='Comfort'?'COMFORT':'';
   const hov=window.HOVER&&HOVER.on&&G.spec&&G.spec.hyper;const txt=[mode,hov?'🛸 HOVER':''].filter(Boolean).join(' · ');
   if(!txt){b.style.display='none';return}const c=COL[mode]||['#2a3a52','#e8eef5'];b.style.background=c[0];b.style.color=c[1];b.textContent=txt;b.style.display='block'},500);
  MODS.push({id:'modebadge'});
