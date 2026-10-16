@@ -8694,7 +8694,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    for(let i=0;i<110;i++){const x=x0+(x1-x0)*rnd(),z=(rnd()-0.5)*0.7,c=new THREE.Mesh(geo,rnd()<0.5?rel:rel2);c.position.set(x,topY(z)+0.04,z);c.rotation.set(rnd()*3,rnd()*3,rnd()*3);body.add(c)}}
   /* the knight: full plate armour, astride the front of the sausage, facing forward, brandishing a hot dog */
   {const kn=new THREE.Group(),KX=cyl/2-0.2,KY=2.3+RD*0.98;kn.position.set(KX,KY,0);body.add(kn);ud.knight=kn;
-   const plate=new THREE.MeshStandardMaterial({color:0xc9ced6,metalness:1,roughness:0.22}),dark=new THREE.MeshStandardMaterial({color:0x2a2c30,metalness:0.8,roughness:0.4}),
+   const plate=new THREE.MeshStandardMaterial({color:0xe2e6ec,metalness:0.6,roughness:0.28,envMapIntensity:1.5}),dark=new THREE.MeshStandardMaterial({color:0x2a2c30,metalness:0.8,roughness:0.4}),
     red=M(0xa0101a,{roughness:0.8,side:THREE.DoubleSide}),gold=new THREE.MeshStandardMaterial({color:0xd4af37,metalness:1,roughness:0.25});
    const P=(geo,m,x,y,z,par=kn)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;par.add(o);return o};
    /* saddle-plate hips + faulds */
