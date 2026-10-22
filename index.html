@@ -9781,6 +9781,10 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   /* glass partition between the compartments */
   const px=e.x-0.55,part=new THREE.Mesh(new THREE.PlaneGeometry(hw*2,0.5),new THREE.MeshPhysicalMaterial({color:0xcfe0ea,transparent:true,opacity:0.18,roughness:0.02,side:THREE.DoubleSide,depthWrite:false}));part.rotation.y=Math.PI/2;part.position.set(px,e.y-0.05,0);I.add(part);
   const lower=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.42,hw*2),new THREE.MeshStandardMaterial({color:0x3a2416,roughness:0.5}));lower.position.set(px,e.y-0.52,0);I.add(lower); /* walnut-faced lower partition */
+  /* headliner (in ud.hood, the cabin-view shell): grey cloth over the chauffeur, washi over the rear */
+  const hood=g.userData.hood;if(hood){const P=(profCache[spec.id]||{}).P,x0=P?P.xOf(P.sh.roofR)+0.05:-1.6,x1=P?P.xOf(P.sh.roofF)-0.05:1.2;
+   const fr=new THREE.Mesh(new THREE.PlaneGeometry(x1-px,hw*2),new THREE.MeshStandardMaterial({color:0x4a4846,roughness:0.95,side:THREE.DoubleSide}));fr.rotation.x=Math.PI/2;fr.position.set((x1+px)/2,spec.H-0.05,0);hood.add(fr);
+   const rr=new THREE.Mesh(new THREE.PlaneGeometry(px-x0,hw*2),new THREE.MeshStandardMaterial({map:washiTex(),roughness:0.95,side:THREE.DoubleSide}));rr.rotation.x=Math.PI/2;rr.position.set((px+x0)/2,spec.H-0.05,0);hood.add(rr)}
   /* washi headliner over the rear compartment */
   const wl=new THREE.Mesh(new THREE.PlaneGeometry(1.5,hw*2),new THREE.MeshStandardMaterial({map:washiTex(),roughness:0.95,side:THREE.DoubleSide}));wl.rotation.x=Math.PI/2;wl.position.set(e.x-BACK-0.1,spec.H-0.06,0);I.add(wl);
   /* white lace covers on the rear seat backs */
@@ -9792,13 +9796,17 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  const _eye=window.eyePos;window.__centEye=spec=>{const f=inCam;inCam=false;try{return _eye(spec)}finally{inCam=f}};
  if(typeof _eye==='function')window.eyePos=function(spec){const d=_eye.apply(this,arguments);if(spec&&spec.century&&inCam)d.x-=BACK-0.95;return d};
  /* crew: the suited chauffeur, and you in the back right */
- function suit(d){const dark=new THREE.MeshStandardMaterial({color:0x15171b,roughness:0.6}),white=new THREE.MeshStandardMaterial({color:0xf6f6f4,roughness:0.6});let shirtM=null;
-  d.traverse(o=>{if(!o.isMesh||!o.material||!o.material.color)return;const c=o.material.color.getHex();if(o.geometry.type==='SphereGeometry'&&o.geometry.parameters.radius<0.05&&o!==d.userData.head){o.material=white;return} /* hands: white gloves */
-   if(o!==d.userData.head&&o.geometry.type!=='SphereGeometry'&&!o.userData.keepMat){if(!shirtM)shirtM=o.material;if(o.material===shirtM)o.material=dark}});
+ function suit(d){const dark=new THREE.MeshStandardMaterial({color:0x15171b,roughness:0.6}),white=new THREE.MeshStandardMaterial({color:0xf6f6f4,roughness:0.6}),head=d.userData.head,skin=head&&head.material;
+  const inHead=o=>{for(let p=o;p;p=p.parent){if(p===head)return true;if(p===d)return false}return false};
+  d.traverse(o=>{if(!o.isMesh||!o.material||inHead(o))return;if(o.material===skin){if(o.geometry.type==='SphereGeometry'&&o.geometry.parameters.radius<0.06)o.material=white;return} /* skin stays, except hands: white gloves */
+   o.material=dark}); /* everything else – jacket, sleeves, trousers, shoes – is the dark suit */
   const v=new THREE.Mesh(new THREE.PlaneGeometry(0.1,0.24),white);v.position.set(0.087,-0.36,0);v.rotation.y=Math.PI/2;d.add(v);const tie=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.2,0.035),new THREE.MeshStandardMaterial({color:0x0a0a0c,roughness:0.5}));tie.position.set(0.093,-0.35,0);d.add(tie)}
  const _ra=window.riderAttach;
  if(typeof _ra==='function')window.riderAttach=function(){const r=_ra.apply(this,arguments);try{const G=game,m=G&&G.ego&&G.ego.mesh;if(G&&G.spec&&G.spec.century&&m){const e=window.__centEye(G.spec),R=m.userData.rider;
    if(R)R.position.set(e.x-BACK,e.y-0.05,-e.z);if(!m.userData.chauffeur){const d=buildDriver(G.spec,'drive','driver');suit(d);m.add(d);m.userData.driver=d;m.userData.chauffeur=d}}}catch(err){console.warn('century crew',err)}return r};
+ /* first person: you sit in the back, so hide only your own head in the cabin view (like the taxi); every other camera shows you */
+ const _rv=window.riderView;
+ if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.century){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r){r.visible=true;if(r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=G.cam!=='in'&&!o.userData.keepHidden}return}return _rv.apply(this,arguments)};
  MODS.push({id:'century'});
 })();
 </script>
