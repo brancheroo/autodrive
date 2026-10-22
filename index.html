@@ -9786,6 +9786,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   /* glass partition between the compartments */
   const px=e.x-0.55,part=new THREE.Mesh(new THREE.PlaneGeometry(hw*2,0.5),new THREE.MeshPhysicalMaterial({color:0xcfe0ea,transparent:true,opacity:0.18,roughness:0.02,side:THREE.DoubleSide,depthWrite:false}));part.rotation.y=Math.PI/2;part.position.set(px,e.y-0.05,0);I.add(part);
   const lower=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.42,hw*2),new THREE.MeshStandardMaterial({color:0x3a2416,roughness:0.5}));lower.position.set(px,e.y-0.52,0);I.add(lower); /* walnut-faced lower partition */
+  window.chauffeurRearRow(g,spec);
   /* headliner (in ud.hood, the cabin-view shell): grey cloth over the chauffeur, washi over the rear */
   const hood=g.userData.hood;if(hood){const P=(profCache[spec.id]||{}).P,x0=P?P.xOf(P.sh.roofR)+0.05:-1.6,x1=P?P.xOf(P.sh.roofF)-0.05:1.2;
    const fr=new THREE.Mesh(new THREE.PlaneGeometry(x1-px,hw*2),new THREE.MeshStandardMaterial({color:0x4a4846,roughness:0.95,side:THREE.DoubleSide}));fr.rotation.x=Math.PI/2;fr.position.set((x1+px)/2,spec.H-0.05,0);hood.add(fr);
@@ -9801,6 +9802,9 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  const _eye=window.eyePos;window.__chauffEye=window.__centEye=spec=>{const f=inCam;inCam=false;try{return _eye(spec)}finally{inCam=f}};
  if(typeof _eye==='function')window.eyePos=function(spec){const d=_eye.apply(this,arguments);if(spec&&spec.chauffeur&&inCam)d.x-=(spec.backSeat||BACK)-0.95;return d};
  /* crew: the suited chauffeur, and you in the back right */
+ /* stretched limousines: the standard rear seat row sits where a normal sedan's would; move it back to the passenger's seat */
+ window.chauffeurRearRow=(g,spec)=>{const T=g.userData.tub;if(!T||g.userData.rearMoved)return;g.userData.rearMoved=1;const e=window.__chauffEye(spec),shift=(spec.backSeat||BACK)-0.95,b=new THREE.Box3(),c=new THREE.Vector3();g.updateMatrixWorld(true);
+  for(const o of T.children){b.setFromObject(o);if(b.isEmpty())continue;b.getCenter(c);g.worldToLocal(c);if(c.x<e.x-0.45)o.position.x-=shift}};
  window.chauffeurSuit=d=>suit(d);function suit(d){const dark=new THREE.MeshStandardMaterial({color:0x15171b,roughness:0.6}),white=new THREE.MeshStandardMaterial({color:0xf6f6f4,roughness:0.6}),head=d.userData.head,skin=head&&head.material;
   const inHead=o=>{for(let p=o;p;p=p.parent){if(p===head)return true;if(p===d)return false}return false};
   d.traverse(o=>{if(!o.isMesh||!o.material||inHead(o))return;if(o.material===skin){if(o.geometry.type==='SphereGeometry'&&o.geometry.parameters.radius<0.06)o.material=white;return} /* skin stays, except hands: white gloves */
@@ -9845,9 +9849,10 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   for(const z of [e.z,-e.z]){const c=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.1,0.44),leather);c.position.set(px-0.32,e.y-0.62,z);I.add(c);const bk=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.5,0.44),leather);bk.position.set(px-0.08,e.y-0.35,z);bk.rotation.z=0.1;I.add(bk)}
   /* fold-out tables (walnut, chrome edge) and two champagne flutes */
   for(const z of [e.z,-e.z]){const t=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.015,0.36),walnut);t.position.set(rx+0.5,e.y-0.42,z);I.add(t);const ed=new THREE.Mesh(new THREE.BoxGeometry(0.31,0.006,0.37),silver);ed.position.set(rx+0.5,e.y-0.43,z);I.add(ed);
-   const fl=new THREE.Mesh(new THREE.LatheGeometry([[0.001,0],[0.03,0],[0.004,0.006],[0.004,0.1],[0.025,0.13],[0.03,0.2]].map(([a,b])=>new THREE.Vector2(a,b)),16),silver);fl.position.set(rx+0.55,e.y-0.41,z*0.85);I.add(fl)}
+   const fl=new THREE.Mesh(new THREE.LatheGeometry([[0.001,0],[0.03,0],[0.004,0.006],[0.004,0.1],[0.025,0.13],[0.03,0.2]].map(([a,b])=>new THREE.Vector2(a,b)),16),silver);fl.scale.setScalar(0.75);fl.position.set(rx+0.6,e.y-0.41,z+(z>0?-0.12:0.12));I.add(fl)}
   /* headliner in ud.hood (the cabin view hides the roof): pale perforated leather, full length */
   const hood=g.userData.hood,P=(profCache[spec.id]||{}).P;if(hood&&P){const x0=P.xOf(P.sh.roofR)+0.05,x1=P.xOf(P.sh.roofF)-0.05,hl=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,hw*2),new THREE.MeshStandardMaterial({color:0xe4d9c4,roughness:0.9,side:THREE.DoubleSide}));hl.rotation.x=Math.PI/2;hl.position.set((x0+x1)/2,spec.H-0.05,0);hood.add(hl)}
+  if(window.chauffeurRearRow)window.chauffeurRearRow(g,spec);
   g.userData.pullmanGlass=glass}
  const _bc=window.buildCar;
  if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.pullman&&g&&!g.userData.pullmanKit){kit(g,spec);if(opts&&opts.interior)cabin(g,spec)}}catch(err){console.warn('pullman kit',err)}return g};
