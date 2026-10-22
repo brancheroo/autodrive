@@ -312,7 +312,7 @@ const CARS=[
 {id:'ecosemi',name:'Voltex Bolt Semi',sub:'Angular electric semi-truck',style:'van',L:20.0,W:2.55,H:4.1,wb:5.0,wr:0.52,hp:2400,z60:4.2,top:100,range:'500 mi (est.) · 900 kWh',weight:'~64,000 lb gross',drive:'Tri-motor EV · 26,000 lb-ft at the wheels',level:'SAE Level 2+ · supervised (fictional)',
  tech:'A faceted stainless-steel-look electric tractor with a wedge nose, a steeply raked windshield and a full-width LED bar, pulling a 48 ft trailer wrapped in a different piece of random art every time it is built. Three motors give it huge low-speed torque: 26,000 lb-ft at the wheels, enough to pull away with a full load as quickly as a sports sedan. A 900 kWh pack under the frame gives about 500 miles at highway speed.',
  colors:[['Bolt Silver','#b9c0c7'],['Obsidian','#16181c'],['Signal Orange','#ff6a1a'],['Forest Green','#1f4d36']],dash:'waymo',wheel:'round',sensors:'tesla',sound:'ev',driver:true,ecosemi:true},
-];
+];CARS.forEach((c,i)=>c._ord=i);CARS.sort((a,b)=>a.name.localeCompare(b.name)); /* selection screen in alphabetical order; _ord keeps the original catalogue order (career prices, default car) */
 
 // ============================================================ UTIL
 const $=id=>document.getElementById(id);
@@ -3668,7 +3668,7 @@ const audio={ctx:null,muted:false,
 function arrive(){modCall('arrive');game.arrived=true;game.ego.v=0;audio.chime();$('arrTxt').textContent=`${game.spec.name} arrived at ${game.B.label}. Distance ${fmtDist(game.route.total)}.`;$('arrive').style.display='flex'}
 
 // ============================================================ START SCREEN
-let selCar=CARS[0],selColor=CARS[0].colors[0][1],showCar=null,addrA=null,addrB=null;
+let selCar=CARS.find(c=>c._ord===0)||CARS[0],selColor=selCar.colors[0][1],showCar=null,addrA=null,addrB=null;
 const showGround=new THREE.Mesh(new THREE.CircleGeometry(9,48),new THREE.MeshStandardMaterial({color:0x1b2230,roughness:0.6}));showGround.rotation.x=-Math.PI/2;showGround.receiveShadow=true;scene.add(showGround);
 function refreshShowcar(){if(showCar)scene.remove(showCar);showCar=buildCar(selCar,selColor,{interior:true});if(showCar.userData.interior)for(const o of showCar.userData.interior.children)if(o.userData.inOnly)o.visible=false;scene.add(showCar)}
 let showA=0;
