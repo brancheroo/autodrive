@@ -9911,6 +9911,47 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  MODS.push({id:'trafficlevel',frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.agents||T.level!=='none'||!G.agents.length)return;for(const a of G.agents)scene.remove(a.mesh);G.agents.length=0}});
 })();
 </script>
+<script>/* mods/89b-motorcade.js */
+/* Motorcade mode: your car travels in a formation – a police motorcycle and a police cruiser lead, three black SUVs follow,
+   all with lights flashing (the SUVs carry grille strobes and suited drivers). The escort is scripted, not traffic: every frame
+   each vehicle is laid on the route in your lane at a gap that grows with speed, so it never blocks or rear-ends you. The lead
+   vehicles clear the way: traffic in your lane up to ~90 m ahead is nudged to the kerb and slowed (like a real escort).
+   Toggle: a checkbox on the planning screen and a 🚓 button on the options page (both share the saved setting). */
+(function(){
+ const MC={on:UIX.load('motorcade',false)===true,units:[],last:0};window.MOTORCADE=MC;
+ function strobes(g,x,y,len){const bar=new THREE.Group();bar.position.set(x,y,0);g.add(bar);
+  const red=new THREE.MeshBasicMaterial({color:0x550000}),blue=new THREE.MeshBasicMaterial({color:0x000a55});const lr=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.05,len*0.4),red),lb=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.05,len*0.4),blue);lr.position.z=len*0.25;lb.position.z=-len*0.25;bar.add(lr,lb);
+  const gr=new THREE.SpriteMaterial({map:glowTex(),color:0xff2020,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}),gb=new THREE.SpriteMaterial({map:glowTex(),color:0x2050ff,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0});
+  const sr=new THREE.Sprite(gr),sb=new THREE.Sprite(gb);sr.position.z=len*0.25;sb.position.z=-len*0.25;sr.scale.setScalar(1.6);sb.scale.setScalar(1.6);bar.add(sr,sb);g.userData.bar={red,blue,gr,gb}}
+ function moto(){const g=buildHarley();const white=new THREE.MeshStandardMaterial({color:0xf2f2f0,roughness:0.35,metalness:0.2});
+  const f=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.42,0.62),white);f.position.set(0.55,0.95,0);g.add(f); /* police fairing */
+  const sb=new THREE.Mesh(new THREE.BoxGeometry(0.45,0.3,0.2),white);for(const s of [1,-1]){const b=sb.clone();b.position.set(-0.7,0.7,s*0.33);g.add(b)} /* saddlebags */
+  strobes(g,-0.95,1.25,0.45);g.userData.spec={L:2.45,wr:0.34};return g}
+ function suv(){const sp=CARS.find(c=>c.id==='escalade-iq')||CARS.find(c=>c.style==='suv');const g=buildCar(sp,'#0b0b0d');
+  try{const d=buildDriver(sp,'drive','driver');if(window.chauffeurSuit)window.chauffeurSuit(d);g.add(d)}catch(e){}
+  strobes(g,sp.L/2-0.05,0.75,1.2);g.userData.spec=sp;return g}
+ function cop(){const g=buildCop();g.userData.spec=COP_SPEC;return g}
+ function spawn(){despawn();const mk=(f,lead,k)=>{const m=f();scene.add(m);return {m,lead,k,ph:Math.random()}};
+  MC.units=[mk(moto,true,2),mk(cop,true,1),mk(suv,false,1),mk(suv,false,2),mk(suv,false,3)]}
+ function despawn(){for(const u of MC.units)scene.remove(u.m);MC.units=[]}
+ function set(v){MC.on=v;UIX.save('motorcade',v);const cb=document.getElementById('mcStart');if(cb)cb.checked=v;lab();if(typeof game!=='undefined'&&game&&game.route){if(v)spawn();else despawn()}}
+ let btn=null;const lab=()=>{if(btn){btn.textContent='🚓 Motorcade: '+(MC.on?'On':'Off');btn.classList.toggle('on',MC.on)}};
+ /* planning screen checkbox */
+ try{UIX.section('Motorcade',`<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="mcStart"> Travel in a motorcade</label><div style="font-size:11px;color:var(--dim)">A police motorcycle and cruiser lead your car and three black SUVs follow, lights flashing; the escort clears traffic from your lane.</div>`);
+  const cb=document.getElementById('mcStart');cb.checked=MC.on;cb.onchange=()=>set(cb.checked)}catch(err){}
+ const v3=new THREE.Vector3();
+ MODS.push({id:'motorcade',
+  start(){btn=UIX.btn('mcBtn','🚓 Motorcade','Motorcade – police motorcycle and cruiser ahead, three black SUVs behind',null)||document.getElementById('mcBtn');if(btn)btn.onclick=()=>set(!MC.on);lab();if(MC.on)spawn();else despawn()},
+  sim(dt){if(!MC.on||!MC.units.length)return;const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.route)return;const e=G.ego,lane=e.off??laneOffsetAt(routeLLnh(e.s)[2]);
+   for(const b of G.agents){if(!b.mesh||b.loose||b.kind!=='route')continue;const d=b.s-e.s;if(d<8||d>90)continue;const lat=(b.off??1.85)+(b.offAdd||0);if(Math.abs(lat-lane)>2.4)continue;b.offAdd=Math.min(3.4,(b.offAdd||0)+2.4*dt);b.v=Math.max(0,b.v-2.5*dt)}}, /* escort clears the lane */
+  preRender(){const now=performance.now(),dt=Math.min(0.1,(now-(MC.last||now))/1000);MC.last=now;if(!MC.on||!MC.units.length)return;const G=typeof game!=='undefined'?game:null;
+   const ok=G&&G.ego&&G.route&&!G.fast;for(const u of MC.units)u.m.visible=!!ok;if(!ok)return;const e=G.ego,tot=G.route.total,gap=Math.max(11,Math.min(60,10+e.v*0.9)),t=now/1000;
+   for(const u of MC.units){const s=u.lead?e.s+gap*u.k+(u.k===2?4:0):e.s-gap*u.k;if(s<0||s>tot){u.m.visible=false;continue}
+    const off=u.lead?(e.off??laneOffsetAt(routeLLnh(e.s)[2])):laneOffsetAt(routeLLnh(s)[2]),p=routeXZ(s,off);u.m.position.set(p[0],groundY(p[0],p[1]),p[1]);u.m.rotation.y=Math.atan2(-p[3],p[2]);
+    const W=u.m.userData.wheels,wr=(u.m.userData.spec&&u.m.userData.spec.wr)||0.35;if(W)for(const w of W)if(w.spin)w.spin.rotation.z-=e.v*dt/wr;
+    if(u.m.userData.bar)flashBar(u.m,t,u.ph)}}});
+})();
+</script>
 <script>/* mods/90-selftest.js */
 /* Self-test: starts a ride in every car and checks the game loop keeps running, the car gets moving or reports
    a status, and no module or script errors occur. Run with ?selftest in the URL or SELFTEST.run(). Results are
