@@ -243,6 +243,9 @@ const CARS=[
 {id:'wagon70',name:'RideNow Country Squared',sub:'Huge 1970s wagon · rideshare driver',style:'wagon',L:5.79,W:2.03,H:1.45,wb:3.07,wr:0.36,hp:208,z60:11.5,top:110,range:'~330 mi (22 gal tank)',weight:'4,900 lb',drive:'7.5L V8 · 3-speed auto · RWD · body-on-frame',level:'Human driver (rideshare)',
  tech:'A land-yacht 1970s full-size station wagon: nearly 19 ft long, a long flat roof running all the way back to a tailgate, simulated-woodgrain side panels with chrome trim, a chrome bumper and a big V8. A rideshare driver drives; you ride in the back right seat. Like its compact sibling it sports a gold monocle and a bushy black moustache up front.',
  colors:[['Harvest Gold','#c99a2e'],['Avocado','#6b6d2a'],['Ivy Bronze','#5a3e22'],['Wimbledon White','#eeeadf']],dash:'center-mb',wheel:'round',sensors:'none',sound:'v8',driver:true,rideshare:true,stache:true,woody:true},
+{id:'pullman',name:'Maybark S 680 Pullmann',sub:'6.5 m vis-à-vis limousine · chauffeur-driven · you ride in the back',style:'sedan',L:6.5,W:1.92,H:1.6,wb:4.42,wr:0.38,hp:523,z60:6.2,top:155,range:'~330 mi (est.) · 6.0L V12',weight:'~6,200 lb (est.)',drive:'6.0L twin-turbo V12 (390 kW, 830 Nm) · 7-speed automatic · RWD',level:'Human driver (chauffeur)',
+ tech:'A fictional take on the ultimate Mercedes-Maybach: the Pullman, 6.5 m long on a wheelbase of more than 4.4 m, with a roof raised 100 mm over the long-wheelbase saloon for extra rear headroom and a 6.0-litre twin-turbo V12 (390 kW, 830 Nm). Outside: a vertical-slat chrome grille with fine pinstripes, chrome window line and the double-M emblem on the rear pillars. Behind the chauffeur is an electric glass partition that switches between clear and frosted, with a large screen above it; the rear compartment is set up vis-à-vis – two reclining executive seats facing forward and two fold-down seats facing back – in pale Nappa leather and walnut, with fold-out tables and silver champagne flutes. You ride in the back right executive seat.',
+ colors:[['Obsidian Black','#0f1012'],['Iridium Silver','#a9adb1'],['Rubellite Red','#5a0f18'],['Nautic Blue','#1e2a45']],dash:'mercedes',wheel:'round',sensors:'none',sound:'v12',driver:true,rideshare:true,chauffeur:true,backSeat:2.15,pullman:true},
 {id:'century',name:'Toyoda Centurie Royale',sub:'Imperial state limousine · suited chauffeur · you ride in the back',style:'sedan',L:6.16,W:2.05,H:1.78,wb:3.89,wr:0.37,hp:276,z60:9.8,top:112,range:'~350 mi (est.) · 5.0L V12',weight:'6,440 lb',drive:'5.0L V12 · 6-speed automatic · RWD',level:'Human driver (chauffeur)',
  tech:'A stately take on the Japanese imperial state car: a 6.16 m long, 1.78 m tall formal limousine on a 3.89 m wheelbase, with a quiet 5.0-litre V12. It wears imperial black with chrome window surrounds, an upright chrome grille, gold sixteen-petal chrysanthemum crests on the grille and rear doors and flag staffs on both front wings. A suited chauffeur in white gloves drives from the leather-trimmed front compartment; you ride in the back right seat of the rear compartment, behind a glass partition, on grey wool upholstery with white lace seat covers under a white washi-paper headliner.',
  colors:[['Imperial Black','#0b0b0d']],dash:'center-mb',wheel:'round',sensors:'none',sound:'v12',driver:true,rideshare:true,century:true,chauffeur:true,backSeat:1.5},
@@ -1493,6 +1496,7 @@ const MODEL={
  'ecohatch':{prof:{ax:.02,g:[.02,.06,.62,.74],top:[[0,.62],[.015,.8],[.05,.93],[.14,.99],[.45,1],[.58,.95],[.68,.77],[.75,.64],[.84,.66],[.93,.64],[.98,.6],[1,.54]],half:[[0,.88],[.03,.96],[.1,1],[.9,1],[.96,.97],[.99,.92],[1,.86]],belt:[[.04,.62],[.3,.6],[.62,.59],[.74,.63]],bot:[[0,.16],[.05,.12],[.95,.12],[1,.15]]},epa:640,mirror:'black',shape:{box:.32,clr:.15,nose:.5,hood:.61,cowl:.74,roofF:.58,roofR:.06,tail:.01,deck:.74,belt:.6,tum:.78,endR:.14,ft:.05,rt:.03,roof:'paint',cpil:true},grille:'none',drl:'pixel',tailL:'bar',rim:{n:5,style:'disc',col:0xd8dadc},cal:0x333333,int:{seat:0x3a3d42,mat:'cloth',trim:'none',dash:0x1d1e20}},
   'starfire':{prof:{ax:.05,g:[.28,.36,.58,.66],top:[[0,.6],[.03,.66],[.12,.68],[.28,.69],[.36,.95],[.44,1],[.52,1],[.58,.96],[.63,.8],[.66,.69],[.8,.68],[.92,.67],[.98,.63],[1,.56]],half:[[0,.86],[.03,.95],[.1,1],[.9,1],[.97,.97],[.99,.92],[1,.86]],belt:[[.28,.68],[.44,.66],[.58,.66],[.66,.68]],bot:[[0,.14],[.04,.1],[.96,.1],[1,.13]]},epa:290,mirror:'chrome',chromeBelt:true,shape:{tail:.3,deck:.66,nose:.5,hood:.66,roofF:.57,roofR:.38,cowl:.68,clr:.16,belt:.6,tum:.78,endR:.18,cpil:true} /* '62 hardtop: formal roof, short C-pillar, long flat trunk and hood */,grille:'mb',drl:'yugo',tailL:'pair',rim:{n:0,style:'disc',col:0xd8dcdf},cal:0x999999,int:{seat:0xe8dcc2,mat:'leather',trim:'walnut',dash:0x8a1c1c}},
  's580':{prof:{ax:.035,g:[.17,.29,.6,.72],top:[[0,.6],[.03,.67],[.1,.7],[.17,.72],[.29,.95],[.4,1],[.52,1],[.6,.96],[.66,.82],[.72,.69],[.82,.67],[.92,.65],[.975,.62],[1,.56]],half:[[0,.84],[.03,.93],[.1,.99],[.3,1],[.7,1],[.9,.98],[.96,.94],[.99,.86],[1,.76]],belt:[[.17,.71],[.4,.66],[.6,.65],[.72,.67]],bot:[[0,.15],[.05,.1],[.95,.1],[1,.13]]},epa:380,handles:'flush',chromeBelt:true,shape:{tail:.11,deck:.71,nose:.48,hood:.64,roofF:.6,roofR:.35,cowl:.69},grille:'mb',drl:'mb',tailL:'pair',rim:{n:10,style:'multi',col:0xb8bcc0},cal:0x777777,int:{seat:0xcdb08a,mat:'leather',trim:'walnut',dash:0x2a211b}},
+ 'pullman':{prof:{ax:.035,g:[.12,.21,.66,.76],top:[[0,.6],[.03,.67],[.08,.7],[.12,.72],[.21,.95],[.28,1],[.6,1],[.66,.96],[.71,.82],[.76,.69],[.82,.67],[.92,.65],[.975,.62],[1,.56]],half:[[0,.84],[.03,.93],[.1,.99],[.3,1],[.7,1],[.9,.98],[.96,.94],[.99,.86],[1,.76]],belt:[[.12,.71],[.4,.66],[.66,.65],[.76,.67]],bot:[[0,.15],[.05,.1],[.95,.1],[1,.13]]},epa:330,handles:'flush',chromeBelt:true,shape:{tail:.07,deck:.71,nose:.48,hood:.64,roofF:.66,roofR:.21,cowl:.76},grille:'mb',drl:'mb',tailL:'pair',rim:{n:10,style:'multi',col:0xb8bcc0},cal:0x777777,int:{seat:0xd8c7a8,mat:'leather',trim:'walnut',dash:0x2a211b}},
  'i7':{prof:{ax:.04,g:[.2,.3,.6,.72],top:[[0,.6],[.03,.66],[.1,.69],[.2,.71],[.3,.93],[.4,1],[.52,1],[.6,.96],[.66,.82],[.72,.71],[.82,.7],[.92,.69],[.975,.67],[1,.62]],half:[[0,.84],[.03,.93],[.1,.99],[.3,1],[.7,1],[.9,.99],[.96,.96],[.99,.9],[1,.84]],belt:[[.2,.7],[.4,.66],[.6,.65],[.72,.67]],bot:[[0,.15],[.05,.1],[.95,.1],[1,.12]]},epa:318,mirror:'aero',badge:'round',handles:'flush',chromeBelt:true,shape:{tail:.1,deck:.72,nose:.52,hood:.66,cowl:.69,roofF:.58,roofR:.32,belt:.63,tum:.74,endR:.22},grille:'bmw',drl:'bmw',tailL:'pair',rim:{n:5,style:'split',col:0x9fa3a8},cal:0x2050a0,int:{seat:0xe6dccb,mat:'leather',trim:'oak',dash:0x2a211b}},
  'escalade-iq':{prof:{ax:.02,g:[.02,.04,.6,.71],top:[[0,.72],[.015,.88],[.035,.95],[.1,.97],[.5,.98],[.6,.94],[.66,.8],[.71,.69],[.8,.68],[.9,.67],[.97,.65],[1,.6]],half:[[0,.88],[.03,.96],[.1,1],[.9,1],[.96,.97],[.99,.92],[1,.86]],belt:[[.03,.65],[.3,.62],[.6,.62],[.71,.64]],bot:[[0,.17],[.05,.13],[.95,.13],[1,.16]]},epa:460,mirror:'big',badge:'word',handles:'flush',shape:{nose:.55,hood:.64,roofR:.12,deck:.74,roofBlack:true},chromeBelt:true,band:true,grille:'cadillac',drl:'cadillac',tailL:'cadillac',rim:{n:6,style:'split',col:0xc0c3c6},rails:true,int:{seat:0x141414,mat:'leather',trim:'walnut',dash:0x18181a}},
  'mache':{prof:{g:[.103,.3,.541,.717],top:[[0,.6],[.056,.68],[.103,.79],[.18,.85],[.245,.9],[.322,.95],[.41,.97],[.479,.97],[.541,.94],[.636,.82],[.717,.72],[.784,.67],[.87,.62],[.953,.56],[.983,.48],[1,.38]],half:[[0,.8],[.03,.9],[.1,.97],[.3,1],[.7,1],[.85,.98],[.94,.92],[.99,.78],[1,.62]],belt:[[.103,.74],[.25,.7],[.524,.69],[.717,.7]],bot:[[0,.16],[.05,.11],[.12,.1],[.88,.1],[.95,.11],[1,.14]]},epa:260,mirror:'black',badge:'oval',handles:'button',shape:{roofR:.2,roofBlack:true,clr:.16,nose:.48,hood:.6,cowl:.70,roofF:.58,tail:.03,deck:.62,belt:.62,tum:.72,endR:.3},grille:'ford',drl:'ford',tailL:'tri',rim:{n:5,style:'split',col:0x3a3c40},cal:0x777777,cladding:true,int:{seat:0x1a1a1a,mat:'leather',trim:'none',dash:0x1c1d20}},
@@ -2427,6 +2431,7 @@ const ENERGY={
  'boosthatch':{epa:220,ice:true,tankL:68,kg:1320,cda:0.75,crr:0.012,bte:0.30,idleKW:6,cityMul:2.0},
  'taxi':{epa:400,ice:true,tankL:72,kg:1860,cda:0.75,crr:0.010,bte:0.32,idleKW:2.5,cityMul:0.75},
  'century':{epa:350,ice:true,tankL:95,kg:2920,cda:0.95,crr:0.010,bte:0.30,idleKW:3,cityMul:0.75},
+ 'pullman':{epa:330,ice:true,tankL:90,kg:2810,cda:0.78,crr:0.009,bte:0.32,idleKW:3,cityMul:0.75},
  'wagon70':{epa:330,ice:true,tankL:83,kg:2220,cda:0.85,crr:0.011,bte:0.28,idleKW:3,cityMul:0.7},
  'rideshare':{epa:550,ice:true,tankL:43,kg:1400,cda:0.62,crr:0.009,bte:0.40,idleKW:1.5,cityMul:0.9},
  'j800':{epa:300,ice:true,tankL:190,kg:5000,cda:1.45,crr:0.014,bte:0.17,idleKW:14,cityMul:2.8},
@@ -9793,21 +9798,59 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.century&&g&&!g.userData.centuryKit){kit(g,spec);if(opts&&opts.interior)cabin(g,spec)}}catch(err){console.warn('century kit',err)}return g};
  /* camera + rider further back than the rideshare default (long wheelbase) */
  let inCam=false;const _uc=window.updateCamera;if(typeof _uc==='function')window.updateCamera=function(){inCam=true;try{return _uc.apply(this,arguments)}finally{inCam=false}};
- const _eye=window.eyePos;window.__centEye=spec=>{const f=inCam;inCam=false;try{return _eye(spec)}finally{inCam=f}};
- if(typeof _eye==='function')window.eyePos=function(spec){const d=_eye.apply(this,arguments);if(spec&&spec.century&&inCam)d.x-=BACK-0.95;return d};
+ const _eye=window.eyePos;window.__chauffEye=window.__centEye=spec=>{const f=inCam;inCam=false;try{return _eye(spec)}finally{inCam=f}};
+ if(typeof _eye==='function')window.eyePos=function(spec){const d=_eye.apply(this,arguments);if(spec&&spec.chauffeur&&inCam)d.x-=(spec.backSeat||BACK)-0.95;return d};
  /* crew: the suited chauffeur, and you in the back right */
- function suit(d){const dark=new THREE.MeshStandardMaterial({color:0x15171b,roughness:0.6}),white=new THREE.MeshStandardMaterial({color:0xf6f6f4,roughness:0.6}),head=d.userData.head,skin=head&&head.material;
+ window.chauffeurSuit=d=>suit(d);function suit(d){const dark=new THREE.MeshStandardMaterial({color:0x15171b,roughness:0.6}),white=new THREE.MeshStandardMaterial({color:0xf6f6f4,roughness:0.6}),head=d.userData.head,skin=head&&head.material;
   const inHead=o=>{for(let p=o;p;p=p.parent){if(p===head)return true;if(p===d)return false}return false};
   d.traverse(o=>{if(!o.isMesh||!o.material||inHead(o))return;if(o.material===skin){if(o.geometry.type==='SphereGeometry'&&o.geometry.parameters.radius<0.06)o.material=white;return} /* skin stays, except hands: white gloves */
    o.material=dark}); /* everything else – jacket, sleeves, trousers, shoes – is the dark suit */
   const v=new THREE.Mesh(new THREE.PlaneGeometry(0.1,0.24),white);v.position.set(0.087,-0.36,0);v.rotation.y=Math.PI/2;d.add(v);const tie=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.2,0.035),new THREE.MeshStandardMaterial({color:0x0a0a0c,roughness:0.5}));tie.position.set(0.093,-0.35,0);d.add(tie)}
  const _ra=window.riderAttach;
- if(typeof _ra==='function')window.riderAttach=function(){const r=_ra.apply(this,arguments);try{const G=game,m=G&&G.ego&&G.ego.mesh;if(G&&G.spec&&G.spec.century&&m){const e=window.__centEye(G.spec),R=m.userData.rider;
-   if(R)R.position.set(e.x-BACK,e.y-0.05,-e.z);if(!m.userData.chauffeur){const d=buildDriver(G.spec,'drive','driver');suit(d);m.add(d);m.userData.driver=d;m.userData.chauffeur=d}}}catch(err){console.warn('century crew',err)}return r};
+ if(typeof _ra==='function')window.riderAttach=function(){const r=_ra.apply(this,arguments);try{const G=game,m=G&&G.ego&&G.ego.mesh;if(G&&G.spec&&G.spec.chauffeur&&m){const e=window.__centEye(G.spec),R=m.userData.rider;
+   if(R)R.position.set(e.x-(G.spec.backSeat||BACK),e.y-0.05,-e.z);if(!m.userData.chauffeur){const d=buildDriver(G.spec,'drive','driver');suit(d);m.add(d);m.userData.driver=d;m.userData.chauffeur=d}}}catch(err){console.warn('century crew',err)}return r};
  /* first person: you sit in the back, so hide only your own head in the cabin view (like the taxi); every other camera shows you */
  const _rv=window.riderView;
- if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.century){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r){r.visible=true;if(r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=G.cam!=='in'&&!o.userData.keepHidden}return}return _rv.apply(this,arguments)};
+ if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.chauffeur){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r){r.visible=true;if(r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=G.cam!=='in'&&!o.userData.keepHidden}return}return _rv.apply(this,arguments)};
  MODS.push({id:'century'});
+})();
+</script>
+<script>/* mods/88c-pullman.js */
+/* Maybark S 680 Pullmann (spec.pullman; crew + back-seat camera come from the shared chauffeur setup in 88b-century.js).
+   Exterior: Maybach-style vertical pinstriped grille slats and the double-M emblem on each rear pillar.
+   Interior: an electric glass partition behind the chauffeur that slowly cycles between clear and frosted, a wide screen above it,
+   two rear-facing fold-down seats facing your executive seat (vis-à-vis), fold-out walnut tables and silver champagne flutes. */
+(function(){
+ function mmTex(){if(mmTex.t)return mmTex.t;const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.translate(64,64);
+  x.strokeStyle='#e6e8ec';x.lineWidth=5;x.beginPath();x.moveTo(-34,30);x.lineTo(-34,-24);x.lineTo(0,-34);x.lineTo(34,-24);x.lineTo(34,30);x.closePath();x.stroke(); /* spherical-triangle frame */
+  x.font='italic 900 44px Georgia, serif';x.fillStyle='#e6e8ec';x.textAlign='center';x.textBaseline='middle';x.fillText('M',-9,4);x.font='italic 900 30px Georgia, serif';x.fillText('M',14,10);
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return mmTex.t=t}
+ function kit(g,spec){const{L,W,H}=spec,P=(profCache[spec.id]||{}).P;if(!P)return;const side=(u,y)=>P.halfAt?P.halfAt(u,y):W/2,chrome=new THREE.MeshStandardMaterial({color:0xe6e8ec,metalness:1,roughness:0.08});
+  /* pinstriped vertical-slat grille */
+  {const gw=W*0.36,gh=H*0.2,gy=H*0.4,gx=L/2+0.004,dark=new THREE.MeshStandardMaterial({color:0x101113,roughness:0.4});const b=new THREE.Mesh(new THREE.BoxGeometry(0.02,gh,gw),dark);b.position.set(gx,gy,0);g.add(b);
+   for(const [w,h,y,z] of [[gw+0.05,0.03,gy+gh/2,0],[gw+0.05,0.03,gy-gh/2,0],[0.03,gh,gy,gw/2+0.012],[0.03,gh,gy,-gw/2-0.012]]){const f=new THREE.Mesh(new THREE.BoxGeometry(0.035,h,w),chrome);f.position.set(gx+0.01,y,z);g.add(f)}
+   for(let k=1;k<26;k++){const s=new THREE.Mesh(new THREE.BoxGeometry(0.012,gh-0.01,k%2?0.004:0.009),chrome);s.position.set(gx+0.008,gy,-gw/2+gw*k/26);g.add(s)}}
+  /* double-M emblem on the rear pillars */
+  const um=new THREE.MeshStandardMaterial({map:mmTex(),transparent:true,metalness:0.9,roughness:0.2,polygonOffset:true,polygonOffsetFactor:-2}),uu=P.sh.roofR+0.03,yy=H*0.8;
+  for(const s of [1,-1]){const e=new THREE.Mesh(new THREE.PlaneGeometry(0.1,0.1),um);e.position.set(P.xOf(uu),yy,s*(side(uu,yy)+0.005));e.rotation.y=s>0?0:Math.PI;g.add(e)}
+  g.userData.pullmanKit=true}
+ function cabin(g,spec){const I=g.userData.interior;if(!I)return;const e=window.__chauffEye?window.__chauffEye(spec):eyePos(spec),hw=spec.W/2-0.1,back=spec.backSeat;
+  const px=e.x-0.6,rx=e.x-back,leather=new THREE.MeshStandardMaterial({color:0xd8c7a8,roughness:0.55}),walnut=new THREE.MeshStandardMaterial({color:0x4a2a16,roughness:0.35}),silver=new THREE.MeshStandardMaterial({color:0xdfe2e6,metalness:1,roughness:0.12});
+  /* switchable glass partition + lower walnut bulkhead + screen */
+  const glass=new THREE.MeshPhysicalMaterial({color:0xe8eef2,transparent:true,opacity:0.12,roughness:0.05,side:THREE.DoubleSide,depthWrite:false});
+  const pg=new THREE.Mesh(new THREE.PlaneGeometry(hw*2,0.42),glass);pg.rotation.y=Math.PI/2;pg.position.set(px,e.y-0.02,0);I.add(pg);
+  const bh=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.5,hw*2),walnut);bh.position.set(px,e.y-0.5,0);I.add(bh);
+  const sc=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.2,0.46),new THREE.MeshStandardMaterial({color:0x0a0c10,emissive:0x1a2a44,roughness:0.3}));sc.position.set(px-0.04,spec.H-0.2,0);I.add(sc);
+  /* vis-à-vis: two rear-facing fold-down seats just behind the partition, facing your executive seat */
+  for(const z of [e.z,-e.z]){const c=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.1,0.44),leather);c.position.set(px-0.32,e.y-0.62,z);I.add(c);const bk=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.5,0.44),leather);bk.position.set(px-0.08,e.y-0.35,z);bk.rotation.z=0.1;I.add(bk)}
+  /* fold-out tables (walnut, chrome edge) and two champagne flutes */
+  for(const z of [e.z,-e.z]){const t=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.015,0.36),walnut);t.position.set(rx+0.5,e.y-0.42,z);I.add(t);const ed=new THREE.Mesh(new THREE.BoxGeometry(0.31,0.006,0.37),silver);ed.position.set(rx+0.5,e.y-0.43,z);I.add(ed);
+   const fl=new THREE.Mesh(new THREE.LatheGeometry([[0.001,0],[0.03,0],[0.004,0.006],[0.004,0.1],[0.025,0.13],[0.03,0.2]].map(([a,b])=>new THREE.Vector2(a,b)),16),silver);fl.position.set(rx+0.55,e.y-0.41,z*0.85);I.add(fl)}
+  g.userData.pullmanGlass=glass}
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.pullman&&g&&!g.userData.pullmanKit){kit(g,spec);if(opts&&opts.interior)cabin(g,spec)}}catch(err){console.warn('pullman kit',err)}return g};
+ MODS.push({id:'pullman',frame(){const G=typeof game!=='undefined'?game:null,gl=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.pullmanGlass;if(!gl)return;
+  const t=performance.now()/1000,ph=(t%40)/40,f=ph<0.4?0:ph<0.5?(ph-0.4)/0.1:ph<0.9?1:1-(ph-0.9)/0.1;gl.opacity=0.12+f*0.73;gl.roughness=0.05+f*0.6}}); /* partition: clear → frosted → clear every 40 s */
 })();
 </script>
 <script>/* mods/89-trafficlevel.js */
