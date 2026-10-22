@@ -9846,6 +9846,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   /* fold-out tables (walnut, chrome edge) and two champagne flutes */
   for(const z of [e.z,-e.z]){const t=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.015,0.36),walnut);t.position.set(rx+0.5,e.y-0.42,z);I.add(t);const ed=new THREE.Mesh(new THREE.BoxGeometry(0.31,0.006,0.37),silver);ed.position.set(rx+0.5,e.y-0.43,z);I.add(ed);
    const fl=new THREE.Mesh(new THREE.LatheGeometry([[0.001,0],[0.03,0],[0.004,0.006],[0.004,0.1],[0.025,0.13],[0.03,0.2]].map(([a,b])=>new THREE.Vector2(a,b)),16),silver);fl.position.set(rx+0.55,e.y-0.41,z*0.85);I.add(fl)}
+  /* headliner in ud.hood (the cabin view hides the roof): pale perforated leather, full length */
+  const hood=g.userData.hood,P=(profCache[spec.id]||{}).P;if(hood&&P){const x0=P.xOf(P.sh.roofR)+0.05,x1=P.xOf(P.sh.roofF)-0.05,hl=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,hw*2),new THREE.MeshStandardMaterial({color:0xe4d9c4,roughness:0.9,side:THREE.DoubleSide}));hl.rotation.x=Math.PI/2;hl.position.set((x0+x1)/2,spec.H-0.05,0);hood.add(hl)}
   g.userData.pullmanGlass=glass}
  const _bc=window.buildCar;
  if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.pullman&&g&&!g.userData.pullmanKit){kit(g,spec);if(opts&&opts.interior)cabin(g,spec)}}catch(err){console.warn('pullman kit',err)}return g};
