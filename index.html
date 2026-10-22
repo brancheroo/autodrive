@@ -9975,8 +9975,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   preRender(){const now=performance.now(),dt=Math.min(0.1,(now-(MC.last||now))/1000);MC.last=now;if(!MC.on||!MC.units.length)return;const G=typeof game!=='undefined'?game:null;
    const ok=G&&G.ego&&G.route&&!G.fast;for(const u of MC.units)u.m.visible=!!ok;if(!ok)return;const e=G.ego,tot=G.route.total,gap=Math.max(11,Math.min(60,10+e.v*0.9)),t=now/1000;
    const eL=(G.spec.L||4.8)/2;let fa=eL,ba=eL;
-   for(const u of MC.units){const L2=((u.m.userData.spec&&u.m.userData.spec.L)||4.8)/2;let s;if(u.lead){fa+=gap*0.6+L2;s=e.s+fa;fa+=L2}else{ba+=gap*0.6+L2;s=e.s-ba;ba+=L2} /* bumper-to-bumper gaps grow with speed, spaced by each vehicle's length */if(s<0||s>tot){u.m.visible=false;continue}
-    const off=u.lead?(e.off??laneOffsetAt(routeLLnh(e.s)[2])):laneOffsetAt(routeLLnh(s)[2]),p=routeXZ(s,off);u.m.position.set(p[0],groundY(p[0],p[1]),p[1]);u.m.rotation.y=Math.atan2(-p[3],p[2]);
+   for(const u of MC.units){const L2=((u.m.userData.spec&&u.m.userData.spec.L)||4.8)/2;let s;if(u.lead){fa+=gap*0.6+L2;s=e.s+fa;fa+=L2}else{ba+=gap*0.6+L2;s=e.s-ba;ba+=L2} /* bumper-to-bumper gaps grow with speed, spaced by each vehicle's length */if(s>tot){u.m.visible=false;continue}
+    const sc=Math.max(0,s),off=u.lead?(e.off??laneOffsetAt(routeLLnh(e.s)[2])):laneOffsetAt(routeLLnh(sc)[2]),p=routeXZ(sc,off);if(s<0){p[0]+=p[2]*s;p[1]+=p[3]*s} /* before the route start: line up straight back from it */u.m.position.set(p[0],groundY(p[0],p[1]),p[1]);u.m.rotation.y=Math.atan2(-p[3],p[2]);
     const W=u.m.userData.wheels,wr=(u.m.userData.spec&&u.m.userData.spec.wr)||0.35;if(W)for(const w of W)if(w.spin)w.spin.rotation.z-=e.v*dt/wr;
     if(u.m.userData.bar)flashBar(u.m,t,u.ph)}}});
 })();
