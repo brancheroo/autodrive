@@ -9834,7 +9834,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  const _bc=window.buildCar,b=new THREE.Box3();
  if(typeof _bc==='function')window.buildCar=function(spec){const g=_bc.apply(this,arguments);try{if(spec&&g&&profCache[spec.id]&&!g.userData.lowRoofFit)fit(g,spec)}catch(e){console.warn('lowroof',e)}return g};
  function fit(g,spec){g.userData.lowRoofFit=1;const lim=spec.H-0.07;g.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(g.matrixWorld).invert();
-  for(const grp of [g.userData.tub,g.userData.interior]){if(!grp)continue;for(const c of [...grp.children]){b.setFromObject(c).applyMatrix4(inv);if(b.isEmpty()||b.max.y<=lim||b.max.y-b.min.y<0.05)continue;
+  for(const grp of [g.userData.tub,g.userData.interior]){if(!grp)continue;for(const c of [...grp.children]){b.setFromObject(c).applyMatrix4(inv);if(b.isEmpty()||b.max.y<=lim)continue;if(b.min.y>=lim-0.04){c.visible=false;continue} /* wholly above the roofline (headrests): hide */
    const k=Math.max(0.3,(lim-b.min.y)/(b.max.y-b.min.y));const w=new THREE.Group();grp.add(w);grp.updateMatrixWorld(true);const lp=grp.worldToLocal(new THREE.Vector3(0,b.min.y,0).applyMatrix4(g.matrixWorld));
    w.position.y=lp.y;c.position.y-=lp.y;w.add(c);w.scale.y=k}}}
  MODS.push({id:'lowroof'});
