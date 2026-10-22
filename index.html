@@ -9838,6 +9838,32 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   const um=new THREE.MeshStandardMaterial({map:mmTex(),transparent:true,metalness:0.9,roughness:0.2,polygonOffset:true,polygonOffsetFactor:-2}),uu=P.sh.roofR+0.03,yy=H*0.8;
   for(const s of [1,-1]){const e=new THREE.Mesh(new THREE.PlaneGeometry(0.1,0.1),um);e.position.set(P.xOf(uu),yy,s*(side(uu,yy)+0.005));e.rotation.y=s>0?0:Math.PI;g.add(e)}
   g.userData.pullmanKit=true}
+ /* diamond-quilted Nappa panel with contrast stitching (texture for seat faces) */
+ function quiltTex(){if(quiltTex.t)return quiltTex.t;const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#d8c7a8';x.fillRect(0,0,256,256);
+  const n=6,s=256/n;for(let i=-1;i<=n;i++)for(let j=-1;j<=n;j++){const cx=i*s+(j%2?s/2:0),cy=j*s/2;const g=x.createRadialGradient(cx,cy,2,cx,cy,s*0.62);g.addColorStop(0,'#ecdfc6');g.addColorStop(1,'#bba584');x.fillStyle=g;
+   x.beginPath();x.moveTo(cx,cy-s/2);x.lineTo(cx+s/2,cy);x.lineTo(cx,cy+s/2);x.lineTo(cx-s/2,cy);x.closePath();x.fill()} /* puffed diamonds */
+  x.strokeStyle='#8a7350';x.lineWidth=1.5;x.setLineDash([4,3]);for(let k=-n;k<=2*n;k++){x.beginPath();x.moveTo(k*s,0);x.lineTo(k*s+256,256);x.stroke();x.beginPath();x.moveTo(k*s,256);x.lineTo(k*s+256,0);x.stroke()} /* stitch lines */
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;return quiltTex.t=t}
+ /* a rear-facing fold-down seat: back against the partition (at x), facing the rear (−x). Rounded shells, quilted centre panels,
+    bolsters, piping, pillow headrest, fold-down armrest and the chrome hinge brackets it folds on. */
+ function foldSeat(x,y,z,leather,chrome){const S=new THREE.Group();S.position.set(x,y,z);S.rotation.y=Math.PI; /* local +x now points to the rear */
+  const quilt=new THREE.MeshStandardMaterial({map:quiltTex(),roughness:0.5}),pipe=new THREE.MeshStandardMaterial({color:0x9a8160,roughness:0.5}),dark=new THREE.MeshStandardMaterial({color:0x1d1e20,roughness:0.6});
+  const M=(geo,m,px,py,pz,par=S)=>{const o=new THREE.Mesh(geo,m);o.position.set(px,py,pz);par.add(o);return o};
+  /* cushion: rounded shell + quilted top + front roll */
+  M(softBox(0.42,0.1,0.46,0.04),leather,0.24,0.05,0);const qt=M(new THREE.PlaneGeometry(0.34,0.36),quilt,0.24,0.102,0);qt.rotation.x=-Math.PI/2;
+  M(new THREE.CylinderGeometry(0.035,0.035,0.44,16).rotateX(Math.PI/2),leather,0.44,0.06,0);
+  for(const sd of [1,-1])M(softBox(0.4,0.06,0.06,0.025),leather,0.24,0.11,sd*0.2); /* cushion bolsters */
+  /* backrest (slight recline): shell, quilted face, side bolsters, piping */
+  const B=new THREE.Group();B.position.set(0.03,0.1,0);B.rotation.z=-0.12;S.add(B);
+  M(softBox(0.09,0.56,0.46,0.04),leather,0,0.28,0,B);const qb=M(new THREE.PlaneGeometry(0.34,0.44),quilt,0.047,0.29,0,B);qb.rotation.y=Math.PI/2;
+  for(const sd of [1,-1]){M(softBox(0.08,0.5,0.06,0.028),leather,0.05,0.28,sd*0.2,B);M(new THREE.CylinderGeometry(0.006,0.006,0.5,6),pipe,0.07,0.28,sd*0.172,B)}
+  /* pillow headrest */
+  const hr=M(softBox(0.1,0.15,0.3,0.05),leather,0.04,0.66,0,B);M(new THREE.CylinderGeometry(0.008,0.008,0.08,6),chrome,0.0,0.57,0.08,B);M(new THREE.CylinderGeometry(0.008,0.008,0.08,6),chrome,0.0,0.57,-0.08,B);
+  /* fold-down armrest on the inboard side + chrome hinge brackets and the base it folds into */
+  const ar=M(softBox(0.3,0.06,0.07,0.025),leather,0.17,0.24,-0.27);M(softBox(0.06,0.02,0.072,0.008),chrome,0.03,0.24,-0.27);
+  for(const sd of [1,-1]){const hb=M(new THREE.BoxGeometry(0.06,0.12,0.012),chrome,0.03,0.02,sd*0.235);M(new THREE.CylinderGeometry(0.02,0.02,0.02,12).rotateX(Math.PI/2),chrome,0.03,0.07,sd*0.243)}
+  M(softBox(0.36,0.06,0.44,0.02),dark,0.22,-0.03,0); /* base / folding frame */
+  return S}
  function cabin(g,spec){const I=g.userData.interior;if(!I)return;const e=window.__chauffEye?window.__chauffEye(spec):eyePos(spec),hw=spec.W/2-0.1,back=spec.backSeat;
   const px=e.x-0.6,rx=e.x-back,leather=new THREE.MeshStandardMaterial({color:0xd8c7a8,roughness:0.55}),walnut=new THREE.MeshStandardMaterial({color:0x4a2a16,roughness:0.35}),silver=new THREE.MeshStandardMaterial({color:0xdfe2e6,metalness:1,roughness:0.12});
   /* switchable glass partition + lower walnut bulkhead + screen */
@@ -9846,7 +9872,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   const bh=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.5,hw*2),walnut);bh.position.set(px,e.y-0.5,0);I.add(bh);
   const sc=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.2,0.46),new THREE.MeshStandardMaterial({color:0x0a0c10,emissive:0x1a2a44,roughness:0.3}));sc.position.set(px-0.04,spec.H-0.2,0);I.add(sc);
   /* vis-à-vis: two rear-facing fold-down seats just behind the partition, facing your executive seat */
-  for(const z of [e.z,-e.z]){const c=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.1,0.44),leather);c.position.set(px-0.32,e.y-0.62,z);I.add(c);const bk=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.5,0.44),leather);bk.position.set(px-0.08,e.y-0.35,z);bk.rotation.z=0.1;I.add(bk)}
+  for(const z of [e.z,-e.z])I.add(foldSeat(px-0.04,e.y-0.7,z,leather,silver));
   /* fold-out tables (walnut, chrome edge) and two champagne flutes */
   for(const z of [e.z,-e.z]){const t=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.015,0.36),walnut);t.position.set(rx+0.5,e.y-0.42,z);I.add(t);const ed=new THREE.Mesh(new THREE.BoxGeometry(0.31,0.006,0.37),silver);ed.position.set(rx+0.5,e.y-0.43,z);I.add(ed);
    const fl=new THREE.Mesh(new THREE.LatheGeometry([[0.001,0],[0.03,0],[0.004,0.006],[0.004,0.1],[0.025,0.13],[0.03,0.2]].map(([a,b])=>new THREE.Vector2(a,b)),16),silver);fl.scale.setScalar(0.75);fl.position.set(rx+0.6,e.y-0.41,z+(z>0?-0.12:0.12));I.add(fl)}
