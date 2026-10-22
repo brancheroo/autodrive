@@ -9916,9 +9916,11 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    all with lights flashing (the SUVs carry grille strobes and suited drivers). The escort is scripted, not traffic: every frame
    each vehicle is laid on the route in your lane at a gap that grows with speed, so it never blocks or rear-ends you. The lead
    vehicles clear the way: traffic in your lane up to ~90 m ahead is nudged to the kerb and slowed (like a real escort).
-   Toggle: a checkbox on the planning screen and a 🚓 button on the options page (both share the saved setting). */
+   Toggle: a checkbox on the planning screen and a 🚓 button on the options page (both share the saved setting); the planning
+   screen also sets how many of each unit ride along – police motorcycles and cruisers ahead; black SUVs, ambulances and TV news vans behind. */
 (function(){
- const MC={on:UIX.load('motorcade',false)===true,units:[],last:0};window.MOTORCADE=MC;
+ const DEF={moto:1,cop:1,suv:3,amb:0,tv:0},MAX={moto:6,cop:4,suv:8,amb:2,tv:2};
+ const MC={on:UIX.load('motorcade',false)===true,cfg:Object.assign({},DEF,UIX.load('motorcadeCfg',{})),units:[],last:0};window.MOTORCADE=MC;
  function strobes(g,x,y,len){const bar=new THREE.Group();bar.position.set(x,y,0);g.add(bar);
   const red=new THREE.MeshBasicMaterial({color:0x550000}),blue=new THREE.MeshBasicMaterial({color:0x000a55});const lr=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.05,len*0.4),red),lb=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.05,len*0.4),blue);lr.position.z=len*0.25;lb.position.z=-len*0.25;bar.add(lr,lb);
   const gr=new THREE.SpriteMaterial({map:glowTex(),color:0xff2020,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}),gb=new THREE.SpriteMaterial({map:glowTex(),color:0x2050ff,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0});
@@ -9931,14 +9933,40 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   try{const d=buildDriver(sp,'drive','driver');if(window.chauffeurSuit)window.chauffeurSuit(d);g.add(d)}catch(e){}
   strobes(g,sp.L/2-0.05,0.75,1.2);g.userData.spec=sp;return g}
  function cop(){const g=buildCop();g.userData.spec=COP_SPEC;return g}
+ /* vans for the ambulance and the TV truck: the delivery-van body without its Amazom livery, with their own decals and roof gear */
+ function sideText(g,sp,draw){const P=(profCache[sp.id]||{}).P,c=document.createElement('canvas');c.width=1024;c.height=256;draw(c.getContext('2d'));const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;
+  const m=new THREE.MeshStandardMaterial({map:t,transparent:true,roughness:0.5,polygonOffset:true,polygonOffsetFactor:-2}),y=sp.H*0.55,hw=P&&P.halfAt?P.halfAt(0.45,y):sp.W/2;
+  for(const s of [1,-1]){const d=new THREE.Mesh(new THREE.PlaneGeometry(sp.L*0.62,sp.L*0.155),m);d.position.set(-0.3,y,s*(hw+0.012));d.rotation.y=s>0?0:Math.PI;g.add(d)}}
+ function van(col){const base=CARS.find(c=>c.id==='delivan');const sp=Object.assign({},base,{delivan:false});const g=buildCar(sp,col);g.userData.spec=sp;
+  try{const d=buildDriver(sp,'drive','driver');g.add(d)}catch(e){}const P=(profCache[sp.id]||{}).P;g.userData.roof=P&&P.top?P.top(0.45):sp.H;return {g,sp}}
+ function amb(){const {g,sp}=van('#f6f6f2');
+  sideText(g,sp,x=>{x.fillStyle='#d0141c';x.fillRect(0,150,1024,46);x.fillStyle='#ffd21f';x.fillRect(0,196,1024,14);
+   x.font='900 112px Arial Black, Arial';x.textAlign='center';x.fillStyle='#d0141c';x.fillText('AMBULANCE',540,120);
+   x.save();x.translate(90,110);x.fillStyle='#1f5fbf';for(let k=0;k<3;k++){x.save();x.rotate(k*Math.PI/3);x.fillRect(-16,-62,32,124);x.restore()}x.restore()}); /* star of life */
+  strobes(g,0.6,g.userData.roof+0.08,1.6);const bar2=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.12,1.7),new THREE.MeshStandardMaterial({color:0x222226}));bar2.position.set(0.6,g.userData.roof+0.02,0);g.add(bar2);return g}
+ function tv(){const {g,sp}=van('#1f3d8a');
+  sideText(g,sp,x=>{x.fillStyle='#ffffff';x.font='900 120px Arial Black, Arial';x.textAlign='left';x.fillText('NEWS',60,140);x.fillStyle='#ffd21f';x.beginPath();x.arc(560,100,78,0,Math.PI*2);x.fill();x.fillStyle='#1f3d8a';x.font='900 120px Arial Black, Arial';x.textAlign='center';x.fillText('7',560,142);
+   x.fillStyle='#ffffff';x.font='700 44px Arial';x.textAlign='left';x.fillText('LIVE · EYEWITNESS · HD',60,215)});
+  const ry=g.userData.roof,grey=new THREE.MeshStandardMaterial({color:0xe6e8ec,metalness:0.5,roughness:0.3});
+  const dish=new THREE.Mesh(new THREE.SphereGeometry(0.55,24,12,0,Math.PI*2,0,Math.PI/3),grey);dish.material.side=THREE.DoubleSide;dish.rotation.z=-1.0;dish.position.set(-1.2,ry+0.45,0);g.add(dish); /* satellite dish */
+  const feed=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,0.6,6),grey);feed.position.set(-0.95,ry+0.6,0);feed.rotation.z=-1.0;g.add(feed);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.14,0.3,12),grey);base.position.set(-1.25,ry+0.15,0);g.add(base);
+  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.07,1.6,10),grey);mast.position.set(0.9,ry+0.8,0);g.add(mast);const ant=new THREE.Mesh(new THREE.BoxGeometry(0.25,0.18,0.25),grey);ant.position.set(0.9,ry+1.65,0);g.add(ant); /* telescopic microwave mast */
+  return g}
  function spawn(){despawn();const mk=(f,lead,k)=>{const m=f();scene.add(m);return {m,lead,k,ph:Math.random()}};
-  MC.units=[mk(moto,true,2),mk(cop,true,1),mk(suv,false,1),mk(suv,false,2),mk(suv,false,3)]}
+  const C=MC.cfg,lead=[],tail=[];for(let i=0;i<C.cop;i++)lead.push(cop);for(let i=0;i<C.moto;i++)lead.push(moto);for(let i=0;i<C.suv;i++)tail.push(suv);for(let i=0;i<C.amb;i++)tail.push(amb);for(let i=0;i<C.tv;i++)tail.push(tv);
+  MC.units=[...lead.map((f,i)=>mk(f,true,i+1)),...tail.map((f,i)=>mk(f,false,i+1))]} /* nearest to you first: cruisers then motorcycles ahead; SUVs, ambulance, TV van behind */
  function despawn(){for(const u of MC.units)scene.remove(u.m);MC.units=[]}
  function set(v){MC.on=v;UIX.save('motorcade',v);const cb=document.getElementById('mcStart');if(cb)cb.checked=v;lab();if(typeof game!=='undefined'&&game&&game.route){if(v)spawn();else despawn()}}
  let btn=null;const lab=()=>{if(btn){btn.textContent='🚓 Motorcade: '+(MC.on?'On':'Off');btn.classList.toggle('on',MC.on)}};
  /* planning screen checkbox */
  try{UIX.section('Motorcade',`<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="mcStart"> Travel in a motorcade</label><div style="font-size:11px;color:var(--dim)">A police motorcycle and cruiser lead your car and three black SUVs follow, lights flashing; the escort clears traffic from your lane.</div>`);
-  const cb=document.getElementById('mcStart');cb.checked=MC.on;cb.onchange=()=>set(cb.checked)}catch(err){}
+  const cb=document.getElementById('mcStart');cb.checked=MC.on;cb.onchange=()=>set(cb.checked);
+  const box=document.createElement('div');box.style.cssText='display:grid;grid-template-columns:1fr auto;gap:4px 10px;margin-top:6px;font-size:12px;align-items:center';
+  for(const [k,label] of [['moto','🏍 Police motorcycles (lead)'],['cop','🚓 Police cars (lead)'],['suv','⬛ Black SUVs (follow)'],['amb','🚑 Ambulances (follow)'],['tv','📡 TV news vans (follow)']]){
+   const l=document.createElement('span');l.textContent=label;const s=document.createElement('select');s.style.cssText=UIX.sel||'';for(let n=0;n<=MAX[k];n++){const o=document.createElement('option');o.value=n;o.textContent=n;s.appendChild(o)}s.value=MC.cfg[k];
+   s.onchange=()=>{MC.cfg[k]=+s.value;UIX.save('motorcadeCfg',MC.cfg);if(MC.on&&typeof game!=='undefined'&&game&&game.route)spawn()};box.appendChild(l);box.appendChild(s)}
+  cb.parentElement.after(box)}catch(err){console.warn('motorcade ui',err)}
  const v3=new THREE.Vector3();
  MODS.push({id:'motorcade',
   start(){btn=UIX.btn('mcBtn','🚓 Motorcade','Motorcade – police motorcycle and cruiser ahead, three black SUVs behind',null)||document.getElementById('mcBtn');if(btn)btn.onclick=()=>set(!MC.on);lab();if(MC.on)spawn();else despawn()},
@@ -9946,7 +9974,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    for(const b of G.agents){if(!b.mesh||b.loose||b.kind!=='route')continue;const d=b.s-e.s;if(d<8||d>90)continue;const lat=(b.off??1.85)+(b.offAdd||0);if(Math.abs(lat-lane)>2.4)continue;b.offAdd=Math.min(3.4,(b.offAdd||0)+2.4*dt);b.v=Math.max(0,b.v-2.5*dt)}}, /* escort clears the lane */
   preRender(){const now=performance.now(),dt=Math.min(0.1,(now-(MC.last||now))/1000);MC.last=now;if(!MC.on||!MC.units.length)return;const G=typeof game!=='undefined'?game:null;
    const ok=G&&G.ego&&G.route&&!G.fast;for(const u of MC.units)u.m.visible=!!ok;if(!ok)return;const e=G.ego,tot=G.route.total,gap=Math.max(11,Math.min(60,10+e.v*0.9)),t=now/1000;
-   for(const u of MC.units){const s=u.lead?e.s+gap*u.k+(u.k===2?4:0):e.s-gap*u.k;if(s<0||s>tot){u.m.visible=false;continue}
+   const eL=(G.spec.L||4.8)/2;let fa=eL,ba=eL;
+   for(const u of MC.units){const L2=((u.m.userData.spec&&u.m.userData.spec.L)||4.8)/2;let s;if(u.lead){fa+=gap*0.6+L2;s=e.s+fa;fa+=L2}else{ba+=gap*0.6+L2;s=e.s-ba;ba+=L2} /* bumper-to-bumper gaps grow with speed, spaced by each vehicle's length */if(s<0||s>tot){u.m.visible=false;continue}
     const off=u.lead?(e.off??laneOffsetAt(routeLLnh(e.s)[2])):laneOffsetAt(routeLLnh(s)[2]),p=routeXZ(s,off);u.m.position.set(p[0],groundY(p[0],p[1]),p[1]);u.m.rotation.y=Math.atan2(-p[3],p[2]);
     const W=u.m.userData.wheels,wr=(u.m.userData.spec&&u.m.userData.spec.wr)||0.35;if(W)for(const w of W)if(w.spin)w.spin.rotation.z-=e.v*dt/wr;
     if(u.m.userData.bar)flashBar(u.m,t,u.ph)}}});
