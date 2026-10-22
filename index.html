@@ -9739,6 +9739,64 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   if(U.taxiMeter&&now-lastT>500){lastT=now;const x=U.taxiMeter.canvas.getContext('2d'),w=256;x.fillStyle='#0a0a0a';x.fillRect(0,0,w,96);x.fillStyle='#ff2a1a';x.font='700 54px Courier New, monospace';x.textAlign='right';x.fillText('$'+fare.toFixed(2),w-14,64);x.font='700 16px Arial';x.textAlign='left';x.fillText(G.arrived?'TIME OFF':'HIRED',12,88);U.taxiMeter.tex.needsUpdate=true}}});
 })();
 </script>
+<script>/* mods/88b-century.js */
+/* Toyoda Centurie Royale (spec.century, plus spec.rideshare for the back-seat camera and DRIVER'S VIEW panel): the imperial
+   state limousine. Exterior: gold sixteen-petal chrysanthemum crests on the grille and both rear doors, chrome flag staffs on
+   the front wings flying small imperial standards. Interior: a glass partition between the chauffeur's leather compartment and
+   the rear, a white washi-paper headliner over the rear compartment, white lace covers on the rear seat backs. Crew: a suited
+   chauffeur (dark suit, white shirt, black tie, white gloves) at the wheel; you sit in the back right seat, further back than in
+   a normal sedan because of the 3.89 m wheelbase. */
+(function(){
+ const BACK=1.5; /* how far behind the driver's eye the rear passenger sits (rideshare default is 0.95) */
+ function crestTex(){if(crestTex.t)return crestTex.t;const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.translate(128,128);
+  const gold=x.createRadialGradient(0,0,10,0,0,120);gold.addColorStop(0,'#fff1a8');gold.addColorStop(0.6,'#d4af37');gold.addColorStop(1,'#8a6a12');x.fillStyle=gold;x.strokeStyle='#6b4f0a';x.lineWidth=3;
+  for(let k=0;k<16;k++){x.save();x.rotate(k/16*Math.PI*2);x.beginPath();x.moveTo(0,0);x.quadraticCurveTo(26,-60,10,-118);x.arc(0,-118,10,0,Math.PI,true);x.quadraticCurveTo(-26,-60,0,0);x.fill();x.stroke();x.restore()} /* outer petals */
+  for(let k=0;k<16;k++){x.save();x.rotate((k+0.5)/16*Math.PI*2);x.beginPath();x.moveTo(0,0);x.lineTo(14,-96);x.arc(0,-96,14,0,Math.PI,true);x.closePath();x.fill();x.stroke();x.restore()} /* inner tips between */
+  x.beginPath();x.arc(0,0,30,0,Math.PI*2);x.fill();x.stroke();x.beginPath();x.arc(0,0,20,0,Math.PI*2);x.stroke();
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return crestTex.t=t}
+ function laceTex(){if(laceTex.t)return laceTex.t;const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.clearRect(0,0,128,128);x.strokeStyle='rgba(255,255,255,0.95)';x.lineWidth=2;
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){x.beginPath();x.arc(16+i*32,16+j*32,11,0,Math.PI*2);x.stroke();x.beginPath();x.arc(16+i*32,16+j*32,4,0,Math.PI*2);x.stroke()}
+  x.beginPath();for(let k=0;k<=128;k+=8){x.moveTo(k,124);x.arc(k+4,124,4,Math.PI,0)}x.stroke();const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return laceTex.t=t}
+ function washiTex(){if(washiTex.t)return washiTex.t;const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#f4f0e6';x.fillRect(0,0,256,256);
+  for(let k=0;k<260;k++){x.strokeStyle=`rgba(${200+Math.random()*30|0},${190+Math.random()*30|0},${170+Math.random()*30|0},0.35)`;x.lineWidth=Math.random()*1.5;x.beginPath();const a=Math.random()*256,b=Math.random()*256,r=10+Math.random()*40,th=Math.random()*6;x.moveTo(a,b);x.lineTo(a+Math.cos(th)*r,b+Math.sin(th)*r);x.stroke()} /* paper fibres */
+  x.strokeStyle='rgba(120,100,70,0.35)';x.lineWidth=3;for(let k=0;k<=256;k+=64){x.beginPath();x.moveTo(k,0);x.lineTo(k,256);x.stroke();x.beginPath();x.moveTo(0,k);x.lineTo(256,k);x.stroke()} /* shoji-style lattice */
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;return washiTex.t=t}
+ function kit(g,spec){const{L,W,H}=spec,P=(profCache[spec.id]||{}).P;if(!P)return;const side=(u,y)=>P.halfAt?P.halfAt(u,y):W/2;
+  const crestM=new THREE.MeshStandardMaterial({map:crestTex(),transparent:true,metalness:0.8,roughness:0.25,polygonOffset:true,polygonOffsetFactor:-2}),chrome=new THREE.MeshStandardMaterial({color:0xe6e8ec,metalness:1,roughness:0.1});
+  /* grille crest */
+  const gc=new THREE.Mesh(new THREE.CircleGeometry(0.075,32),crestM);gc.rotation.y=Math.PI/2;gc.position.set(L/2+0.02,H*0.42,0);g.add(gc);
+  /* rear-door crests */
+  const ud=(P.sh.roofR+P.sh.roofF)/2-0.12,yd=H*0.45;for(const s of [1,-1]){const c=new THREE.Mesh(new THREE.CircleGeometry(0.09,32),crestM);c.position.set(P.xOf(ud),yd,s*(side(ud,yd)+0.006));c.rotation.y=s>0?0:Math.PI;g.add(c)}
+  /* flag staffs + small imperial standards on the front wings */
+  const flagC=document.createElement('canvas');flagC.width=96;flagC.height=64;const fx=flagC.getContext('2d');fx.fillStyle='#b5121b';fx.fillRect(0,0,96,64);fx.drawImage(crestTex().image,24,8,48,48);const ft=new THREE.CanvasTexture(flagC);ft.encoding=THREE.sRGBEncoding;
+  const uw=0.93,yw=P.top(uw);for(const s of [1,-1]){const z=s*(side(uw,yw-0.05)-0.12),st=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.01,0.42,8),chrome);st.position.set(P.xOf(uw),yw+0.21,z);g.add(st);
+   const fl=new THREE.Mesh(new THREE.PlaneGeometry(0.24,0.16),new THREE.MeshStandardMaterial({map:ft,side:THREE.DoubleSide,roughness:0.8}));fl.position.set(P.xOf(uw)-0.12,yw+0.34,z);g.add(fl)}
+  g.userData.centuryKit=true}
+ function cabin(g,spec){const I=g.userData.interior;if(!I)return;const e=window.__centEye?window.__centEye(spec):eyePos(spec),hw=spec.W/2-0.12;
+  /* glass partition between the compartments */
+  const px=e.x-0.55,part=new THREE.Mesh(new THREE.PlaneGeometry(hw*2,0.5),new THREE.MeshPhysicalMaterial({color:0xcfe0ea,transparent:true,opacity:0.18,roughness:0.02,side:THREE.DoubleSide,depthWrite:false}));part.rotation.y=Math.PI/2;part.position.set(px,e.y-0.05,0);I.add(part);
+  const lower=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.42,hw*2),new THREE.MeshStandardMaterial({color:0x3a2416,roughness:0.5}));lower.position.set(px,e.y-0.52,0);I.add(lower); /* walnut-faced lower partition */
+  /* washi headliner over the rear compartment */
+  const wl=new THREE.Mesh(new THREE.PlaneGeometry(1.5,hw*2),new THREE.MeshStandardMaterial({map:washiTex(),roughness:0.95,side:THREE.DoubleSide}));wl.rotation.x=Math.PI/2;wl.position.set(e.x-BACK-0.1,spec.H-0.06,0);I.add(wl);
+  /* white lace covers on the rear seat backs */
+  const lace=new THREE.MeshStandardMaterial({map:laceTex(),transparent:true,alphaTest:0.3,side:THREE.DoubleSide,roughness:0.9});for(const z of [e.z,-e.z]){const lc=new THREE.Mesh(new THREE.PlaneGeometry(0.46,0.34),lace);lc.rotation.y=Math.PI/2;lc.position.set(e.x-BACK-0.32,e.y-0.08,z);I.add(lc)}}
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.century&&g&&!g.userData.centuryKit){kit(g,spec);if(opts&&opts.interior)cabin(g,spec)}}catch(err){console.warn('century kit',err)}return g};
+ /* camera + rider further back than the rideshare default (long wheelbase) */
+ let inCam=false;const _uc=window.updateCamera;if(typeof _uc==='function')window.updateCamera=function(){inCam=true;try{return _uc.apply(this,arguments)}finally{inCam=false}};
+ const _eye=window.eyePos;window.__centEye=spec=>{const f=inCam;inCam=false;try{return _eye(spec)}finally{inCam=f}};
+ if(typeof _eye==='function')window.eyePos=function(spec){const d=_eye.apply(this,arguments);if(spec&&spec.century&&inCam)d.x-=BACK-0.95;return d};
+ /* crew: the suited chauffeur, and you in the back right */
+ function suit(d){const dark=new THREE.MeshStandardMaterial({color:0x15171b,roughness:0.6}),white=new THREE.MeshStandardMaterial({color:0xf6f6f4,roughness:0.6});let shirtM=null;
+  d.traverse(o=>{if(!o.isMesh||!o.material||!o.material.color)return;const c=o.material.color.getHex();if(o.geometry.type==='SphereGeometry'&&o.geometry.parameters.radius<0.05&&o!==d.userData.head){o.material=white;return} /* hands: white gloves */
+   if(o!==d.userData.head&&o.geometry.type!=='SphereGeometry'&&!o.userData.keepMat){if(!shirtM)shirtM=o.material;if(o.material===shirtM)o.material=dark}});
+  const v=new THREE.Mesh(new THREE.PlaneGeometry(0.1,0.24),white);v.position.set(0.087,-0.36,0);v.rotation.y=Math.PI/2;d.add(v);const tie=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.2,0.035),new THREE.MeshStandardMaterial({color:0x0a0a0c,roughness:0.5}));tie.position.set(0.093,-0.35,0);d.add(tie)}
+ const _ra=window.riderAttach;
+ if(typeof _ra==='function')window.riderAttach=function(){const r=_ra.apply(this,arguments);try{const G=game,m=G&&G.ego&&G.ego.mesh;if(G&&G.spec&&G.spec.century&&m){const e=window.__centEye(G.spec),R=m.userData.rider;
+   if(R)R.position.set(e.x-BACK,e.y-0.05,-e.z);if(!m.userData.chauffeur){const d=buildDriver(G.spec,'drive','driver');suit(d);m.add(d);m.userData.driver=d;m.userData.chauffeur=d}}}catch(err){console.warn('century crew',err)}return r};
+ MODS.push({id:'century'});
+})();
+</script>
 <script>/* mods/89-trafficlevel.js */
 /* Traffic level (planning screen + live in the ⚙ panel): none / light / medium / heavy / jam / varied / live.
    Scales trafficFactor (how many cars spawn) and, for heavy & jam, caps how fast other traffic moves so queues form.
