@@ -8726,8 +8726,9 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
     const mn=M(new THREE.BoxGeometry(0.012,0.03,0.008),mat,0.085-i*0.008,0.2-i*0.009,0.012+(i%2)*0.004);mn.rotation.z=0.5; /* mane, red→violet down the neck */
     const tl=M(new THREE.CapsuleGeometry(0.006,0.05,4,6),mat,-0.085-i*0.004,0.1-i*0.004,(i-2.5)*0.006);tl.rotation.z=-0.9-i*0.08}); /* rainbow tail */
    for(const sd of [1,-1]){const ear=M(new THREE.ConeGeometry(0.006,0.018,6),white,0.098,0.21,sd*0.01);ear.rotation.z=-0.2}
+   const wingM=new THREE.MeshStandardMaterial({color:0xffcc33,metalness:0.55,roughness:0.3,emissive:0x7a5200,emissiveIntensity:0.5,side:THREE.DoubleSide}); /* softer gold so the wings read gold even in shade */
    for(const sd of [1,-1]){const wg=new THREE.Group();wg.position.set(0.01,0.13,sd*0.03);wg.rotation.x=sd*0.55;wg.rotation.z=0.35;u.add(wg); /* gold feathered wings, swept up and back */
-    for(let f=0;f<5;f++){const fe=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.075-f*0.011,0.003),gold);fe.position.set(-f*0.014,0.035-f*0.004,0);fe.rotation.z=0.25+f*0.12;wg.add(fe)}}
+    for(let f=0;f<5;f++){const fe=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.075-f*0.011,0.003),wingM);fe.position.set(-f*0.014,0.035-f*0.004,0);fe.rotation.z=0.25+f*0.12;wg.add(fe)}}
    ud.unicorn=u}
   /* sparkly exhaust: two polished tips under the tail streaming glitter (purely decorative, it's electric) */
   {const N=260,pos=new Float32Array(N*3),col=new Float32Array(N*3),age=new Float32Array(N),vel=new Float32Array(N*3),tipX=-L/2+0.05,tipY=wr*0.75;
