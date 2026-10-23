@@ -276,6 +276,9 @@ const CARS=[
 {id:'hyperbike',name:'Kaze-R Hyperbike',sub:'Self-riding 2,000 mph rocket hyperbike',style:'coupe',L:2.6,W:0.8,H:1.25,wb:1.55,wr:0.33,hp:1200,z60:1.4,top:2000,range:'effectively unlimited · 500 kWh',weight:'~600 lb',drive:'Twin hub motors + tail rocket',level:'SAE Level 5 · self-riding',
  tech:'A long, low hyperbike that rides itself. Hubless wheels with glowing rings, a wedge fairing and a rocket under the tail take it to 2,000 mph on a clear road in Express or Cannonball. It has the same brain as the Predictacar (lidar, tracking satellite, a scout drone and the collision shield), so it carves through traffic lane by lane, leaning hard into every curve and gap. Your rider wears two-tone race leathers in the opposite colour to the bike with a big back emblem, a white full-face helmet with a cyan visor, spiky hair poking out the back and a long yellow scarf streaming in the wind.',
  colors:[['Neo Red','#d4141c'],['Midnight Violet','#3a1a6a'],['Cyber Cyan','#14c8e0'],['Pearl White','#f2f2ee'],['Akihabara Pink','#ff4fa8']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',hyper:true,hbike:true},
+{id:'moped',name:'Puttr 500 E-Moped',sub:'Inexpensive 500 W step-through scooter · you ride it',style:'coupe',L:1.75,W:0.68,H:1.15,wb:1.25,wr:0.23,hp:0.67,z60:30,top:25,range:'~30 mi · 48 V 20 Ah (≈1 kWh) removable battery',weight:'~130 lb',drive:'500 W rear hub motor · single speed',level:'Human rider · no driver assists',
+ tech:'A $1,099 commuter e-moped: a 500 W rear hub motor, a 48 V 20 Ah battery that lifts out from under the seat for charging indoors, 12-inch wheels, a curved leg shield, flat floorboard and a padded seat for one. It tops out around 25 mph and goes about 30 miles a charge. You ride it yourself upright in an open-face helmet; there are no sensors, so the perception window simply shows your view down the handlebars.',
+ colors:[['Mint','#8fd8c0'],['Cream','#efe6cf'],['Cherry Red','#c8202a'],['Sky Blue','#7ab8e8'],['Matte Black','#26272a']],dash:'center-mb',wheel:'round',sensors:'none',sound:'ev',plim:true,ebike:true,moped:true,driverView:true},
 {id:'ebike',name:'Zoomr 100 E-Bike',sub:'Cheap self-riding e-bike that somehow does 100 mph',style:'coupe',L:1.8,W:0.65,H:1.6,wb:1.1,wr:0.33,hp:25,z60:6,top:100,range:'~30 mi (est.) · 1.5 kWh',weight:'~75 lb',drive:'Rear hub motor (definitely not street legal)',level:'SAE Level 2 · supervised',
  tech:'A $899 bargain-bin e-bike from an online marketplace with a motor nobody can explain. Thin steel frame, spoked wheels, a fat rear hub motor and a battery brick zip-tied to the down tube, a cheap LED headlight and your phone on a wobbly mount. It rides itself (badly supervised) and tops out at 100 mph. You sit upright in a hoodie, jeans and a bike helmet, in the opposite colour to the frame, and it leans into every curve.',
  colors:[['Matte Black','#26272a'],['Safety Yellow','#f2d21a'],['Mint','#6fd8b0'],['Coral','#ff6f5a'],['Sky Blue','#5aaaf0']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',plim:true,ebike:true},
@@ -1776,7 +1779,7 @@ function buildEcoSemi(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}=s
  ud.wheels=wheels;ud.ecosemi=true;
  if(typeof contactShadow==='function'){const c1=contactShadow(g,7.4,W*1.1);if(c1&&c1.position)c1.position.x=6.6;const c2=contactShadow(tr,TL*1.04,W*1.1);if(c2&&c2.position)c2.position.x=tcx}
  return g}
-function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.vtol&&window.buildVTOL)return buildVTOL(spec,colorHex,opts);if(spec.angletruck&&window.buildAngletruck)return buildAngletruck(spec,colorHex,opts);if(spec.wiener&&window.buildWiener)return buildWiener(spec,colorHex,opts);if(spec.formulae&&window.buildFormulaE)return buildFormulaE(spec,colorHex,opts);if(spec.ebike&&window.buildEbike)return buildEbike(spec,colorHex,opts);if(spec.hbike&&window.buildHyperbike)return buildHyperbike(spec,colorHex,opts);if(spec.dronewagon&&window.buildDroneWagon)return buildDroneWagon(spec,colorHex,opts);if(spec.coach&&window.buildCoach)return buildCoach(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
+function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.vtol&&window.buildVTOL)return buildVTOL(spec,colorHex,opts);if(spec.angletruck&&window.buildAngletruck)return buildAngletruck(spec,colorHex,opts);if(spec.wiener&&window.buildWiener)return buildWiener(spec,colorHex,opts);if(spec.formulae&&window.buildFormulaE)return buildFormulaE(spec,colorHex,opts);if(spec.moped&&window.buildMoped)return buildMoped(spec,colorHex,opts);if(spec.ebike&&window.buildEbike)return buildEbike(spec,colorHex,opts);if(spec.hbike&&window.buildHyperbike)return buildHyperbike(spec,colorHex,opts);if(spec.dronewagon&&window.buildDroneWagon)return buildDroneWagon(spec,colorHex,opts);if(spec.coach&&window.buildCoach)return buildCoach(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
  const lod=!opts.interior&&opts.lod!==false&&!(window.GFX&&GFX.get()==='ultra'); /* traffic / parked cars on Low & High: ~7× fewer body triangles */
  const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=(spec.id||spec.style+L+W+H)+(lod?':lod':'');
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
@@ -2459,6 +2462,7 @@ const ENERGY={
  'wiener':{epa:1350,kwh:1500,kg:8980,cda:2.4,crr:0.012,dc:500,port:'MCS'},
  'delivan':{epa:150,kwh:135,kg:4300,cda:2.6,crr:0.011,dc:150,port:'CCS'},
  'ebike':{epa:30,kwh:1.5,kg:110,cda:0.5,crr:0.008,dc:1,port:'J1772'},
+ 'moped':{epa:30,kwh:0.96,kg:59,cda:0.6,crr:0.012,dc:0.5,port:'household'},
  'hyperbike':{epa:3000,kwh:500,kg:270,cda:0.2,crr:0.006,dc:500,port:'CCS'},
  'dronewagon':{epa:40,kwh:12,kg:190,cda:0.6,crr:0.012,dc:10,port:'J1772'},
  'h2saab':{epa:400,kwh:100,kg:1500,cda:0.65,crr:0.009,dc:600,port:'CCS'}, /* refuel stops use the map's charging stations as stand-in hydrogen stations */
@@ -8841,6 +8845,66 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    gauge().textContent='🚀 COLD GAS '+Math.round(T.tank*100)+'% · '+Math.round(T.tank*10000).toLocaleString()+' psi'+(use?' · FIRING':'')+' · 🌀 FANS '+Math.round(T.fan*100)+'% · '+(T.fan*2).toFixed(1)+' t downforce';el.style.background=use?'#2a6fd6cc':'#0e141dcc'}});
 })();
 </script>
+<script>/* mods/61zb-moped.js */
+/* Puttr 500 e-moped (spec.moped): an inexpensive 500 W step-through electric scooter. 12" wheels, a curved leg shield and
+   front apron, flat floorboard, rounded rear bodywork, a padded seat over a small removable battery, a handlebar nacelle
+   with round headlight and mirrors, a little rear rack, and a 500 W rear hub motor. You ride it upright in an open-face
+   helmet, feet on the floorboard. It reuses the e-bike's lean-into-corners and rider-hiding (ud.ebike), and the perception
+   panel becomes a plain DRIVER'S VIEW (spec.driverView, handled in 87-rideshare.js). */
+(function(){
+ window.buildMoped=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{wr,wb}=spec;
+  const lean=new THREE.Group();g.add(lean);ud.lean=lean;const body=new THREE.Group();lean.add(body);ud.body=body;
+  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.2,roughness:0.35,clearcoat:0.8}),black=new THREE.MeshStandardMaterial({color:0x151517,roughness:0.75}),
+   chrome=new THREE.MeshStandardMaterial({color:0xd9dce0,metalness:1,roughness:0.15}),grey=new THREE.MeshStandardMaterial({color:0x3a3c40,roughness:0.6}),seatM=new THREE.MeshStandardMaterial({color:0x2a1f1a,roughness:0.6});ud.paint=paint;
+  const M=(geo,m,x,y,z,p=body)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;p.add(o);return o};
+  const FX=wb/2,RX=-wb/2;
+  /* floorboard + frame spine */
+  M(softBox(0.62,0.06,0.3,0.025),black,0.02,wr+0.06,0);M(softBox(0.7,0.05,0.32,0.02),paint,0.02,wr+0.01,0);
+  /* leg shield + front apron: a curved panel rising from the floorboard to the steering head */
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.36,0.62,24,1,true,-0.55,1.1),paint);sh.material.side=THREE.DoubleSide;sh.rotation.z=Math.PI/2-0.25;sh.rotation.y=0;sh.scale.set(1,1,0.8);sh.position.set(FX-0.62,wr+0.38,0);body.add(sh);
+  const ap=M(softBox(0.16,0.66,0.32,0.06),paint,FX-0.32,wr+0.38,0);ap.rotation.z=-0.32;
+  /* rear body: a rounded shell over the rear wheel, with the seat and battery under it */
+  const rb=new THREE.Mesh(new THREE.SphereGeometry(0.42,24,16),paint);rb.scale.set(1.25,0.62,0.55);rb.position.set(RX+0.22,wr+0.38,0);rb.castShadow=true;body.add(rb);
+  M(softBox(0.6,0.1,0.3,0.05),seatM,RX+0.32,wr+0.66,0); /* seat */
+  M(softBox(0.64,0.02,0.31,0.01),grey,RX+0.32,wr+0.6,0); /* seat hinge line */
+  const bat=M(softBox(0.28,0.16,0.18,0.02),grey,RX+0.42,wr+0.48,0); /* removable battery under the seat (peeks out) */
+  /* rear rack */
+  for(const sd of [1,-1]){const r=M(new THREE.CylinderGeometry(0.008,0.008,0.28,6),chrome,RX-0.02,wr+0.69,sd*0.1);r.rotation.z=Math.PI/2}M(new THREE.CylinderGeometry(0.008,0.008,0.2,6).rotateX(Math.PI/2),chrome,RX-0.16,wr+0.69,0);
+  /* steering column, handlebar nacelle, headlight, mirrors, grips */
+  const col=M(new THREE.CylinderGeometry(0.025,0.025,0.55,10),grey,FX-0.2,wr+0.62,0);col.rotation.z=0.3;
+  const nac=M(softBox(0.18,0.12,0.42,0.05),paint,FX-0.27,wr+0.92,0);
+  for(const sd of [1,-1]){const gr=M(new THREE.CylinderGeometry(0.018,0.018,0.11,10).rotateX(Math.PI/2),black,FX-0.3,wr+0.94,sd*0.27);
+   const st=M(new THREE.CylinderGeometry(0.005,0.005,0.2,6),chrome,FX-0.28,wr+1.04,sd*0.2);st.rotation.x=-sd*0.3;const mr=M(new THREE.CircleGeometry(0.045,16),chrome,FX-0.29,wr+1.13,sd*0.24);mr.rotation.y=Math.PI/2}
+  const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tl=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
+  const hl=M(new THREE.CircleGeometry(0.06,20),head,FX-0.17,wr+0.92,0);hl.rotation.y=Math.PI/2;M(new THREE.TorusGeometry(0.062,0.008,6,20).rotateY(Math.PI/2),chrome,FX-0.172,wr+0.92,0);
+  const tlm=M(new THREE.BoxGeometry(0.02,0.04,0.12),tl,RX-0.3,wr+0.48,0);
+  for(const sd of [1,-1]){M(new THREE.SphereGeometry(0.018,8,6),sd>0?sigL:sigR,FX-0.2,wr+0.9,sd*0.2);M(new THREE.SphereGeometry(0.015,8,6),sd>0?sigL:sigR,RX-0.28,wr+0.48,sd*0.1)}
+  ud.lights={head,tail:tl,sigL,sigR};
+  /* wheels: 12" with fat tyres, front fork + mudguard; rear 500 W hub motor */
+  const wheels=[];for(const [x,front] of [[FX,true],[RX,false]]){const piv=new THREE.Group();piv.position.set(x,wr,0);lean.add(piv);const holder=new THREE.Group();piv.add(holder);const spin=new THREE.Group();holder.add(spin);
+   spin.add(new THREE.Mesh(new THREE.TorusGeometry(wr-0.045,0.045,10,28),black));const rim=new THREE.Mesh(new THREE.CylinderGeometry(wr-0.07,wr-0.07,0.08,20).rotateX(Math.PI/2),grey);spin.add(rim);
+   for(let k=0;k<5;k++){const sp=new THREE.Mesh(new THREE.BoxGeometry(0.02,wr-0.09,0.02),chrome),a=k/5*Math.PI*2;sp.position.set(Math.cos(a)*(wr-0.09)/2,Math.sin(a)*(wr-0.09)/2,0.042);sp.rotation.z=a-Math.PI/2;spin.add(sp)}
+   if(!front){const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.075,0.1,18).rotateX(Math.PI/2),grey);spin.add(hub)}wheels.push({piv,spin,front,sign:1})}
+  for(const sd of [1,-1]){const f=M(new THREE.CylinderGeometry(0.014,0.014,0.42,8),chrome,FX-0.07,wr+0.2,sd*0.06);f.rotation.z=0.3}
+  const mg=new THREE.Mesh(new THREE.CylinderGeometry(wr+0.02,wr+0.02,0.12,20,1,true,-0.4,1.9).rotateX(Math.PI/2),paint);mg.material.side=THREE.DoubleSide;mg.position.set(FX,wr,0);mg.rotation.z=0.0;body.add(mg); /* front mudguard */
+  ud.wheels=wheels;
+  /* rider: upright, feet flat on the floorboard, hands on the grips; jacket, jeans, open-face helmet */
+  const R=new THREE.Group();R.position.set(RX+0.38,wr+0.72,0);lean.add(R);ud.biker=R;
+  const jacket=new THREE.MeshStandardMaterial({color:0x6b4a2e,roughness:0.85}),jeans=new THREE.MeshStandardMaterial({color:0x2c3e66,roughness:0.9}),skin=new THREE.MeshStandardMaterial({color:0xd8a47c,roughness:0.7}),
+   shoe=new THREE.MeshStandardMaterial({color:0x2a2a2a,roughness:0.7}),helm=new THREE.MeshStandardMaterial({color:0xf2f2f0,roughness:0.3});
+  const P=(geo,m,x,y,z)=>M(geo,m,x,y,z,R),limb=(r,m,x0,y0,x1,y1,z)=>{const L=Math.hypot(x1-x0,y1-y0),o=P(new THREE.CapsuleGeometry(r,L,4,10),m,(x0+x1)/2,(y0+y1)/2,z);o.rotation.z=Math.atan2(y1-y0,x1-x0)-Math.PI/2;return o};
+  limb(0.13,jacket,0,0.05,0.04,0.42,0).scale.set(0.8,1,1.15); /* torso */
+  P(new THREE.SphereGeometry(0.1,14,10),skin,0.06,0.66,0);const hm=P(new THREE.SphereGeometry(0.118,16,10,0,Math.PI*2,0,Math.PI*0.62),helm,0.05,0.68,0);hm.rotation.z=0.15; /* open-face helmet */
+  const hx=FX-0.3-R.position.x,hy=wr+0.94-R.position.y;
+  for(const sd of [1,-1]){limb(0.045,jacket,0.04,0.42,hx*0.55,hy+0.1,sd*0.2);limb(0.04,jacket,hx*0.55,hy+0.1,hx,hy,sd*0.26);P(new THREE.SphereGeometry(0.04,8,6),skin,hx,hy,sd*0.27); /* arms to the grips */
+   const kx=0.32,ky=0.02,fx=0.4,fy=wr+0.1-R.position.y;limb(0.065,jeans,0,-0.02,kx,ky,sd*0.1);limb(0.05,jeans,kx,ky,fx,fy+0.06,sd*0.11);P(new THREE.BoxGeometry(0.22,0.07,0.09),shoe,fx+0.05,fy+0.02,sd*0.11)} /* legs: knees forward, feet on the floorboard */
+  const I=new THREE.Group();g.add(I);ud.interior=I;ud.hood=new THREE.Group();g.add(ud.hood);ud.seats=[new THREE.Vector3(RX+0.38,wr+0.72,0)];
+  ud.ebike=true;ud.moped=true;return g};
+ const _eye=window.eyePos;
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.moped)return new THREE.Vector3(-spec.wb/2+0.46,spec.wr+1.42,0);return _eye.apply(this,arguments)};
+ MODS.push({id:'moped'});
+})();
+</script>
 <script>/* mods/62-trams.js */
 /* (44) Trams & cable cars on the real OSM tram / light-rail lines near your route. Modern two-section light-rail
    vehicles (pantograph, white with a coloured band); inside San Francisco they're classic cable cars (wood-and-red
@@ -9625,7 +9689,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
  if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.rideshare&&inCam){const d=_eye.apply(this,arguments);return new THREE.Vector3(d.x-0.95,d.y-0.03,-d.z)} /* back right seat: behind the front passenger (the driver sits on +z) */return _eye.apply(this,arguments)};
  const _rv=window.riderView;
  if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.rideshare){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r&&r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=!o.userData.keepHidden;return} /* the human driver is always visible */return _rv.apply(this,arguments)};
- const on=()=>{const G=typeof game!=='undefined'?game:null;return !!(G&&G.spec&&G.spec.rideshare&&G.ego&&G.ego.mesh)};
+ const on=()=>{const G=typeof game!=='undefined'?game:null;return !!(G&&G.spec&&(G.spec.rideshare||G.spec.driverView)&&G.ego&&G.ego.mesh)}; /* driverView: own-vehicle riders (moped) get the plain DRIVER'S VIEW too, from their own eyes */
  const _pre=scene.onBeforeRender;
  scene.onBeforeRender=function(r,sc,cam){if(_pre)_pre.apply(this,arguments);if(cam!==cvCam||!on())return;const m=game.ego.mesh,e=driverEye(game.spec);m.updateMatrixWorld(true);
   const p=m.localToWorld(e.clone()),t=m.localToWorld(new THREE.Vector3(e.x+20,e.y-0.6,e.z));cam.position.copy(p);if(cam.fov!==70){cam.fov=70;cam.updateProjectionMatrix()}cam.lookAt(t);cam.updateMatrixWorld(true)};
