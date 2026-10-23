@@ -9089,16 +9089,16 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);ud.lights={head,tail,sigL,sigR};
   const add=(geo,m,x,y,z,p=body)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);p.add(o);return o};
   const fy=yN*0.95,fx=hl-0.04;
-  if(d.front==='xbar'){add(new THREE.BoxGeometry(0.03,0.02,W*0.9),head,fx,fy,0);for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.07,0.22),blk,fx-0.02,fy-0.12,sd*W*0.33)} /* XPeng full-width light bar, lamps low in the bumper */
-  if(d.front==='stargate'){add(new THREE.BoxGeometry(0.03,0.07,W*0.86),blk,fx,fy,0);for(let k=0;k<40;k++)add(new THREE.BoxGeometry(0.031,0.012,W*0.86/44),head,fx,fy+(k%2?0.015:-0.015),-W*0.43+W*0.86*(k+0.5)/40)} /* Zeekr Stargate LED bar */
-  if(d.front==='lightgrille'){add(new THREE.BoxGeometry(0.04,0.36,W*0.62),blk,fx,fy-0.1,0);for(let k=0;k<22;k++)add(new THREE.BoxGeometry(0.042,0.32,0.012),head,fx,fy-0.1,-W*0.3+W*0.6*(k+0.5)/22);add(new THREE.BoxGeometry(0.03,0.02,W*0.9),head,fx,fy+0.1,0)} /* 9X illuminated light grille */
-  if(d.front==='drops'){for(const sd of [1,-1]){const l=add(new THREE.SphereGeometry(0.12,16,10),head,fx-0.08,fy,sd*W*0.34);l.scale.set(0.3,0.35,1.2);l.rotation.x=sd*0.25}add(new THREE.BoxGeometry(0.03,0.13,W*0.5),blk,fx+0.01,yN*0.45,0)} /* BYD teardrop lamps + low intake */
-  if(d.front==='dragon'){for(const sd of [1,-1]){const l=add(new THREE.BoxGeometry(0.03,0.06,0.34),head,fx-0.03,fy,sd*W*0.31);l.rotation.x=-sd*0.15}add(new THREE.BoxGeometry(0.035,0.025,W*0.4),chrome,fx,fy-0.01,0);add(new THREE.BoxGeometry(0.03,0.12,W*0.55),blk,fx+0.01,yN*0.45,0)} /* Atto 3 dragon face */
-  for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.02,0.1),sd>0?sigL:sigR,fx,fy-0.04,sd*W*0.42);
+  if(d.front==='xbar'){add(new THREE.BoxGeometry(0.03,0.02,W*0.62),head,fx,fy,0);for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.07,0.22),blk,fx-0.02,fy-0.12,sd*W*0.26)} /* XPeng full-width light bar, lamps low in the bumper */
+  if(d.front==='stargate'){add(new THREE.BoxGeometry(0.03,0.07,W*0.62),blk,fx,fy,0);for(let k=0;k<40;k++)add(new THREE.BoxGeometry(0.031,0.012,W*0.62/44*0.72),head,fx,fy+(k%2?0.015:-0.015),-W*0.43+W*0.62*(k+0.5)/40)} /* Zeekr Stargate LED bar */
+  if(d.front==='lightgrille'){add(new THREE.BoxGeometry(0.04,0.36,W*0.62),blk,fx,fy-0.1,0);for(let k=0;k<22;k++)add(new THREE.BoxGeometry(0.042,0.32,0.012),head,fx,fy-0.1,-W*0.3+W*0.6*(k+0.5)/22);add(new THREE.BoxGeometry(0.03,0.02,W*0.62),head,fx,fy+0.1,0)} /* 9X illuminated light grille */
+  if(d.front==='drops'){for(const sd of [1,-1]){const l=add(new THREE.SphereGeometry(0.12,16,10),head,fx-0.08,fy,sd*W*0.27);l.scale.set(0.3,0.35,1.2);l.rotation.x=sd*0.25}add(new THREE.BoxGeometry(0.03,0.13,W*0.5),blk,fx+0.01,yN*0.45,0)} /* BYD teardrop lamps + low intake */
+  if(d.front==='dragon'){for(const sd of [1,-1]){const l=add(new THREE.BoxGeometry(0.03,0.06,0.34),head,fx-0.03,fy,sd*W*0.25);l.rotation.x=-sd*0.15}add(new THREE.BoxGeometry(0.035,0.025,W*0.4),chrome,fx,fy-0.01,0);add(new THREE.BoxGeometry(0.03,0.12,W*0.55),blk,fx+0.01,yN*0.45,0)} /* Atto 3 dragon face */
+  for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.02,0.1),sd>0?sigL:sigR,fx,fy-0.04,sd*W*0.3);
   const ty=yD*0.9,tx=-hl+0.02;
-  if(d.rear==='lantern'){add(new THREE.BoxGeometry(0.03,0.07,W*0.86),tail,tx,ty,0);for(let k=0;k<12;k++)add(new THREE.BoxGeometry(0.032,0.07,0.012),blk,tx,ty,-W*0.43+W*0.86*(k+0.5)/12)} /* Atto 3 lantern tail band */
-  else add(new THREE.BoxGeometry(0.03,0.035,W*0.88),tail,tx,ty,0);
-  for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.025,0.12),sd>0?sigL:sigR,tx,ty-0.05,sd*W*0.4);
+  if(d.rear==='lantern'){add(new THREE.BoxGeometry(0.03,0.07,W*0.62),tail,tx,ty,0);for(let k=0;k<12;k++)add(new THREE.BoxGeometry(0.032,0.07,0.012),blk,tx,ty,-W*0.43+W*0.62*(k+0.5)/12)} /* Atto 3 lantern tail band */
+  else add(new THREE.BoxGeometry(0.03,0.035,W*0.7),tail,tx,ty,0);
+  for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.025,0.12),sd>0?sigL:sigR,tx,ty-0.05,sd*W*0.32);
   /* brand badge */
   {const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');x.fillStyle='#e8eaee';x.font='800 40px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(spec.badge||'',128,34);
    const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;const bm=new THREE.MeshStandardMaterial({map:t,transparent:true,metalness:0.6,roughness:0.3});for(const [x,ry,y] of [[hl+0.003,Math.PI/2,yN*0.75],[-hl-0.003,-Math.PI/2,ty-0.11]]){const b=new THREE.Mesh(new THREE.PlaneGeometry(0.32,0.08),bm);b.position.set(x,y,0);b.rotation.y=ry;body.add(b)}}
@@ -9116,10 +9116,10 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const eye=window.scratchEye(spec),seat=new THREE.MeshStandardMaterial({color:spec.seatCol||0x2a2b2e,roughness:0.6});
   for(const z of [eye.z,-eye.z]){const c=new THREE.Mesh(softBox(0.5,0.12,0.5,0.05),seat);c.position.set(eye.x-0.1,eye.y-0.72,z);I.add(c);const b=new THREE.Mesh(softBox(0.12,0.7,0.5,0.05),seat);b.position.set(eye.x-0.36,eye.y-0.36,z);b.rotation.z=0.16;I.add(b)}
   const rb=new THREE.Mesh(softBox(0.5,0.12,W*0.72,0.05),seat);rb.position.set(eye.x-1.0,eye.y-0.7,0);I.add(rb);const rbb=new THREE.Mesh(softBox(0.12,0.62,W*0.72,0.05),seat);rbb.position.set(eye.x-1.27,eye.y-0.38,0);rbb.rotation.z=0.18;I.add(rbb);
-  const dash=new THREE.Mesh(softBox(0.42,0.14,W*0.84,0.06),new THREE.MeshStandardMaterial({color:0x1b1c1f,roughness:0.5}));dash.position.set(eye.x+0.72,eye.y-0.38,0);I.add(dash);
-  const wh=new THREE.Mesh(new THREE.TorusGeometry(0.17,0.016,8,32),blk);wh.position.set(eye.x+0.42,eye.y-0.28,eye.z);wh.rotation.y=Math.PI/2;wh.rotation.x=0.3;I.add(wh);
-  const scrM=new THREE.MeshBasicMaterial({color:0x183a5a});d.screens.forEach(([w,h],i)=>{const sc=new THREE.Mesh(new THREE.PlaneGeometry(w,h),scrM);sc.rotation.y=-Math.PI/2;sc.position.set(eye.x+0.6,eye.y-0.18+(i?0.05:0),i?eye.z:0);I.add(sc);if(!i&&d.quirk==='rotate')ud.rotScreen=sc});
-  if(d.quirk==='gym'){const red=new THREE.MeshStandardMaterial({color:0xb5202a,roughness:0.6});for(const z of [-0.55,-0.2,0.2,0.55]){const v=new THREE.Mesh(new THREE.TorusGeometry(0.05,0.018,8,20),chrome);v.rotation.y=Math.PI/2;v.position.set(eye.x+0.5,eye.y-0.28,z);I.add(v)} /* dumbbell-style round vents */
+  const dash=new THREE.Mesh(softBox(0.42,0.14,W*0.84,0.06),new THREE.MeshStandardMaterial({color:0x1b1c1f,roughness:0.5}));dash.position.set(eye.x+0.44,eye.y-0.38,0);I.add(dash);
+  const wh=new THREE.Mesh(new THREE.TorusGeometry(0.17,0.016,8,32),blk);wh.position.set(eye.x+0.14,eye.y-0.28,eye.z);wh.rotation.y=Math.PI/2;wh.rotation.x=0.3;I.add(wh);
+  const scrM=new THREE.MeshBasicMaterial({color:0x183a5a});d.screens.forEach(([w,h],i)=>{const sc=new THREE.Mesh(new THREE.PlaneGeometry(w,h),scrM);sc.rotation.y=-Math.PI/2;sc.position.set(eye.x+0.32,eye.y-0.18+(i?0.05:0),i?eye.z:0);I.add(sc);if(!i&&d.quirk==='rotate')ud.rotScreen=sc});
+  if(d.quirk==='gym'){const red=new THREE.MeshStandardMaterial({color:0xb5202a,roughness:0.6});for(const z of [-0.55,-0.2,0.2,0.55]){const v=new THREE.Mesh(new THREE.TorusGeometry(0.05,0.018,8,20),chrome);v.rotation.y=Math.PI/2;v.position.set(eye.x+0.22,eye.y-0.28,z);I.add(v)} /* dumbbell-style round vents */
    for(const sd of [1,-1])for(let k=0;k<3;k++){const st=new THREE.Mesh(new THREE.CylinderGeometry(0.003,0.003,0.5,4),red);st.rotation.z=Math.PI/2;st.position.set(eye.x-0.05,eye.y-0.62+k*0.04,sd*(W/2-0.12));I.add(st)}} /* guitar-string door pockets */
   if(d.quirk==='hud'){const hu=new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.08),new THREE.MeshBasicMaterial({color:0x4fc3ff,transparent:true,opacity:0.35}));hu.rotation.y=-Math.PI/2;hu.position.set(eye.x+1.3,eye.y-0.02,eye.z);I.add(hu)} /* 26.8" W-HUD */
   if(d.quirk==='lounge'){const lc=new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.24),scrM);lc.rotation.y=Math.PI/2;lc.position.set(eye.x-0.55,eye.y+0.18,0);I.add(lc)} /* roof-mounted rear screen */
