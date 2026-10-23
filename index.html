@@ -8929,10 +8929,10 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   for(const x of xs){const c=sec(x);for(let k=0;k<ring;k++){const th=k/ring*Math.PI*2,cs=Math.cos(th),sn=Math.sin(th),e=2/n;
     const zz=Math.sign(cs)*Math.pow(Math.abs(cs),e),yy=Math.sign(sn)*Math.pow(Math.abs(sn),e),ym=(c.yb+c.yt)/2,h=(c.yt-c.yb)/2,w=yy>0?lerp1(c.w,c.wt,yy):c.w;
     pos.push(x,ym+yy*h,zz*w)}}
-  for(let i=0;i<xs.length-1;i++)for(let k=0;k<ring;k++){const a=i*ring+k,b=i*ring+(k+1)%ring,c2=(i+1)*ring+k,d=(i+1)*ring+(k+1)%ring;idx.push(a,c2,b,b,c2,d)}
+  for(let i=0;i<xs.length-1;i++)for(let k=0;k<ring;k++){const a=i*ring+k,b=i*ring+(k+1)%ring,c2=(i+1)*ring+k,d=(i+1)*ring+(k+1)%ring;idx.push(a,b,c2,b,d,c2)}
   /* end caps */
   const capF=pos.length/3;{const c=sec(xs[0]);pos.push(xs[0],(c.yb+c.yt)/2,0)}const capR=pos.length/3;{const c=sec(xs[xs.length-1]);pos.push(xs[xs.length-1],(c.yb+c.yt)/2,0)}
-  const last=(xs.length-1)*ring;for(let k=0;k<ring;k++){idx.push(capF,k,(k+1)%ring);idx.push(capR,last+(k+1)%ring,last+k)}
+  const last=(xs.length-1)*ring;for(let k=0;k<ring;k++){idx.push(capF,(k+1)%ring,k);idx.push(capR,last+k,last+(k+1)%ring)}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g}
  window.buildLuce=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{L,W,H,wb,wr}=spec,hl=L/2;
   const body=new THREE.Group();g.add(body);ud.body=body;const hood=new THREE.Group();g.add(hood);ud.hood=hood;const I=new THREE.Group();g.add(I);ud.interior=I;
