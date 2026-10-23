@@ -7650,9 +7650,12 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   ud.lights={head,tail,sigL,sigR};
   /* interior: bench seat for two, dash, wheel */
   const I=new THREE.Group();g.add(I);ud.interior=I;ud.seats=[];const seatX=cabX-0.2;
-  box(cabL-0.1,0.04,W-0.12,dark,cabX,floorY,0,I);box(0.12,0.3,W-0.16,dark,L/2-0.12,floorY+0.35,0,I);
+  box(cabL-0.1,0.04,W-0.12,dark,cabX,floorY,0,I);box(0.34,0.5,W-0.14,dark,L/2-0.22,floorY+0.5,0,I);box(0.3,0.05,W-0.16,new THREE.MeshStandardMaterial({color:0x3a3c40,roughness:0.9}),L/2-0.24,floorY+0.77,0,I); /* tall upright dash with a grey top pad, as on Carry / Hijet / Acty cabs */
+  if(typeof screenMesh==='function'){const cl=screenMesh(0.26,0.09,260,'cluster-classic');cl.position.set(L/2-0.4,floorY+0.7,-0.33);cl.rotation.y=-Math.PI/2;I.add(cl);const rd=screenMesh(0.17,0.05,220,'radio-yugo');rd.position.set(L/2-0.4,floorY+0.62,0.02);rd.rotation.y=-Math.PI/2;I.add(rd)} /* small analog cluster behind the wheel, DIN radio in the centre */
+  
   for(const sz of [-0.33,0.33]){box(0.45,0.1,0.48,seatM,seatX,floorY+0.32,sz,I);box(0.1,0.55,0.48,seatM,seatX-0.22,floorY+0.6,sz,I);ud.seats.push(new THREE.Vector3(seatX,floorY+0.38,sz))}
-  const whl=new THREE.Mesh(new THREE.TorusGeometry(0.17,0.02,8,24),dark);whl.position.set(L/2-0.32,floorY+0.55,-0.33);whl.rotation.y=Math.PI/2;whl.rotation.x=0.5;I.add(whl);
+  const whl=new THREE.Mesh(new THREE.TorusGeometry(0.17,0.02,8,24),dark);whl.position.set(L/2-0.52,floorY+0.62,-0.33);whl.rotation.y=Math.PI/2;whl.rotation.z=-0.45; /* near-flat bus-style wheel angle of a cab-over */
+  for(const a of [0.3,Math.PI-0.3,-Math.PI/2]){const sp=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.03,0.15),dark);sp.rotation.x=a;sp.translateZ(0.075);const h=new THREE.Group();h.position.copy(whl.position);h.rotation.copy(whl.rotation);h.rotateY(Math.PI/2);h.add(sp);I.add(h)}I.add(whl);
   ud.hood=new THREE.Group();g.add(ud.hood);
   /* wheels */
   const tg=new THREE.CylinderGeometry(wr,wr,0.16,20).rotateX(Math.PI/2),tm=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),hg=new THREE.CylinderGeometry(wr*0.55,wr*0.55,0.17,16).rotateX(Math.PI/2),wheels=[];
