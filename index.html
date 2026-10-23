@@ -8989,7 +8989,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const shell=new THREE.Mesh(loft(xs,x=>({w:shW(x)*W/2,wt:shW(x)*W/2*0.9,yb:arch(x),yt:shTop(x)}),3.2),paint);shell.castShadow=true;body.add(shell);
   const inner=new THREE.Mesh(shell.geometry,lining);inner.scale.set(0.985,0.985,0.96);hood.add(inner); /* cabin-view door cards / floor */
   /* black glass passenger cell: steep cab-forward screen, roof peak just behind the B-pillar, long fastback to the tail */
-  const cx0=0.55,cx1=-hl+0.12,cTop=prof([[cx0,0.96],[0.1,1.25],[-0.37,1.42],[-1.07,1.42],[-1.6,1.32],[-2.0,1.12],[cx1,1.0]]),cW=prof([[cx0,0.6],[1.0,0.8],[0.2,0.86],[-1.2,0.84],[-2.1,0.72],[cx1,0.62]]);
+  const cx0=0.55,cx1=-hl+0.12,cTop=prof([[cx0,0.96],[0.1,1.25],[-0.37,1.42],[-1.07,1.42],[-1.6,1.32],[-2.0,1.12],[cx1,1.0]]),cW=prof([[cx0,0.72],[0.2,0.86],[-1.2,0.84],[-2.1,0.72],[cx1,0.62]]);
   const cxs=[];for(let k=0;k<=48;k++)cxs.push(cx0+(cx1-cx0)*k/48);const csec=x=>({w:cW(x)*W/2,wt:cW(x)*W/2*0.74,yb:0.86,yt:cTop(x)});
   const cell=new THREE.Mesh(loft(cxs,csec,3.6),gloss);body.add(cell);ud.cab=new THREE.Group();g.add(ud.cab);
   const cellIn=new THREE.Mesh(cell.geometry,glassIn);hood.add(cellIn);
@@ -9008,7 +9008,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   for(const sd of [1,-1]){const ts=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.15),sd>0?sigL:sigR);ts.position.set(-hl+0.006,0.8,sd*W*0.36);body.add(ts)}
   ud.lights={head,tail,sigL,sigR};
   /* vertical wipers at the extreme edges of the windscreen; flush two-tone door handles */
-  for(const sd of [1,-1]){const wp=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.5,0.012),blk);const c=csec(1.15);wp.position.set(1.16,1.05,sd*(c.w*0.9));wp.rotation.z=0.75;body.add(wp)}
+  for(const sd of [1,-1]){const wp=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.5,0.012),blk);const c=csec(0.45);wp.position.set(0.46,1.05,sd*(c.w*0.9));wp.rotation.z=0.75;body.add(wp)}
   for(const sd of [1,-1])for(const x of [0.55,-0.55]){const h2=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.02,0.006),blk);h2.position.set(x,0.9,sd*(shW(x)*W/2*0.92+0.012));body.add(h2)}
   /* wheels: staggered 23" / 24" five-spoke, black tyres, red-free calipers in body colour */
   const wheels=[],tm=new THREE.MeshStandardMaterial({color:0x121212,roughness:0.9}),rimM=new THREE.MeshStandardMaterial({color:0x2a2c30,metalness:0.85,roughness:0.25}),cal=new THREE.MeshStandardMaterial({color:colorHex,roughness:0.4});
