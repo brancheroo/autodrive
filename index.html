@@ -9093,8 +9093,8 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const gh=new THREE.Mesh(loft(gxs,gsec,2.4),glass);body.add(gh);hood.add(new THREE.Mesh(gh.geometry,glassIn));
   /* roof cap (body colour or black) over the roofline, and the pillars as painted strips */
   const rxs=[];const rx0=X(d.wsTop)-0.05,rx1=X(d.roofEnd)+0.1;for(let k=0;k<=24;k++)rxs.push(rx0+(rx1-rx0)*k/24);
-  const roof=new THREE.Mesh(loft(rxs,x=>{const c=gsec(x);return {w:c.wt*1.06,wt:c.wt*0.7,yb:c.yt-0.14,yt:c.yt+0.012}},2.6),roofM);body.add(roof);
-  for(const sd of [1,-1])for(const px of [X(d.cowl+0.04),X((d.cowl+d.roofEnd)/2+0.04),X(d.tail-0.05)]){const c=gsec(px),p=new THREE.Mesh(new THREE.BoxGeometry(0.07,(c.yt-c.yb)*0.8,0.02),d.roofBlack?blk:paint);p.position.set(px,c.yb+(c.yt-c.yb)*0.4,sd*(c.w*0.9));body.add(p)} /* A/B/C pillars */
+  const roof=new THREE.Mesh(loft(rxs,x=>{const c=gsec(x);return {w:c.wt*1.0,wt:c.wt*0.7,yb:c.yt-0.14,yt:c.yt+0.008}},2.6,28,false),roofM);body.add(roof);
+  for(const sd of [1,-1])for(const px of [X((d.cowl+d.roofEnd)/2+0.04),X(d.tail-0.05)]){const c=gsec(px),p=new THREE.Mesh(new THREE.BoxGeometry(0.07,(c.yt-c.yb)*0.8,0.02),d.roofBlack?blk:paint);p.position.set(px,c.yb+(c.yt-c.yb)*0.4,sd*(c.w*0.9));body.add(p)} /* A/B/C pillars */
   /* lights */
   const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);ud.lights={head,tail,sigL,sigR};
   const add=(geo,m,x,y,z,p=body)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);p.add(o);return o};
