@@ -297,6 +297,9 @@ const CARS=[
 {id:'z9x',name:'Zeekar 9X',sub:'Full-size flagship SUV by Geely · 1,381 hp PHEV',style:'suv',L:5.239,W:2.029,H:1.819,wb:3.169,wr:0.4,hp:1381,z60:3.0,top:149,range:'~235 mi electric (380 km CLTC claim) + 2.0L range extender',weight:'~6,600 lb',drive:'2.0L engine (205 kW) + front 290 kW + rear 370 kW motors · AWD',level:'SAE Level 2+ · city + highway assist',
  tech:'Geely\'s flagship (5,239 × 2,029 × 1,819 mm, 3,169 mm wheelbase): a big, upright, three-row luxury SUV with a huge illuminated light grille under a full-width light bar. A 2.0-litre engine and two motors give 1,381 hp. Inside: a roof-mounted rear screen for second-row passengers.',
  colors:[['ObsidianBlack','#0f1012'],['GlacierWhite','#ececea'],['TitaniumGrey','#5a5e63']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,scratch:'z9x',badge:'ZEEKR'},
+{id:'modely-ls',name:'Teslo Model Why Launch Series',sub:'2025 refresh · Launch Series · FSDish (Supervised)',style:'suv',L:4.79,W:1.982,H:1.623,wb:2.89,wr:0.37,hp:510,z60:4.1,top:125,range:'320 mi (EPA) · ~78 kWh',weight:'~4,390 lb',drive:'Dual motor AWD · Long Range',level:'SAE Level 2 · supervised, hands-free with eye monitoring',
+ tech:'The refreshed Model Y as first sold in the Launch Series: 188.6 in long, 78 in wide and 63.9 in tall on a 2,890 mm wheelbase, about 1,990 kg. Up front a hairline full-width light bar runs across the nose with the main lamps tucked low in the bumper; at the back a chunky full-width bar lights the tailgate. It has a full glass roof, flush handles and aero wheels. Inside: a 15.4-inch centre screen, an ambient light strip wrapping the dash and doors, ventilated front seats, an 8-inch rear screen and a 15-speaker stereo. Dual-motor AWD, 0–60 mph in 4.1 s, 320 miles of range.',
+ colors:[['Quicksilver','#9da3a8'],['Diamond Black','#121316'],['Ultra Red','#a3131b'],['Stealth Grey','#4a4d52'],['Pearl White','#eceeef']],dash:'teslaS',wheel:'round',sensors:'tesla',sound:'ev',driver:true,scratch:'modely',badge:'T',seatCol:0x1c1c1e},
 {id:'luce',name:'Ferrarri Luce',sub:'First electric Ferrari · five-seat GT · self-driving (fictional)',style:'sedan',L:5.026,W:1.999,H:1.544,wb:2.961,wr:0.37,hp:1036,z60:2.4,top:192,range:'~330 mi (WLTP est. 530 km) · 122 kWh · 880 V',weight:'4,982 lb',drive:'Four motors (one per wheel) · 1,036 hp (772 kW) · AWD · 350 kW DC charging',level:'SAE Level 3 · hands-free self-driving (fictional for this car)',
  tech:'A take on Ferrari\'s first electric car, built from its published numbers: 5,026 mm long, 1,999 mm wide, 1,544 mm tall on a 2,961 mm wheelbase, 2,260 kg, four motors with about 1,036 hp, a 122 kWh battery on an 880 V system, 0–100 km/h in 2.5 s and 309 km/h. Penned with LoveFrom, it is a cab-forward five-door with a short bonnet: a glossy black glass passenger cell sits inside a coloured outer shell, with separate front and rear spoilers floating clear of the body, vertical wipers at the screen edges, rear-hinged back doors and staggered 23"/24" five-spoke wheels. Inside are five seats with a 40/20/40 rear bench, a small thin-rimmed wheel and glass-fronted dials with real needles. The self-driving suite is fictional – the real car has none.',
  colors:[['Azzurro Luce','#38b6c8'],['Rosso Corsa','#c8102e'],['Giallo Modena','#f2c418'],['Bianco Avus','#eeeeea'],['Nero Daytona','#121316']],dash:'hyper',wheel:'round',sensors:'gm',sound:'ev',driver:true,luce:true},
@@ -2488,6 +2491,7 @@ const ENERGY={
  'ebike':{epa:30,kwh:1.5,kg:110,cda:0.5,crr:0.008,dc:1,port:'J1772'},
  'moped':{epa:30,kwh:0.96,kg:59,cda:0.6,crr:0.012,dc:0.5,port:'household'},
  'luce':{epa:330,kwh:122,kg:2260,cda:0.55,crr:0.009,dc:350,port:'CCS'},
+ 'modely-ls':{epa:320,kwh:78,kg:1990,cda:0.53,crr:0.009,dc:250,port:'NACS'},
  'p7p':{epa:440,kwh:76.3,kg:2050,cda:0.52,crr:0.009,dc:250,port:'CCS'},
  'l03':{epa:390,kwh:69,kg:1855,cda:0.6,crr:0.009,dc:250,port:'CCS'},
  'seal':{epa:320,kwh:82.5,kg:2185,cda:0.48,crr:0.009,dc:250,port:'CCS'},
@@ -6304,6 +6308,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  sealion7:{sys:'DiPilot-ish',odd:'hwy',max:80,lc:'auto',hands:'on'},
  z7x:{sys:'NZP-ish',odd:'all',max:80,lc:'auto',hands:'on'},
  z9x:{sys:'NZP-ish',odd:'all',max:80,lc:'auto',hands:'on'},
+ 'modely-ls':{sys:'FSDish (Supervised)',odd:'all',max:85,lc:'auto',hands:'eyes'},
  hummer:{sys:'Super Snooze',odd:'hwy',max:85,lc:'auto',hands:'free'},
  };
  const A={st:null,eng:false,l3:false,why:'',okT:0,last:''};window.ADAS=A;
@@ -9061,6 +9066,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   sealion7:{belt:.58,nose:.44,cowl:.26,wsTop:.41,roofEnd:.66,tail:.95,tailH:.74,deck:.66,n:3.5,roofBlack:false,front:'drops',rear:'bar',rim:'multi',screens:[[0.32,0.18]],quirk:'rotate'},
   z7x:{belt:.58,nose:.46,cowl:.26,wsTop:.4,roofEnd:.8,tail:.96,tailH:.86,deck:.64,n:3.6,roofBlack:false,front:'stargate',rear:'bar',rim:'aero',screens:[[0.34,0.19],[0.26,0.08]],quirk:null},
   roadster:{belt:.55,nose:.3,cowl:.4,wsTop:.56,roofEnd:.66,tail:.93,tailH:.6,deck:.62,n:3.0,roofBlack:true,glassCol:0x2b1d06,glassMetal:0.9,front:'hidden',rear:'bar',rim:'aero',screens:[[0.34,0.2]],quirk:'tesla2'},
+  modely:{belt:.57,nose:.44,cowl:.28,wsTop:.45,roofEnd:.6,tail:.965,tailH:.73,deck:.66,n:3.2,roofBlack:true,front:'tslbar',rear:'chunky',rim:'aero',screens:[[0.34,0.21]],quirk:'tesla3'},
   z9x:{belt:.6,nose:.52,cowl:.25,wsTop:.38,roofEnd:.86,tail:.975,tailH:.92,deck:.66,n:4.2,roofBlack:false,front:'lightgrille',rear:'bar',rim:'multi',screens:[[0.36,0.2],[0.3,0.12]],quirk:'lounge'}};
  window.buildScratch=function(spec,colorHex,opts){const d=D[spec.scratch],g=new THREE.Group(),ud=g.userData,{L,W,H,wb,wr}=spec,hl=L/2;
   const body=new THREE.Group();g.add(body);ud.body=body;const hood=new THREE.Group();g.add(hood);ud.hood=hood;const I=new THREE.Group();g.add(I);ud.interior=I;ud.cab=new THREE.Group();g.add(ud.cab);
@@ -9093,6 +9099,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const add=(geo,m,x,y,z,p=body)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);p.add(o);return o};
   const fy=yN*0.95,fx=hl-0.04;
   if(d.front==='hidden'){for(const sd of [1,-1]){const l=add(new THREE.BoxGeometry(0.03,0.012,0.3),head,fx-0.1,fy+0.03,sd*W*0.28);l.rotation.x=-sd*0.08}} /* hidden headlights: only a slim slit shows */
+  if(d.front==='tslbar'){add(new THREE.BoxGeometry(0.03,0.012,W*0.66),head,fx,fy+0.04,0);for(const sd of [1,-1]){const l=add(new THREE.BoxGeometry(0.03,0.05,0.2),head,fx-0.03,fy-0.1,sd*W*0.3);l.rotation.x=-sd*0.12}} /* Model Y: hairline light bar across the nose, main lamps low in the bumper */
   if(d.front==='xbar'){add(new THREE.BoxGeometry(0.03,0.02,W*0.62),head,fx,fy,0);for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.07,0.22),blk,fx-0.02,fy-0.12,sd*W*0.26)} /* XPeng full-width light bar, lamps low in the bumper */
   if(d.front==='stargate'){add(new THREE.BoxGeometry(0.03,0.07,W*0.62),blk,fx,fy,0);for(let k=0;k<40;k++)add(new THREE.BoxGeometry(0.031,0.012,W*0.62/44*0.72),head,fx,fy+(k%2?0.015:-0.015),-W*0.43+W*0.62*(k+0.5)/40)} /* Zeekr Stargate LED bar */
   if(d.front==='lightgrille'){add(new THREE.BoxGeometry(0.04,0.36,W*0.62),blk,fx,fy-0.1,0);for(let k=0;k<22;k++)add(new THREE.BoxGeometry(0.042,0.32,0.012),head,fx,fy-0.1,-W*0.3+W*0.6*(k+0.5)/22);add(new THREE.BoxGeometry(0.03,0.02,W*0.62),head,fx,fy+0.1,0)} /* 9X illuminated light grille */
@@ -9101,6 +9108,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.02,0.1),sd>0?sigL:sigR,fx,fy-0.04,sd*W*0.3);
   const ty=yD*0.9,tx=-hl+0.02;
   if(d.rear==='lantern'){add(new THREE.BoxGeometry(0.03,0.07,W*0.62),tail,tx,ty,0);for(let k=0;k<12;k++)add(new THREE.BoxGeometry(0.032,0.07,0.012),blk,tx,ty,-W*0.43+W*0.62*(k+0.5)/12)} /* Atto 3 lantern tail band */
+  else if(d.rear==='chunky'){add(new THREE.BoxGeometry(0.03,0.07,W*0.72),tail,tx,ty,0);add(new THREE.BoxGeometry(0.032,0.02,W*0.6),blk,tx-0.001,ty-0.045,0)} /* Model Y: chunky reflected rear bar */
   else add(new THREE.BoxGeometry(0.03,0.035,W*0.7),tail,tx,ty,0);
   for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.025,0.12),sd>0?sigL:sigR,tx,ty-0.05,sd*W*0.32);
   /* brand badge */
@@ -9127,6 +9135,9 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    for(const sd of [1,-1])for(let k=0;k<3;k++){const st=new THREE.Mesh(new THREE.CylinderGeometry(0.003,0.003,0.5,4),red);st.rotation.z=Math.PI/2;st.position.set(eye.x-0.05,eye.y-0.62+k*0.04,sd*(W/2-0.12));I.add(st)}} /* guitar-string door pockets */
   if(d.quirk==='tesla2'){const sm=new THREE.MeshBasicMaterial({color:0x2a4a6a});for(const sd of [1,-1]){const sc=new THREE.Mesh(new THREE.PlaneGeometry(0.12,0.07),sm);sc.rotation.y=-Math.PI/2;sc.position.set(eye.x+0.3,eye.y-0.2,eye.z+sd*0.13);I.add(sc)} /* two small driver displays flanking the yoke */
    const sue=new THREE.MeshStandardMaterial({color:0x6a6c70,roughness:0.95});for(const z of [eye.z,-eye.z]){const p2=new THREE.Mesh(softBox(0.06,0.5,0.3,0.02),sue);p2.position.set(eye.x-0.29,eye.y-0.33,z);p2.rotation.z=0.16;I.add(p2)}} /* grey microsuede seat inserts */
+  if(d.quirk==='tesla3'){const amb=new THREE.MeshBasicMaterial({color:0x6fb7ff});add(new THREE.BoxGeometry(0.01,0.008,W*0.8),amb,eye.x+0.25,eye.y-0.32,0,I);for(const sd of [1,-1])add(new THREE.BoxGeometry(1.4,0.008,0.01),amb,eye.x-0.5,eye.y-0.3,sd*(W/2-0.1),I); /* ambient strip across the dash and doors */
+   const rs=new THREE.Mesh(new THREE.PlaneGeometry(0.18,0.11),scrM);rs.rotation.y=-Math.PI/2;rs.position.set(eye.x-0.62,eye.y-0.52,0);I.add(rs); /* 8-inch rear screen */
+   const vent=new THREE.MeshStandardMaterial({color:0x111,roughness:0.9});for(const z of [eye.z,-eye.z])for(let k=0;k<4;k++){const h=new THREE.Mesh(new THREE.CircleGeometry(0.008,6),vent);h.rotation.z=Math.PI/2;h.rotation.y=Math.PI/2;h.position.set(eye.x-0.29,eye.y-0.25-k*0.08,z);I.add(h)}} /* ventilated seat perforations */
   if(d.quirk==='hud'){const hu=new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.08),new THREE.MeshBasicMaterial({color:0x4fc3ff,transparent:true,opacity:0.35}));hu.rotation.y=-Math.PI/2;hu.position.set(eye.x+0.85,eye.y-0.02,eye.z);I.add(hu)} /* 26.8" W-HUD */
   if(d.quirk==='lounge'){const lc=new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.24),scrM);lc.rotation.y=Math.PI/2;lc.position.set(eye.x-0.55,eye.y+0.18,0);I.add(lc)} /* roof-mounted rear screen */
   ud.seats=[new THREE.Vector3(eye.x-0.1,eye.y-0.64,eye.z),new THREE.Vector3(eye.x-0.1,eye.y-0.64,-eye.z)];ud.scratch=true;return g};
