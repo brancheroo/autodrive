@@ -276,6 +276,9 @@ const CARS=[
 {id:'hyperbike',name:'Kaze-R Hyperbike',sub:'Self-riding 2,000 mph rocket hyperbike',style:'coupe',L:2.6,W:0.8,H:1.25,wb:1.55,wr:0.33,hp:1200,z60:1.4,top:2000,range:'effectively unlimited · 500 kWh',weight:'~600 lb',drive:'Twin hub motors + tail rocket',level:'SAE Level 5 · self-riding',
  tech:'A long, low hyperbike that rides itself. Hubless wheels with glowing rings, a wedge fairing and a rocket under the tail take it to 2,000 mph on a clear road in Express or Cannonball. It has the same brain as the Predictacar (lidar, tracking satellite, a scout drone and the collision shield), so it carves through traffic lane by lane, leaning hard into every curve and gap. Your rider wears two-tone race leathers in the opposite colour to the bike with a big back emblem, a white full-face helmet with a cyan visor, spiky hair poking out the back and a long yellow scarf streaming in the wind.',
  colors:[['Neo Red','#d4141c'],['Midnight Violet','#3a1a6a'],['Cyber Cyan','#14c8e0'],['Pearl White','#f2f2ee'],['Akihabara Pink','#ff4fa8']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',hyper:true,hbike:true},
+{id:'luce',name:'Ferrarri Luce',sub:'First electric Ferrari · five-seat GT · self-driving (fictional)',style:'sedan',L:5.026,W:1.999,H:1.544,wb:2.961,wr:0.37,hp:1036,z60:2.4,top:192,range:'~330 mi (WLTP est. 530 km) · 122 kWh · 880 V',weight:'4,982 lb',drive:'Four motors (one per wheel) · 1,036 hp (772 kW) · AWD · 350 kW DC charging',level:'SAE Level 3 · hands-free self-driving (fictional for this car)',
+ tech:'A take on Ferrari\'s first electric car, built from its published numbers: 5,026 mm long, 1,999 mm wide, 1,544 mm tall on a 2,961 mm wheelbase, 2,260 kg, four motors with about 1,036 hp, a 122 kWh battery on an 880 V system, 0–100 km/h in 2.5 s and 309 km/h. Penned with LoveFrom, it is a cab-forward five-door with a short bonnet: a glossy black glass passenger cell sits inside a coloured outer shell, with separate front and rear spoilers floating clear of the body, vertical wipers at the screen edges, rear-hinged back doors and staggered 23"/24" five-spoke wheels. Inside are five seats with a 40/20/40 rear bench, a small thin-rimmed wheel and glass-fronted dials with real needles. The self-driving suite is fictional – the real car has none.',
+ colors:[['Azzurro Luce','#38b6c8'],['Rosso Corsa','#c8102e'],['Giallo Modena','#f2c418'],['Bianco Avus','#eeeeea'],['Nero Daytona','#121316']],dash:'hyper',wheel:'round',sensors:'gm',sound:'ev',driver:true,luce:true},
 {id:'moped',name:'Puttr 500 E-Moped',sub:'Inexpensive 500 W step-through scooter · you ride it',style:'coupe',L:1.75,W:0.68,H:1.15,wb:1.25,wr:0.23,hp:0.67,z60:30,top:25,range:'~30 mi · 48 V 20 Ah (≈1 kWh) removable battery',weight:'~130 lb',drive:'500 W rear hub motor · single speed',level:'Human rider · no driver assists',
  tech:'A $1,099 commuter e-moped: a 500 W rear hub motor, a 48 V 20 Ah battery that lifts out from under the seat for charging indoors, 12-inch wheels, a curved leg shield, flat floorboard and a padded seat for one. It tops out around 25 mph and goes about 30 miles a charge. You ride it yourself upright in an open-face helmet; there are no sensors, so the perception window simply shows your view down the handlebars.',
  colors:[['Mint','#8fd8c0'],['Cream','#efe6cf'],['Cherry Red','#c8202a'],['Sky Blue','#7ab8e8'],['Matte Black','#26272a']],dash:'center-mb',wheel:'round',sensors:'none',sound:'ev',plim:true,ebike:true,moped:true,driverView:true},
@@ -1779,7 +1782,7 @@ function buildEcoSemi(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}=s
  ud.wheels=wheels;ud.ecosemi=true;
  if(typeof contactShadow==='function'){const c1=contactShadow(g,7.4,W*1.1);if(c1&&c1.position)c1.position.x=6.6;const c2=contactShadow(tr,TL*1.04,W*1.1);if(c2&&c2.position)c2.position.x=tcx}
  return g}
-function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.vtol&&window.buildVTOL)return buildVTOL(spec,colorHex,opts);if(spec.angletruck&&window.buildAngletruck)return buildAngletruck(spec,colorHex,opts);if(spec.wiener&&window.buildWiener)return buildWiener(spec,colorHex,opts);if(spec.formulae&&window.buildFormulaE)return buildFormulaE(spec,colorHex,opts);if(spec.moped&&window.buildMoped)return buildMoped(spec,colorHex,opts);if(spec.ebike&&window.buildEbike)return buildEbike(spec,colorHex,opts);if(spec.hbike&&window.buildHyperbike)return buildHyperbike(spec,colorHex,opts);if(spec.dronewagon&&window.buildDroneWagon)return buildDroneWagon(spec,colorHex,opts);if(spec.coach&&window.buildCoach)return buildCoach(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
+function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.vtol&&window.buildVTOL)return buildVTOL(spec,colorHex,opts);if(spec.angletruck&&window.buildAngletruck)return buildAngletruck(spec,colorHex,opts);if(spec.wiener&&window.buildWiener)return buildWiener(spec,colorHex,opts);if(spec.formulae&&window.buildFormulaE)return buildFormulaE(spec,colorHex,opts);if(spec.luce&&window.buildLuce)return buildLuce(spec,colorHex,opts);if(spec.moped&&window.buildMoped)return buildMoped(spec,colorHex,opts);if(spec.ebike&&window.buildEbike)return buildEbike(spec,colorHex,opts);if(spec.hbike&&window.buildHyperbike)return buildHyperbike(spec,colorHex,opts);if(spec.dronewagon&&window.buildDroneWagon)return buildDroneWagon(spec,colorHex,opts);if(spec.coach&&window.buildCoach)return buildCoach(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
  const lod=!opts.interior&&opts.lod!==false&&!(window.GFX&&GFX.get()==='ultra'); /* traffic / parked cars on Low & High: ~7× fewer body triangles */
  const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=(spec.id||spec.style+L+W+H)+(lod?':lod':'');
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
@@ -2463,6 +2466,7 @@ const ENERGY={
  'delivan':{epa:150,kwh:135,kg:4300,cda:2.6,crr:0.011,dc:150,port:'CCS'},
  'ebike':{epa:30,kwh:1.5,kg:110,cda:0.5,crr:0.008,dc:1,port:'J1772'},
  'moped':{epa:30,kwh:0.96,kg:59,cda:0.6,crr:0.012,dc:0.5,port:'household'},
+ 'luce':{epa:330,kwh:122,kg:2260,cda:0.55,crr:0.009,dc:350,port:'CCS'},
  'hyperbike':{epa:3000,kwh:500,kg:270,cda:0.2,crr:0.006,dc:500,port:'CCS'},
  'dronewagon':{epa:40,kwh:12,kg:190,cda:0.6,crr:0.012,dc:10,port:'J1772'},
  'h2saab':{epa:400,kwh:100,kg:1500,cda:0.65,crr:0.009,dc:600,port:'CCS'}, /* refuel stops use the map's charging stations as stand-in hydrogen stations */
@@ -6264,6 +6268,7 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  angletruck:{sys:'FSDish (Supervised)',odd:'all',max:85,lc:'auto',hands:'eyes'},
  wiener:{sys:'Full Self-Driving (driverless)',odd:'all',max:85,lc:'auto',hands:'driverless'},
  roadstar:{sys:'FSDish (Supervised)',odd:'all',max:85,lc:'auto',hands:'eyes'},
+ luce:{sys:'Autonomia (fictional)',odd:'all',max:85,lc:'auto',hands:'free'},
  hummer:{sys:'Super Snooze',odd:'hwy',max:85,lc:'auto',hands:'free'},
  };
  const A={st:null,eng:false,l3:false,why:'',okT:0,last:''};window.ADAS=A;
@@ -8904,6 +8909,92 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  const _eye=window.eyePos;
  if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.moped)return new THREE.Vector3(-spec.wb/2+0.46,spec.wr+1.42,0);return _eye.apply(this,arguments)};
  MODS.push({id:'moped'});
+})();
+</script>
+<script>/* mods/61zc-luce.js */
+/* Ferrarri Luce (spec.luce): Ferrari's first electric car, built from scratch (not a lofted profile) from the published facts:
+   5,026 × 1,999 × 1,544 mm, 2,961 mm wheelbase, cab-forward five-door with a short bonnet; a glossy black glass "passenger cell"
+   set inside a coloured outer shell (the 12Cilindri theme); separate front and rear spoilers that float clear of the body;
+   23" front / 24" rear five-spoke wheels; vertical wipers at the screen edges; rear-hinged back doors; five seats with a
+   40/20/40 rear bench, a small thin-rimmed wheel and glass-fronted dials with real needles.
+   Shell and cell are lofts of superellipse cross-sections along the car. The shell's underside is raised around each axle,
+   which opens the wheel arches. In the cabin view the game hides ud.body and shows ud.hood, so the hood carries a dark inner
+   lining of the shell and a lightly tinted copy of the glass cell, so you see out but the cabin is closed. */
+(function(){
+ const lerp1=(a,b,t)=>a+(b-a)*t;
+ /* piecewise-linear profile helper: pts [[x,v],…] sorted by x (front = +x) */
+ const prof=pts=>x=>{if(x>=pts[0][0])return pts[0][1];for(let i=1;i<pts.length;i++)if(x>=pts[i][0]){const[a,va]=pts[i-1],[b,vb]=pts[i];return lerp1(vb,va,(x-b)/(a-b))}return pts[pts.length-1][1]};
+ /* loft: for stations xs, a cross-section from (xFn) → {w (half width at mid), wt (half width at top), yb, yt}; superellipse exponent n */
+ function loft(xs,sec,n,seg=28){const pos=[],idx=[],ring=seg;
+  for(const x of xs){const c=sec(x);for(let k=0;k<ring;k++){const th=k/ring*Math.PI*2,cs=Math.cos(th),sn=Math.sin(th),e=2/n;
+    const zz=Math.sign(cs)*Math.pow(Math.abs(cs),e),yy=Math.sign(sn)*Math.pow(Math.abs(sn),e),ym=(c.yb+c.yt)/2,h=(c.yt-c.yb)/2,w=yy>0?lerp1(c.w,c.wt,yy):c.w;
+    pos.push(x,ym+yy*h,zz*w)}}
+  for(let i=0;i<xs.length-1;i++)for(let k=0;k<ring;k++){const a=i*ring+k,b=i*ring+(k+1)%ring,c2=(i+1)*ring+k,d=(i+1)*ring+(k+1)%ring;idx.push(a,c2,b,b,c2,d)}
+  /* end caps */
+  const capF=pos.length/3;{const c=sec(xs[0]);pos.push(xs[0],(c.yb+c.yt)/2,0)}const capR=pos.length/3;{const c=sec(xs[xs.length-1]);pos.push(xs[xs.length-1],(c.yb+c.yt)/2,0)}
+  const last=(xs.length-1)*ring;for(let k=0;k<ring;k++){idx.push(capF,k,(k+1)%ring);idx.push(capR,last+(k+1)%ring,last+k)}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g}
+ window.buildLuce=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{L,W,H,wb,wr}=spec,hl=L/2;
+  const body=new THREE.Group();g.add(body);ud.body=body;const hood=new THREE.Group();g.add(hood);ud.hood=hood;const I=new THREE.Group();g.add(I);ud.interior=I;
+  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.55,roughness:0.22,clearcoat:1,clearcoatRoughness:0.04});ud.paint=paint;
+  const gloss=new THREE.MeshPhysicalMaterial({color:0x07080a,metalness:0.4,roughness:0.06,clearcoat:1,transparent:true,opacity:0.9}),
+   glassIn=new THREE.MeshPhysicalMaterial({color:0x10161c,roughness:0.05,transparent:true,opacity:0.32,depthWrite:false,side:THREE.BackSide}),
+   lining=new THREE.MeshStandardMaterial({color:0x1d1e21,roughness:0.85,side:THREE.BackSide}),blk=new THREE.MeshStandardMaterial({color:0x0b0b0d,roughness:0.5});
+  const AF=wb/2,AR=-wb/2,RA=wr+0.07; /* axle x, arch radius */
+  const arch=x=>{let y=0.2;for(const ax of [AF,AR]){const d=Math.abs(x-ax);if(d<RA)y=Math.max(y,wr+Math.sqrt(RA*RA-d*d)*0.98)}return y};
+  /* coloured outer shell: low nose, bonnet rising to the cowl, high shoulders along the cabin, a tall tail */
+  const shTop=prof([[hl,0.5],[hl-0.15,0.66],[hl-0.6,0.8],[1.35,0.92],[0.6,0.96],[-1.2,0.99],[-hl+0.35,0.98],[-hl+0.08,0.86],[-hl,0.6]]);
+  const shW=prof([[hl,0.72],[hl-0.25,0.93],[hl-0.7,1.0],[-hl+0.6,1.0],[-hl+0.2,0.95],[-hl,0.82]]);
+  const xs=[];for(let k=0;k<=72;k++)xs.push(hl-k/72*L);
+  const shell=new THREE.Mesh(loft(xs,x=>({w:shW(x)*W/2,wt:shW(x)*W/2*0.9,yb:arch(x),yt:shTop(x)}),3.2),paint);shell.castShadow=true;body.add(shell);
+  const inner=new THREE.Mesh(shell.geometry,lining);inner.scale.set(0.985,0.985,0.96);hood.add(inner); /* cabin-view door cards / floor */
+  /* black glass passenger cell: steep cab-forward screen, roof peak just behind the B-pillar, long fastback to the tail */
+  const cx0=1.4,cx1=-hl+0.12,cTop=prof([[cx0,0.86],[1.1,1.1],[0.55,1.4],[0.05,H],[-0.6,H-0.02],[-1.3,1.38],[-2.0,1.13],[cx1,0.97]]),cW=prof([[cx0,0.6],[1.0,0.8],[0.2,0.86],[-1.2,0.84],[-2.1,0.72],[cx1,0.62]]);
+  const cxs=[];for(let k=0;k<=48;k++)cxs.push(cx0+(cx1-cx0)*k/48);const csec=x=>({w:cW(x)*W/2,wt:cW(x)*W/2*0.74,yb:0.86,yt:cTop(x)});
+  const cell=new THREE.Mesh(loft(cxs,csec,3.6),gloss);body.add(cell);ud.cab=new THREE.Group();g.add(ud.cab);
+  const cellIn=new THREE.Mesh(cell.geometry,glassIn);hood.add(cellIn);
+  /* nose: 12Cilindri-style black band with two slim light lines, prancing-horse shield; floating front spoiler */
+  const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
+  const band=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.13,W*0.7),gloss);band.position.set(hl-0.06,0.58,0);band.rotation.z=-0.35;body.add(band);
+  for(const sd of [1,-1]){const lt=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.018,W*0.24),head);lt.position.set(hl-0.03,0.6,sd*W*0.21);lt.rotation.z=-0.35;body.add(lt);
+   const sg=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.012,0.12),sd>0?sigL:sigR);sg.position.set(hl-0.04,0.565,sd*W*0.3);body.add(sg)}
+  {const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#ffd21f';x.beginPath();x.moveTo(20,10);x.lineTo(108,10);x.lineTo(108,80);x.quadraticCurveTo(64,128,20,80);x.closePath();x.fill();
+   x.fillStyle='#111';x.font='bold 70px Georgia';x.textAlign='center';x.fillText('♞',64,82);x.fillStyle='#1a8a3a';x.fillRect(20,10,30,8);x.fillStyle='#fff';x.fillRect(50,10,28,8);x.fillStyle='#c8102e';x.fillRect(78,10,30,8);
+   const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;const sh=new THREE.Mesh(new THREE.PlaneGeometry(0.085,0.085),new THREE.MeshStandardMaterial({map:t,transparent:true,metalness:0.4,roughness:0.3}));sh.rotation.y=Math.PI/2;sh.position.set(hl+0.005,0.5,0);body.add(sh)}
+  const fsp=new THREE.Mesh(softBox(0.22,0.03,W*0.86,0.012),paint);fsp.position.set(hl-0.02,0.27,0);body.add(fsp);for(const sd of [1,-1]){const st=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.06,0.02),blk);st.position.set(hl-0.05,0.31,sd*W*0.36);body.add(st)}
+  /* tail: floating rear spoiler over a full-width light bar */
+  const rsp=new THREE.Mesh(softBox(0.3,0.03,W*0.9,0.012),paint);rsp.position.set(-hl+0.16,1.06,0);rsp.rotation.z=0.06;body.add(rsp);for(const sd of [1,-1]){const st=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.07,0.02),blk);st.position.set(-hl+0.17,1.01,sd*W*0.38);body.add(st)}
+  const tb=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.03,W*0.86),tail);tb.position.set(-hl+0.005,0.84,0);body.add(tb);
+  for(const sd of [1,-1]){const ts=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.15),sd>0?sigL:sigR);ts.position.set(-hl+0.006,0.8,sd*W*0.36);body.add(ts)}
+  ud.lights={head,tail,sigL,sigR};
+  /* vertical wipers at the extreme edges of the windscreen; flush two-tone door handles */
+  for(const sd of [1,-1]){const wp=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.5,0.012),blk);const c=csec(1.15);wp.position.set(1.16,1.05,sd*(c.w*0.9));wp.rotation.z=0.75;body.add(wp)}
+  for(const sd of [1,-1])for(const x of [0.55,-0.55]){const h2=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.02,0.006),blk);h2.position.set(x,0.9,sd*(shW(x)*W/2*0.92+0.012));body.add(h2)}
+  /* wheels: staggered 23" / 24" five-spoke, black tyres, red-free calipers in body colour */
+  const wheels=[],tm=new THREE.MeshStandardMaterial({color:0x121212,roughness:0.9}),rimM=new THREE.MeshStandardMaterial({color:0x2a2c30,metalness:0.85,roughness:0.25}),cal=new THREE.MeshStandardMaterial({color:colorHex,roughness:0.4});
+  for(const [x,front] of [[AF,true],[AR,false]]){const r=front?wr*0.985:wr,rim=front?0.292:0.305;for(const s of [1,-1]){const piv=new THREE.Group();piv.position.set(x,wr,s*(W/2-0.14));const holder=new THREE.Group();piv.add(holder);const spin=new THREE.Group();holder.add(spin);
+   spin.add(new THREE.Mesh(new THREE.TorusGeometry(r-0.06,0.06,12,40),tm));const disc=new THREE.Mesh(new THREE.CylinderGeometry(rim*0.32,rim*0.32,0.2,24).rotateX(Math.PI/2),rimM);spin.add(disc);
+   const lip=new THREE.Mesh(new THREE.TorusGeometry(rim,0.012,6,40),rimM);lip.position.z=s*0.09;spin.add(lip);
+   for(let k=0;k<5;k++){const a=k/5*Math.PI*2,sp=new THREE.Mesh(new THREE.BoxGeometry(rim*0.95,0.07,0.04),rimM);sp.position.set(Math.cos(a)*rim*0.5,Math.sin(a)*rim*0.5,s*0.08);sp.rotation.z=a;spin.add(sp)}
+   const cp=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.09,0.06),cal);cp.position.set(-0.1,0.12,s*0.03);holder.add(cp);g.add(piv);wheels.push({piv,spin,front,sign:s})}}
+  ud.wheels=wheels;
+  /* interior: two front seats, 40/20/40 rear bench (no tunnel), small thin wheel, two glass-fronted dials with needles, centre screen */
+  const leather=new THREE.MeshStandardMaterial({color:0x3a2a22,roughness:0.6}),eye=window.luceEye(spec);
+  for(const z of [eye.z,-eye.z]){const c=new THREE.Mesh(softBox(0.5,0.12,0.5,0.05),leather);c.position.set(eye.x-0.1,0.42,z);I.add(c);const b=new THREE.Mesh(softBox(0.12,0.68,0.5,0.05),leather);b.position.set(eye.x-0.36,0.78,z);b.rotation.z=0.18;I.add(b)}
+  [0.42,0,-0.42].forEach((z,i)=>{const w=i===1?0.3:0.42,c=new THREE.Mesh(softBox(0.5,0.12,w,0.05),leather);c.position.set(eye.x-1.05,0.44,z);I.add(c);const b=new THREE.Mesh(softBox(0.12,0.6,w,0.05),leather);b.position.set(eye.x-1.32,0.76,z);b.rotation.z=0.2;I.add(b)});
+  const dash=new THREE.Mesh(softBox(0.4,0.14,W*0.84,0.06),new THREE.MeshStandardMaterial({color:0x1a1b1e,roughness:0.5}));dash.position.set(eye.x+0.72,0.82,0);I.add(dash);
+  const wh=new THREE.Mesh(new THREE.TorusGeometry(0.15,0.012,8,32),blk);wh.position.set(eye.x+0.42,0.92,eye.z);wh.rotation.y=Math.PI/2;wh.rotation.x=0.3;I.add(wh); /* small thin-rimmed wheel */
+  const glassF=new THREE.MeshPhysicalMaterial({color:0xffffff,transparent:true,opacity:0.18,roughness:0,clearcoat:1}),face=new THREE.MeshStandardMaterial({color:0x111214,roughness:0.4}),needle=new THREE.MeshBasicMaterial({color:0xff3b1f}),ring=new THREE.MeshStandardMaterial({color:0xc8ccd2,metalness:1,roughness:0.2});
+  ud.luceNeedles=[];for(const dz of [-0.09,0.09]){const gp=new THREE.Group();gp.position.set(eye.x+0.56,0.97,eye.z+dz);gp.rotation.y=-Math.PI/2;I.add(gp);
+   const f=new THREE.Mesh(new THREE.CircleGeometry(0.065,32),face);gp.add(f);const rg=new THREE.Mesh(new THREE.TorusGeometry(0.066,0.006,6,32),ring);gp.add(rg);const gl=new THREE.Mesh(new THREE.CircleGeometry(0.066,32),glassF);gl.position.z=0.012;gp.add(gl);
+   const nd=new THREE.Mesh(new THREE.BoxGeometry(0.004,0.055,0.002),needle);nd.geometry.translate(0,0.025,0);nd.position.z=0.006;gp.add(nd);ud.luceNeedles.push(nd)}
+  const scr=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.18),new THREE.MeshBasicMaterial({color:0x14324a}));scr.position.set(eye.x+0.6,0.98,0);scr.rotation.y=-Math.PI/2;scr.rotation.x=0;I.add(scr);
+  ud.seats=[new THREE.Vector3(eye.x-0.1,0.5,eye.z),new THREE.Vector3(eye.x-0.1,0.5,-eye.z)];ud.luce=true;return g};
+ window.luceEye=spec=>new THREE.Vector3(0.3,1.18,-0.42);
+ const _eye=window.eyePos;
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.luce)return window.luceEye(spec);return _eye.apply(this,arguments)};
+ MODS.push({id:'luce',frame(){const G=typeof game!=='undefined'?game:null,N=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.luceNeedles;if(!N)return;
+  N[0].rotation.z=2.4-Math.min(1,(G.ego.v||0)/86)*4.8; /* speedometer, 0–192 mph */N[1].rotation.z=2.4-Math.min(1,Math.abs(G.ego.acc||0)/12)*4.8}}); /* power gauge */
 })();
 </script>
 <script>/* mods/62-trams.js */
