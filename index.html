@@ -276,6 +276,27 @@ const CARS=[
 {id:'hyperbike',name:'Kaze-R Hyperbike',sub:'Self-riding 2,000 mph rocket hyperbike',style:'coupe',L:2.6,W:0.8,H:1.25,wb:1.55,wr:0.33,hp:1200,z60:1.4,top:2000,range:'effectively unlimited · 500 kWh',weight:'~600 lb',drive:'Twin hub motors + tail rocket',level:'SAE Level 5 · self-riding',
  tech:'A long, low hyperbike that rides itself. Hubless wheels with glowing rings, a wedge fairing and a rocket under the tail take it to 2,000 mph on a clear road in Express or Cannonball. It has the same brain as the Predictacar (lidar, tracking satellite, a scout drone and the collision shield), so it carves through traffic lane by lane, leaning hard into every curve and gap. Your rider wears two-tone race leathers in the opposite colour to the bike with a big back emblem, a white full-face helmet with a cyan visor, spiky hair poking out the back and a long yellow scarf streaming in the wind.',
  colors:[['Neo Red','#d4141c'],['Midnight Violet','#3a1a6a'],['Cyber Cyan','#14c8e0'],['Pearl White','#f2f2ee'],['Akihabara Pink','#ff4fa8']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',hyper:true,hbike:true},
+{id:'p7p',name:'XPong P7+',sub:'Long-range liftback · XNGP-ish city assist',style:'sedan',L:5.056,W:1.937,H:1.512,wb:3.0,wr:0.36,hp:308,z60:5.9,top:124,range:'~440 mi (710 km CLTC) · 76.3 kWh · 800 V',weight:'~4,500 lb',drive:'Single rear motor · 230 kW (308 hp) · RWD · 10–80% in 12 min',level:'SAE Level 2 · camera-only city + highway assist',
+ tech:'A long, low five-door liftback (5,056 mm long, 3,000 mm wheelbase) with a black floating roof, a slim full-width front light bar and a matching tail bar, flush handles and aero wheels. Inside: a 15.6-inch centre screen, a 10.25-inch driver display, an 8-inch rear screen and ventilated, massaging Nappa seats; 725 L of boot. Single 308 hp rear motor, 800 V charging. Built from scratch from XPeng\'s published numbers.',
+ colors:[['StarlightSilver','#c9ccd0'],['NebulaGrey','#4e5358'],['AuroraWhite','#eeeeeb'],['DawnBlue','#3a5a88']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,scratch:'p7p',badge:'XPENG'},
+{id:'l03',name:'XPong MONA L03',sub:'Coupe-SUV · 1500-TOPS driving computer',style:'suv',L:4.65,W:1.92,H:1.6,wb:2.85,wr:0.36,hp:245,z60:6.3,top:112,range:'~390 mi (625 km CLTC) · 69 kWh',weight:'~4,090 lb',drive:'Single rear motor · 183 kW / 280 Nm · RWD',level:'SAE Level 2 · VLA-based city + highway assist',
+ tech:'A budget coupe-SUV (4,650 × 1,920 × 1,600 mm, 2,850 mm wheelbase) with a black roof, a full-width front light bar and a full-width tail bar. A single 183 kW rear motor, 0–100 km/h in about 6.6 s, up to 625 km CLTC. Inside: a 15.6-inch 2.5K screen, a 26.8-inch windscreen head-up display and 256-colour ambient lighting.',
+ colors:[['IceBlue','#a9c8d8'],['MoonWhite','#ececea'],['Graphite','#45484c'],['SunsetOrange','#e07a3a']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,scratch:'l03',badge:'XPENG'},
+{id:'seal',name:'BYB Seal AWD',sub:'Sport sedan · DiPilot-ish assist',style:'sedan',L:4.8,W:1.875,H:1.46,wb:2.92,wr:0.35,hp:523,z60:3.6,top:112,range:'~320 mi (520 km WLTP) · 82.5 kWh Blade',weight:'~4,850 lb',drive:'Dual motor AWD · 390 kW (523 hp) / 670 Nm',level:'SAE Level 2 · highway assist',
+ tech:'A low, smooth electric sport sedan (4,800 × 1,875 × 1,460 mm, 2,920 mm wheelbase) with teardrop headlamps, a low intake and a full-width tail bar. Dual-motor AWD with 523 hp, 0–100 km/h in 3.8 s, an 82.5 kWh Blade battery. Inside: a 15.6-inch screen that rotates between landscape and portrait.',
+ colors:[['AuroraWhite','#ececea'],['AtlantisGrey','#5b6168'],['ShadowGreen','#2c4038'],['ArcticBlue','#9ec2d6'],['CosmosBlack','#121316']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,scratch:'seal',badge:'BYD'},
+{id:'atto3',name:'BYB Atto 3',sub:'Compact electric SUV · DiPilot-ish assist',style:'suv',L:4.455,W:1.875,H:1.615,wb:2.72,wr:0.35,hp:201,z60:7.0,top:99,range:'~260 mi (420 km WLTP) · 60.5 kWh Blade',weight:'~3,790 lb',drive:'Single front motor · 150 kW (201 hp) / 310 Nm · FWD',level:'SAE Level 2 · highway assist',
+ tech:'A compact SUV (4,455 × 1,875 × 1,615 mm, 2,720 mm wheelbase) with the \'dragon face\' – slim lamps joined by a chrome band – a black roof and a lantern-pattern full-width tail band. 201 hp front motor, 0–100 km/h in 7.3 s, 60.5 kWh Blade battery. The gym-themed cabin has dumbbell-style round vents, guitar-string door pockets and a rotating screen.',
+ colors:[['SkiWhite','#ececea'],['SurfBlue','#3e7fb8'],['BoulderGrey','#6b6f73'],['ParkourRed','#b52a2a']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,scratch:'atto3',badge:'BYD'},
+{id:'sealion7',name:'BYB Sealion 7 AWD',sub:'Coupe-SUV · DiPilot-ish assist',style:'suv',L:4.83,W:1.925,H:1.62,wb:2.93,wr:0.37,hp:523,z60:4.3,top:134,range:'~310 mi (WLTP est.) · 82.6 kWh Blade',weight:'~5,200 lb',drive:'Dual motor AWD · 390 kW (523 hp) / 690 Nm',level:'SAE Level 2 · highway assist',
+ tech:'A coupe-SUV on the Seal\'s platform (4,830 × 1,925 × 1,620 mm, 2,930 mm wheelbase): teardrop lamps, a sloping roof into a full-width tail bar and a 58 L front trunk. Dual-motor AWD with 523 hp, 0–100 km/h in about 4.5 s, an 82.6 kWh Blade battery. Inside: the 15.6-inch rotating screen and high-quality materials.',
+ colors:[['SharkGrey','#4b5157'],['AuroraWhite','#ececea'],['AtlantisGrey','#6a7178'],['CosmosBlack','#121316']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,scratch:'sealion7',badge:'BYD'},
+{id:'z7x',name:'Zeekar 7X',sub:'Electric SUV by Geely · NZP-ish assist',style:'suv',L:4.825,W:1.93,H:1.656,wb:2.925,wr:0.37,hp:637,z60:2.9,top:130,range:'~480 mi (780 km CLTC) · 100 kWh',weight:'~5,300 lb',drive:'Dual motor AWD · 475 kW (637 hp)',level:'SAE Level 2 · city + highway assist',
+ tech:'Geely\'s premium electric SUV (4,825 × 1,930 × 1,656 mm, 2,925 mm wheelbase) with the Zeekr \'Stargate\' full-width LED light bar up front, a clean slab-sided body and a full-width tail bar. Up to 637 hp from two motors, 0–100 km/h in about 3 s, a 100 kWh pack for up to 780 km CLTC.',
+ colors:[['CrystalWhite','#ececea'],['PolarBlue','#9ab8cc'],['GraphiteGrey','#4a4e54'],['MidnightBlack','#111214']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,scratch:'z7x',badge:'ZEEKR'},
+{id:'z9x',name:'Zeekar 9X',sub:'Full-size flagship SUV by Geely · 1,381 hp PHEV',style:'suv',L:5.239,W:2.029,H:1.819,wb:3.169,wr:0.4,hp:1381,z60:3.0,top:149,range:'~235 mi electric (380 km CLTC claim) + 2.0L range extender',weight:'~6,600 lb',drive:'2.0L engine (205 kW) + front 290 kW + rear 370 kW motors · AWD',level:'SAE Level 2+ · city + highway assist',
+ tech:'Geely\'s flagship (5,239 × 2,029 × 1,819 mm, 3,169 mm wheelbase): a big, upright, three-row luxury SUV with a huge illuminated light grille under a full-width light bar. A 2.0-litre engine and two motors give 1,381 hp. Inside: a roof-mounted rear screen for second-row passengers.',
+ colors:[['ObsidianBlack','#0f1012'],['GlacierWhite','#ececea'],['TitaniumGrey','#5a5e63']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,scratch:'z9x',badge:'ZEEKR'},
 {id:'luce',name:'Ferrarri Luce',sub:'First electric Ferrari · five-seat GT · self-driving (fictional)',style:'sedan',L:5.026,W:1.999,H:1.544,wb:2.961,wr:0.37,hp:1036,z60:2.4,top:192,range:'~330 mi (WLTP est. 530 km) · 122 kWh · 880 V',weight:'4,982 lb',drive:'Four motors (one per wheel) · 1,036 hp (772 kW) · AWD · 350 kW DC charging',level:'SAE Level 3 · hands-free self-driving (fictional for this car)',
  tech:'A take on Ferrari\'s first electric car, built from its published numbers: 5,026 mm long, 1,999 mm wide, 1,544 mm tall on a 2,961 mm wheelbase, 2,260 kg, four motors with about 1,036 hp, a 122 kWh battery on an 880 V system, 0–100 km/h in 2.5 s and 309 km/h. Penned with LoveFrom, it is a cab-forward five-door with a short bonnet: a glossy black glass passenger cell sits inside a coloured outer shell, with separate front and rear spoilers floating clear of the body, vertical wipers at the screen edges, rear-hinged back doors and staggered 23"/24" five-spoke wheels. Inside are five seats with a 40/20/40 rear bench, a small thin-rimmed wheel and glass-fronted dials with real needles. The self-driving suite is fictional – the real car has none.',
  colors:[['Azzurro Luce','#38b6c8'],['Rosso Corsa','#c8102e'],['Giallo Modena','#f2c418'],['Bianco Avus','#eeeeea'],['Nero Daytona','#121316']],dash:'hyper',wheel:'round',sensors:'gm',sound:'ev',driver:true,luce:true},
@@ -1782,7 +1803,7 @@ function buildEcoSemi(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}=s
  ud.wheels=wheels;ud.ecosemi=true;
  if(typeof contactShadow==='function'){const c1=contactShadow(g,7.4,W*1.1);if(c1&&c1.position)c1.position.x=6.6;const c2=contactShadow(tr,TL*1.04,W*1.1);if(c2&&c2.position)c2.position.x=tcx}
  return g}
-function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.vtol&&window.buildVTOL)return buildVTOL(spec,colorHex,opts);if(spec.angletruck&&window.buildAngletruck)return buildAngletruck(spec,colorHex,opts);if(spec.wiener&&window.buildWiener)return buildWiener(spec,colorHex,opts);if(spec.formulae&&window.buildFormulaE)return buildFormulaE(spec,colorHex,opts);if(spec.luce&&window.buildLuce)return buildLuce(spec,colorHex,opts);if(spec.moped&&window.buildMoped)return buildMoped(spec,colorHex,opts);if(spec.ebike&&window.buildEbike)return buildEbike(spec,colorHex,opts);if(spec.hbike&&window.buildHyperbike)return buildHyperbike(spec,colorHex,opts);if(spec.dronewagon&&window.buildDroneWagon)return buildDroneWagon(spec,colorHex,opts);if(spec.coach&&window.buildCoach)return buildCoach(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
+function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua(spec,colorHex,opts);if(spec.solarcar&&window.buildSolarCar)return buildSolarCar(spec,colorHex,opts);if(spec.keitruck&&window.buildKeiTruck)return buildKeiTruck(spec,colorHex,opts);if(spec.j800&&window.buildJ800)return buildJ800(spec,colorHex,opts);if(spec.isetta&&window.buildIsetta)return buildIsetta(spec,colorHex,opts);if(spec.vtol&&window.buildVTOL)return buildVTOL(spec,colorHex,opts);if(spec.angletruck&&window.buildAngletruck)return buildAngletruck(spec,colorHex,opts);if(spec.wiener&&window.buildWiener)return buildWiener(spec,colorHex,opts);if(spec.formulae&&window.buildFormulaE)return buildFormulaE(spec,colorHex,opts);if(spec.scratch&&window.buildScratch)return buildScratch(spec,colorHex,opts);if(spec.luce&&window.buildLuce)return buildLuce(spec,colorHex,opts);if(spec.moped&&window.buildMoped)return buildMoped(spec,colorHex,opts);if(spec.ebike&&window.buildEbike)return buildEbike(spec,colorHex,opts);if(spec.hbike&&window.buildHyperbike)return buildHyperbike(spec,colorHex,opts);if(spec.dronewagon&&window.buildDroneWagon)return buildDroneWagon(spec,colorHex,opts);if(spec.coach&&window.buildCoach)return buildCoach(spec,colorHex,opts);if(spec.ecosemi)return buildEcoSemi(spec,colorHex,opts);
  const lod=!opts.interior&&opts.lod!==false&&!(window.GFX&&GFX.get()==='ultra'); /* traffic / parked cars on Low & High: ~7× fewer body triangles */
  const g=new THREE.Group(),{L,W,H,wb,wr}=spec,md=MODEL[spec.id]||{},pk=(spec.id||spec.style+L+W+H)+(lod?':lod':'');
  if(!profCache[pk]){const P=mkProfile(spec);profCache[pk]={P,lo:loftLower(P,0,1,lod?44:undefined,lod?12:undefined,spec.style==='harley'||spec.style==='dualie'?null:{u0:P.sh.roofR+0.015,u1:P.sh.cowl-0.01,up:0.93}),gh:loftGreen(P,lod?44:undefined),hood:loftLower(P,P.sh.cowl-0.02,1,lod?24:40,lod?10:undefined)}}
@@ -2467,6 +2488,13 @@ const ENERGY={
  'ebike':{epa:30,kwh:1.5,kg:110,cda:0.5,crr:0.008,dc:1,port:'J1772'},
  'moped':{epa:30,kwh:0.96,kg:59,cda:0.6,crr:0.012,dc:0.5,port:'household'},
  'luce':{epa:330,kwh:122,kg:2260,cda:0.55,crr:0.009,dc:350,port:'CCS'},
+ 'p7p':{epa:440,kwh:76.3,kg:2050,cda:0.52,crr:0.009,dc:250,port:'CCS'},
+ 'l03':{epa:390,kwh:69,kg:1855,cda:0.6,crr:0.009,dc:250,port:'CCS'},
+ 'seal':{epa:320,kwh:82.5,kg:2185,cda:0.48,crr:0.009,dc:250,port:'CCS'},
+ 'atto3':{epa:260,kwh:60.5,kg:1750,cda:0.62,crr:0.009,dc:250,port:'CCS'},
+ 'sealion7':{epa:310,kwh:82.6,kg:2340,cda:0.62,crr:0.009,dc:250,port:'CCS'},
+ 'z7x':{epa:480,kwh:100,kg:2400,cda:0.6,crr:0.009,dc:250,port:'CCS'},
+ 'z9x':{epa:235,kwh:70,kg:3000,cda:0.8,crr:0.009,dc:250,port:'CCS'},
  'hyperbike':{epa:3000,kwh:500,kg:270,cda:0.2,crr:0.006,dc:500,port:'CCS'},
  'dronewagon':{epa:40,kwh:12,kg:190,cda:0.6,crr:0.012,dc:10,port:'J1772'},
  'h2saab':{epa:400,kwh:100,kg:1500,cda:0.65,crr:0.009,dc:600,port:'CCS'}, /* refuel stops use the map's charging stations as stand-in hydrogen stations */
@@ -6269,6 +6297,13 @@ nwr["man_made"~"^(tower|lighthouse)$"]["name"](${bb});
  wiener:{sys:'Full Self-Driving (driverless)',odd:'all',max:85,lc:'auto',hands:'driverless'},
  roadstar:{sys:'FSDish (Supervised)',odd:'all',max:85,lc:'auto',hands:'eyes'},
  luce:{sys:'Autonomia (fictional)',odd:'all',max:85,lc:'auto',hands:'free'},
+ p7p:{sys:'XNGP-ish',odd:'all',max:80,lc:'auto',hands:'on'},
+ l03:{sys:'XNGP-ish (VLA)',odd:'all',max:80,lc:'auto',hands:'on'},
+ seal:{sys:'DiPilot-ish',odd:'hwy',max:80,lc:'auto',hands:'on'},
+ atto3:{sys:'DiPilot-ish',odd:'hwy',max:80,lc:'signal',hands:'on'},
+ sealion7:{sys:'DiPilot-ish',odd:'hwy',max:80,lc:'auto',hands:'on'},
+ z7x:{sys:'NZP-ish',odd:'all',max:80,lc:'auto',hands:'on'},
+ z9x:{sys:'NZP-ish',odd:'all',max:80,lc:'auto',hands:'on'},
  hummer:{sys:'Super Snooze',odd:'hwy',max:85,lc:'auto',hands:'free'},
  };
  const A={st:null,eng:false,l3:false,why:'',okT:0,last:''};window.ADAS=A;
@@ -8995,6 +9030,104 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.luce)return window.luceEye(spec);return _eye.apply(this,arguments)};
  MODS.push({id:'luce',frame(){const G=typeof game!=='undefined'?game:null,N=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.luceNeedles;if(!N)return;
   N[0].rotation.z=2.4-Math.min(1,(G.ego.v||0)/86)*4.8; /* speedometer, 0–192 mph */N[1].rotation.z=2.4-Math.min(1,Math.abs(G.ego.acc||0)/12)*4.8}}); /* power gauge */
+})();
+</script>
+<script>/* mods/61zd-scratchcars.js */
+/* From-scratch bodies for cars defined by a design sheet (spec.scratch = design id): XPong P7+, XPong MONA L03, BYB Seal,
+   BYB Atto 3, BYB Sealion 7, Zeekar 7X and Zeekar 9X. Each design gives the published size (spec L/W/H/wb/wr) plus a few
+   shape numbers – where the windscreen starts, how long the roof runs, how far the tail drops (fastback vs upright SUV) – and
+   its signature details (front lighting, tail bar, grille, wheel style, roof colour, interior screens and quirks).
+   Geometry: a coloured lower shell and a glass greenhouse, each lofted from superellipse cross-sections; a roof cap on the
+   greenhouse (body colour or black); the shell's underside rises around each axle to open the wheel arches. In the cabin view
+   the game hides ud.body and shows ud.hood, which carries a dark inner lining and lightly tinted glass. */
+(function(){
+ const lerp1=(a,b,t)=>a+(b-a)*t;
+ const prof=pts=>x=>{if(x>=pts[0][0])return pts[0][1];for(let i=1;i<pts.length;i++)if(x>=pts[i][0]){const[a,va]=pts[i-1],[b,vb]=pts[i];return lerp1(vb,va,(x-b)/(a-b))}return pts[pts.length-1][1]};
+ function loft(xs,sec,n,seg=28){const pos=[],idx=[],ring=seg;
+  for(const x of xs){const c=sec(x);for(let k=0;k<ring;k++){const th=k/ring*Math.PI*2,cs=Math.cos(th),sn=Math.sin(th),e=2/n;
+    const zz=Math.sign(cs)*Math.pow(Math.abs(cs),e),yy=Math.sign(sn)*Math.pow(Math.abs(sn),e),ym=(c.yb+c.yt)/2,h=(c.yt-c.yb)/2,w=yy>0?lerp1(c.w,c.wt,yy):c.w;pos.push(x,ym+yy*h,zz*w)}}
+  for(let i=0;i<xs.length-1;i++)for(let k=0;k<ring;k++){const a=i*ring+k,b=i*ring+(k+1)%ring,c2=(i+1)*ring+k,d=(i+1)*ring+(k+1)%ring;idx.push(a,b,c2,b,d,c2)}
+  const capF=pos.length/3;{const c=sec(xs[0]);pos.push(xs[0],(c.yb+c.yt)/2,0)}const capR=pos.length/3;{const c=sec(xs[xs.length-1]);pos.push(xs[xs.length-1],(c.yb+c.yt)/2,0)}
+  const last=(xs.length-1)*ring;for(let k=0;k<ring;k++){idx.push(capF,(k+1)%ring,k);idx.push(capR,last+k,last+(k+1)%ring)}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g}
+ /* design sheet. Lengths are fractions of L measured from the nose; heights are fractions of H.
+    belt: waist height · nose: bumper-top height · cowl: windscreen base · wsTop: windscreen top · roofEnd: where the roof starts to drop
+    tail: tail-glass bottom (fastbacks low) · tailH: height of the glass at the very back · deck: boot/tailgate top · n: shell squareness */
+ const D={
+  p7p:{belt:.6,nose:.42,cowl:.27,wsTop:.43,roofEnd:.62,tail:.93,tailH:.68,deck:.66,n:3.4,roofBlack:true,front:'xbar',rear:'bar',rim:'aero',screens:[[0.32,0.18],[0.26,0.1]],quirk:null},
+  l03:{belt:.6,nose:.44,cowl:.27,wsTop:.43,roofEnd:.58,tail:.94,tailH:.7,deck:.68,n:3.4,roofBlack:true,front:'xbar',rear:'bar',rim:'aero',screens:[[0.32,0.18]],quirk:'hud'},
+  seal:{belt:.6,nose:.38,cowl:.3,wsTop:.47,roofEnd:.6,tail:.9,tailH:.66,deck:.64,n:3.2,roofBlack:false,front:'drops',rear:'bar',rim:'multi',screens:[[0.32,0.18]],quirk:'rotate'},
+  atto3:{belt:.58,nose:.46,cowl:.25,wsTop:.38,roofEnd:.84,tail:.97,tailH:.9,deck:.62,n:3.8,roofBlack:true,front:'dragon',rear:'lantern',rim:'blade',screens:[[0.24,0.15]],quirk:'gym'},
+  sealion7:{belt:.58,nose:.44,cowl:.26,wsTop:.41,roofEnd:.66,tail:.95,tailH:.74,deck:.66,n:3.5,roofBlack:false,front:'drops',rear:'bar',rim:'multi',screens:[[0.32,0.18]],quirk:'rotate'},
+  z7x:{belt:.58,nose:.46,cowl:.26,wsTop:.4,roofEnd:.8,tail:.96,tailH:.86,deck:.64,n:3.6,roofBlack:false,front:'stargate',rear:'bar',rim:'aero',screens:[[0.34,0.19],[0.26,0.08]],quirk:null},
+  z9x:{belt:.6,nose:.52,cowl:.25,wsTop:.38,roofEnd:.86,tail:.975,tailH:.92,deck:.66,n:4.2,roofBlack:false,front:'lightgrille',rear:'bar',rim:'multi',screens:[[0.36,0.2],[0.3,0.12]],quirk:'lounge'}};
+ window.buildScratch=function(spec,colorHex,opts){const d=D[spec.scratch],g=new THREE.Group(),ud=g.userData,{L,W,H,wb,wr}=spec,hl=L/2;
+  const body=new THREE.Group();g.add(body);ud.body=body;const hood=new THREE.Group();g.add(hood);ud.hood=hood;const I=new THREE.Group();g.add(I);ud.interior=I;ud.cab=new THREE.Group();g.add(ud.cab);
+  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.5,roughness:0.25,clearcoat:1,clearcoatRoughness:0.05});ud.paint=paint;
+  const glass=new THREE.MeshPhysicalMaterial({color:0x0b1016,metalness:0.3,roughness:0.05,clearcoat:1,transparent:true,opacity:0.88}),
+   glassIn=new THREE.MeshPhysicalMaterial({color:0x10161c,roughness:0.05,transparent:true,opacity:0.3,depthWrite:false,side:THREE.BackSide}),
+   lining=new THREE.MeshStandardMaterial({color:0x26272a,roughness:0.85,side:THREE.BackSide}),blk=new THREE.MeshStandardMaterial({color:0x0b0b0d,roughness:0.45}),
+   chrome=new THREE.MeshStandardMaterial({color:0xdfe2e6,metalness:1,roughness:0.12}),roofM=d.roofBlack?new THREE.MeshPhysicalMaterial({color:0x0a0a0c,roughness:0.15,clearcoat:1}):paint;
+  const X=f=>hl-f*L; /* nose fraction → x */
+  const AF=wb/2,AR=-wb/2,RA=wr+0.07,arch=x=>{let y=Math.max(0.16,wr*0.45);for(const ax of [AF,AR]){const dd=Math.abs(x-ax);if(dd<RA)y=Math.max(y,wr+Math.sqrt(RA*RA-dd*dd)*0.97)}return y};
+  const yB=d.belt*H,yN=d.nose*H,yD=d.deck*H;
+  /* lower shell: nose → bonnet rising to the cowl → belt along the cabin → boot/tailgate top → tail */
+  const shTop=prof([[hl,yN*0.82],[X(0.03),yN],[X(d.cowl*0.6),lerp1(yN,yB,0.75)],[X(d.cowl),yB],[X(d.tail-0.02),yD],[X(0.995),yD*0.92],[-hl,yD*0.7]]);
+  const shW=prof([[hl,0.78],[X(0.04),0.93],[X(0.14),0.99],[X(0.86),0.99],[X(0.96),0.94],[-hl,0.84]]);
+  const xs=[];for(let k=0;k<=72;k++)xs.push(hl-k/72*L);
+  const shell=new THREE.Mesh(loft(xs,x=>({w:shW(x)*W/2,wt:shW(x)*W/2*0.9,yb:arch(x),yt:shTop(x)}),d.n),paint);shell.castShadow=true;body.add(shell);
+  const inner=new THREE.Mesh(shell.geometry,lining);inner.scale.set(0.985,0.985,0.96);hood.add(inner);
+  /* greenhouse: windscreen from the cowl to wsTop, roof to roofEnd, then down to the tail glass */
+  const gx0=X(d.cowl),gx1=X(d.tail),gTop=prof([[gx0,yB*0.98],[X(d.wsTop),H],[X(d.roofEnd),H*0.995],[gx1,d.tailH*H]]),gW=prof([[gx0,0.74],[X(d.wsTop),0.8],[X(d.roofEnd),0.8],[gx1,0.66]]);
+  const gxs=[];for(let k=0;k<=48;k++)gxs.push(gx0+(gx1-gx0)*k/48);const gsec=x=>({w:gW(x)*W/2,wt:gW(x)*W/2*0.78,yb:yB*0.96,yt:gTop(x)});
+  const gh=new THREE.Mesh(loft(gxs,gsec,d.n+0.3),glass);body.add(gh);hood.add(new THREE.Mesh(gh.geometry,glassIn));
+  /* roof cap (body colour or black) over the roofline, and the pillars as painted strips */
+  const rxs=[];const rx0=X(d.wsTop)-0.05,rx1=X(d.roofEnd)+0.1;for(let k=0;k<=24;k++)rxs.push(rx0+(rx1-rx0)*k/24);
+  const roof=new THREE.Mesh(loft(rxs,x=>{const c=gsec(x);return {w:c.wt*1.01,wt:c.wt*0.92,yb:c.yt-0.06,yt:c.yt+0.012}},4),roofM);body.add(roof);
+  for(const sd of [1,-1])for(const px of [X(d.cowl+0.04),X((d.cowl+d.roofEnd)/2+0.04),X(d.tail-0.05)]){const c=gsec(px),p=new THREE.Mesh(new THREE.BoxGeometry(0.07,c.yt-c.yb,0.02),d.roofBlack?blk:paint);p.position.set(px,(c.yt+c.yb)/2,sd*(c.w*0.92));body.add(p)} /* A/B/C pillars */
+  /* lights */
+  const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);ud.lights={head,tail,sigL,sigR};
+  const add=(geo,m,x,y,z,p=body)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);p.add(o);return o};
+  const fy=yN*0.95,fx=hl-0.04;
+  if(d.front==='xbar'){add(new THREE.BoxGeometry(0.03,0.02,W*0.9),head,fx,fy,0);for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.07,0.22),blk,fx-0.02,fy-0.12,sd*W*0.33)} /* XPeng full-width light bar, lamps low in the bumper */
+  if(d.front==='stargate'){add(new THREE.BoxGeometry(0.03,0.07,W*0.86),blk,fx,fy,0);for(let k=0;k<40;k++)add(new THREE.BoxGeometry(0.031,0.012,W*0.86/44),head,fx,fy+(k%2?0.015:-0.015),-W*0.43+W*0.86*(k+0.5)/40)} /* Zeekr Stargate LED bar */
+  if(d.front==='lightgrille'){add(new THREE.BoxGeometry(0.04,0.36,W*0.62),blk,fx,fy-0.1,0);for(let k=0;k<22;k++)add(new THREE.BoxGeometry(0.042,0.32,0.012),head,fx,fy-0.1,-W*0.3+W*0.6*(k+0.5)/22);add(new THREE.BoxGeometry(0.03,0.02,W*0.9),head,fx,fy+0.1,0)} /* 9X illuminated light grille */
+  if(d.front==='drops'){for(const sd of [1,-1]){const l=add(new THREE.SphereGeometry(0.12,16,10),head,fx-0.08,fy,sd*W*0.34);l.scale.set(0.3,0.35,1.2);l.rotation.x=sd*0.25}add(new THREE.BoxGeometry(0.03,0.13,W*0.5),blk,fx+0.01,yN*0.45,0)} /* BYD teardrop lamps + low intake */
+  if(d.front==='dragon'){for(const sd of [1,-1]){const l=add(new THREE.BoxGeometry(0.03,0.06,0.34),head,fx-0.03,fy,sd*W*0.31);l.rotation.x=-sd*0.15}add(new THREE.BoxGeometry(0.035,0.025,W*0.4),chrome,fx,fy-0.01,0);add(new THREE.BoxGeometry(0.03,0.12,W*0.55),blk,fx+0.01,yN*0.45,0)} /* Atto 3 dragon face */
+  for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.02,0.1),sd>0?sigL:sigR,fx,fy-0.04,sd*W*0.42);
+  const ty=yD*0.9,tx=-hl+0.02;
+  if(d.rear==='lantern'){add(new THREE.BoxGeometry(0.03,0.07,W*0.86),tail,tx,ty,0);for(let k=0;k<12;k++)add(new THREE.BoxGeometry(0.032,0.07,0.012),blk,tx,ty,-W*0.43+W*0.86*(k+0.5)/12)} /* Atto 3 lantern tail band */
+  else add(new THREE.BoxGeometry(0.03,0.035,W*0.88),tail,tx,ty,0);
+  for(const sd of [1,-1])add(new THREE.BoxGeometry(0.03,0.025,0.12),sd>0?sigL:sigR,tx,ty-0.05,sd*W*0.4);
+  /* brand badge */
+  {const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');x.fillStyle='#e8eaee';x.font='800 40px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(spec.badge||'',128,34);
+   const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;const bm=new THREE.MeshStandardMaterial({map:t,transparent:true,metalness:0.6,roughness:0.3});for(const [x,ry,y] of [[hl+0.003,Math.PI/2,yN*0.75],[-hl-0.003,-Math.PI/2,ty-0.11]]){const b=new THREE.Mesh(new THREE.PlaneGeometry(0.32,0.08),bm);b.position.set(x,y,0);b.rotation.y=ry;body.add(b)}}
+  /* door handles + mirrors */
+  for(const sd of [1,-1]){for(const x of [X(d.cowl+0.12),X(d.cowl+0.32)]){const h2=add(new THREE.BoxGeometry(0.16,0.02,0.006),blk,x,yB*0.9,sd*(shW(x)*W/2*0.93+0.01))}
+   const mp=X(d.cowl+0.02),mr=add(new THREE.BoxGeometry(0.16,0.08,0.18),d.roofBlack?blk:paint,mp,yB+0.05,sd*(shW(mp)*W/2+0.08))}
+  /* wheels */
+  const wheels=[],tm=new THREE.MeshStandardMaterial({color:0x121212,roughness:0.9}),rimM=new THREE.MeshStandardMaterial({color:d.rim==='aero'?0x8a8f96:0x2c2e32,metalness:0.85,roughness:0.25});
+  for(const [x,front] of [[AF,true],[AR,false]])for(const s of [1,-1]){const piv=new THREE.Group();piv.position.set(x,wr,s*(W/2-0.15));const holder=new THREE.Group();piv.add(holder);const spin=new THREE.Group();holder.add(spin);
+   const rim=wr*0.72;spin.add(new THREE.Mesh(new THREE.TorusGeometry(wr-0.07,0.07,12,40),tm));const disc=new THREE.Mesh(new THREE.CylinderGeometry(rim,rim,0.2,32).rotateX(Math.PI/2),d.rim==='aero'?rimM:blk);spin.add(disc);
+   const nsp=d.rim==='multi'?10:d.rim==='blade'?6:5;for(let k=0;k<nsp;k++){const a=k/nsp*Math.PI*2,sp=new THREE.Mesh(new THREE.BoxGeometry(rim*0.95,d.rim==='aero'?0.1:0.045,0.03),rimM);sp.position.set(Math.cos(a)*rim*0.5,Math.sin(a)*rim*0.5,s*0.1);sp.rotation.z=a+(d.rim==='blade'?0.4:0);spin.add(sp)}
+   g.add(piv);wheels.push({piv,spin,front,sign:s})}
+  ud.wheels=wheels;
+  /* interior: seats, dash, screens, wheel, plus per-car quirks */
+  const eye=window.scratchEye(spec),seat=new THREE.MeshStandardMaterial({color:spec.seatCol||0x2a2b2e,roughness:0.6});
+  for(const z of [eye.z,-eye.z]){const c=new THREE.Mesh(softBox(0.5,0.12,0.5,0.05),seat);c.position.set(eye.x-0.1,eye.y-0.72,z);I.add(c);const b=new THREE.Mesh(softBox(0.12,0.7,0.5,0.05),seat);b.position.set(eye.x-0.36,eye.y-0.36,z);b.rotation.z=0.16;I.add(b)}
+  const rb=new THREE.Mesh(softBox(0.5,0.12,W*0.72,0.05),seat);rb.position.set(eye.x-1.0,eye.y-0.7,0);I.add(rb);const rbb=new THREE.Mesh(softBox(0.12,0.62,W*0.72,0.05),seat);rbb.position.set(eye.x-1.27,eye.y-0.38,0);rbb.rotation.z=0.18;I.add(rbb);
+  const dash=new THREE.Mesh(softBox(0.42,0.14,W*0.84,0.06),new THREE.MeshStandardMaterial({color:0x1b1c1f,roughness:0.5}));dash.position.set(eye.x+0.72,eye.y-0.38,0);I.add(dash);
+  const wh=new THREE.Mesh(new THREE.TorusGeometry(0.17,0.016,8,32),blk);wh.position.set(eye.x+0.42,eye.y-0.28,eye.z);wh.rotation.y=Math.PI/2;wh.rotation.x=0.3;I.add(wh);
+  const scrM=new THREE.MeshBasicMaterial({color:0x183a5a});d.screens.forEach(([w,h],i)=>{const sc=new THREE.Mesh(new THREE.PlaneGeometry(w,h),scrM);sc.rotation.y=-Math.PI/2;sc.position.set(eye.x+0.6,eye.y-0.18+(i?0.05:0),i?eye.z:0);I.add(sc);if(!i&&d.quirk==='rotate')ud.rotScreen=sc});
+  if(d.quirk==='gym'){const red=new THREE.MeshStandardMaterial({color:0xb5202a,roughness:0.6});for(const z of [-0.55,-0.2,0.2,0.55]){const v=new THREE.Mesh(new THREE.TorusGeometry(0.05,0.018,8,20),chrome);v.rotation.y=Math.PI/2;v.position.set(eye.x+0.5,eye.y-0.28,z);I.add(v)} /* dumbbell-style round vents */
+   for(const sd of [1,-1])for(let k=0;k<3;k++){const st=new THREE.Mesh(new THREE.CylinderGeometry(0.003,0.003,0.5,4),red);st.rotation.z=Math.PI/2;st.position.set(eye.x-0.05,eye.y-0.62+k*0.04,sd*(W/2-0.12));I.add(st)}} /* guitar-string door pockets */
+  if(d.quirk==='hud'){const hu=new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.08),new THREE.MeshBasicMaterial({color:0x4fc3ff,transparent:true,opacity:0.35}));hu.rotation.y=-Math.PI/2;hu.position.set(eye.x+1.3,eye.y-0.02,eye.z);I.add(hu)} /* 26.8" W-HUD */
+  if(d.quirk==='lounge'){const lc=new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.24),scrM);lc.rotation.y=Math.PI/2;lc.position.set(eye.x-0.55,eye.y+0.18,0);I.add(lc)} /* roof-mounted rear screen */
+  ud.seats=[new THREE.Vector3(eye.x-0.1,eye.y-0.64,eye.z),new THREE.Vector3(eye.x-0.1,eye.y-0.64,-eye.z)];ud.scratch=true;return g};
+ window.scratchEye=spec=>{const d=D[spec.scratch],x=spec.L/2-(d.cowl+0.12)*spec.L;return new THREE.Vector3(x,Math.min(spec.H-0.2,d.belt*spec.H+0.36),-spec.W*0.21)};
+ const _eye=window.eyePos;
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.scratch&&D[spec.scratch])return window.scratchEye(spec);return _eye.apply(this,arguments)};
+ MODS.push({id:'scratchcars',frame(){const G=typeof game!=='undefined'?game:null,S=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.rotScreen;if(!S)return;const t=(performance.now()/1000)%20;S.rotation.x=t<9?0:t<10?(t-9)*Math.PI/2:t<19?Math.PI/2:(20-t)*Math.PI/2}}); /* BYD rotating screen: landscape ↔ portrait */
 })();
 </script>
 <script>/* mods/62-trams.js */
