@@ -9047,6 +9047,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    the game hides ud.body and shows ud.hood, which carries a dark inner lining and lightly tinted glass. */
 (function(){
  const lerp1=(a,b,t)=>a+(b-a)*t;
+ const sprof=pts=>x=>{if(x>=pts[0][0])return pts[0][1];for(let i=1;i<pts.length;i++)if(x>=pts[i][0]){const[a,va]=pts[i-1],[b,vb]=pts[i],t=(x-b)/(a-b),e=t*t*(3-2*t);return lerp1(vb,va,e)}return pts[pts.length-1][1]}; /* smoothstep between control points: no kinks in rooflines */
  const prof=pts=>x=>{if(x>=pts[0][0])return pts[0][1];for(let i=1;i<pts.length;i++)if(x>=pts[i][0]){const[a,va]=pts[i-1],[b,vb]=pts[i];return lerp1(vb,va,(x-b)/(a-b))}return pts[pts.length-1][1]};
  function loft(xs,sec,n,seg=28,caps=true){const pos=[],idx=[],ring=seg;
   for(const x of xs){const c=sec(x);for(let k=0;k<ring;k++){const th=k/ring*Math.PI*2,cs=Math.cos(th),sn=Math.sin(th),e=2/n;
@@ -9087,7 +9088,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   {const cut=X(d.cowl)-0.02,secF=x=>({w:shW(x)*W/2,wt:shW(x)*W/2*0.9,yb:arch(x),yt:shTop(x)});const fx2=[],cx2=[];for(const x of xs){if(x>=cut)fx2.push(x);if(x<=cut+0.04)cx2.push(x)}
    hood.add(new THREE.Mesh(loft(fx2,secF,d.n,28,false),paint));const inner=new THREE.Mesh(loft(cx2,secF,d.n,28,false),lining);inner.scale.set(0.985,0.985,0.96);hood.add(inner)}
   /* greenhouse: windscreen from the cowl to wsTop, roof to roofEnd, then down to the tail glass */
-  const gx0=X(d.cowl),gx1=X(d.tail),gTop=prof([[gx0,yB*0.98],[X(d.wsTop),H],[X(d.roofEnd),H*0.995],[gx1,d.tailH*H]]),gW=prof([[gx0,0.74],[X(d.wsTop),0.8],[X(d.roofEnd),0.8],[gx1,0.66]]);
+  const gx0=X(d.cowl),gx1=X(d.tail),pk=(d.wsTop+d.roofEnd)/2,gTop=sprof([[gx0,yB*0.98],[X(d.wsTop),H*0.975],[X(pk),H],[X(d.roofEnd),H*0.97],[gx1,d.tailH*H]]),gW=prof([[gx0,0.74],[X(d.wsTop),0.8],[X(d.roofEnd),0.8],[gx1,0.66]]);
   const gxs=[];for(let k=0;k<=48;k++)gxs.push(gx0+(gx1-gx0)*k/48);const gsec=x=>({w:gW(x)*W/2,wt:gW(x)*W/2*0.6,yb:yB*0.96,yt:gTop(x)}); /* strong tumblehome: side glass leans in and stops well below the roof crown */
   const gh=new THREE.Mesh(loft(gxs,gsec,2.4),glass);body.add(gh);hood.add(new THREE.Mesh(gh.geometry,glassIn));
   /* roof cap (body colour or black) over the roofline, and the pillars as painted strips */
