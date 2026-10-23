@@ -9059,15 +9059,15 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
     belt: waist height · nose: bumper-top height · cowl: windscreen base · wsTop: windscreen top · roofEnd: where the roof starts to drop
     tail: tail-glass bottom (fastbacks low) · tailH: height of the glass at the very back · deck: boot/tailgate top · n: shell squareness */
  const D={
-  p7p:{belt:.6,nose:.42,cowl:.27,wsTop:.43,roofEnd:.62,tail:.93,tailH:.68,deck:.66,n:3.4,roofBlack:true,front:'xbar',rear:'bar',rim:'aero',screens:[[0.32,0.18],[0.26,0.1]],quirk:null},
-  l03:{belt:.6,nose:.44,cowl:.27,wsTop:.43,roofEnd:.58,tail:.94,tailH:.7,deck:.68,n:3.4,roofBlack:true,front:'xbar',rear:'bar',rim:'aero',screens:[[0.32,0.18]],quirk:'hud'},
-  seal:{belt:.6,nose:.38,cowl:.3,wsTop:.47,roofEnd:.6,tail:.9,tailH:.66,deck:.64,n:3.2,roofBlack:false,front:'drops',rear:'bar',rim:'multi',screens:[[0.32,0.18]],quirk:'rotate'},
-  atto3:{belt:.58,nose:.46,cowl:.25,wsTop:.38,roofEnd:.84,tail:.97,tailH:.9,deck:.62,n:3.8,roofBlack:true,front:'dragon',rear:'lantern',rim:'blade',screens:[[0.24,0.15]],quirk:'gym'},
-  sealion7:{belt:.58,nose:.44,cowl:.26,wsTop:.41,roofEnd:.66,tail:.95,tailH:.74,deck:.66,n:3.5,roofBlack:false,front:'drops',rear:'bar',rim:'multi',screens:[[0.32,0.18]],quirk:'rotate'},
-  z7x:{belt:.58,nose:.46,cowl:.26,wsTop:.4,roofEnd:.8,tail:.96,tailH:.86,deck:.64,n:3.6,roofBlack:false,front:'stargate',rear:'bar',rim:'aero',screens:[[0.34,0.19],[0.26,0.08]],quirk:null},
-  roadster:{belt:.55,nose:.3,cowl:.4,wsTop:.56,roofEnd:.66,tail:.93,tailH:.6,deck:.62,n:3.0,roofBlack:true,glassCol:0x2b1d06,glassMetal:0.9,front:'hidden',rear:'bar',rim:'aero',screens:[[0.34,0.2]],quirk:'tesla2'},
-  modely:{belt:.57,nose:.44,cowl:.28,wsTop:.45,roofEnd:.6,tail:.965,tailH:.73,deck:.66,n:3.2,roofBlack:true,front:'tslbar',rear:'chunky',rim:'aero',screens:[[0.34,0.21]],quirk:'tesla3'},
-  z9x:{belt:.6,nose:.52,cowl:.25,wsTop:.38,roofEnd:.86,tail:.975,tailH:.92,deck:.66,n:4.2,roofBlack:false,front:'lightgrille',rear:'bar',rim:'multi',screens:[[0.36,0.2],[0.3,0.12]],quirk:'lounge'}};
+  p7p:{belt:0.650,nose:.42,cowl:0.235,wsTop:0.400,roofEnd:.62,tail:.93,tailH:.68,deck:.66,n:3.4,roofBlack:true,front:'xbar',rear:'bar',rim:'aero',screens:[[0.32,0.18],[0.26,0.1]],quirk:null},
+  l03:{belt:0.650,nose:.44,cowl:0.235,wsTop:0.400,roofEnd:.58,tail:.94,tailH:.7,deck:.68,n:3.4,roofBlack:true,front:'xbar',rear:'bar',rim:'aero',screens:[[0.32,0.18]],quirk:'hud'},
+  seal:{belt:0.650,nose:.38,cowl:0.265,wsTop:0.440,roofEnd:.6,tail:.9,tailH:.66,deck:.64,n:3.2,roofBlack:false,front:'drops',rear:'bar',rim:'multi',screens:[[0.32,0.18]],quirk:'rotate'},
+  atto3:{belt:0.630,nose:.46,cowl:0.215,wsTop:0.350,roofEnd:.84,tail:.97,tailH:.9,deck:.62,n:3.8,roofBlack:true,front:'dragon',rear:'lantern',rim:'blade',screens:[[0.24,0.15]],quirk:'gym'},
+  sealion7:{belt:0.630,nose:.44,cowl:0.225,wsTop:0.380,roofEnd:.66,tail:.95,tailH:.74,deck:.66,n:3.5,roofBlack:false,front:'drops',rear:'bar',rim:'multi',screens:[[0.32,0.18]],quirk:'rotate'},
+  z7x:{belt:0.630,nose:.46,cowl:0.225,wsTop:0.370,roofEnd:.8,tail:.96,tailH:.86,deck:.64,n:3.6,roofBlack:false,front:'stargate',rear:'bar',rim:'aero',screens:[[0.34,0.19],[0.26,0.08]],quirk:null},
+  roadster:{belt:0.600,nose:.3,cowl:0.365,wsTop:0.530,roofEnd:.66,tail:.93,tailH:.6,deck:.62,n:3.0,roofBlack:true,glassCol:0x2b1d06,glassMetal:0.9,front:'hidden',rear:'bar',rim:'aero',screens:[[0.34,0.2]],quirk:'tesla2'},
+  modely:{belt:0.620,nose:.44,cowl:0.245,wsTop:0.420,roofEnd:.6,tail:.965,tailH:.73,deck:.66,n:3.2,roofBlack:true,front:'tslbar',rear:'chunky',rim:'aero',screens:[[0.34,0.21]],quirk:'tesla3'},
+  z9x:{belt:0.650,nose:.52,cowl:0.215,wsTop:0.350,roofEnd:.86,tail:.975,tailH:.92,deck:.66,n:4.2,roofBlack:false,front:'lightgrille',rear:'bar',rim:'multi',screens:[[0.36,0.2],[0.3,0.12]],quirk:'lounge'}};
  window.buildScratch=function(spec,colorHex,opts){const d=D[spec.scratch],g=new THREE.Group(),ud=g.userData,{L,W,H,wb,wr}=spec,hl=L/2;
   const body=new THREE.Group();g.add(body);ud.body=body;const hood=new THREE.Group();g.add(hood);ud.hood=hood;const I=new THREE.Group();g.add(I);ud.interior=I;ud.cab=new THREE.Group();g.add(ud.cab);
   const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.5,roughness:0.25,clearcoat:1,clearcoatRoughness:0.05});ud.paint=paint;
@@ -9088,11 +9088,11 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    hood.add(new THREE.Mesh(loft(fx2,secF,d.n,28,false),paint));const inner=new THREE.Mesh(loft(cx2,secF,d.n,28,false),lining);inner.scale.set(0.985,0.985,0.96);hood.add(inner)}
   /* greenhouse: windscreen from the cowl to wsTop, roof to roofEnd, then down to the tail glass */
   const gx0=X(d.cowl),gx1=X(d.tail),gTop=prof([[gx0,yB*0.98],[X(d.wsTop),H],[X(d.roofEnd),H*0.995],[gx1,d.tailH*H]]),gW=prof([[gx0,0.74],[X(d.wsTop),0.8],[X(d.roofEnd),0.8],[gx1,0.66]]);
-  const gxs=[];for(let k=0;k<=48;k++)gxs.push(gx0+(gx1-gx0)*k/48);const gsec=x=>({w:gW(x)*W/2,wt:gW(x)*W/2*0.78,yb:yB*0.96,yt:gTop(x)});
-  const gh=new THREE.Mesh(loft(gxs,gsec,d.n+0.3),glass);body.add(gh);hood.add(new THREE.Mesh(gh.geometry,glassIn));
+  const gxs=[];for(let k=0;k<=48;k++)gxs.push(gx0+(gx1-gx0)*k/48);const gsec=x=>({w:gW(x)*W/2,wt:gW(x)*W/2*0.6,yb:yB*0.96,yt:gTop(x)}); /* strong tumblehome: side glass leans in and stops well below the roof crown */
+  const gh=new THREE.Mesh(loft(gxs,gsec,2.4),glass);body.add(gh);hood.add(new THREE.Mesh(gh.geometry,glassIn));
   /* roof cap (body colour or black) over the roofline, and the pillars as painted strips */
   const rxs=[];const rx0=X(d.wsTop)-0.05,rx1=X(d.roofEnd)+0.1;for(let k=0;k<=24;k++)rxs.push(rx0+(rx1-rx0)*k/24);
-  const roof=new THREE.Mesh(loft(rxs,x=>{const c=gsec(x);return {w:c.wt*1.01,wt:c.wt*0.92,yb:c.yt-0.06,yt:c.yt+0.012}},4),roofM);body.add(roof);
+  const roof=new THREE.Mesh(loft(rxs,x=>{const c=gsec(x);return {w:c.wt*1.06,wt:c.wt*0.7,yb:c.yt-0.14,yt:c.yt+0.012}},2.6),roofM);body.add(roof);
   for(const sd of [1,-1])for(const px of [X(d.cowl+0.04),X((d.cowl+d.roofEnd)/2+0.04),X(d.tail-0.05)]){const c=gsec(px),p=new THREE.Mesh(new THREE.BoxGeometry(0.07,(c.yt-c.yb)*0.8,0.02),d.roofBlack?blk:paint);p.position.set(px,c.yb+(c.yt-c.yb)*0.4,sd*(c.w*0.9));body.add(p)} /* A/B/C pillars */
   /* lights */
   const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);ud.lights={head,tail,sigL,sigR};
