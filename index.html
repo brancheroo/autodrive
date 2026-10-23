@@ -8703,7 +8703,32 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const bez=new THREE.Mesh(new THREE.BoxGeometry(1.14,0.66,0.03),blk);bez.position.z=-0.02;scr.add(bez); /* frame rides with the screen's tilt */
   const stalk=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.05,0.25,6),steel);stalk.position.set(1.22,0.9,0);I.add(stalk);
   ud.atPanel={c:pc.getContext('2d'),t:pt,last:0,hist:[]};
-  const yoke=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.16,0.32),blk);yoke.position.set(0.82,1.12,-0.44);I.add(yoke);
+  /* fuzzy pink steering wheel: a round rim wrapped in a shaggy plush cover (hundreds of little fur tufts), on two pink spokes */
+  {const sw=new THREE.Group();sw.position.set(0.82,1.1,-0.44);sw.rotation.order='YXZ';sw.rotation.set(0,Math.PI/2,0);sw.rotateX(-0.35);I.add(sw);
+   const pink=new THREE.MeshStandardMaterial({color:0xff7ec4,roughness:1}),pink2=new THREE.MeshStandardMaterial({color:0xffa6d8,roughness:1});
+   sw.add(new THREE.Mesh(new THREE.TorusGeometry(0.17,0.03,10,40),pink));
+   const N=420,fz=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.014,0),pink2,N),m4=new THREE.Matrix4(),q=new THREE.Quaternion(),v=new THREE.Vector3(),sc=new THREE.Vector3();
+   for(let i=0;i<N;i++){const a=Math.random()*Math.PI*2,b=Math.random()*Math.PI*2,r=0.03+Math.random()*0.012;v.set(Math.cos(a)*(0.17+Math.cos(b)*r),Math.sin(a)*(0.17+Math.cos(b)*r),Math.sin(b)*r);const k=0.7+Math.random()*0.8;sc.set(k,k,k);q.setFromEuler(new THREE.Euler(Math.random()*3,Math.random()*3,0));m4.compose(v,q,sc);fz.setMatrixAt(i,m4)}
+   sw.add(fz);for(const a of [0.15,Math.PI-0.15]){const sp=new THREE.Mesh(new THREE.BoxGeometry(0.17,0.035,0.025),pink);sp.position.set(Math.cos(a)*0.085,Math.sin(a)*0.085-0.01,0);sp.rotation.z=a;sw.add(sp)}
+   const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.04,16).rotateX(Math.PI/2),pink);sw.add(hub)}
+  /* small rainbow unicorn hood ornament, standing on the nose and facing forward */
+  {const u=new THREE.Group(),ux=L/2-0.12;u.position.set(ux,yAt(PR[1],PR[2],ux)+0.005,0);u.scale.setScalar(0.9);g.add(u);
+   const white=new THREE.MeshStandardMaterial({color:0xfdfcff,roughness:0.35,metalness:0.1}),gold=new THREE.MeshStandardMaterial({color:0xffd34d,metalness:1,roughness:0.2}),hoof=new THREE.MeshStandardMaterial({color:0xc9a227,metalness:0.9,roughness:0.3});
+   const M=(geo,m,x,y,z,par=u)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);par.add(o);return o};
+   const body=M(new THREE.CapsuleGeometry(0.035,0.09,6,12),white,0,0.1,0);body.rotation.z=Math.PI/2;
+   for(const [x,z] of [[0.045,0.022],[0.045,-0.022],[-0.045,0.022],[-0.045,-0.022]]){M(new THREE.CylinderGeometry(0.009,0.008,0.07,8),white,x,0.045,z);M(new THREE.CylinderGeometry(0.01,0.01,0.012,8),hoof,x,0.007,z)}
+   const neck=M(new THREE.CylinderGeometry(0.018,0.026,0.07,10),white,0.07,0.15,0);neck.rotation.z=-0.6;
+   const head=M(new THREE.CapsuleGeometry(0.02,0.035,6,10),white,0.1,0.185,0);head.rotation.z=Math.PI/2+0.35;
+   const horn=M(new THREE.ConeGeometry(0.008,0.06,10),gold,0.115,0.225,0);horn.rotation.z=-0.55;
+   for(let k=0;k<5;k++){const t=M(new THREE.TorusGeometry(0.0075-k*0.0013,0.0016,4,10),gold,0,0,0,horn);t.position.y=-0.022+k*0.011;t.rotation.x=Math.PI/2} /* spiral grooves */
+   const RB=[0xff3b3b,0xff9a2e,0xffe14a,0x4cd964,0x3fa9ff,0x9b5cff];
+   RB.forEach((c,i)=>{const mat=new THREE.MeshStandardMaterial({color:c,roughness:0.5,emissive:c,emissiveIntensity:0.15});
+    const mn=M(new THREE.BoxGeometry(0.012,0.03,0.008),mat,0.085-i*0.008,0.2-i*0.009,0.012+(i%2)*0.004);mn.rotation.z=0.5; /* mane, red→violet down the neck */
+    const tl=M(new THREE.CapsuleGeometry(0.006,0.05,4,6),mat,-0.085-i*0.004,0.1-i*0.004,(i-2.5)*0.006);tl.rotation.z=-0.9-i*0.08}); /* rainbow tail */
+   for(const sd of [1,-1]){const ear=M(new THREE.ConeGeometry(0.006,0.018,6),white,0.098,0.21,sd*0.01);ear.rotation.z=-0.2}
+   for(const sd of [1,-1]){const wg=new THREE.Group();wg.position.set(0.01,0.13,sd*0.03);wg.rotation.x=sd*0.55;wg.rotation.z=0.35;u.add(wg); /* gold feathered wings, swept up and back */
+    for(let f=0;f<5;f++){const fe=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.075-f*0.011,0.003),gold);fe.position.set(-f*0.014,0.035-f*0.004,0);fe.rotation.z=0.25+f*0.12;wg.add(fe)}}
+   ud.unicorn=u}
   /* sparkly exhaust: two polished tips under the tail streaming glitter (purely decorative, it's electric) */
   {const N=260,pos=new Float32Array(N*3),col=new Float32Array(N*3),age=new Float32Array(N),vel=new Float32Array(N*3),tipX=-L/2+0.05,tipY=wr*0.75;
    const chromeTip=new THREE.MeshStandardMaterial({color:0xf4f6f8,metalness:1,roughness:0.08});for(const sd of [1,-1]){const t=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.18,6).rotateZ(Math.PI/2),chromeTip);t.position.set(tipX,tipY,sd*0.45);g.add(t)}
