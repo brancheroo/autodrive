@@ -8870,13 +8870,14 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const bat=M(softBox(0.28,0.16,0.18,0.02),grey,RX+0.42,wr+0.48,0); /* removable battery under the seat (peeks out) */
   /* rear rack */
   for(const sd of [1,-1]){const r=M(new THREE.CylinderGeometry(0.008,0.008,0.28,6),chrome,RX-0.02,wr+0.69,sd*0.1);r.rotation.z=Math.PI/2}M(new THREE.CylinderGeometry(0.008,0.008,0.2,6).rotateX(Math.PI/2),chrome,RX-0.16,wr+0.69,0);
+  const H=(geo,m,x,y,z)=>M(geo,m,x,y,z,lean); /* handlebar parts sit outside ud.body so the riding view (which hides the body) still shows them */
   /* steering column, handlebar nacelle, headlight, mirrors, grips */
-  const col=M(new THREE.CylinderGeometry(0.025,0.025,0.55,10),grey,FX-0.2,wr+0.62,0);col.rotation.z=0.3;
-  const nac=M(softBox(0.18,0.12,0.42,0.05),paint,FX-0.27,wr+0.92,0);
-  for(const sd of [1,-1]){const gr=M(new THREE.CylinderGeometry(0.018,0.018,0.11,10).rotateX(Math.PI/2),black,FX-0.3,wr+0.94,sd*0.27);
-   const st=M(new THREE.CylinderGeometry(0.005,0.005,0.2,6),chrome,FX-0.28,wr+1.04,sd*0.2);st.rotation.x=-sd*0.3;const mr=M(new THREE.CircleGeometry(0.045,16),chrome,FX-0.29,wr+1.13,sd*0.24);mr.rotation.y=Math.PI/2}
+  const col=H(new THREE.CylinderGeometry(0.025,0.025,0.55,10),grey,FX-0.2,wr+0.62,0);col.rotation.z=0.3;
+  const nac=H(softBox(0.18,0.12,0.42,0.05),paint,FX-0.27,wr+0.92,0);
+  for(const sd of [1,-1]){const gr=H(new THREE.CylinderGeometry(0.018,0.018,0.11,10).rotateX(Math.PI/2),black,FX-0.3,wr+0.94,sd*0.27);
+   const st=H(new THREE.CylinderGeometry(0.005,0.005,0.2,6),chrome,FX-0.28,wr+1.04,sd*0.2);st.rotation.x=-sd*0.3;const mr=H(new THREE.CircleGeometry(0.045,16),chrome,FX-0.29,wr+1.13,sd*0.24);mr.rotation.y=Math.PI/2}
   const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tl=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
-  const hl=M(new THREE.CircleGeometry(0.06,20),head,FX-0.17,wr+0.92,0);hl.rotation.y=Math.PI/2;M(new THREE.TorusGeometry(0.062,0.008,6,20).rotateY(Math.PI/2),chrome,FX-0.172,wr+0.92,0);
+  const hl=H(new THREE.CircleGeometry(0.06,20),head,FX-0.17,wr+0.92,0);hl.rotation.y=Math.PI/2;H(new THREE.TorusGeometry(0.062,0.008,6,20).rotateY(Math.PI/2),chrome,FX-0.172,wr+0.92,0);
   const tlm=M(new THREE.BoxGeometry(0.02,0.04,0.12),tl,RX-0.3,wr+0.48,0);
   for(const sd of [1,-1]){M(new THREE.SphereGeometry(0.018,8,6),sd>0?sigL:sigR,FX-0.2,wr+0.9,sd*0.2);M(new THREE.SphereGeometry(0.015,8,6),sd>0?sigL:sigR,RX-0.28,wr+0.48,sd*0.1)}
   ud.lights={head,tail:tl,sigL,sigR};
