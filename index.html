@@ -8890,7 +8890,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   ud.wheels=wheels;
   /* rider: upright, feet flat on the floorboard, hands on the grips; jacket, jeans, open-face helmet */
   const R=new THREE.Group();R.position.set(RX+0.38,wr+0.72,0);lean.add(R);ud.biker=R;
-  const jacket=new THREE.MeshStandardMaterial({color:0x6b4a2e,roughness:0.85}),jeans=new THREE.MeshStandardMaterial({color:0x2c3e66,roughness:0.9}),skin=new THREE.MeshStandardMaterial({color:0xd8a47c,roughness:0.7}),
+  const jacket=new THREE.MeshStandardMaterial({color:0x1f2a3e,roughness:0.85}),jeans=new THREE.MeshStandardMaterial({color:0x2c3e66,roughness:0.9}),skin=new THREE.MeshStandardMaterial({color:0xd8a47c,roughness:0.7}),
    shoe=new THREE.MeshStandardMaterial({color:0x2a2a2a,roughness:0.7}),helm=new THREE.MeshStandardMaterial({color:0xf2f2f0,roughness:0.3});
   const P=(geo,m,x,y,z)=>M(geo,m,x,y,z,R),limb=(r,m,x0,y0,x1,y1,z)=>{const L=Math.hypot(x1-x0,y1-y0),o=P(new THREE.CapsuleGeometry(r,L,4,10),m,(x0+x1)/2,(y0+y1)/2,z);o.rotation.z=Math.atan2(y1-y0,x1-x0)-Math.PI/2;return o};
   limb(0.13,jacket,0,0.05,0.04,0.42,0).scale.set(0.8,1,1.15); /* torso */
