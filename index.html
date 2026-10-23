@@ -9060,12 +9060,12 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   atto3:{belt:.58,nose:.46,cowl:.25,wsTop:.38,roofEnd:.84,tail:.97,tailH:.9,deck:.62,n:3.8,roofBlack:true,front:'dragon',rear:'lantern',rim:'blade',screens:[[0.24,0.15]],quirk:'gym'},
   sealion7:{belt:.58,nose:.44,cowl:.26,wsTop:.41,roofEnd:.66,tail:.95,tailH:.74,deck:.66,n:3.5,roofBlack:false,front:'drops',rear:'bar',rim:'multi',screens:[[0.32,0.18]],quirk:'rotate'},
   z7x:{belt:.58,nose:.46,cowl:.26,wsTop:.4,roofEnd:.8,tail:.96,tailH:.86,deck:.64,n:3.6,roofBlack:false,front:'stargate',rear:'bar',rim:'aero',screens:[[0.34,0.19],[0.26,0.08]],quirk:null},
-  roadster:{belt:.55,nose:.3,cowl:.4,wsTop:.56,roofEnd:.66,tail:.93,tailH:.6,deck:.62,n:3.0,roofBlack:true,glassCol:0x3a2c10,front:'hidden',rear:'bar',rim:'aero',screens:[[0.34,0.2]],quirk:'tesla2'},
+  roadster:{belt:.55,nose:.3,cowl:.4,wsTop:.56,roofEnd:.66,tail:.93,tailH:.6,deck:.62,n:3.0,roofBlack:true,glassCol:0x2b1d06,glassMetal:0.9,front:'hidden',rear:'bar',rim:'aero',screens:[[0.34,0.2]],quirk:'tesla2'},
   z9x:{belt:.6,nose:.52,cowl:.25,wsTop:.38,roofEnd:.86,tail:.975,tailH:.92,deck:.66,n:4.2,roofBlack:false,front:'lightgrille',rear:'bar',rim:'multi',screens:[[0.36,0.2],[0.3,0.12]],quirk:'lounge'}};
  window.buildScratch=function(spec,colorHex,opts){const d=D[spec.scratch],g=new THREE.Group(),ud=g.userData,{L,W,H,wb,wr}=spec,hl=L/2;
   const body=new THREE.Group();g.add(body);ud.body=body;const hood=new THREE.Group();g.add(hood);ud.hood=hood;const I=new THREE.Group();g.add(I);ud.interior=I;ud.cab=new THREE.Group();g.add(ud.cab);
   const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.5,roughness:0.25,clearcoat:1,clearcoatRoughness:0.05});ud.paint=paint;
-  const glass=new THREE.MeshPhysicalMaterial({color:d.glassCol||0x0b1016,metalness:0.3,roughness:0.05,clearcoat:1,transparent:true,opacity:0.88}),
+  const glass=new THREE.MeshPhysicalMaterial({color:d.glassCol||0x0b1016,metalness:d.glassMetal||0.3,roughness:0.05,clearcoat:1,transparent:true,opacity:0.88}),
    glassIn=new THREE.MeshPhysicalMaterial({color:0x10161c,roughness:0.05,transparent:true,opacity:0.3,depthWrite:false,side:THREE.BackSide}),
    lining=new THREE.MeshStandardMaterial({color:0x26272a,roughness:0.85,side:THREE.BackSide}),blk=new THREE.MeshStandardMaterial({color:0x0b0b0d,roughness:0.45}),
    chrome=new THREE.MeshStandardMaterial({color:0xdfe2e6,metalness:1,roughness:0.12}),roofM=d.roofBlack?new THREE.MeshPhysicalMaterial({color:0x0a0a0c,roughness:0.15,clearcoat:1}):paint;
@@ -9085,7 +9085,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   /* roof cap (body colour or black) over the roofline, and the pillars as painted strips */
   const rxs=[];const rx0=X(d.wsTop)-0.05,rx1=X(d.roofEnd)+0.1;for(let k=0;k<=24;k++)rxs.push(rx0+(rx1-rx0)*k/24);
   const roof=new THREE.Mesh(loft(rxs,x=>{const c=gsec(x);return {w:c.wt*1.01,wt:c.wt*0.92,yb:c.yt-0.06,yt:c.yt+0.012}},4),roofM);body.add(roof);
-  for(const sd of [1,-1])for(const px of [X(d.cowl+0.04),X((d.cowl+d.roofEnd)/2+0.04),X(d.tail-0.05)]){const c=gsec(px),p=new THREE.Mesh(new THREE.BoxGeometry(0.07,c.yt-c.yb,0.02),d.roofBlack?blk:paint);p.position.set(px,(c.yt+c.yb)/2,sd*(c.w*0.92));body.add(p)} /* A/B/C pillars */
+  for(const sd of [1,-1])for(const px of [X(d.cowl+0.04),X((d.cowl+d.roofEnd)/2+0.04),X(d.tail-0.05)]){const c=gsec(px),p=new THREE.Mesh(new THREE.BoxGeometry(0.07,(c.yt-c.yb)*0.8,0.02),d.roofBlack?blk:paint);p.position.set(px,c.yb+(c.yt-c.yb)*0.4,sd*(c.w*0.9));body.add(p)} /* A/B/C pillars */
   /* lights */
   const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);ud.lights={head,tail,sigL,sigR};
   const add=(geo,m,x,y,z,p=body)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);p.add(o);return o};
