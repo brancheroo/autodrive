@@ -8983,13 +8983,13 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const AF=wb/2,AR=-wb/2,RA=wr+0.07; /* axle x, arch radius */
   const arch=x=>{let y=0.2;for(const ax of [AF,AR]){const d=Math.abs(x-ax);if(d<RA)y=Math.max(y,wr+Math.sqrt(RA*RA-d*d)*0.98)}return y};
   /* coloured outer shell: low nose, bonnet rising to the cowl, high shoulders along the cabin, a tall tail */
-  const shTop=prof([[hl,0.5],[hl-0.15,0.66],[hl-0.6,0.8],[1.35,0.92],[0.6,0.96],[-1.2,0.99],[-hl+0.35,0.98],[-hl+0.08,0.86],[-hl,0.6]]);
+  const shTop=prof([[hl,0.55],[hl-0.13,0.74],[1.6,0.9],[0.55,1.0],[-1.2,1.0],[-hl+0.25,0.98],[-hl+0.06,0.8],[-hl,0.6]]); /* matched to a side photo: long bonnet rising to ~1 m shoulders */
   const shW=prof([[hl,0.72],[hl-0.25,0.93],[hl-0.7,1.0],[-hl+0.6,1.0],[-hl+0.2,0.95],[-hl,0.82]]);
   const xs=[];for(let k=0;k<=72;k++)xs.push(hl-k/72*L);
   const shell=new THREE.Mesh(loft(xs,x=>({w:shW(x)*W/2,wt:shW(x)*W/2*0.9,yb:arch(x),yt:shTop(x)}),3.2),paint);shell.castShadow=true;body.add(shell);
   const inner=new THREE.Mesh(shell.geometry,lining);inner.scale.set(0.985,0.985,0.96);hood.add(inner); /* cabin-view door cards / floor */
   /* black glass passenger cell: steep cab-forward screen, roof peak just behind the B-pillar, long fastback to the tail */
-  const cx0=1.4,cx1=-hl+0.12,cTop=prof([[cx0,0.86],[1.1,1.1],[0.55,1.4],[0.05,H],[-0.6,H-0.02],[-1.3,1.38],[-2.0,1.13],[cx1,0.97]]),cW=prof([[cx0,0.6],[1.0,0.8],[0.2,0.86],[-1.2,0.84],[-2.1,0.72],[cx1,0.62]]);
+  const cx0=0.55,cx1=-hl+0.12,cTop=prof([[cx0,0.96],[0.1,1.25],[-0.37,1.42],[-1.07,1.42],[-1.6,1.32],[-2.0,1.12],[cx1,1.0]]),cW=prof([[cx0,0.6],[1.0,0.8],[0.2,0.86],[-1.2,0.84],[-2.1,0.72],[cx1,0.62]]);
   const cxs=[];for(let k=0;k<=48;k++)cxs.push(cx0+(cx1-cx0)*k/48);const csec=x=>({w:cW(x)*W/2,wt:cW(x)*W/2*0.74,yb:0.86,yt:cTop(x)});
   const cell=new THREE.Mesh(loft(cxs,csec,3.6),gloss);body.add(cell);ud.cab=new THREE.Group();g.add(ud.cab);
   const cellIn=new THREE.Mesh(cell.geometry,glassIn);hood.add(cellIn);
@@ -9030,7 +9030,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
    const nd=new THREE.Mesh(new THREE.BoxGeometry(0.004,0.055,0.002),needle);nd.geometry.translate(0,0.025,0);nd.position.z=0.006;gp.add(nd);ud.luceNeedles.push(nd)}
   const scr=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.18),new THREE.MeshBasicMaterial({color:0x14324a}));scr.position.set(eye.x+0.6,0.98,0);scr.rotation.y=-Math.PI/2;scr.rotation.x=0;I.add(scr);
   ud.seats=[new THREE.Vector3(eye.x-0.1,0.5,eye.z),new THREE.Vector3(eye.x-0.1,0.5,-eye.z)];ud.luce=true;return g};
- window.luceEye=spec=>new THREE.Vector3(0.3,1.18,-0.42);
+ window.luceEye=spec=>new THREE.Vector3(-0.3,1.15,-0.42);
  const _eye=window.eyePos;
  if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.luce)return window.luceEye(spec);return _eye.apply(this,arguments)};
  MODS.push({id:'luce',frame(){const G=typeof game!=='undefined'?game:null,N=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.luceNeedles;if(!N)return;
