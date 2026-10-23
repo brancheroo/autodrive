@@ -10279,7 +10279,15 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   start(){btn=UIX.btn('mcBtn','🚓 Motorcade','Motorcade – police motorcycle and cruiser ahead, three black SUVs behind',null)||document.getElementById('mcBtn');if(btn)btn.onclick=()=>set(!MC.on);lab();if(MC.on)spawn();else despawn()},
   sim(dt){if(!MC.on||!MC.units.length)return;const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.route)return;const e=G.ego,lane=e.off??laneOffsetAt(routeLLnh(e.s)[2]);
    for(const b of G.agents){if(!b.mesh||b.loose||b.kind!=='route')continue;const d=b.s-e.s;if(d<8||d>90)continue;const lat=(b.off??1.85)+(b.offAdd||0);if(Math.abs(lat-lane)>2.4)continue;b.offAdd=Math.min(3.4,(b.offAdd||0)+2.4*dt);b.v=Math.max(0,b.v-2.5*dt)}}, /* escort clears the lane */
-  preRender(){const now=performance.now(),dt=Math.min(0.1,(now-(MC.last||now))/1000);MC.last=now;if(!MC.on||!MC.units.length)return;const G=typeof game!=='undefined'?game:null;
+  preRender(){const now=performance.now(),dt=Math.min(0.1,(now-(MC.last||now))/1000);MC.last=now;
+   /* the player car carries a flashing red dome light on the roof while the motorcade is on */
+   {const G0=typeof game!=='undefined'?game:null,m=G0&&G0.ego&&G0.ego.mesh;if(m){let D=m.userData.mcDome;
+    if(MC.on&&!D){const sp=G0.spec,P=(profCache[sp.id]||{}).P,ry=P&&P.top?P.top(0.45):sp.H,rx=P&&P.xOf?P.xOf(0.45):0;D=new THREE.Group();D.position.set(rx,ry,0);
+     const base=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.08,0.03,16),new THREE.MeshStandardMaterial({color:0x111111}));D.add(base);
+     const lens=new THREE.Mesh(new THREE.SphereGeometry(0.065,16,10,0,Math.PI*2,0,Math.PI/2),new THREE.MeshBasicMaterial({color:0x550000,transparent:true,opacity:0.95}));lens.position.y=0.015;D.add(lens);
+     const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex(),color:0xff2020,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}));glow.position.y=0.05;glow.scale.setScalar(1.4);D.add(glow);
+     D.userData={lens,glow};m.add(D);m.userData.mcDome=D}
+    if(D){D.visible=MC.on;if(MC.on){const on=Math.floor(now/180)%2===0;D.userData.lens.material.color.setHex(on?0xff1a10:0x550000);D.userData.glow.material.opacity=on?0.9:0}}}}if(!MC.on||!MC.units.length)return;const G=typeof game!=='undefined'?game:null;
    const ok=G&&G.ego&&G.route&&!G.fast;for(const u of MC.units)u.m.visible=!!ok;if(!ok)return;const e=G.ego,tot=G.route.total,gap=Math.max(11,Math.min(60,10+e.v*0.9)),t=now/1000;
    const eL=(G.spec.L||4.8)/2;let fa=eL,ba=eL;
    for(const u of MC.units){const L2=((u.m.userData.spec&&u.m.userData.spec.L)||4.8)/2;let s;if(u.lead){fa+=gap*0.6+L2;s=e.s+fa;fa+=L2}else{ba+=gap*0.6+L2;s=e.s-ba;ba+=L2} /* bumper-to-bumper gaps grow with speed, spaced by each vehicle's length */if(s>tot){u.m.visible=false;continue}
