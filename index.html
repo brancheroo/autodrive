@@ -7767,7 +7767,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.35,roughness:0.18,clearcoat:1,clearcoatRoughness:0.04}),
    glass=new THREE.MeshPhysicalMaterial({color:0x2a3a48,roughness:0.04,transparent:true,opacity:0.32,depthWrite:false,side:THREE.DoubleSide}),
    chrome=new THREE.MeshStandardMaterial({color:0xe8eaee,metalness:1,roughness:0.12}),dark=new THREE.MeshStandardMaterial({color:0x1b1c20,roughness:0.8});
-  const cy=wr+H*0.42,egg=new THREE.Group();egg.position.y=cy;egg.scale.set(L/2,H*0.5,W/2);g.add(egg);
+  const cy=H*0.55,egg=new THREE.Group();egg.position.y=cy;egg.scale.set(L/2,H*0.45,W/2);g.add(egg);
   const split=1.05; /* polar angle where the glass dome meets the painted shell */
   const shell=new THREE.Mesh(new THREE.SphereGeometry(1,40,24,0,Math.PI*2,split,Math.PI-split),paint);shell.castShadow=true;egg.add(shell);ud.body=shell;ud.paint=paint;
   const dome=new THREE.Mesh(new THREE.SphereGeometry(0.995,40,16,0,Math.PI*2,0,split),glass);egg.add(dome);ud.cab=dome;
