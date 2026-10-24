@@ -10562,7 +10562,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    if(spec.gripG>=2||spec.formulae)return {roll:0.4,pitch:0.3,k:60,z:0.9};
    if(st==='coupe')return {roll:1.6,pitch:1.1,k:28,z:0.7};
    return {roll:(soft?4.5:tall?4:2.8)*(st==='van'?1.2:1),pitch:soft?3.2:tall?2.8:2,k:soft?12:18,z:soft?0.45:0.55}}}; /* degrees per g, spring stiffness, damping ratio */
- const S={r:0,rv:0,p:0,pv:0,lastH:null,lastV:null,lastT:0,applied:null};
+ const S={r:0,rv:0,p:0,pv:0,lastH:null,lastV:null,lastT:0,applied:null};PHYS.body=S; /* exposed for the HUD / tests */
  MODS.push({id:'physics',
   start(){Object.assign(S,{r:0,rv:0,p:0,pv:0,lastH:null,lastV:null,applied:null})},
   preRender(){const G=typeof game!=='undefined'?game:null,now=performance.now(),dt=Math.min(0.05,(now-(S.lastT||now))/1000);S.lastT=now;
