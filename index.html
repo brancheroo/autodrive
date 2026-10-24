@@ -2075,6 +2075,19 @@ function buildInterior(g,spec){
   b3(0.12,0.66,0.5,seatM,0,0.36,0);b3(0.02,0.46,0.28,insM,0.065,0.38,0);for(const k of [-1,1]){b3(0.16*SPT,0.58,0.1,seatM,0.03+(SPT-1)*0.05,0.33,k*0.23,-k*0.35*SPT);b3(0.006,0.46,0.006,stitchM,0.078,0.38,k*0.145)}
   b3(0.1,0.2,0.28,seatM,-0.01,0.82,0);if(ST==='lounge')b3(0.07,0.13,0.24,insM,0.07,0.8,0); /* Maybach/S-Class style neck pillow */for(const k of [-1,1]){const pst=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.1,8),new THREE.MeshStandardMaterial({color:0xc0c4c8,metalness:0.9,roughness:0.2}));pst.position.set(-0.01,0.7,k*0.07);B.add(pst)}}
  interiorDetails(I,spec,eye,mid,dTop,fFront,dashMat,seatM,trim,AMB,box);
+ /* brand dash signatures (from official / owner photos) */
+ if(spec.style!=='pod'){const D=spec.dash,chrome=new THREE.MeshStandardMaterial({color:0xd9dde2,metalness:1,roughness:0.15}),dk=new THREE.MeshStandardMaterial({color:0x111214,roughness:0.6});
+  const vent=(z,r)=>{const v=new THREE.Mesh(new THREE.TorusGeometry(r,r*0.18,8,24),chrome);v.rotation.y=Math.PI/2;v.position.set(fFront-0.02,dTop-0.1,z);I.add(v);const f=new THREE.Mesh(new THREE.CircleGeometry(r*0.85,20),dk);f.rotation.y=-Math.PI/2;f.position.set(fFront-0.015,dTop-0.1,z);I.add(f);for(let k=0;k<6;k++){const b=new THREE.Mesh(new THREE.BoxGeometry(0.004,r*1.6,0.004),chrome);b.rotation.x=k/6*Math.PI;b.position.set(fFront-0.025,dTop-0.1,z);I.add(b)}};
+  if(D==='mercedes'){for(const z of spec.id==='gwagen'?[-W*0.4,-0.06,0.06,W*0.4]:[-W*0.4,-W*0.12,W*0.12,W*0.4])vent(z,spec.id==='gwagen'?0.045:0.04); /* round turbine vents */
+   if(spec.id==='gwagen'){const gh=new THREE.Mesh(new THREE.TorusGeometry(0.11,0.012,8,20,Math.PI),dk);gh.rotation.y=Math.PI/2;gh.position.set(fFront-0.06,dTop-0.04,W*0.3);I.add(gh)}} /* G-Class passenger grab handle */
+  else if(D==='ford'){box(0.02,0.05,W*0.82,new THREE.MeshStandardMaterial({color:0x3a3c40,...INT.cloth}),fFront-0.02,dTop-0.04,0)} /* full-width B&O speaker-fabric soundbar */
+  else if(D==='volvo'){const tw=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.03,0.012,20),chrome);tw.position.set(fFront+0.12,dTop+0.006,mid*0.95);I.add(tw);for(const sd of [-1,1])box(0.02,0.14,0.035,dk,fFront-0.02,dTop-0.13,sd*W*0.42)} /* Bowers & Wilkins tweeter on the dash top + vertical outboard vents */
+  else if(D==='bmw'){box(0.012,0.025,W*0.55,new THREE.MeshPhysicalMaterial({color:0xcfe3ff,emissive:0x4f7dff,emissiveIntensity:0.6,roughness:0.05,transmission:0.3,metalness:0}),fFront-0.03,dTop-0.07,W*0.12)} /* i7 crystal Interaction Bar */
+  else if(D==='vw'){box(0.02,0.08,W*0.86,new THREE.MeshStandardMaterial({color:spec.id==='idbuzz'?0xe9e4d8:0x2a2b2e,roughness:0.5}),fFront-0.015,dTop-0.06,0)} /* ID. Buzz painted dash panel */
+  else if(D==='hyundai'){box(0.7,0.18,0.3,dashMat,eye.x-0.35,eye.y-0.58,mid+eye.z);box(0.2,0.01,0.22,new THREE.MeshStandardMaterial({color:0x444,roughness:0.3}),eye.x-0.2,eye.y-0.47,mid+eye.z)} /* sliding Universal Island console with wireless pad */
+  else if(D==='cadillac'){box(0.01,0.03,W*0.9,trim,fFront-0.02,dTop-0.11,0)} /* pillar-to-pillar wood strip under the 55in display */
+  else if(D==='rivian'){box(0.01,0.01,W*0.88,dk,fFront-0.005,dTop-0.06,0)} /* hidden full-width vent slot above the wood band */
+  else if(D==='porsche'){box(0.01,0.025,W*0.5,dk,fFront-0.01,dTop-0.13,mid*0.95)}} /* slim horizontal centre vent band */
  // wipers
  {const wm=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.6});g.userData.wipers=[];for(const zz of [-W*0.22,W*0.12]){const pv=new THREE.Group();pv.position.set(fFront+0.3,dTop+0.04,zz);pv.rotation.z=-0.62;const arm=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.012,0.62),wm);arm.position.z=-0.31;pv.add(arm);I.add(pv);g.userData.wipers.push(pv)}}
  // steering wheel / yoke facing the driver
