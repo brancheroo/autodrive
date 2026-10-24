@@ -2008,7 +2008,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
 }
 // ============================================================ INTERIOR / DASHBOARD SCREENS
 const SCREENS=[];let wheelMesh=null;
-function screenMesh(w,h,px,kind){px=Math.round(px*(HIGH?1.5:1));const c=document.createElement('canvas');c.width=Math.round(px*w/h);c.height=px;const tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,toneMapped:false}));SCREENS.push({c,ctx:c.getContext('2d'),tex,kind,mesh:m});return m}
+function screenMesh(w,h,px,kind){px=Math.round(px*(HIGH?1.75:1.25)); /* sharper screens */const c=document.createElement('canvas');c.width=Math.round(px*w/h);c.height=px;const tex=new THREE.CanvasTexture(c);tex.encoding=THREE.sRGBEncoding;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,toneMapped:false}));SCREENS.push({c,ctx:c.getContext('2d'),tex,kind,mesh:m});return m}
 function eyePos(spec){if(spec.ecosemi)return new THREE.Vector3(8.65,2.5,-0.55);if(spec.gargantua){const L=spec.L,H=spec.H,wr=spec.wr,floorY=Math.max(wr*1.25+0.305+0.31,wr*2+0.2),cx=L*0.47-1.7-0.1;return new THREE.Vector3(cx+1.7-0.75+0.05,floorY+1.12,-Math.max(0.45,(spec.W-0.22)*0.28))}const P=(profCache[spec.id]||{}).P||mkProfile(spec),sh=P.sh;if(spec.style==='pod')return new THREE.Vector3(-0.45,Math.min(spec.H-0.2,P.belt(0.5)+0.45),0);const x=P.xOf(sh.roofF)-0.6;const y=Math.min(spec.H-0.14,P.belt(0.5)+0.36);return new THREE.Vector3(x,y,(spec.driver?-1:1)*spec.W*0.2)}
 /* ---- interior realism helpers ---- */
 let QUILTL=null;function quiltLines(){if(QUILTL)return QUILTL;const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,256,256);x.strokeStyle='rgba(60,45,30,.55)';x.lineWidth=3;x.setLineDash([7,5]);for(let k=-256;k<=512;k+=64){x.beginPath();x.moveTo(k,0);x.lineTo(k+256,256);x.stroke();x.beginPath();x.moveTo(k,256);x.lineTo(k+256,0);x.stroke()}
@@ -10575,6 +10575,36 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    S.r=clamp(S.r,-0.12,0.12);S.p=clamp(S.p,-0.08,0.08);if(Math.abs(S.r)<1e-4&&Math.abs(S.p)<1e-4)return;
    S.applied={m,r:S.r,p:S.p};m.rotateX(S.r);m.rotateZ(S.p);m.updateMatrixWorld(true)},
   postRender(){if(S.applied){const A=S.applied;A.m.rotateZ(-A.p);A.m.rotateX(-A.r);A.m.updateMatrixWorld(true);S.applied=null} /* undo in reverse, so the drift slip's own undo still matches */}});
+})();
+</script>
+<script>/* mods/99e-cabin-detail.js */
+/* Interior accuracy pass, added on top of buildInterior for every standard cabin:
+   • materials: wood / carbon trim gets a satin clearcoat (real veneer is lacquered), screens' bezels go piano-black gloss;
+   • baked shading: a soft dark gradient where the dash meets the windscreen and along the footwells, standing in for the
+     ambient occlusion a real cabin has in its corners (no per-frame cost);
+   • sun visors folded up against the headliner, grab handles above the passenger and rear doors;
+   • contrast stitching along the dash top edge on leather interiors;
+   • Tesla's hidden full-width slot vent across the dash. */
+(function(){
+ let SH=null;function shadeTex(){if(SH)return SH;const c=document.createElement('canvas');c.width=4;c.height=64;const x=c.getContext('2d'),g=x.createLinearGradient(0,0,0,64);g.addColorStop(0,'rgba(0,0,0,0.75)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,4,64);return SH=new THREE.CanvasTexture(c)}
+ const _bi=window.buildInterior;if(typeof _bi!=='function')return;
+ window.buildInterior=function(g,spec){const r=_bi.apply(this,arguments);try{const I=g.userData.interior;if(!I||spec.style==='pod')return r;
+  const eye=eyePos(spec),W=spec.W,dTop=eye.y-0.36,fFront=eye.x+0.68,IM=(MODEL[spec.id]||{}).int||{};
+  I.traverse(o=>{const m=o.material;if(!m||Array.isArray(m)||m.userData.cabUp)return;
+   if(m.map&&(m.map===INT.walnut?.map||m.map===INT.oak?.map||(typeof CARBON!=='undefined'&&m.map===CARBON))){const p=new THREE.MeshPhysicalMaterial({map:m.map,normalMap:m.normalMap||null,color:m.color,roughness:Math.min(m.roughness,0.35),metalness:m.metalness||0,clearcoat:0.8,clearcoatRoughness:0.12});p.userData.cabUp=1;o.material=p}}); /* lacquered veneer / carbon */
+  const add=(geo,mat,x,y,z,rx=0,ry=0,rz=0)=>{const o=new THREE.Mesh(geo,mat);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);I.add(o);return o};
+  /* baked corner shading: dash top meeting the windscreen */
+  const sm=new THREE.MeshBasicMaterial({map:shadeTex(),transparent:true,depthWrite:false});add(new THREE.PlaneGeometry(0.3,W*0.9),sm,fFront+0.32,dTop+0.002,0,-Math.PI/2,0,Math.PI/2).renderOrder=1;
+  /* sun visors (folded up) and grab handles */
+  const hl=new THREE.MeshStandardMaterial({color:0x8a857d,roughness:1});for(const sd of [1,-1]){const v=add(softBox(0.18,0.025,0.34,0.012),hl,eye.x+0.42,spec.H-0.085,sd*W*0.22);v.userData.inOnly=1;
+   const clip=add(new THREE.BoxGeometry(0.02,0.015,0.02),new THREE.MeshStandardMaterial({color:0x555555}),eye.x+0.42,spec.H-0.075,sd*W*0.06);clip.userData.inOnly=1}
+  const gh=new THREE.MeshStandardMaterial({color:0x2a2a2c,roughness:0.6});for(const [x,z] of [[eye.x,W*0.42],[eye.x-0.9,W*0.42],[eye.x-0.9,-W*0.42]]){const h=add(new THREE.TorusGeometry(0.07,0.012,6,14,Math.PI),gh,x,spec.H-0.17,z,0,0,Math.PI);h.userData.inOnly=1}
+  /* contrast stitching along the dash edge (leather interiors) */
+  if(IM.mat==='leather'){const st=new THREE.MeshBasicMaterial({color:new THREE.Color(IM.seat||0x888888).getHSL({}).l>0.5?0x6a4a2a:0xcdbb98});add(new THREE.BoxGeometry(0.004,0.003,W*0.86),st,fFront-0.008,dTop-0.012,0)}
+  /* Tesla: hidden slot vent running the full width of the dash */
+  if(/tesla/i.test(spec.dash||''))add(new THREE.BoxGeometry(0.01,0.008,W*0.88),new THREE.MeshStandardMaterial({color:0x050505,roughness:1}),fFront-0.004,dTop-0.04,0);
+ }catch(e){console.warn('cabin-detail',e)}return r};
+ MODS.push({id:'cabinDetail'});
 })();
 </script>
 <!--/mods-->
