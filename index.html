@@ -10626,6 +10626,13 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   /* centre console: twin cupholders and the gear selector each maker uses (column stalk / screen on Tesla, Mercedes and BMW i7; a short lever elsewhere) */
   {const cx=eye.x+0.12,cy=eye.y-0.52+0.0005,cz=eye.z+(-eye.z),dk=new THREE.MeshStandardMaterial({color:0x080809,roughness:0.9});for(const dx of [-0.05,0.05]){const c=new THREE.Mesh(new THREE.CircleGeometry(0.036,20),dk);c.rotation.x=-Math.PI/2;c.position.set(cx-0.2+dx,cy,cz);I.add(c)}
    if(!/tesla|cybercab|mercedes|bmw|lucid/.test(spec.dash||'')&&!/^(seal|atto3|sealion7)$/.test(spec.scratch||'')){const lv=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.016,0.09,10),new THREE.MeshStandardMaterial({color:0x1a1a1c,roughness:0.5}));lv.position.set(cx+0.08,cy+0.045,cz);I.add(lv);const kb=new THREE.Mesh(new THREE.SphereGeometry(0.024,12,10),new THREE.MeshStandardMaterial({color:0x2a2a2c,roughness:0.4}));kb.scale.set(1,0.8,0.8);kb.position.set(cx+0.08,cy+0.095,cz);I.add(kb)}}
+  /* sculpted dash forms per brand */
+  {const D=spec.dash||'',dm=new THREE.MeshStandardMaterial({color:IM.dash||0x1c1d20,roughness:0.85}),wood=IM.trim==='walnut'?new THREE.MeshPhysicalMaterial({...INT.walnut,clearcoat:0.8,clearcoatRoughness:0.12}):IM.trim==='oak'?new THREE.MeshPhysicalMaterial({...INT.oak,clearcoat:0.8,clearcoatRoughness:0.12}):new THREE.MeshStandardMaterial({color:0x5a3a22,roughness:0.4});
+   if(D==='mercedes'){const lip=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,W*0.9,16,1,false,0,Math.PI),dm);lip.rotation.x=Math.PI/2;lip.rotation.y=Math.PI;lip.position.set(fFront-0.02,dTop-0.02,0);I.add(lip); /* rounded wave lip over the upper dash */
+    add(softBox(0.05,0.04,W*0.86,0.015),dm,fFront-0.05,dTop-0.2,0)} /* second, lower layer under the wood band */
+   else if(D==='rivian'){add(softBox(0.16,0.03,W*0.88,0.01),wood,fFront-0.07,dTop-0.16,0)} /* Rivian's long wood shelf jutting out across the dash */
+   else if(D==='bmw'){const hd=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.62,0.04,24,1,true,-0.5,1.0),dm);hd.material.side=THREE.DoubleSide;hd.rotation.z=Math.PI/2;hd.position.set(eye.x+1.2,dTop+0.06,0.15);hd.scale.set(1,1,0.6);I.add(hd)} /* hood shading the curved display */
+   else if(D==='volvo'){add(new THREE.BoxGeometry(0.01,0.035,W*0.86),wood,fFront-0.012,dTop-0.13,0)}} /* driftwood inlay */
  }catch(e){console.warn('cabin-detail',e)}return r};
  MODS.push({id:'cabinDetail'});
 })();
