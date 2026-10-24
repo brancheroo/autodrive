@@ -10569,7 +10569,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    if(!G||!G.ego||!G.ego.mesh||!G.spec||G.paused||dt<=0)return;const e=G.ego,m=e.mesh,sp=PHYS.susp(G.spec);
    const h=e.head||0;let yr=0;if(S.lastH!=null){let d=h-S.lastH;d=Math.atan2(Math.sin(d),Math.cos(d));yr=d/dt}S.lastH=h;
    const ax=S.lastV!=null?(e.v-S.lastV)/dt:0;S.lastV=e.v;const ay=clamp(e.v*yr,-15,15),axc=clamp(ax,-12,8);
-   const tr=-ay/9.81*sp.roll*Math.PI/180,tp=-axc/9.81*sp.pitch*Math.PI/180; /* lean out of the turn; nose dips under braking */
+   const tr=ay/9.81*sp.roll*Math.PI/180,tp=axc/9.81*sp.pitch*Math.PI/180; /* heading grows in a left turn and +x is forward, +z right: the roof swings to +z (out of a left turn) and the nose drops (−z rotation) under braking */ /* lean out of the turn; nose dips under braking */
    const w=Math.sqrt(sp.k),c=2*sp.z*w;S.rv+=(w*w*(tr-S.r)-c*S.rv)*dt;S.r+=S.rv*dt;S.pv+=(w*w*(tp-S.p)-c*S.pv)*dt;S.p+=S.pv*dt; /* spring-damper: overshoot and settle */
    S.r=clamp(S.r,-0.12,0.12);S.p=clamp(S.p,-0.08,0.08);if(Math.abs(S.r)<1e-4&&Math.abs(S.p)<1e-4)return;
    S.applied={m,r:S.r,p:S.p};m.rotateX(S.r);m.rotateZ(S.p);m.updateMatrixWorld(true)},
