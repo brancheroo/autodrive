@@ -602,13 +602,13 @@ function densify(pts,maxd){const out=[pts[0]];for(let i=1;i<pts.length;i++){cons
 function ribbon(buf,pts,w,y,off=0){ // pts [[x,z(,y)]..]
  if(pts.length<2)return;pts=densify(pts,HIGH?3.5:6);const L=[],R=[];
  /* road engineering: level across the carriageway and a smoothed longitudinal profile with grades capped at ~10%, kept within
-    a shallow cut/fill (−0.35…+0.6 m) of the real ground, instead of copying every terrain bump edge by edge. Bridges/tunnels
+    a shallow cut/fill (−0.1…+0.6 m: never deeper than the ground fills, which sit 0.12 m under the terrain) of the real ground, instead of copying every terrain bump edge by edge. Bridges/tunnels
     (explicit p[2]) keep their own profile. */
  const RH=[];{const n=pts.length,gc=pts.map(p=>p[2]!==undefined?null:groundY(p[0],p[1])),D=[0];for(let i=1;i<n;i++)D.push(D[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
   for(let i=0;i<n;i++){if(gc[i]===null){RH.push(null);continue}let sum=0,c=0;for(let j=i-2;j<=i+2;j++)if(j>=0&&j<n&&gc[j]!==null){sum+=gc[j];c++}RH.push(sum/c)}
   for(let i=1;i<n;i++)if(RH[i]!==null&&RH[i-1]!==null){const d=D[i]-D[i-1];RH[i]=clamp(RH[i],RH[i-1]-0.1*d,RH[i-1]+0.1*d)}
   for(let i=n-2;i>=0;i--)if(RH[i]!==null&&RH[i+1]!==null){const d=D[i+1]-D[i];RH[i]=clamp(RH[i],RH[i+1]-0.1*d,RH[i+1]+0.1*d)}
-  for(let i=0;i<n;i++)if(RH[i]!==null)RH[i]=clamp(RH[i],gc[i]-0.35,gc[i]+0.6)}
+  for(let i=0;i<n;i++)if(RH[i]!==null)RH[i]=clamp(RH[i],gc[i]-0.1,gc[i]+0.6)}
  for(let i=0;i<pts.length;i++){
   const p=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
   let n1=null,n2=null;
