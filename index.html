@@ -10633,8 +10633,10 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    else if(D==='rivian'){add(softBox(0.16,0.03,W*0.88,0.01),wood,fFront-0.07,dTop-0.16,0)} /* Rivian's long wood shelf jutting out across the dash */
    else if(D==='bmw'){const hd=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.62,0.04,24,1,true,-0.5,1.0),dm);hd.material.side=THREE.DoubleSide;hd.rotation.z=Math.PI/2;hd.position.set(eye.x+1.2,dTop+0.06,0.15);hd.scale.set(1,1,0.6);I.add(hd)} /* hood shading the curved display */
    else if(D==='volvo'){add(new THREE.BoxGeometry(0.01,0.035,W*0.86),wood,fFront-0.012,dTop-0.13,0)}} /* driftwood inlay */
+  /* screen glow: one soft light at the centre screen, lit only at night (cheap: a single light, no shadows) */
+  {const L=new THREE.PointLight(0x9fc4ff,0,1.6,2);L.position.set(eye.x+0.45,eye.y-0.22,0);I.add(L);g.userData.screenGlow=L}
  }catch(e){console.warn('cabin-detail',e)}return r};
- MODS.push({id:'cabinDetail'});
+ MODS.push({id:'cabinDetail',frame(){const G=typeof game!=='undefined'?game:null,L=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.screenGlow;if(L)L.intensity=G.dark&&G.cam==='in'?0.6:0}}); /* glow only at night, only in the cabin view */
 })();
 </script>
 <!--/mods-->
