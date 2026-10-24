@@ -10633,6 +10633,11 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    else if(D==='rivian'){add(softBox(0.16,0.03,W*0.88,0.01),wood,fFront-0.07,dTop-0.16,0)} /* Rivian's long wood shelf jutting out across the dash */
    else if(D==='bmw'){const hd=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.62,0.04,24,1,true,-0.5,1.0),dm);hd.material.side=THREE.DoubleSide;hd.rotation.z=Math.PI/2;hd.position.set(eye.x+1.2,dTop+0.06,0.15);hd.scale.set(1,1,0.6);I.add(hd)} /* hood shading the curved display */
    else if(D==='volvo'){add(new THREE.BoxGeometry(0.01,0.035,W*0.86),wood,fFront-0.012,dTop-0.13,0)}} /* driftwood inlay */
+  /* door cards: a trim cap along the top of each door (wood on wood-trimmed cars, fabric band on Teslas, dark trim otherwise) and a sculpted pull handle */
+  {const tesla=/tesla|cybercab/.test(spec.dash||''),capM=tesla?new THREE.MeshStandardMaterial({color:0x6a6c70,...INT.cloth,map:null}):IM.trim==='walnut'||IM.trim==='oak'?new THREE.MeshPhysicalMaterial({...(IM.trim==='walnut'?INT.walnut:INT.oak),clearcoat:0.8,clearcoatRoughness:0.12}):new THREE.MeshStandardMaterial({color:0x2a2b2e,roughness:0.5});
+   const pullM=new THREE.MeshStandardMaterial({color:0x1d1e20,roughness:0.5});
+   for(const sd of [1,-1]){const z=sd*W*0.415;const cap=add(new THREE.BoxGeometry(spec.L*0.42,0.03,0.04),capM,eye.x-0.15,eye.y-0.33,z);cap.userData.inOnly=1;
+    const pull=add(new THREE.TorusGeometry(0.06,0.012,6,14,Math.PI),pullM,eye.x+0.12,eye.y-0.44,z-sd*0.035,Math.PI/2,0,0);pull.userData.inOnly=1}}
   /* screen glow: one soft light at the centre screen, lit only at night (cheap: a single light, no shadows) */
   {const L=new THREE.PointLight(0x9fc4ff,0,1.6,2);L.position.set(eye.x+0.45,eye.y-0.22,0);I.add(L);g.userData.screenGlow=L}
  }catch(e){console.warn('cabin-detail',e)}return r};
