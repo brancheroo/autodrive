@@ -10609,8 +10609,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   /* baked corner shading: dash top meeting the windscreen */
   const sm=new THREE.MeshBasicMaterial({map:shadeTex(),transparent:true,depthWrite:false});add(new THREE.PlaneGeometry(0.3,W*0.9),sm,fFront+0.32,dTop+0.002,0,-Math.PI/2,0,Math.PI/2).renderOrder=1;
   /* sun visors (folded up) and grab handles */
-  const hl=new THREE.MeshStandardMaterial({color:new THREE.Color(0x8a857d).multiplyScalar(0.7),roughness:1});for(const sd of [1,-1]){const v=add(softBox(0.16,0.016,0.32,0.008),hl,eye.x+0.36,spec.H-0.058,sd*W*0.22);v.userData.inOnly=1;
-   const clip=add(new THREE.BoxGeometry(0.02,0.015,0.02),new THREE.MeshStandardMaterial({color:0x555555}),eye.x+0.36,spec.H-0.05,sd*W*0.06);clip.userData.inOnly=1}
+  const hl=new THREE.MeshStandardMaterial({color:new THREE.Color(0x8a857d).multiplyScalar(0.7),roughness:1});for(const sd of [1,-1]){const PV=(profCache[spec.id]||{}).P||mkProfile(spec),uF=PV.sh.roofF||0.58,vx=PV.xOf(uF)-0.1,vy=PV.top(uF)-0.06;const v=add(softBox(0.16,0.016,0.32,0.008),hl,vx,vy,sd*W*0.22); /* hinged right at the windscreen header, like real visors */v.userData.inOnly=1;
+   const clip=add(new THREE.BoxGeometry(0.02,0.015,0.02),new THREE.MeshStandardMaterial({color:0x555555}),vx,vy+0.012,sd*W*0.06);clip.userData.inOnly=1}
   const gh=new THREE.MeshStandardMaterial({color:0x2a2a2c,roughness:0.6});for(const [x,z] of [[eye.x,W*0.42],[eye.x-0.9,W*0.42],[eye.x-0.9,-W*0.42]]){const h=add(new THREE.TorusGeometry(0.07,0.012,6,14,Math.PI),gh,x,spec.H-0.17,z,0,0,Math.PI);h.userData.inOnly=1}
   /* contrast stitching along the dash edge (leather interiors) */
   if(IM.mat==='leather'){const st=new THREE.MeshBasicMaterial({color:new THREE.Color(IM.seat||0x888888).getHSL({}).l>0.5?0x6a4a2a:0xcdbb98});add(new THREE.BoxGeometry(0.004,0.003,W*0.86),st,fFront-0.008,dTop-0.012,0)}
