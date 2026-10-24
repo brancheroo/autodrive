@@ -10638,6 +10638,11 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    const pullM=new THREE.MeshStandardMaterial({color:0x1d1e20,roughness:0.5});
    for(const sd of [1,-1]){const z=sd*W*0.415;const cap=add(new THREE.BoxGeometry(spec.L*0.42,0.03,0.04),capM,eye.x-0.15,eye.y-0.33,z);cap.userData.inOnly=1;
     const pull=add(new THREE.TorusGeometry(0.06,0.012,6,14,Math.PI),pullM,eye.x+0.12,eye.y-0.44,z-sd*0.035,Math.PI/2,0,0);pull.userData.inOnly=1}}
+  /* sunlight through the glass: the cabin view hides the body (and hidden objects cast no shadow), so an invisible roof-sized caster
+     shades the cabin while sun falls in through the windscreen and side glass; interior surfaces receive the sun's shadows */
+  {const P=(profCache[spec.id]||{}).P||mkProfile(spec),sh=P.sh;if(sh&&sh.roof!=='glass'){const x0=P.xOf(sh.roofR||0.3),x1=P.xOf(sh.roofF||0.6),cm=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false});
+   const rc=add(new THREE.BoxGeometry(Math.abs(x1-x0),0.02,W*0.82),cm,(x0+x1)/2,spec.H-0.03,0);rc.castShadow=true;rc.renderOrder=-1}
+   I.traverse(o=>{if(o.isMesh)o.receiveShadow=true})}
   /* screen glow: one soft light at the centre screen, lit only at night (cheap: a single light, no shadows) */
   {const L=new THREE.PointLight(0x9fc4ff,0,1.6,2);L.position.set(eye.x+0.45,eye.y-0.22,0);I.add(L);g.userData.screenGlow=L}
  }catch(e){console.warn('cabin-detail',e)}return r};
