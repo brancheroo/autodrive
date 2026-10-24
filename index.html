@@ -618,7 +618,7 @@ function ribbon(buf,pts,w,y,off=0){ // pts [[x,z(,y)]..]
   const s=n1&&n2?1/Math.max(0.72,n[0]*n1[0]+n[1]*n1[1]):1; // capped miter: sharp corners don't spike out
   // n points to the right of travel (x east,z south): right of (dx,dz) is (-dz,dx)
   const hw=w/2*s,o=off*s,rx=p[0]+n[0]*(o+hw),rz=p[1]+n[1]*(o+hw),lx=p[0]+n[0]*(o-hw),lz=p[1]+n[1]*(o-hw);
-  const hy=p[2]!==undefined?p[2]:RH[i];R.push([rx,hy+y,rz]);L.push([lx,hy+y,lz])} /* both edges at the centre-line height: level across */
+  const hy=p[2]!==undefined?p[2]:Math.max(RH[i],groundY(rx,rz)-0.1,groundY(lx,lz)-0.1); /* on a side slope, rise with the uphill edge so the ground fills (0.12 m under the terrain) never stand above it */R.push([rx,hy+y,rz]);L.push([lx,hy+y,lz])} /* both edges at the centre-line height: level across */
  const u=w/4;let v=0,V=[0];for(let i=1;i<pts.length;i++){v+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1])/4;V.push(v)}
  for(let i=0;i<pts.length-1;i++){buf.tri(L[i],R[i],R[i+1],UP,[0,V[i]],[u,V[i]],[u,V[i+1]]);buf.tri(L[i],R[i+1],L[i+1],UP,[0,V[i]],[u,V[i+1]],[0,V[i+1]])}
 }
