@@ -10342,8 +10342,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  function liveHour(){const G=game;try{const lat=toLat(G.ego.z),lon=toLon(G.ego.x),tz=G.tz||approxIANA(lat,lon);return +new Intl.DateTimeFormat('en-US',{timeZone:tz,hour:'numeric',hour12:false}).format(new Date())%24}catch(e){return new Date().getHours()}}
  const CURVE=[.12,.08,.06,.06,.1,.25,.55,.95,1,.75,.6,.65,.7,.68,.7,.8,.95,1,.85,.6,.45,.35,.25,.18];
  T.mult=()=>{switch(T.level){case'none':return 0;case'light':return 0.35;case'heavy':return 2.2;case'jam':return 4.5;case'varied':return varied();case'live':return null;default:return 1}};
- const _tf=window.trafficFactor;
- window.trafficFactor=function(){const m=T.mult();if(T.level==='live'){const base=_tf(),tod=(()=>{try{return trafficFactor0()}catch(e){return 1}})()||1;return base/tod*CURVE[liveHour()]} /* swap sim-clock hour for the real local hour */return m===0?0:_tf()*m};
+ const _tf=window.trafficFactor,BOOST=1.75; /* every level above none runs ~75% busier than before */
+ window.trafficFactor=function(){const m=T.mult();if(T.level==='live'){const base=_tf(),tod=(()=>{try{return trafficFactor0()}catch(e){return 1}})()||1;return BOOST*base/tod*CURVE[liveHour()]} /* swap sim-clock hour for the real local hour */return m===0?0:BOOST*_tf()*m};
  /* heavy / jam: other traffic crawls, so you queue behind it */
  (window.PLAN_HOOKS=window.PLAN_HOOKS||[]).push((a,isEgo)=>{if(isEgo)return null;const m=T.level==='varied'?varied():T.mult();if(m==null||m<1.7)return null;const cap=m>=4?2.5+3*noise((a.s||0)/40):m>=2.8?6:9;return {v:cap}});
  /* none: clear existing traffic once */
