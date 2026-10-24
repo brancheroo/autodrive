@@ -2084,8 +2084,8 @@ function buildInterior(g,spec){
    const h=box(0.09,0.02,0.02,hdl,eye.x+0.28,eye.y-0.38,zw-sd*0.03);h.userData.inOnly=1;const ws=box(0.12,0.015,0.05,new THREE.MeshStandardMaterial({color:0x1a1b1d,roughness:0.5}),eye.x+0.08,eye.y-0.47,zw-sd*0.01);ws.userData.inOnly=1}}
  /* fine cabin detail: pedals (two on EVs / automatics), seat-belt buckles beside each front seat, B-pillar belt webbing, overhead dome light */
  if(spec.style!=='pod'&&!spec.roadster){const alu=new THREE.MeshStandardMaterial({color:0x9a9ea3,metalness:0.8,roughness:0.35}),blk2=new THREE.MeshStandardMaterial({color:0x121214,roughness:0.6}),red=new THREE.MeshStandardMaterial({color:0xb01818,roughness:0.5});
-  for(const [dz,w,h] of [[0.12,0.07,0.1],[-0.03,0.11,0.07]]){const pd=box(0.012,h,w,alu,eye.x+0.78,eye.y-0.98,eye.z+dz);pd.rotation.z=0.5} /* accelerator (right) and wide brake pedal */
-  for(const sd of [1,-1]){const zz=sd*W/1.9*0.37*1.9/1.9;const bk=box(0.05,0.035,0.025,blk2,eye.x-0.05,eye.y-0.66,sd*W*0.185-sd*0.0);const bt=box(0.012,0.012,0.016,red,eye.x-0.035,eye.y-0.64,sd*W*0.185);
+  for(const [dz,w,h] of [[0.12,0.07,0.1],[-0.03,0.11,0.07]]){const pd=box(0.012,h,w,alu,eye.x+0.6,eye.y-0.95,eye.z+dz);pd.rotation.z=0.5} /* accelerator (right) and wide brake pedal */
+  for(const sd of [1,-1]){const bk=box(0.05,0.035,0.025,blk2,eye.x-0.05,eye.y-0.66,sd*W*0.185-sd*0.0);const bt=box(0.012,0.012,0.016,red,eye.x-0.035,eye.y-0.64,sd*W*0.185);
    const wb=box(0.006,0.62,0.05,blk2,eye.x-0.42,eye.y-0.25,sd*W*0.43);wb.rotation.x=sd*0.12;wb.userData.inOnly=1} /* buckle stalks with red release buttons, belt webbing down the B-pillar */
   const dl=box(0.14,0.012,0.07,new THREE.MeshStandardMaterial({color:0xf3f1ea,emissive:0x3a3830,roughness:0.4}),eye.x+0.1,spec.H-0.07,0);dl.userData.inOnly=1} /* overhead dome / reading light */
  /* brand dash signatures (from official / owner photos) */
