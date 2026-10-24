@@ -2068,7 +2068,7 @@ function buildInterior(g,spec){
  if(spec.style!=='pod'&&!spec.roadster)for(const s of [1,-1]){const p=box(0.045,0.8,0.06,pil,fFront+0.14,dTop+0.38,s*W*0.45);p.rotation.z=0.7;p.userData.inOnly=1}
  if(!spec.roadster)box(spec.L*0.55,0.02,W*0.86,new THREE.MeshStandardMaterial({color:0x8a857d,...INT.suede,side:THREE.DoubleSide,roughness:1}),eye.x-0.3,spec.H-0.05,0).userData.inOnly=1;
  // seats with bolsters + headrests
- const seatM=new THREE.MeshStandardMaterial({color:IM.seat,...(IM.mat==='cloth'?{...INT.cloth,map:null}:INT.leather)});
+ const seatM=new THREE.MeshStandardMaterial({color:IM.seat,...(IM.mat==='cloth'?{...INT.cloth,map:null}:{...INT.leather,map:null})}); /* texture diffuse maps carry their own colour (red wool, beige leather): keep grain via normal/roughness only */
  /* SCULPTED SEATS: wedge cushion, reclined backrest, curved side bolsters, perforated inserts with contrast stitching, rounded headrest */
  const insM=seatM.clone();insM.color=new THREE.Color(IM.seat).multiplyScalar(0.82);if(IM.quilt){insM.bumpMap=quiltTex();insM.bumpScale=0.012;insM.map=quiltLines();insM.roughness=0.5}else if(IM.mat!=='cloth'){insM.bumpMap=perfTex();insM.bumpScale=0.004;insM.roughness=0.55} /* same leather, darker insert with pressed perforations */const stitchM=new THREE.MeshStandardMaterial({color:IM.mat==='cloth'?0x6a6a6a:new THREE.Color(IM.seat).getHSL({}).l>0.5?0x7a5a3a:0xbfae90,roughness:0.8});
  for(const s of spec.style==='pod'?[0.45,-0.45]:[0.37,-0.37]){const z=s*W/1.9,sx=eye.x+0.12,sy=eye.y-0.72,S=new THREE.Group();S.position.set(sx,sy,z);I.add(S);const ST=(MODEL[spec.id]||{}).seat,SPT=ST==='sport'?1.7:ST==='lounge'?0.6:1; /* sport: deep bolsters · lounge: flat, wide limousine seats with a headrest pillow */ /* sport seats: deep side bolsters */const b2=(w,h,d,m,x,y,zz,rz=0,rx=0)=>{const o=new THREE.Mesh(softBox(w,h,d,m===stitchM?0:0.035),m);o.position.set(x,y,zz);o.rotation.set(rx,0,rz);S.add(o);return o};
@@ -2101,7 +2101,7 @@ function buildInterior(g,spec){
  if(spec.wheel!=='none'){
   const w=new THREE.Group();rel(w,0.44,0.31,0,0.38);w.rotateY(Math.PI/2);w.rotateZ(0.0);
   const inner=new THREE.Group();w.add(inner);
-  const blk=new THREE.MeshStandardMaterial({color:IM.wheel||0x151515,...INT.leather}); /* int.wheel: light wheels (ID. Buzz) */
+  const blk=new THREE.MeshStandardMaterial({color:IM.wheel||0x151515,...INT.leather,map:null}); /* int.wheel: light wheels (ID. Buzz) */
   if(spec.wheel==='f1'){ /* F1-style wheel: carbon body, rubber grips, shift-light bar, buttons, rotaries, paddles; centre screen shows the car's data (drawn by mods/83-f1wheel.js) */
    const carbon=new THREE.MeshStandardMaterial({map:typeof carbonTex==='function'?carbonTex():null,color:0x2a2c30,roughness:0.35,metalness:0.4}),grip=new THREE.MeshStandardMaterial({color:0x0c0c0c,roughness:0.95}),alu=new THREE.MeshStandardMaterial({color:0xb8bcc2,metalness:0.9,roughness:0.25});
    const sh=new THREE.Shape();sh.moveTo(-0.15,-0.075);sh.lineTo(0.15,-0.075);sh.quadraticCurveTo(0.2,-0.07,0.2,0.0);sh.lineTo(0.19,0.07);sh.quadraticCurveTo(0.17,0.1,0.12,0.1);sh.lineTo(-0.12,0.1);sh.quadraticCurveTo(-0.17,0.1,-0.19,0.07);sh.lineTo(-0.2,0.0);sh.quadraticCurveTo(-0.2,-0.07,-0.15,-0.075);
