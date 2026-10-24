@@ -10572,8 +10572,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    const tr=-ay/9.81*sp.roll*Math.PI/180,tp=-axc/9.81*sp.pitch*Math.PI/180; /* lean out of the turn; nose dips under braking */
    const w=Math.sqrt(sp.k),c=2*sp.z*w;S.rv+=(w*w*(tr-S.r)-c*S.rv)*dt;S.r+=S.rv*dt;S.pv+=(w*w*(tp-S.p)-c*S.pv)*dt;S.p+=S.pv*dt; /* spring-damper: overshoot and settle */
    S.r=clamp(S.r,-0.12,0.12);S.p=clamp(S.p,-0.08,0.08);if(Math.abs(S.r)<1e-4&&Math.abs(S.p)<1e-4)return;
-   S.applied={m,q:m.quaternion.clone()};m.rotateX(S.r);m.rotateZ(S.p);m.updateMatrixWorld(true)},
-  postRender(){if(S.applied){S.applied.m.quaternion.copy(S.applied.q);S.applied.m.updateMatrixWorld(true);S.applied=null}}});
+   S.applied={m,r:S.r,p:S.p};m.rotateX(S.r);m.rotateZ(S.p);m.updateMatrixWorld(true)},
+  postRender(){if(S.applied){const A=S.applied;A.m.rotateZ(-A.p);A.m.rotateX(-A.r);A.m.updateMatrixWorld(true);S.applied=null} /* undo in reverse, so the drift slip's own undo still matches */}});
 })();
 </script>
 <!--/mods-->
