@@ -10536,6 +10536,46 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  MODS.push({id:'shutlines'});
 })();
 </script>
+<script>/* mods/99d-physics.js */
+/* Vehicle physics pass.
+   (1) Per-car tyre grip (PHYS.gripK): a grip multiplier from the car's tyre class — performance tyres on sports/hypercars,
+       touring tyres on luxury cars, all-season on SUVs and vans, narrow bias-era rubber on classics — with load sensitivity
+       (heavier cars get relatively less grip per kilogram: μ falls ~8% per doubling of mass) and aerodynamic downforce that
+       grows with v² on cars that carry it (spec.gripG ≥ 2). The planner uses it where it drives at the limit (chase modes:
+       Cannonball / Express / Drift), so corner speeds follow each car's real grip; normal driving keeps its comfort limits.
+   (2) Weight transfer you can see: a spring-damper body that rolls out of corners and dives under braking / squats under
+       acceleration, with per-car roll and pitch stiffness and centre-of-gravity height (soft limousines and tall vans lean,
+       sports cars stay flat). Applied just before drawing and undone after, like the drift slip, so placement and the
+       planner never see it. */
+(function(){
+ const tyre=spec=>{if(spec.gripG)return spec.gripG/1.5; /* explicit performance figure (hypercars, racers) */
+  const d=spec.dash,st=spec.style,hp=+spec.hp||200;
+  if(d==='classic'||d==='yugo'||/wagon70|starfire|taxi/.test(spec.id))return 0.78; /* bias-era / budget rubber */
+  if(st==='van'||spec.coach||spec.ecosemi||spec.keitruck)return 0.85;
+  if(st==='suv')return 0.92;
+  if(st==='coupe'&&hp>=500)return 1.12; /* summer performance tyres */
+  if(hp>=600)return 1.05;return 1.0};
+ const massOf=spec=>((typeof ENERGY!=='undefined'&&ENERGY[spec.id])||{}).kg||1800;
+ window.PHYS={tyre,
+  gripK(spec,v){const load=Math.pow(1800/massOf(spec),0.12),down=spec.gripG>=2?1+Math.min(1.5,(v||0)*(v||0)/4000):1;return clamp(tyre(spec)*load*down,0.5,4)},
+  susp(spec){const st=spec.style,tall=spec.H>1.75,soft=/s580|pullman|century|escalade|wagon70|starfire|taxi|lucid|i7/.test(spec.id);
+   if(spec.gripG>=2||spec.formulae)return {roll:0.4,pitch:0.3,k:60,z:0.9};
+   if(st==='coupe')return {roll:1.6,pitch:1.1,k:28,z:0.7};
+   return {roll:(soft?4.5:tall?4:2.8)*(st==='van'?1.2:1),pitch:soft?3.2:tall?2.8:2,k:soft?12:18,z:soft?0.45:0.55}}}; /* degrees per g, spring stiffness, damping ratio */
+ const S={r:0,rv:0,p:0,pv:0,lastH:null,lastV:null,lastT:0,applied:null};
+ MODS.push({id:'physics',
+  start(){Object.assign(S,{r:0,rv:0,p:0,pv:0,lastH:null,lastV:null,applied:null})},
+  preRender(){const G=typeof game!=='undefined'?game:null,now=performance.now(),dt=Math.min(0.05,(now-(S.lastT||now))/1000);S.lastT=now;
+   if(!G||!G.ego||!G.ego.mesh||!G.spec||G.paused||dt<=0)return;const e=G.ego,m=e.mesh,sp=PHYS.susp(G.spec);
+   const h=e.head||0;let yr=0;if(S.lastH!=null){let d=h-S.lastH;d=Math.atan2(Math.sin(d),Math.cos(d));yr=d/dt}S.lastH=h;
+   const ax=S.lastV!=null?(e.v-S.lastV)/dt:0;S.lastV=e.v;const ay=clamp(e.v*yr,-15,15),axc=clamp(ax,-12,8);
+   const tr=-ay/9.81*sp.roll*Math.PI/180,tp=-axc/9.81*sp.pitch*Math.PI/180; /* lean out of the turn; nose dips under braking */
+   const w=Math.sqrt(sp.k),c=2*sp.z*w;S.rv+=(w*w*(tr-S.r)-c*S.rv)*dt;S.r+=S.rv*dt;S.pv+=(w*w*(tp-S.p)-c*S.pv)*dt;S.p+=S.pv*dt; /* spring-damper: overshoot and settle */
+   S.r=clamp(S.r,-0.12,0.12);S.p=clamp(S.p,-0.08,0.08);if(Math.abs(S.r)<1e-4&&Math.abs(S.p)<1e-4)return;
+   S.applied={m,q:m.quaternion.clone()};m.rotateX(S.r);m.rotateZ(S.p);m.updateMatrixWorld(true)},
+  postRender(){if(S.applied){S.applied.m.quaternion.copy(S.applied.q);S.applied.m.updateMatrixWorld(true);S.applied=null}}});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
