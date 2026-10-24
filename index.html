@@ -10603,6 +10603,16 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   if(IM.mat==='leather'){const st=new THREE.MeshBasicMaterial({color:new THREE.Color(IM.seat||0x888888).getHSL({}).l>0.5?0x6a4a2a:0xcdbb98});add(new THREE.BoxGeometry(0.004,0.003,W*0.86),st,fFront-0.008,dTop-0.012,0)}
   /* Tesla: hidden slot vent running the full width of the dash */
   if(/tesla/i.test(spec.dash||''))add(new THREE.BoxGeometry(0.01,0.008,W*0.88),new THREE.MeshStandardMaterial({color:0x050505,roughness:1}),fFront-0.004,dTop-0.04,0);
+  /* steering-wheel controls on the spokes: Tesla scroll wheels, Mercedes/Porsche touch pads, BMW roller + button clusters, generic button pads */
+  const Wm=typeof wheelMesh!=='undefined'&&wheelMesh;if(Wm&&spec.wheel!=='f1'&&spec.wheel!=='none'){const D=spec.dash||'',dk=new THREE.MeshStandardMaterial({color:0x101012,roughness:0.4}),al=new THREE.MeshStandardMaterial({color:0xb8bcc2,metalness:0.9,roughness:0.25}),gl=new THREE.MeshPhysicalMaterial({color:0x0a0a0c,roughness:0.08,clearcoat:1});
+   for(const sd of [1,-1]){const z=sd*0.095,mk=(geo,mat,y=0,dz=0)=>{const o=new THREE.Mesh(geo,mat);o.position.set(-0.03,y,z+dz);Wm.add(o);return o};
+    if(/tesla|cybercab/.test(D)){const sw=mk(new THREE.CylinderGeometry(0.016,0.016,0.012,16),al);sw.rotation.x=Math.PI/2;mk(new THREE.BoxGeometry(0.004,0.05,0.05),dk)} /* scroll wheel on a black pad */
+    else if(/mercedes|porsche/.test(D))mk(new THREE.BoxGeometry(0.006,0.05,0.06),gl) /* capacitive touch panel */
+    else if(D==='bmw'){mk(new THREE.BoxGeometry(0.006,0.055,0.06),dk);const rl=mk(new THREE.CylinderGeometry(0.012,0.012,0.016,14),al,0,sd*0.02);rl.rotation.x=Math.PI/2}
+    else{mk(new THREE.BoxGeometry(0.006,0.045,0.055),dk);for(let i=0;i<4;i++)mk(new THREE.BoxGeometry(0.004,0.008,0.012),al,(i>>1?1:-1)*0.012,(i&1?1:-1)*0.014)}}}
+  /* centre console: twin cupholders and the gear selector each maker uses (column stalk / screen on Tesla, Mercedes and BMW i7; a short lever elsewhere) */
+  {const cx=eye.x+0.12,cy=eye.y-0.52+0.0005,cz=eye.z+(-eye.z),dk=new THREE.MeshStandardMaterial({color:0x080809,roughness:0.9});for(const dx of [-0.05,0.05]){const c=new THREE.Mesh(new THREE.CircleGeometry(0.036,20),dk);c.rotation.x=-Math.PI/2;c.position.set(cx-0.2+dx,cy,cz);I.add(c)}
+   if(!/tesla|cybercab|mercedes|bmw|lucid/.test(spec.dash||'')&&!/^(seal|atto3|sealion7)$/.test(spec.scratch||'')){const lv=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.016,0.09,10),new THREE.MeshStandardMaterial({color:0x1a1a1c,roughness:0.5}));lv.position.set(cx+0.08,cy+0.045,cz);I.add(lv);const kb=new THREE.Mesh(new THREE.SphereGeometry(0.024,12,10),new THREE.MeshStandardMaterial({color:0x2a2a2c,roughness:0.4}));kb.scale.set(1,0.8,0.8);kb.position.set(cx+0.08,cy+0.095,cz);I.add(kb)}}
  }catch(e){console.warn('cabin-detail',e)}return r};
  MODS.push({id:'cabinDetail'});
 })();
