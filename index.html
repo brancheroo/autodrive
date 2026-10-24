@@ -1866,7 +1866,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  const head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
  const ny=sh.clr+(sh.nose*H-sh.clr)*0.86,ty=Math.min(sh.clr+(sh.deck*H*0.93-sh.clr)*0.72,P.belt(0.03)-0.07); /* lamps where the rounded nose/tail is still full width */
  const drl=md.drl||'pair';
- if(drl==='tesla'){for(const s of [1,-1])onEnd(true,s*W*0.34,ny+0.01,0.42,0.085,head)}
+ if(drl==='tesla'){for(const s of [1,-1]){onEnd(true,s*W*0.34,ny+0.01,0.42,0.09,gloss,0.02);onEnd(true,s*W*0.34,ny+0.04,0.38,0.016,head,0.03);onEnd(true,s*W*0.36,ny-0.005,0.07,0.035,head,0.03)}} /* dark glossy lens, slim DRL strip along its top edge, small projector */
  else if(drl==='teslaJ'){onEnd(true,0,ny+0.04,W*0.94,0.022,head);for(const s of [1,-1])onEnd(true,s*W*0.36,ny-0.1,0.26,0.06,head)}
  else if(drl==='bar'){onEnd(true,0,ny,W*0.86,0.03,head)}
  else if(drl==='lucid'){onEnd(true,0,ny+0.02,W*0.9,0.018,head);for(const s of [1,-1]){onEnd(true,s*W*0.38,ny-0.06,0.18,0.05,head);onEnd(true,s*W*0.43,ny-0.2,0.025,0.18,head)}}
@@ -10531,7 +10531,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   g.add(G);g.userData.seams=G;const hb=g.userData.body;if(hb&&hb.isObject3D&&hb!==g){/* cabin view hides ud.body: seams are exterior, hide with it */hb.add(G)}}
  const _bc=window.buildCar;
  window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&!spec.style?.includes('pod')&&!SKIP.some(k=>spec[k])&&MODEL[spec.id]&&!g.userData.seams)addSeams(g,spec);
-  g.traverse(o=>{const m=o.material;if(m&&m.isMeshPhysicalMaterial&&m.transparent&&m.opacity<0.9&&m.metalness<0.1&&!m.userData.glassUp){m.userData.glassUp=1;m.ior=1.52;m.specularIntensity=1;m.reflectivity=0.6;m.envMapIntensity=(m.envMapIntensity||1)*1.4;m.needsUpdate=true}})}catch(e){console.warn('shutlines',e)}return g};
+  g.traverse(o=>{const m=o.material;if(m&&m.isMeshPhysicalMaterial&&m.transparent&&m.opacity<0.9&&m.metalness<0.1&&!m.userData.glassUp){m.userData.glassUp=1;m.ior=1.52;m.specularIntensity=1;m.reflectivity=0.75;m.envMapIntensity=(m.envMapIntensity||1)*1.8;if(m.opacity>0.5)m.opacity=Math.max(m.opacity,0.86); /* exterior glass reads mostly as reflection, like real tinted glass from outside (the cabin view hides it) */m.needsUpdate=true}})}catch(e){console.warn('shutlines',e)}return g};
  MODS.push({id:'shutlines'});
 })();
 </script>
