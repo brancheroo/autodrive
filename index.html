@@ -10524,8 +10524,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   const GC=GEO[spec.id]||(GEO[spec.id]=(()=>{const geos=[];for(const s of seams(spec)){for(const sd of s.side?[1,-1]:[1]){const v=s.pts.map(p=>new THREE.Vector3(p[0],p[1],s.side?sd*p[2]:p[2]));if(v.length<2)continue;
    const tg=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v),v.length*2,0.0035,4,false);tg.userData.shared=true;geos.push(tg)}}return geos})()); /* built once per model, shared by every copy in traffic */
   for(const tg of GC)G.add(new THREE.Mesh(tg,seamM));
-  {const P=mkProfile(spec),R=P.R+0.01,depth=spec.W*0.36,lg=LIN[spec.id]||(LIN[spec.id]=(()=>{const c=new THREE.CylinderGeometry(R,R,depth,24,1,true,-Math.PI/2,Math.PI).rotateX(Math.PI/2);c.userData.shared=true;return c})()); /* baked wheel-well shading: a matte near-black liner under each arch, so the well reads dark like a real one instead of showing light through */
-   for(const ax of P.axles)for(const sd of [1,-1]){const m=new THREE.Mesh(lg,linM);m.position.set(ax,spec.wr,sd*(spec.W/2-depth/2-0.015));m.rotation.z=Math.PI/2*0+0;G.add(m)}}
+  {const P=mkProfile(spec),R=P.R+0.01,depth=spec.W*0.36,lg=LIN[spec.id]||(LIN[spec.id]=(()=>{const c=new THREE.CylinderGeometry(R,R,depth,24,1,true,Math.PI/2,Math.PI).rotateX(Math.PI/2);c.userData.shared=true;return c})()); /* baked wheel-well shading: a matte near-black liner under each arch, so the well reads dark like a real one instead of showing light through */
+   for(const ax of P.axles)for(const sd of [1,-1]){const m=new THREE.Mesh(lg,linM);m.position.set(ax,spec.wr,sd*(spec.W/2-depth/2-0.015));G.add(m)}}
   g.add(G);g.userData.seams=G;const hb=g.userData.body;if(hb&&hb.isObject3D&&hb!==g){/* cabin view hides ud.body: seams are exterior, hide with it */hb.add(G)}}
  const _bc=window.buildCar;
  window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&!spec.style?.includes('pod')&&!SKIP.some(k=>spec[k])&&MODEL[spec.id]&&!g.userData.seams)addSeams(g,spec);
