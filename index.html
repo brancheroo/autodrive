@@ -10502,6 +10502,34 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  MODS.push({id:'lowroof'});
 })();
 </script>
+<script>/* mods/99c-shutlines.js */
+/* Graphical accuracy pass. (1) Door shut lines: thin dark seams pressed into the painted body along the real door cuts —
+   front-door leading edge just behind the front wheel arch, the B-pillar split, and the rear-door trailing edge ahead of the
+   rear arch (2-door coupes: one long door) — plus the bonnet and boot shut lines across the top. They follow the body
+   surface using the car's own profile (halfAt), so they sit on every profile-built car. Custom-built vehicles are skipped.
+   (2) Glass: real automotive glass reflects much more at grazing angles; raise its specular/ior so side windows pick up the
+   sky the way they do in photos. */
+(function(){
+ const SKIP=['angletruck','coach','dronewagon','ebike','formulae','hbike','isetta','keitruck','luce','moped','scratch','solarcar','vtol','wiener','gargantua','ecosemi','hyper','aegis'];
+ const seamM=new THREE.MeshBasicMaterial({color:0x050505}),PC={};
+ function seams(spec){if(PC[spec.id])return PC[spec.id];const P=mkProfile(spec),{L,wr}=spec,uOf=x=>(x+L/2)/L,[fx,rx]=P.axles,grp=[];
+  const vline=u=>{const pts=[],y0=P.bottom(u)+0.06,y1=P.belt(u)-0.01;for(let k=0;k<=10;k++){const y=y0+(y1-y0)*k/10;pts.push([P.xOf(u),y,P.halfAt(u,y)+0.002])}return pts};
+  const hline=(u,n=8)=>{const pts=[],y=P.top(u)+0.002,hw=P.half(u)*0.8;for(let k=0;k<=n;k++){const z=-hw+2*hw*k/n;pts.push([P.xOf(u),y,z])}return pts};
+  const two=spec.style==='coupe'||spec.style==='roadster';
+  const cuts=two?[uOf(fx-wr*1.25),uOf(fx-wr*1.25-Math.min(1.25,(fx-rx)*0.5))]:[uOf(fx-wr*1.25),uOf(fx-wr*1.25-(fx-rx-wr*2.45)*0.52),uOf(rx+wr*1.2)];
+  for(const u of cuts)if(u>0.05&&u<0.95)grp.push({side:true,pts:vline(u)});
+  const cw=P.sh.cowl,tl=P.sh.tail||0;if(cw&&cw<0.97)grp.push({side:false,pts:hline(Math.min(0.97,cw+0.015))});if(tl>0.02)grp.push({side:false,pts:hline(Math.max(0.03,tl-0.01))});
+  return PC[spec.id]=grp}
+ function addSeams(g,spec){const G=new THREE.Group();G.userData.noDent=true;
+  for(const s of seams(spec)){for(const sd of s.side?[1,-1]:[1]){const v=s.pts.map(p=>new THREE.Vector3(p[0],p[1],s.side?sd*p[2]:p[2]));if(v.length<2)continue;
+   const m=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v),v.length*2,0.0035,4,false),seamM);G.add(m)}}
+  g.add(G);g.userData.seams=G;const hb=g.userData.body;if(hb&&hb.isObject3D&&hb!==g){/* cabin view hides ud.body: seams are exterior, hide with it */hb.add(G)}}
+ const _bc=window.buildCar;
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&!spec.style?.includes('pod')&&!SKIP.some(k=>spec[k])&&MODEL[spec.id]&&!g.userData.seams)addSeams(g,spec);
+  g.traverse(o=>{const m=o.material;if(m&&m.isMeshPhysicalMaterial&&m.transparent&&m.opacity<0.9&&m.metalness<0.1&&!m.userData.glassUp){m.userData.glassUp=1;m.ior=1.52;m.specularIntensity=1;m.reflectivity=0.6;m.envMapIntensity=(m.envMapIntensity||1)*1.4;m.needsUpdate=true}})}catch(e){console.warn('shutlines',e)}return g};
+ MODS.push({id:'shutlines'});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
