@@ -601,6 +601,14 @@ function waitFor(fn,ms){return new Promise(res=>{const t0=performance.now();cons
 function densify(pts,maxd){const out=[pts[0]];for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],d=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.ceil(d/maxd);for(let k=1;k<=n;k++){const t=k/n,q=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];if(a[2]!==undefined&&b[2]!==undefined)q.push(a[2]+(b[2]-a[2])*t);out.push(q)}}return out}
 function ribbon(buf,pts,w,y,off=0){ // pts [[x,z(,y)]..]
  if(pts.length<2)return;pts=densify(pts,HIGH?3.5:6);const L=[],R=[];
+ /* road engineering: level across the carriageway and a smoothed longitudinal profile with grades capped at ~10%, kept within
+    a shallow cut/fill (−0.35…+0.6 m) of the real ground, instead of copying every terrain bump edge by edge. Bridges/tunnels
+    (explicit p[2]) keep their own profile. */
+ const RH=[];{const n=pts.length,gc=pts.map(p=>p[2]!==undefined?null:groundY(p[0],p[1])),D=[0];for(let i=1;i<n;i++)D.push(D[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+  for(let i=0;i<n;i++){if(gc[i]===null){RH.push(null);continue}let sum=0,c=0;for(let j=i-2;j<=i+2;j++)if(j>=0&&j<n&&gc[j]!==null){sum+=gc[j];c++}RH.push(sum/c)}
+  for(let i=1;i<n;i++)if(RH[i]!==null&&RH[i-1]!==null){const d=D[i]-D[i-1];RH[i]=clamp(RH[i],RH[i-1]-0.1*d,RH[i-1]+0.1*d)}
+  for(let i=n-2;i>=0;i--)if(RH[i]!==null&&RH[i+1]!==null){const d=D[i+1]-D[i];RH[i]=clamp(RH[i],RH[i+1]-0.1*d,RH[i+1]+0.1*d)}
+  for(let i=0;i<n;i++)if(RH[i]!==null)RH[i]=clamp(RH[i],gc[i]-0.35,gc[i]+0.6)}
  for(let i=0;i<pts.length;i++){
   const p=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
   let n1=null,n2=null;
@@ -610,7 +618,7 @@ function ribbon(buf,pts,w,y,off=0){ // pts [[x,z(,y)]..]
   const s=n1&&n2?1/Math.max(0.72,n[0]*n1[0]+n[1]*n1[1]):1; // capped miter: sharp corners don't spike out
   // n points to the right of travel (x east,z south): right of (dx,dz) is (-dz,dx)
   const hw=w/2*s,o=off*s,rx=p[0]+n[0]*(o+hw),rz=p[1]+n[1]*(o+hw),lx=p[0]+n[0]*(o-hw),lz=p[1]+n[1]*(o-hw);
-  R.push([rx,(p[2]!==undefined?p[2]:groundY(rx,rz))+y,rz]);L.push([lx,(p[2]!==undefined?p[2]:groundY(lx,lz))+y,lz])}
+  const hy=p[2]!==undefined?p[2]:RH[i];R.push([rx,hy+y,rz]);L.push([lx,hy+y,lz])} /* both edges at the centre-line height: level across */
  const u=w/4;let v=0,V=[0];for(let i=1;i<pts.length;i++){v+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1])/4;V.push(v)}
  for(let i=0;i<pts.length-1;i++){buf.tri(L[i],R[i],R[i+1],UP,[0,V[i]],[u,V[i]],[u,V[i+1]]);buf.tri(L[i],R[i+1],L[i+1],UP,[0,V[i]],[u,V[i+1]],[0,V[i+1]])}
 }
