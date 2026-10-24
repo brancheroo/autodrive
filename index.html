@@ -643,10 +643,6 @@ function flatPoly(buf,pts,y,col,abs=false){
  const Y=p=>abs?y:groundY(p[0],p[1])+y;
  for(const t of tris){const a=pts[t[0]],b=pts[t[1]],c=pts[t[2]];buf.tri([a[0],Y(a),a[1]],[b[0],Y(b),b[1]],[c[0],Y(c),c[1]],UP,[a[0]/6,a[1]/6],[b[0]/6,b[1]/6],[c[0]/6,c[1]/6],col)}}
 function polyArea(pts){let a=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];a+=p[0]*q[1]-q[0]*p[1]}return a/2}
-function flatPoly(buf,pts,y,col){
- const cont=pts.map(p=>new THREE.Vector2(p[0],p[1]));let tris;
- try{tris=THREE.ShapeUtils.triangulateShape(cont,[])}catch(e){return}
- for(const t of tris){const a=pts[t[0]],b=pts[t[1]],c=pts[t[2]];buf.tri([a[0],y,a[1]],[b[0],y,b[1]],[c[0],y,c[1]],UP,[a[0]/6,a[1]/6],[b[0]/6,b[1]/6],[c[0]/6,c[1]/6],col)}}
 function pip(pt,poly){let ins=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a[1]>pt[1])!==(b[1]>pt[1]))&&(pt[0]<(b[0]-a[0])*(pt[1]-a[1])/(b[1]-a[1])+a[0]))ins=!ins}return ins}
 
 // ============================================================ OSM TILE STREAMING
