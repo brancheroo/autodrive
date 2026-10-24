@@ -10570,7 +10570,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    const h=e.head||0;let yr=0;if(S.lastH!=null){let d=h-S.lastH;d=Math.atan2(Math.sin(d),Math.cos(d));yr=d/dt}S.lastH=h;
    const ax=S.lastV!=null?(e.v-S.lastV)/dt:0;S.lastV=e.v;const ay=clamp(e.v*yr,-15,15),axc=clamp(ax,-12,8);
    const tr=ay/9.81*sp.roll*Math.PI/180,tp=axc/9.81*sp.pitch*Math.PI/180; /* heading grows in a left turn and +x is forward, +z right: the roof swings to +z (out of a left turn) and the nose drops (−z rotation) under braking */ /* lean out of the turn; nose dips under braking */
-   const w=Math.sqrt(sp.k),c=2*sp.z*w;S.rv+=(w*w*(tr-S.r)-c*S.rv)*dt;S.r+=S.rv*dt;S.pv+=(w*w*(tp-S.p)-c*S.pv)*dt;S.p+=S.pv*dt; /* spring-damper: overshoot and settle */
+   let tw=0;const wind=(typeof WX!=='undefined'&&WX.wind)||0;if(wind>8){const rel=Math.sin((WX.windDir||0)-h),side=G.spec.H*G.spec.L/(massOf(G.spec)/1000),gust=0.65+0.35*Math.sin(now/700)*Math.sin(now/1900);tw=clamp(wind*wind*0.00012*side*rel*gust,-3,3)*Math.PI/180} /* crosswind: side area ÷ mass sets how far a gust pushes the body — tall light vans sway, low heavy saloons barely */
+   const w=Math.sqrt(sp.k),c=2*sp.z*w;S.rv+=(w*w*(tr+tw-S.r)-c*S.rv)*dt;S.r+=S.rv*dt;S.pv+=(w*w*(tp-S.p)-c*S.pv)*dt;S.p+=S.pv*dt; /* spring-damper: overshoot and settle */
    S.r=clamp(S.r,-0.12,0.12);S.p=clamp(S.p,-0.08,0.08);if(Math.abs(S.r)<1e-4&&Math.abs(S.p)<1e-4)return;
    S.applied={m,r:S.r,p:S.p};m.rotateX(S.r);m.rotateZ(S.p);m.updateMatrixWorld(true)},
   postRender(){if(S.applied){const A=S.applied;A.m.rotateZ(-A.p);A.m.rotateX(-A.r);A.m.updateMatrixWorld(true);S.applied=null} /* undo in reverse, so the drift slip's own undo still matches */}});
