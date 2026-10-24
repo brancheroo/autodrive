@@ -2078,7 +2078,7 @@ function buildInterior(g,spec){
   b3(0.1,0.2,0.28,seatM,-0.01,0.82,0);if(ST==='lounge')b3(0.07,0.13,0.24,insM,0.07,0.8,0); /* Maybach/S-Class style neck pillow */for(const k of [-1,1]){const pst=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.1,8),new THREE.MeshStandardMaterial({color:0xc0c4c8,metalness:0.9,roughness:0.2}));pst.position.set(-0.01,0.7,k*0.07);B.add(pst)}}
  interiorDetails(I,spec,eye,mid,dTop,fFront,dashMat,seatM,trim,AMB,box);
  /* door cards: armrest, speaker grille (chrome Burmester-style on Mercedes), pull handle and window-switch pod */
- if(spec.style!=='pod'&&!spec.roadster){const grilleM=new THREE.MeshStandardMaterial(spec.dash==='mercedes'?{color:0xd0d4d8,metalness:1,roughness:0.3}:{color:0x0e0f10,roughness:0.9}),hdl=new THREE.MeshStandardMaterial({color:0xbfc3c7,metalness:0.9,roughness:0.25});
+ if(spec.style!=='pod'&&!spec.roadster){const grilleM=new THREE.MeshStandardMaterial(spec.dash==='mercedes'?{color:0xd0d4d8,metalness:0.55,roughness:0.35,emissive:0x2a2c2e}:{color:0x0e0f10,roughness:0.9}),hdl=new THREE.MeshStandardMaterial({color:0xbfc3c7,metalness:0.9,roughness:0.25});
   for(const sd of [1,-1]){const zw=sd*W*0.4;const ar=box(0.5,0.05,0.09,seatM,eye.x+0.02,eye.y-0.5,zw);ar.userData.inOnly=1;
    const sp=new THREE.Mesh(new THREE.CircleGeometry(0.065,24),grilleM);sp.position.set(eye.x+0.3,eye.y-0.72,zw-sd*0.026);sp.rotation.y=sd>0?Math.PI:0;sp.userData.inOnly=1;I.add(sp);
    const h=box(0.09,0.02,0.02,hdl,eye.x+0.28,eye.y-0.38,zw-sd*0.03);h.userData.inOnly=1;const ws=box(0.12,0.015,0.05,new THREE.MeshStandardMaterial({color:0x1a1b1d,roughness:0.5}),eye.x+0.08,eye.y-0.47,zw-sd*0.01);ws.userData.inOnly=1}}
