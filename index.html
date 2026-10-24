@@ -10643,6 +10643,12 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   {const P=(profCache[spec.id]||{}).P||mkProfile(spec),sh=P.sh;if(sh&&sh.roof!=='glass'){const x0=P.xOf(sh.roofR||0.3),x1=P.xOf(sh.roofF||0.6),cm=new THREE.MeshBasicMaterial({colorWrite:false,depthWrite:false});
    const rc=add(new THREE.BoxGeometry(Math.abs(x1-x0),0.02,W*0.82),cm,(x0+x1)/2,spec.H-0.03,0);rc.castShadow=true;rc.renderOrder=-1}
    I.traverse(o=>{if(o.isMesh)o.receiveShadow=true})}
+  /* pillars and roof frame from the inside: the cabin view hides the body, which left the roof lining floating with sky showing
+     around the pillars. An inside copy of the car's own greenhouse (same shape, so no gaps) is lined in headliner fabric with
+     its glass left clear, slightly inset so it never fights the outer skin; it shows only in the cabin view. */
+  {const gh=g.children.find(o=>o.isMesh&&Array.isArray(o.material)&&o.material.length===3&&o.material[1].transparent);
+   if(gh){const lin=new THREE.MeshStandardMaterial({color:new THREE.Color(0x8a857d).multiplyScalar(0.75),roughness:1,side:THREE.DoubleSide}),gin=new THREE.MeshBasicMaterial({color:0x1a2128,transparent:true,opacity:0.08,depthWrite:false,side:THREE.DoubleSide});
+    const sh=new THREE.Mesh(gh.geometry,[lin,gin,lin]);sh.position.copy(gh.position);sh.rotation.copy(gh.rotation);sh.scale.copy(gh.scale).multiply(new THREE.Vector3(0.99,0.985,0.97));sh.userData.inOnly=1;sh.userData.noDent=true;I.add(sh)}}
   /* screen glow: one soft light at the centre screen, lit only at night (cheap: a single light, no shadows) */
   {const L=new THREE.PointLight(0x9fc4ff,0,1.6,2);L.position.set(eye.x+0.45,eye.y-0.22,0);I.add(L);g.userData.screenGlow=L}
  }catch(e){console.warn('cabin-detail',e)}return r};
