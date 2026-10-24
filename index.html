@@ -10664,6 +10664,26 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  MODS.push({id:'cabinDetail',frame(){const G=typeof game!=='undefined'?game:null,L=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.screenGlow;if(L)L.intensity=G.dark&&G.cam==='in'?0.6:0}}); /* glow only at night, only in the cabin view */
 })();
 </script>
+<script>/* mods/99f-yield.js */
+/* Traffic yields to emergency vehicles and motorcades, as drivers are required to: when an ambulance / fire engine (EVS)
+   or your motorcade (MOTORCADE) approaches, same-direction traffic ahead of it pulls to the right edge and comes to a full
+   stop, and oncoming traffic pulls to its own edge and stops; each car holds until the whole convoy has gone past, then
+   eases back into its lane and drives on. */
+(function(){
+ const PULL=2.4,DECEL=3.5;
+ function zones(G){const Z=[],e=G.ego;
+  if(window.EVS)for(const o of EVS.list)Z.push({rear:o.s-12,front:o.s+200}); /* an ambulance clears the road ahead of it */
+  if(window.MOTORCADE&&MOTORCADE.on&&MOTORCADE.units.length){let fa=0,ba=0;for(const u of MOTORCADE.units){const L=((u.m.userData.spec&&u.m.userData.spec.L)||4.8)+8;if(u.lead)fa+=L;else ba+=L}Z.push({rear:e.s-ba-10,front:e.s+fa+120,mc:true})}
+  return Z}
+ MODS.push({id:'yield',
+  sim(dt){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego||dt<=0)return;const Z=zones(G);
+   for(const a of G.agents){if(!a||a.loose||(a.kind!=='route'&&a.kind!=='oncoming'))continue;
+    const on=Z.some(z=>a.kind==='route'?(a.s>z.rear&&a.s<z.front):Math.abs(a.s-(z.rear+z.front)/2)<(z.front-z.rear)/2+40); /* oncoming cars in the convoy's stretch of road */
+    const side=Math.sign((a.off??(a.kind==='oncoming'?-1.85:1.85))||1);
+    if(on){a.yieldHold=true;a.offAdd=(a.offAdd||0)+(side*PULL-(a.offAdd||0))*Math.min(1,dt*1.6);a.v=Math.max(0,a.v-DECEL*dt);if(a.v<0.3)a.v=0}
+    else if(a.yieldHold){a.offAdd=(a.offAdd||0)*(1-Math.min(1,dt*0.8));if(Math.abs(a.offAdd)<0.05){a.offAdd=0;a.yieldHold=false}}}}}); /* released: drift back into the lane; the planner accelerates it again */
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
