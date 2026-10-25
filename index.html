@@ -10743,6 +10743,43 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  MODS.push({id:'paintfinish'});
 })();
 </script>
+<script>/* mods/99h-stickers.js */
+/* Bumper stickers (spec.stickers): a tailgate and bumper plastered with jokey stickers, each drawn once onto a small canvas
+   texture and shared by every copy of the car. Slightly faded and tilted, the way stickers end up after years in the sun. */
+(function(){
+ const S=[
+  ['MY OTHER CAR IS ALSO A FRYER','#ffd21a','#3a2a00'],
+  ['POWERED BY FRENCH FRIES','#c8102e','#fff'],
+  ['HONK IF YOU SMELL NUGGETS','#fff','#1a1a1a'],
+  ['0 MPG · 25 MPF (MILES PER FRY)','#2a6e3a','#fff'],
+  ['I BRAKE FOR DRIVE-THRUS','#1f4c8f','#fff'],
+  ['THIS CAR IS DRIVEN BY A WEBCAM','#f2f2f2','#c8102e'],
+  ['MY DASHCAM IS AN HONOR STUDENT','#ffef9a','#1a1a1a'],
+  ['DO NOT FOLLOW · CAMERA IS VERY CONFUSED','#ff7a1a','#111'],
+  ['ASK ME ABOUT MY GREASE TRAP','#fff','#2a2a2a'],
+  ['SUPER SIZE MY RANGE','#c8102e','#ffd21a'],
+  ['KEEP CALM AND FRY ON','#1a1a1a','#ffd21a'],
+  ['CAUTION: VEHICLE MAY STOP FOR ONION RINGS','#ffd21a','#111'],
+  ['COEXIST WITH CONDIMENTS','#5d7a45','#fff'],
+  ['IF YOU CAN READ THIS, PASS ME. I GO 55.','#fff','#1f4c8f'],
+  ['WOULD YOU LIKE FRIES WITH THAT? (FUEL)','#f2c318','#7a1010'],
+  ['STUDENT DRIVER (IT IS A COMPUTER)','#e8e8e8','#c8102e']];
+ const TEX={};
+ function tex(i){if(TEX[i])return TEX[i];const [t,bg,fg]=S[i],c=document.createElement('canvas');c.width=512;c.height=128;const x=c.getContext('2d');
+  x.fillStyle=bg;x.fillRect(0,0,512,128);x.strokeStyle=fg;x.lineWidth=6;x.strokeRect(8,8,496,112);x.fillStyle=fg;x.textAlign='center';x.textBaseline='middle';
+  let fs=46;x.font=`900 ${fs}px Impact, Arial Black, sans-serif`;while(x.measureText(t).width>470&&fs>18){fs-=2;x.font=`900 ${fs}px Impact, Arial Black, sans-serif`}x.fillText(t,256,66);
+  x.fillStyle='rgba(255,250,235,0.18)';x.fillRect(0,0,512,128); /* sun fade */
+  const tx=new THREE.CanvasTexture(c);tx.anisotropy=4;return TEX[i]=new THREE.MeshStandardMaterial({map:tx,roughness:0.7,polygonOffset:true,polygonOffsetFactor:-2})}
+ const GEO=new THREE.PlaneGeometry(0.26,0.065);GEO.userData.shared=true;
+ function stick(g,spec){const G=new THREE.Group(),{L,W,H}=spec,x=-L/2-0.012,rows=[[H*0.27,4],[H*0.38,3],[H*0.47,4],[H*0.56,3]];let n=0; /* bumper row, then three rows up the tailgate below the glass */
+  rows.forEach(([y,k],r)=>{for(let j=0;j<k;j++){const z=(j-(k-1)/2)*(W*0.84/k)+(r%2?0.03:-0.02),m=new THREE.Mesh(GEO,tex((n*7+r*3)%S.length));m.position.set(x,y,z);m.rotation.set(0,-Math.PI/2,((n*37)%9-4)*0.02);G.add(m);n++}});
+  for(const z of [W*0.47,-W*0.47]){const m=new THREE.Mesh(GEO,tex((z>0?5:11)));m.scale.set(0.8,0.8,1);m.position.set(-L/2+0.35,H*0.5,z+Math.sign(z)*0.012);m.rotation.y=z>0?0:Math.PI;G.add(m)} /* one on each rear quarter */
+  G.userData.noDent=true;(g.userData.body&&g.userData.body.isObject3D?g.userData.body:g).add(G);g.userData.stickers=G}
+ const _bc=window.buildCar;
+ window.buildCar=function(spec){const g=_bc.apply(this,arguments);try{if(spec&&spec.stickers&&!g.userData.stickers)stick(g,spec)}catch(e){console.warn('stickers',e)}return g};
+ MODS.push({id:'stickers'});
+})();
+</script>
 <script>/* mods/99i-tyres.js */
 /* Tyre sidewalls: raised grey lettering (brand ring + size code) on the outer sidewall of every wheel, sized from the tyre
    itself, so it turns with the wheel; one shared texture per run. */
