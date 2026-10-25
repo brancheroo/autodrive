@@ -2472,7 +2472,7 @@ function newAgent(spec,color,s,v,dir=1){if(spec.av&&spec.colors)color=spec.color
   if(!mesh.userData.driver&&mesh.userData.pax.length)mesh.userData.driver=mesh.userData.pax[0]}
  if(spec.style==='dualie'){const fy=mesh.userData.cabY||0.9;const d=buildDriver(spec,'drive','driver',new THREE.Vector3(0.62,fy+1.12,-0.5));mesh.add(d);mesh.userData.driver=d;if(Math.random()<0.5)mesh.add(buildDriver(spec,'rider','front',new THREE.Vector3(0.62,fy+1.1,0.5)))}scene.add(mesh);return{mesh,spec,s,v,dir,x:0,z:0,head:0,wheelA:0,stopT:0,handled:new Set(),kind:'route',av:!!spec.av}}
 const TRAFFIC_SPECS=[{style:'sedan',L:4.88,W:1.84,H:1.45,wb:2.825,wr:0.34,tname:'Camry'},{style:'cross',L:4.60,W:1.855,H:1.685,wb:2.69,wr:0.36,tname:'RAV4'},{style:'suv',L:5.35,W:2.06,H:1.93,wb:3.07,wr:0.40,tname:'Tahoe'},{style:'van',L:5.17,W:2.0,H:1.77,wb:3.06,wr:0.36,tname:'Sienna'},{style:'sedan',L:4.67,W:1.80,H:1.41,wb:2.73,wr:0.32,tname:'Civic'},{style:'suv',L:5.89,W:2.03,H:1.96,wb:3.68,wr:0.41,tname:'F-150'},{style:'cross',L:4.70,W:1.866,H:1.68,wb:2.70,wr:0.36,tname:'CR-V'}]; /* published dimensions of the best-selling US models */
-const TCOLS=['#e8e8e8','#111','#6d7176','#9ea3a8','#20355e','#7d1111','#f2f2f2','#2d2f33','#4b5a47','#a38c6b','#153a7a','#b8b8b8'];
+const TCOLS=['#f2f2f2','#e8e8e8','#f4f4f0','#ecedef','#e6e6e2','#111','#16171a','#0d0d0f','#1c1d20','#6d7176','#55595e','#7b7f84','#2d2f33','#9ea3a8','#b8b8b8','#20355e','#153a7a','#7d1111','#9b1b1b','#4b5a47','#a38c6b']; /* weighted to real US colour shares: ~25% white, 20% black, 20% grey, then silver, blue, red, other */
 async function geocode(q){
  const u=`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=7&lang=en&bbox=-125,24.3,-66.8,49.5`;
  const r=await fetch(u);const j=await r.json();
