@@ -2606,7 +2606,7 @@ function simplifyLL(pts,tol){const k=111320*Math.cos(pts[0][1]*Math.PI/180),keep
  return pts.filter((_,i)=>keep[i])}
 async function findStations(route,E){
  const line=simplifyLL(route.pts,400);
- const key='st2_'+(E.ice?'fuel':'dc')+'_'+Math.round(route.total/1000)+'_'+route.pts[0].map(v=>v.toFixed(3))+'_'+route.pts[route.pts.length-1].map(v=>v.toFixed(3));
+ const key='st2_'+(E.fry?'fry':E.ice?'fuel':'dc')+'_'+Math.round(route.total/1000)+'_'+route.pts[0].map(v=>v.toFixed(3))+'_'+route.pts[route.pts.length-1].map(v=>v.toFixed(3));
  const say=t=>{try{$('loadTxt').textContent=t}catch(e){}};
  const c=await IDB.get(key);if(c&&Date.now()-c.t<7*86400000){rememberStations(c.v);return c.v}
  let out=[];
@@ -2620,11 +2620,11 @@ async function findStations(route,E){
  if(!out.length){ // OSM fallback: corridor split into ~150 km segments, each with its own timeout
   const segs=[];let cur=[line[0]],acc=0;for(let i=1;i<line.length;i++){acc+=hav(line[i-1],line[i]);cur.push(line[i]);if(acc>150000||cur.length>=70){segs.push(cur);cur=[line[i]];acc=0}}if(cur.length>1)segs.push(cur);
   const seen=new Set();let fails=0;
-  for(let si=0;si<segs.length;si++){say(`Finding ${E.ice?'fuel stations':'chargers'} in OpenStreetMap · segment ${si+1}/${segs.length}…`);
+  for(let si=0;si<segs.length;si++){say(`Finding ${E.fry?'fast-food places (fry oil)':E.ice?'fuel stations':'chargers'} in OpenStreetMap · segment ${si+1}/${segs.length}…`);
    const pl=segs[si].map(p=>p[1].toFixed(4)+','+p[0].toFixed(4)).join(',');
-   const q=E.ice?`[out:json][timeout:25];node["amenity"="fuel"](around:2500,${pl});out 150;`:`[out:json][timeout:25];(node["amenity"="charging_station"](around:3500,${pl});way["amenity"="charging_station"](around:3500,${pl}););out center 200;`;
+   const q=E.fry?`[out:json][timeout:25];node["amenity"="fast_food"](around:2500,${pl});out 150;`:E.ice?`[out:json][timeout:25];node["amenity"="fuel"](around:2500,${pl});out 150;`:`[out:json][timeout:25];(node["amenity"="charging_station"](around:3500,${pl});way["amenity"="charging_station"](around:3500,${pl}););out center 200;`;
    let ok=false;for(let a=0;a<2&&!ok;a++){const u=OVERPASS[(opIdx+a)%OVERPASS.length];try{const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),30000);const r=await fetch(u,{method:'POST',body:'data='+encodeURIComponent(q),signal:ac.signal});clearTimeout(tm);if(!r.ok)continue;const j=await r.json();ok=true;
-    for(const e of j.elements){if(seen.has(e.id))continue;seen.add(e.id);const t=e.tags||{};const st={lat:e.lat||e.center.lat,lon:e.lon||e.center.lon,name:t.name||t.brand||t.operator||(E.ice?'Fuel station':'Charging station'),network:t.network||t.operator||t.brand||'',ports:+t.capacity||2,conn:Object.keys(t).filter(k=>/^socket:(type2_combo|tesla_supercharger|nacs|chademo)$/.test(k)&&t[k]!=='no').map(k=>/type2_combo/.test(k)?'J1772COMBO':/tesla|nacs/.test(k)?'TESLA':'CHADEMO'),addr:[t['addr:housenumber'],t['addr:street'],t['addr:city']].filter(Boolean).join(' '),src:'OpenStreetMap'};
+    for(const e of j.elements){if(seen.has(e.id))continue;seen.add(e.id);const t=e.tags||{};const st={lat:e.lat||e.center.lat,lon:e.lon||e.center.lon,name:t.name||t.brand||t.operator||(E.fry?'Fast food (fry oil)':E.ice?'Fuel station':'Charging station'),network:t.network||t.operator||t.brand||'',ports:+t.capacity||2,conn:Object.keys(t).filter(k=>/^socket:(type2_combo|tesla_supercharger|nacs|chademo)$/.test(k)&&t[k]!=='no').map(k=>/type2_combo/.test(k)?'J1772COMBO':/tesla|nacs/.test(k)?'TESLA':'CHADEMO'),addr:[t['addr:housenumber'],t['addr:street'],t['addr:city']].filter(Boolean).join(' '),src:'OpenStreetMap'};
      if(E.ice||st.conn.length||/Tesla|Supercharger|Electrify|EVgo|IONNA|ChargePoint|Rivian|Mercedes/i.test(st.network+st.name))out.push(st)}}catch(e){opIdx++}}
    if(!ok)fails++}
   out.partial=fails>0}
@@ -3790,7 +3790,7 @@ function startSoc(){return (+$('socIn').value)/100}
 function socPreview(){const E=ENERGY[selCar.id];$('socV').textContent=$('socIn').value+'%';const whm=jPerM(E,24)/3600*1609.34;const mi=capJ(E)*startSoc()/(jPerM(E,24))/1609.34;$('socRange').textContent=E.ice?`≈ ${Math.round(mi)} mi on ${Math.round(E.tankL*startSoc())} L of fuel (${Math.round(1609.34/(jPerM(E,24)/(FUEL_KWH_L*3.6e6))/3.785)} mpg highway est.)`:`≈ ${Math.round(mi)} mi at 55 mph · ${(E.kwh*startSoc()).toFixed(0)} of ${E.kwh} kWh · ${Math.round(whm)} Wh/mi`}
 $('socIn').oninput=socPreview;try{$('nlrKey').value=localStorage.getItem('nlrKey')||''}catch(e){}$('nlrKey').onchange=ev=>{try{localStorage.setItem('nlrKey',ev.target.value.trim())}catch(e){}};
 function updateEnergyHUD(){const G=game,E=ES(),e=G.ego,soc=G.soc;
- $('eBar').style.width=Math.round(soc*100)+'%';$('eBar').style.background=soc>0.2?'#35d07f':soc>0.1?'#ffb020':'#ff4040';$('ePct').textContent=(G.charging?(soc*100).toFixed(1):Math.round(soc*100))+'%'+(G.ffActive?' ⏩60×':G.slowed?' ⏸ planning':G.fast?' ⏩ fast-travel':'');
+ $('eBar').style.width=Math.round(soc*100)+'%';$('eBar').style.background=soc>0.2?(ENERGY[G.spec.id]||{}).fry?'#ffd21a':'#35d07f':soc>0.1?'#ffb020':'#ff4040';$('ePct').textContent=(G.charging?(soc*100).toFixed(1):Math.round(soc*100))+'%'+(G.ffActive?' ⏩60×':G.slowed?' ⏸ planning':G.fast?' ⏩ fast-travel':'');
  const recent=G.odo>800?G.usedJ/G.odo:jPerM(E,20),blend=G.odo>800?0.5*recent+0.5*jPerM(E,22):recent;
  const rangeMi=G.energy/blend/1609.34;
  const eff=G.odo>200?(E.ice?`${(G.odo/1609.34/(G.usedJ/(FUEL_KWH_L*3.6e6)/3.785)).toFixed(1)} mpg`:`${Math.round(G.usedJ/3600/(G.odo/1609.34))} Wh/mi`):'';
@@ -3873,7 +3873,7 @@ async function findNearestCharger(lat,lon,E){
   const j=await withTimeout(Promise.any(OVERPASS.slice(0,3).map(async u=>{const r=await fetchT(u,{method:'POST',body:'data='+encodeURIComponent(q)},18000);if(!r.ok)throw 0;return r.json()})).catch(()=>null),19000);if(!j)return null;
   const l=(j.elements||[]).map(e=>{const t=e.tags||{},n=(t.network||'')+' '+(t.operator||'')+' '+(t.brand||'')+' '+(t.name||'');const sockets=Object.keys(t).filter(k=>/socket:(type2_combo|tesla_supercharger|nacs|chademo)/.test(k));
    const kw=Math.max(0,...Object.keys(t).filter(k=>/socket:.*:output/.test(k)).map(k=>parseFloat(t[k])||0));
-   return{lat:e.lat||e.center.lat,lon:e.lon||e.center.lon,name:t.name||t.brand||t.operator||(E.ice?'Fuel station':'Charging station'),network:t.network||t.operator||t.brand||'',ports:+t.capacity||2,conn:sockets.map(k=>/type2_combo/.test(k)?'J1772COMBO':/tesla|nacs/.test(k)?'TESLA':'CHADEMO'),addr:[t['addr:housenumber'],t['addr:street'],t['addr:city']].filter(Boolean).join(' '),src:'OpenStreetMap',
+   return{lat:e.lat||e.center.lat,lon:e.lon||e.center.lon,name:t.name||t.brand||t.operator||(E.fry?'Fast food (fry oil)':E.ice?'Fuel station':'Charging station'),network:t.network||t.operator||t.brand||'',ports:+t.capacity||2,conn:sockets.map(k=>/type2_combo/.test(k)?'J1772COMBO':/tesla|nacs/.test(k)?'TESLA':'CHADEMO'),addr:[t['addr:housenumber'],t['addr:street'],t['addr:city']].filter(Boolean).join(' '),src:'OpenStreetMap',
     dc:E.ice||kw>=40||(sockets.length&&!/Blink|SemaConnect|Volta/i.test(n))||/Supercharger|Electrify America|EVgo|IONNA|Rivian Adventure|Mercedes-Benz HPC/i.test(n),
     compat:E.ice||E.port==='NACS'||!sockets.length||sockets.some(k=>/type2_combo/.test(k))||/Electrify|EVgo|IONNA/i.test(n)}}).filter(c=>c.dc&&c.compat);
   rememberStations(l);l.forEach(o=>o.d=hav([lon,lat],[o.lon,o.lat])*(DCNET.test(o.network+o.name)?1:1.25));l.sort((a,b)=>a.d-b.d);if(l.length){l[0].d=hav([lon,lat],[l[0].lon,l[0].lat]);return l[0]}return null}));
@@ -3881,7 +3881,7 @@ async function findNearestCharger(lat,lon,E){
  // fallback: nearest charger already found along this trip
  {const l=KNOWN_ST.filter(c=>plugOK(E,c)).map(c=>({...c,d:hav([lon,lat],[c.lon,c.lat])})).sort((a,b)=>a.d-b.d);if(l.length&&l[0].d<120000)return l[0]}
  // last resort: Photon POI search for chargers / fuel
- try{const r=await fetchT(`https://photon.komoot.io/api/?q=${E.ice?'gas station':'ev charging station'}&lat=${lat}&lon=${lon}&limit=15&lang=en`,{},9000);const j=await r.json();const l=j.features.filter(f=>E.ice||/charg|supercharger|electrify|evgo/i.test((f.properties.name||'')+(f.properties.osm_value||''))).map(f=>({lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0],name:f.properties.name||'Charging station',network:'',ports:2,conn:[],addr:[f.properties.street,f.properties.city].filter(Boolean).join(', '),src:'OpenStreetMap (Photon)'}));l.forEach(o=>o.d=hav([lon,lat],[o.lon,o.lat]));l.sort((a,b)=>a.d-b.d);if(l.length)return l[0]}catch(e){}
+ try{const r=await fetchT(`https://photon.komoot.io/api/?q=${E.fry?'fast food':E.ice?'gas station':'ev charging station'}&lat=${lat}&lon=${lon}&limit=15&lang=en`,{},9000);const j=await r.json();const l=j.features.filter(f=>E.ice||/charg|supercharger|electrify|evgo/i.test((f.properties.name||'')+(f.properties.osm_value||''))).map(f=>({lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0],name:f.properties.name||'Charging station',network:'',ports:2,conn:[],addr:[f.properties.street,f.properties.city].filter(Boolean).join(', '),src:'OpenStreetMap (Photon)'}));l.forEach(o=>o.d=hav([lon,lat],[o.lon,o.lat]));l.sort((a,b)=>a.d-b.d);if(l.length)return l[0]}catch(e){}
  return null}
 async function startTow(){const G=game,e=G.ego,E=ES();if(G.tow)return;const lat=toLat(e.z),lon=toLon(e.x);
  G.tow={phase:'calling',t0:G.simTime,lat,lon};G.status='Out of '+(E.ice?'fuel':'charge')+' · calling roadside assistance';
@@ -3934,7 +3934,7 @@ async function finishTow(){const G=game,T=G.tow,e=G.ego,E=ES(),car=G.carMesh;
 async function batteryGuard(){const G=game;if(!G||G.tow||G.charging||G.arrived||G.guarding)return;if(G.simTime-(G.guardT||0)<5)return;G.guardT=G.simTime;
  const E=ES(),e=G.ego,cap=capJ(E),st=G.stops[G.stopIdx],nextS=st?st.rs:G.route.total,proj=G.soc-energyBetween(G.route,e.s,nextS)/cap;
  if(proj>=RESERVE)return;const kmToReserve=(G.soc-RESERVE)*cap/(jPerM(E,20)*consRatio())/1000;if(G.soc>0.40&&kmToReserve>60)return;
- G.guarding=true;G.status=`Low ${E.ice?'fuel':'battery'} (${Math.round(G.soc*100)}%) · diverting to nearest ${E.ice?'fuel station':'fast charger'}`;
+ G.guarding=true;G.status=`Low ${E.ice?'fuel':'battery'} (${Math.round(G.soc*100)}%) · diverting to nearest ${E.fry?'fast-food fryer':E.ice?'fuel station':'fast charger'}`;
  try{const here={lat:toLat(e.z),lon:toLon(e.x)},rangeM=Math.max(0,(G.soc-0.03)*cap/(jPerM(E,22)*consRatio()));
   const known=KNOWN_ST.filter(c=>plugOK(E,c)).map(c=>({...c,d:hav([here.lon,here.lat],[c.lon,c.lat])})).filter(c=>c.d*1.35<rangeM)
    // prefer chargers ahead along the route (smallest detour), then nearest
@@ -3970,7 +3970,7 @@ $('go').onclick=async()=>{
   const arr=arrivalSoc(route,E,soc0);
   if(arr<RESERVE){$('loadTxt').textContent=`Route ${fmtDist(route.total)} needs about ${(energyBetween(route,0,route.total)/capJ(E)).toFixed(1)} full ${E.ice?'tanks':'batteries'} of energy · finding ${E.ice?'fuel stations':'DC fast chargers'} along the route…`;
    const W=routeWindow(route,E,0);const sts=await findStations(W.win,E);const pl=planStops(route,E,soc0,sts);if(!W.full)pl.ok=true;if(sts.partial)$('msg').textContent='Some route segments could not be searched for chargers (server busy); plan may be incomplete.';
-   if(pl.stops.length){$('loadTxt').textContent=`Routing via ${pl.stops.length} ${E.ice?'fuel':'charging'} stop${pl.stops.length>1?'s':''}…`;
+   if(pl.stops.length){$('loadTxt').textContent=`Routing via ${pl.stops.length} ${E.fry?'fry-oil':E.ice?'fuel':'charging'} stop${pl.stops.length>1?'s':''}…`;
     finalRoute=await getRoute(addrA,addrB,pl.stops);buildEnergyProfile(finalRoute,E);await enrichElevation(finalRoute,E);
     pl.stops.forEach((st,i)=>{st.rs=projectOnRoute(finalRoute,st.lat,st.lon).s});finalRoute.stops=pl.stops}
    if(!pl.ok)$('msg').textContent+=` Warning: not enough ${E.ice?'fuel stations':'DC fast chargers'} found within range for the whole trip (${sts.length} found).`}
