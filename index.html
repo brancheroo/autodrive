@@ -10705,6 +10705,20 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    for(let i=D.length-1;i>=0;i--)if(D[i].y>H*0.54)D.splice(i,1)}}); /* the glass ends at the dash top */
 })();
 </script>
+<script>/* mods/99h-paintfinish.js */
+/* Paint finishes from the colour's own name: Matte / Frozen / Magno → flat satin with no clearcoat, Satin → low sheen,
+   Pearl / Opalite → pearlescent sheen (soft colour shift at grazing angles), Metallic / Chrome → stronger flake. */
+(function(){
+ const _bc=window.buildCar;
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{const P=g.userData.paint,cs=spec&&spec.colors;if(P&&cs&&typeof colorHex==='string'){const c=cs.find(x=>x[1].toLowerCase()===colorHex.toLowerCase()),n=(c&&c[0]||'').toLowerCase();
+   if(/matte|frozen|magno/.test(n)){P.clearcoat=0;P.roughness=0.62;P.metalness=Math.min(P.metalness,0.3)}
+   else if(/satin/.test(n)){P.clearcoat=0.3;P.clearcoatRoughness=0.4;P.roughness=0.45}
+   else if(/pearl|opalite/.test(n)&&'sheen' in P){P.sheen=1;P.sheenRoughness=0.35;P.sheenColor=new THREE.Color(0xd8e4ff)}
+   else if(/metallic|chrome|silver/.test(n)){P.metalness=Math.max(P.metalness,0.75);P.roughness=Math.min(P.roughness,0.3)}
+   P.needsUpdate=true}}catch(e){console.warn('paintfinish',e)}return g};
+ MODS.push({id:'paintfinish'});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
