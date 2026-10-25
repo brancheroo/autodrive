@@ -1871,7 +1871,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
   const m=new THREE.Mesh(geo,mat);g.add(m);return m};
  const mk=c=>new THREE.MeshBasicMaterial({color:c});
  const head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
- const ny=sh.clr+(sh.nose*H-sh.clr)*0.86,ty=Math.min(sh.clr+(sh.deck*H*0.93-sh.clr)*0.92,P.belt(0.03)-0.07-(H>1.6?0.17:0)); /* rear lamps sit high on the tail, just under the deck/hatch line (rear-photo overlays: Taycan, Model Y) */ /* lamps where the rounded nose/tail is still full width */
+ const ny=sh.clr+(sh.nose*H-sh.clr)*0.86,ty=Math.min(sh.clr+(sh.deck*H*0.93-sh.clr)*(H>1.6?0.78:0.92),P.belt(0.03)-0.07); /* rear lamps sit high on the tail, just under the deck/hatch line (rear-photo overlays: Taycan, Model Y) */ /* lamps where the rounded nose/tail is still full width */
  const drl=md.drl||'pair';
  if(drl==='tesla'){for(const s of [1,-1]){onEnd(true,s*W*0.34,ny+0.01,0.42,0.09,gloss,0.02);onEnd(true,s*W*0.34,ny+0.04,0.38,0.016,head,0.03);onEnd(true,s*W*0.36,ny-0.005,0.07,0.035,head,0.03)}} /* dark glossy lens, slim DRL strip along its top edge, small projector */
  else if(drl==='teslaJ'){onEnd(true,0,ny+0.04,W*0.94,0.022,head);for(const s of [1,-1]){onEnd(true,s*W*0.36,ny-0.1,0.27,0.07,gloss,0.02);onEnd(true,s*W*0.36,ny-0.1,0.07,0.035,head,0.03)}} /* Juniper: full-width light bar, headlamps recessed as dark lenses below it */
