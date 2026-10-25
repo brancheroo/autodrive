@@ -8985,7 +8985,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   for(const z of [0.45,-0.45])nozzle(L/2+0.0,0.3,z,new THREE.Vector3(1,0,0),0.03,U.front);
   for(const s of [1,-1])nozzle(-spec.wb/2+0.55,0.42,s*(W/2-0.02),new THREE.Vector3(0,0,s),0.035,U.side);
   /* twin downforce fans in the tail (fan-car style): shrouds with guard rings and spinning blades, pulling air out from under the car */
-  U.fans=[];for(const z of [0.36,-0.36]){const f=new THREE.Group();f.position.set(-L/2+0.04,0.6,z);f.rotation.y=-Math.PI/2;g.add(f);
+  U.fans=[];for(const z of [0.36,-0.36]){const f=new THREE.Group();f.position.set(-L/2+0.1,0.6,z);f.rotation.y=-Math.PI/2;g.add(f);
    const sh=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.12,28,1,true).rotateX(Math.PI/2),new THREE.MeshStandardMaterial({color:0x16171a,metalness:0.5,roughness:0.4,side:THREE.DoubleSide}));f.add(sh);
    for(let k=0;k<3;k++){const gr=new THREE.Mesh(new THREE.TorusGeometry(0.06+k*0.065,0.006,6,28),ring);gr.position.z=0.065;f.add(gr)}
    const rot=new THREE.Group();f.add(rot);const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.06,16).rotateX(Math.PI/2),ring);rot.add(hub);
@@ -9193,7 +9193,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   atto3:{wheelShape:'fb',seat:0x3c4552,belt:0.630,nose:.46,cowl:0.275,wsTop:0.48,roofEnd:0.85,tail:0.93,tailH:0.78,deck:.62,n:3.8,roofBlack:true,front:'dragon',rear:'lantern',rim:'blade',screens:[[0.24,0.15],[0.14,0.06]],quirk:'gym'},
   sealion7:{wheelShape:'fb',seat:0xd6d6d4,belt:0.67,nose:.44,cowl:0.258,wsTop:0.44,roofEnd:0.72,tail:0.93,tailH:0.73,deck:.66,n:3.5,roofBlack:true,front:'drops',rear:'bar',rim:'multi',screens:[[0.32,0.18],[0.24,0.09]],quirk:'rotate'},
   z7x:{wheelShape:'sq',seat:0x2e2f33,belt:0.67,nose:.46,cowl:0.3,wsTop:0.48,roofEnd:0.77,tail:0.95,tailH:0.73,deck:.64,n:3.6,roofBlack:false,front:'stargate',rear:'bar',rim:'aero',screens:[[0.34,0.19],[0.26,0.08]],quirk:null},
-  roadster:{top:[[0,0.143],[0.05,0.719],[0.1,0.765],[0.15,0.816],[0.2,0.862],[0.25,0.899],[0.3,0.94],[0.35,0.972],[0.4,0.991],[0.45,0.995],[0.5,0.986],[0.55,0.959],[0.6,0.912],[0.65,0.848],[0.7,0.77],[0.75,0.687],[0.8,0.641],[0.85,0.627],[0.9,0.567],[0.95,0.456],[1,0.041]],belt:0.7,nose:0.55,cowl:0.27,wsTop:0.47,roofEnd:0.62,tail:0.83,tailH:0.86,deck:0.77,n:3.0,roofBlack:true,glassCol:0x2b1d06,glassMetal:0.9,front:'hidden',rear:'bar',rim:'aero',screens:[[0.34,0.2]],quirk:'tesla2'},
+  roadster:{top:[[0,0.143],[0.025,0.631],[0.05,0.719],[0.1,0.765],[0.15,0.816],[0.2,0.862],[0.25,0.899],[0.3,0.94],[0.35,0.972],[0.4,0.991],[0.45,0.995],[0.5,0.986],[0.55,0.959],[0.6,0.912],[0.65,0.848],[0.7,0.77],[0.75,0.687],[0.8,0.641],[0.85,0.627],[0.9,0.567],[0.95,0.456],[0.975,0.387],[1,0.041]],belt:0.7,nose:0.55,cowl:0.27,wsTop:0.47,roofEnd:0.62,tail:0.83,tailH:0.86,deck:0.77,n:3.0,roofBlack:true,glassCol:0x2b1d06,glassMetal:0.9,front:'hidden',rear:'bar',rim:'aero',screens:[[0.34,0.2]],quirk:'tesla2'},
   modely:{belt:0.620,nose:.44,cowl:0.245,wsTop:0.420,roofEnd:.6,tail:.965,tailH:.73,deck:.66,n:3.2,roofBlack:true,front:'tslbar',rear:'chunky',rim:'aero',screens:[[0.34,0.21]],quirk:'tesla3'},
   z9x:{wheelShape:'sq',seat:0xe2dfd8,wheelCol:0xece9e2,belt:0.66,nose:.52,cowl:0.254,wsTop:0.4,roofEnd:0.92,tail:0.99,tailH:0.69,deck:.66,n:4.2,roofBlack:false,front:'lightgrille',rear:'bar',rim:'multi',screens:[[0.36,0.2],[0.3,0.12]],quirk:'lounge'}};
  window.buildScratch=function(spec,colorHex,opts){const d=D[spec.scratch],g=new THREE.Group(),ud=g.userData,{L,W,H,wb,wr}=spec,hl=L/2;
