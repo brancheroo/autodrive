@@ -9207,7 +9207,9 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const AF=wb/2,AR=-wb/2,RA=wr+0.07,arch=x=>{let y=Math.max(0.16,wr*0.45);for(const ax of [AF,AR]){const dd=Math.abs(x-ax);if(dd<RA)y=Math.max(y,wr+Math.sqrt(RA*RA-dd*dd)*0.97)}return y};
   const yB=d.belt*H,yN=d.nose*H,yD=d.deck*H;
   /* lower shell: nose → bonnet rising to the cowl → belt along the cabin → boot/tailgate top → tail */
-  const shTop=prof([[hl,yN*0.82],[X(0.03),yN],[X(d.cowl*0.6),lerp1(yN,yB,0.75)],[X(d.cowl),yB],[X(d.tail-0.02),yD],[X(0.995),yD*0.92],[-hl,yD*0.7]]);
+  const TM=d.top?(x=>{const u=(x+hl)/L,T=d.top;let i=0;while(i<T.length-2&&u>T[i+1][0])i++;const a=T[i],b=T[i+1],t=Math.max(0,Math.min(1,(u-a[0])/((b[0]-a[0])||1)));return (a[1]+(b[1]-a[1])*t)*H}):null; /* d.top: measured side outline [[u (0 tail→1 nose), fraction of H]] from a photo */
+  const shTop0=prof([[hl,yN*0.82],[X(0.03),yN],[X(d.cowl*0.6),lerp1(yN,yB,0.75)],[X(d.cowl),yB],[X(d.tail-0.02),yD],[X(0.995),yD*0.92],[-hl,yD*0.7]]);
+  const shTop=TM?(x=>{const cab=x<X(d.cowl)&&x>X(d.tail);return cab?Math.min(TM(x),yB):TM(x)}):shTop0; /* measured outline: bonnet/boot follow it fully, the cabin body stops at the belt and the glass takes the rest */
   const shW=prof([[hl,0.78],[X(0.04),0.93],[X(0.14),0.99],[X(0.86),0.99],[X(0.96),0.94],[-hl,0.84]]);
   const xs=[];for(let k=0;k<=72;k++)xs.push(hl-k/72*L);
   const shell=new THREE.Mesh(loft(xs,x=>({w:shW(x)*W/2,wt:shW(x)*W/2*0.9,yb:arch(x),yt:shTop(x)}),d.n),paint);shell.castShadow=true;body.add(shell);
@@ -9215,7 +9217,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   {const cut=X(d.cowl)-0.02,secF=x=>({w:shW(x)*W/2,wt:shW(x)*W/2*0.9,yb:arch(x),yt:shTop(x)});const fx2=[],cx2=[];for(const x of xs){if(x>=cut)fx2.push(x);if(x<=cut+0.04)cx2.push(x)}
    hood.add(new THREE.Mesh(loft(fx2,secF,d.n,28,false),paint));const inner=new THREE.Mesh(loft(cx2,secF,d.n,28,false),lining);inner.scale.set(0.985,0.985,0.96);hood.add(inner)}
   /* greenhouse: windscreen from the cowl to wsTop, roof to roofEnd, then down to the tail glass */
-  const gx0=X(d.cowl),gx1=X(d.tail),pk=(d.wsTop+d.roofEnd)/2,gTop=sprof([[gx0,yB*0.98],[X(d.wsTop),H*0.975],[X(pk),H],[X(d.roofEnd),H*0.97],[gx1,d.tailH*H]]),gW=prof([[gx0,0.74],[X(d.wsTop),0.8],[X(d.roofEnd),0.8],[gx1,0.66]]);
+  const gx0=X(d.cowl),gx1=X(d.tail),pk=(d.wsTop+d.roofEnd)/2,gTop=TM||sprof([[gx0,yB*0.98],[X(d.wsTop),H*0.975],[X(pk),H],[X(d.roofEnd),H*0.97],[gx1,d.tailH*H]]),gW=prof([[gx0,0.74],[X(d.wsTop),0.8],[X(d.roofEnd),0.8],[gx1,0.66]]);
   const gxs=[];for(let k=0;k<=48;k++)gxs.push(gx0+(gx1-gx0)*k/48);const gsec=x=>({w:gW(x)*W/2,wt:gW(x)*W/2*0.72,yb:yB*0.96,yt:gTop(x)}); /* strong tumblehome: side glass leans in and stops well below the roof crown */
   const gh=new THREE.Mesh(loft(gxs,gsec,2.4),glass);body.add(gh);hood.add(new THREE.Mesh(gh.geometry,glassIn));
   /* roof cap (body colour or black) over the roofline, and the pillars as painted strips */
