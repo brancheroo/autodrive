@@ -1855,7 +1855,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  // wheels
  const rim=md.rim||{n:5,style:'split',col:0xaaaaaa},WS=wheelSet(spec,rim,md.cal,lod),wheels=[];
  for(const [ai,fz] of [[0,1],[0,-1],[1,1],[1,-1]]){
-  const piv=new THREE.Group();piv.position.set(P.axles[ai],wr,fz*(W/2-0.14));
+  const piv=new THREE.Group();piv.position.set(P.axles[ai],wr,fz*(spec.track?spec.track/2:W/2-0.14));
   const spin=new THREE.Group();const t=new THREE.Mesh(WS.tireG,WS.tireM);t.castShadow=true;spin.add(t);for(const [pg,pm] of WS.parts)spin.add(new THREE.Mesh(pg,pm));
   const holder=new THREE.Group();if(fz<0)holder.rotation.y=Math.PI;holder.add(spin);
   const cal=new THREE.Mesh(WS.calG,WS.calM);holder.add(cal);piv.add(holder);g.add(piv);wheels.push({piv,spin,front:ai===0,sign:fz<0?-1:1})}
