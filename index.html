@@ -10720,6 +10720,20 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  MODS.push({id:'paintfinish'});
 })();
 </script>
+<script>/* mods/99i-tyres.js */
+/* Tyre sidewalls: raised grey lettering (brand ring + size code) on the outer sidewall of every wheel, sized from the tyre
+   itself, so it turns with the wheel; one shared texture per run. */
+(function(){
+ let TEX=null;function tex(){if(TEX)return TEX;const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');x.translate(256,256);x.font='700 34px Arial';x.fillStyle='#8c8f93';x.textAlign='center';
+  const ring=(txt,a0)=>{const r=212;[...txt].forEach((ch,i)=>{x.save();x.rotate(a0+i*0.085);x.translate(0,-r);x.fillText(ch,0,0);x.restore()})};ring('AUTOGRIP  ALL·SEASON',-0.8);ring('245/45R19  98V',Math.PI-0.55);
+  TEX=new THREE.CanvasTexture(c);TEX.anisotropy=4;return TEX}
+ const _bc=window.buildCar;
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{const W=g.userData.wheels;if(W&&!g.userData.tyreTxt&&!(spec&&(spec.moped||spec.ebike||spec.hbike))){g.userData.tyreTxt=1;const m=new THREE.MeshBasicMaterial({map:tex(),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2});
+   for(const w of W){const t=w.spin&&w.spin.children[0];if(!t||!t.geometry)continue;t.geometry.computeBoundingBox();const b=t.geometry.boundingBox,R=Math.max(b.max.x,b.max.y),z=b.max.z+0.002;
+    const d=new THREE.Mesh(new THREE.PlaneGeometry(R*2,R*2),m);d.position.z=z;w.spin.add(d)}}}catch(e){console.warn('tyres',e)}return g};
+ MODS.push({id:'tyres'});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
