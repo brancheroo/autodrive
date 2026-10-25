@@ -189,7 +189,7 @@ const CARS=[
 {id:'lucid',name:'Lucit Aire Grand Touring',sub:'DreamyDrive Pro',style:'sedan',L:4.98,W:1.94,H:1.41,wb:2.96,wr:0.36,hp:819,z60:3.0,top:168,range:'512 mi (EPA)',weight:'5,236 lb',drive:'Dual motor AWD EV',level:'SAE Level 2 · hands-free highway',
  tech:'32 sensors, including a first-in-class solid-state lidar. There is a floating 34" 5K glass cockpit and a retractable 12.6" Pilot Panel below it.',
  colors:[['Stellar White','#ebecea'],['Infinite Black','#0e0f11'],['Quantum Grey','#6d7074'],['Zenith Red','#7d1b1f'],['Fathom Blue','#1c3050']],dash:'lucid',wheel:'round',sensors:'lucid',sound:'ev',driver:true},
-{id:'r1s',name:'Ravion R1S',sub:'Autonomyish+',style:'suv',L:5.10,W:2.08,H:1.82,wb:3.08,wr:0.43,hp:665,z60:3.5,top:110,range:'410 mi (EPA, Max pack)',weight:'7,000 lb',drive:'Tri-motor AWD EV',level:'SAE Level 2 · hands-free highway',
+{id:'r1s',name:'Ravion R1S',sub:'Autonomyish+',style:'suv',L:5.10,W:2.08,H:1.82,wb:3.08,wr:0.43,track:1.725,hp:665,z60:3.5,top:110,range:'410 mi (EPA, Max pack)',weight:'7,000 lb',drive:'Tri-motor AWD EV',level:'SAE Level 2 · hands-free highway',
  tech:'Gen-2 platform with 11 cameras and 5 radars, running on Ravion\'s in-house autonomy computer. It has hands-free highway driving, and the "stadium" headlights double as DRLs.',
  colors:[['Ravion Blue','#27497a'],['Forest Green','#223a2c'],['Limestone','#d6d0c3'],['El Cap Granite','#56595b'],['Launch Green','#4a5b3d']],dash:'rivian',wheel:'round',sensors:'rivian',sound:'ev',driver:true},
 {id:'r2',name:'Ravion R2',sub:'Autonomyish+',style:'suv',L:4.72,W:1.91,H:1.71,wb:2.93,wr:0.39,hp:'~650 (tri-motor)',z60:3.6,top:110,range:'~300 mi (est.)',weight:'~5,000 lb',drive:'Dual/tri-motor AWD EV',level:'SAE Level 2+ · hands-free highway',
@@ -1807,7 +1807,7 @@ function buildEcoSemi(spec,colorHex,opts){const g=new THREE.Group(),{L,W,H,wr}=s
  for(const x of [rx+0.3,rx+TL*0.35,tcx+TL/2-0.3])box(0.05,0.1,W-0.1,amber,x,TB+TH+0.0,0,tr);
  /* wheels: steer axle, drive tandem, trailer tandem – single wide tyres */
  const tw=0.42,tire=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),tg=new THREE.CylinderGeometry(wr,wr,tw,seg,1).rotateX(Math.PI/2),hg=new THREE.CylinderGeometry(wr*0.55,wr*0.55,tw+0.02,seg).rotateX(Math.PI/2),wheels=[];
- const addWheel=(par,x,fz,front)=>{const piv=new THREE.Group();piv.position.set(x,wr,fz*(W/2-tw/2-0.05));const spin=new THREE.Group();const t=new THREE.Mesh(tg,tire);t.castShadow=true;spin.add(t);spin.add(new THREE.Mesh(hg,steel));const holder=new THREE.Group();if(fz<0)holder.rotation.y=Math.PI;holder.add(spin);piv.add(holder);par.add(piv);wheels.push({piv,spin,front,sign:fz<0?-1:1})};
+ const addWheel=(par,x,fz,front)=>{const piv=new THREE.Group();piv.position.set(x,wr,fz*(spec.track?spec.track/2:W/2-tw/2-0.05)); /* spec.track: published track width where it differs from body width − tyre */const spin=new THREE.Group();const t=new THREE.Mesh(tg,tire);t.castShadow=true;spin.add(t);spin.add(new THREE.Mesh(hg,steel));const holder=new THREE.Group();if(fz<0)holder.rotation.y=Math.PI;holder.add(spin);piv.add(holder);par.add(piv);wheels.push({piv,spin,front,sign:fz<0?-1:1})};
  for(const fz of [1,-1]){addWheel(g,7.9,fz,true);addWheel(g,4.2,fz,false);addWheel(g,2.9,fz,false);addWheel(tr,-11.55,fz,false);addWheel(tr,-12.85,fz,false)}
  ud.wheels=wheels;ud.ecosemi=true;
  if(typeof contactShadow==='function'){const c1=contactShadow(g,7.4,W*1.1);if(c1&&c1.position)c1.position.x=6.6;const c2=contactShadow(tr,TL*1.04,W*1.1);if(c2&&c2.position)c2.position.x=tcx}
