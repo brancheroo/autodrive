@@ -10684,6 +10684,27 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
     else if(a.yieldHold){a.offAdd=(a.offAdd||0)*(1-Math.min(1,dt*0.8));if(Math.abs(a.offAdd)<0.05){a.offAdd=0;a.yieldHold=false}}}}}); /* released: drift back into the lane; the planner accelerates it again */
 })();
 </script>
+<script>/* mods/99g-screendrops.js */
+/* Rain on the windscreen (cabin view): drops collect on the glass in proportion to how hard it is raining (snow sticks as
+   white flecks), creep and run down faster as speed rises, and each sweep of the car's own animated wipers (game.wipeA)
+   clears the fan it passes over. Drawn as a light 2-D overlay, so it costs almost nothing. */
+(function(){
+ const cv=document.createElement('canvas');cv.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:2;display:none';document.body.appendChild(cv);
+ const x=cv.getContext('2d'),D=[];let lastA=0,W=0,H=0;
+ function fit(){const w=Math.round(innerWidth/2),h=Math.round(innerHeight/2);if(w!==W||h!==H){W=cv.width=w;H=cv.height=h;D.length=0}} /* half resolution: drops are soft anyway */
+ function wiped(px,py,a0,a1){for(const [ox,dir] of [[0.3,1],[0.62,1]]){const cx=W*ox,cy=H*1.02,ang=Math.atan2(cy-py,(px-cx)*dir),r=Math.hypot(px-cx,cy-py);if(r>H*0.95)continue;const t=Math.PI-ang,lo=Math.min(a0,a1)*0.9,hi=Math.max(a0,a1)*0.9+0.08;if(t>=lo&&t<=hi)return true}return false}
+ MODS.push({id:'screendrops',
+  frame(){const G=typeof game!=='undefined'?game:null;const on=G&&G.route&&G.cam==='in'&&typeof WX!=='undefined'&&(WX.rain>0.05||WX.snow);cv.style.display=on||D.length?'block':'none';if(!G||!G.route)return;fit();
+   const dt=1/60,rain=on?Math.max(WX.rain||0,WX.snow?0.5:0):0,v=G.ego?G.ego.v:0,snow=!!(typeof WX!=='undefined'&&WX.snow);
+   const n=Math.min(6,rain*4*(1+v/15));for(let i=0;i<n;i++)if(Math.random()<n/6&&D.length<380)D.push({x:Math.random()*W,y:Math.random()*H*0.85,r:(snow?1.2:1)+Math.random()*(snow?2:2.6),s:0,snow});
+   const a=G.wipeA||0;if(Math.abs(a-lastA)>0.01)for(let i=D.length-1;i>=0;i--)if(wiped(D[i].x,D[i].y,lastA,a))D.splice(i,1);lastA=a;
+   if(!on&&D.length)D.splice(0,Math.ceil(D.length*0.02)+1); /* drying off */
+   x.clearRect(0,0,W,H);for(const d of D){if(!d.snow&&d.r>2.4)d.s+=(0.2+v*0.04)*dt*60*0.3;d.y+=d.s;d.x-=v*0.004*(d.x-W/2)/W*4; /* big drops run; airflow pushes them outward */
+    if(d.snow){x.fillStyle='rgba(245,248,255,0.8)';x.beginPath();x.arc(d.x,d.y,d.r,0,7);x.fill();continue}
+    const g=x.createRadialGradient(d.x-d.r*0.3,d.y-d.r*0.3,0,d.x,d.y,d.r);g.addColorStop(0,'rgba(255,255,255,0.55)');g.addColorStop(0.6,'rgba(200,215,230,0.18)');g.addColorStop(1,'rgba(40,50,60,0.35)');x.fillStyle=g;x.beginPath();x.ellipse(d.x,d.y,d.r,d.r*(1+d.s*0.6),0,0,7);x.fill()}
+   for(let i=D.length-1;i>=0;i--)if(D[i].y>H+5)D.splice(i,1)}});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
