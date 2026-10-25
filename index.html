@@ -1976,7 +1976,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  }else if(spec.sensors==='zoox'){for(const [a,b] of [[1,1],[1,-1],[-1,1],[-1,-1]]){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.17,0.19,0.34,20),sens);p.position.set(a*(L/2-0.38),H-0.16,b*(W/2-0.36));g.add(p);const c=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.12,16),white);c.position.set(a*(L/2-0.38),H+0.06,b*(W/2-0.36));g.add(c)}}
  else if(spec.sensors==='mb'||spec.sensors==='lucid'){onEnd(true,0,sh.clr+0.3,0.3,0.05,sens,0.05);
   if(spec.sensors==='mb'){const tq=new THREE.MeshBasicMaterial({color:0x10d8c8});g.userData.turq=[];for(const s of [1,-1]){const m=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.03,0.04),tq);const mu=sh.cowl-0.035;m.position.set(P.xOf(mu)+0.02,P.belt(mu)+0.08,s*(P.half(mu)*0.95+0.2));g.add(m);g.userData.turq.push(m)}}}
- else if(spec.sensors==='tesla'){const c=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.05,0.18),gloss);c.position.set(P.xOf(sh.roofF-0.01),H-0.05,0);g.add(c)}
+ else if(spec.sensors==='tesla'){const c=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.05,0.18),gloss);c.position.set(P.xOf(sh.roofF-0.01),P.top(sh.roofF-0.01)-0.05,0);g.add(c)}
  if(spec.hyper){const cf=new THREE.MeshStandardMaterial({color:0x111114,roughness:0.3,metalness:0.4}),w=new THREE.Group();w.position.set(-L/2+0.32,H*0.93,0);g.add(w);
   for(const z of [0.55,-0.55]){const up=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.42,0.04),cf);up.position.set(0.05,-0.14,z);up.rotation.z=0.25;w.add(up)}
   const piv=new THREE.Group();piv.position.y=0.1;w.add(piv);const blade=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.035,W*0.94),cf);blade.position.x=-0.12;piv.add(blade);
