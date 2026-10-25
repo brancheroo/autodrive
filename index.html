@@ -10734,6 +10734,25 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  MODS.push({id:'tyres'});
 })();
 </script>
+<script>/* mods/99j-grime-badges.js */
+/* (1) Road grime: paint darkens and dulls toward the sills and lower bumpers (a soft band up to ~0.45 m, broken up with
+   noise), the way every daily-driven car looks; brake dust warms the wheels. Shader-only, no extra geometry.
+   (2) Model badges: the car's model name in chrome lettering on the boot lid, placed on the real rear surface (found once per
+   model by a ray against the body). */
+(function(){
+ function grime(m){if(!m||m.userData.grime)return;m.userData.grime=1;m.onBeforeCompile=s=>{s.vertexShader=s.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vGP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvGP=position;');
+  s.fragmentShader=s.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vGP;').replace('#include <color_fragment>','#include <color_fragment>\nfloat gn=fract(sin(dot(floor(vGP.xz*9.0),vec2(12.9898,78.233)))*43758.5453);float gb=(1.0-smoothstep(0.12,0.48,vGP.y))*(0.75+0.25*gn);diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*0.55+vec3(0.06,0.05,0.04),gb*0.38);')};m.needsUpdate=true}
+ const BX={};const rc=new THREE.Raycaster();
+ function badge(g,spec){const P=(profCache[spec.id]||{}).P;if(!P||!g.userData.body)return;const name=(spec.name||'').split(' ').slice(1).join(' ').replace(/[^A-Za-z0-9 +.\-]/g,'').slice(0,18);if(!name)return;
+  const y=Math.max(P.belt(0.04)-0.12,P.bottom(0.02)+0.35);if(BX[spec.id]===undefined){g.updateMatrixWorld(true);rc.set(new THREE.Vector3(-spec.L,y,0.25),new THREE.Vector3(1,0,0));const h=rc.intersectObject(g.userData.body,true)[0];BX[spec.id]=h?h.point.x:null}
+  const x=BX[spec.id];if(x==null)return;const c=document.createElement('canvas');c.width=512;c.height=64;const t=c.getContext('2d');t.font='600 44px Helvetica, Arial';t.fillStyle='#e9ecef';t.textAlign='center';t.textBaseline='middle';t.shadowColor='#000';t.shadowBlur=3;t.fillText(name.toUpperCase(),256,34);
+  const tx=new THREE.CanvasTexture(c);const m=new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.052),new THREE.MeshStandardMaterial({map:tx,transparent:true,metalness:0.8,roughness:0.25,polygonOffset:true,polygonOffsetFactor:-2}));m.position.set(x-0.006,y,0.25);m.rotation.y=-Math.PI/2;g.userData.body.add?g.add(m):g.add(m)}
+ const _bc=window.buildCar;
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{grime(g.userData.paint);if(opts&&opts.interior&&MODEL[spec.id])badge(g,spec); /* badges on the car you drive (one canvas each) */
+   const W=g.userData.wheels;if(W)for(const w of W)w.spin&&w.spin.traverse(o=>{const m=o.material;if(m&&m.metalness>0.5&&!m.userData.dust){m.userData.dust=1;m.color&&m.color.lerp(new THREE.Color(0x6b5a48),0.12)}})}catch(e){console.warn('grime',e)}return g};
+ MODS.push({id:'grimeBadges'});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
