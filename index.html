@@ -252,6 +252,9 @@ const CARS=[
 {id:'century',name:'Toyoda Centurie Royale',sub:'Imperial state limousine · suited chauffeur · you ride in the back',style:'sedan',L:6.16,W:2.05,H:1.78,wb:3.89,wr:0.37,hp:276,z60:9.8,top:112,range:'~350 mi (est.) · 5.0L V12',weight:'6,440 lb',drive:'5.0L V12 · 6-speed automatic · RWD',level:'Human driver (chauffeur)',
  tech:'A stately take on the Japanese imperial state car: a 6.16 m long, 1.78 m tall formal limousine on a 3.89 m wheelbase, with a quiet 5.0-litre V12. It wears imperial black with chrome window surrounds, an upright chrome grille, gold sixteen-petal chrysanthemum crests on the grille and rear doors and flag staffs on both front wings. A suited chauffeur in white gloves drives from the leather-trimmed front compartment; you ride in the back right seat of the rear compartment, behind a glass partition, on grey wool upholstery with white lace seat covers under a white washi-paper headliner.',
  colors:[['Imperial Black','#0b0b0d']],dash:'classic',wheel:'round',sensors:'none',sound:'v12',driver:true,rideshare:true,century:true,chauffeur:true,backSeat:1.5},
+{id:'modelt',name:'Fjord Model Tee Town Car',sub:'c.1915 · chauffeur out front in the open · you ride in the enclosed back',style:'sedan',L:3.5,W:1.68,H:2.13,wb:2.54,wr:0.38,hp:20,z60:30,top:42,range:'~180 mi (10 gal × ~18 mpg)',weight:'1,700 lb',drive:'2.9L side-valve I4 · 2-speed planetary · RWD',level:'Human driver (chauffeur)',
+ tech:'A coach-built town car on the 100-inch Model Tee chassis, the way the wealthy had them made around 1915: the chauffeur sits out front in an open compartment on a black leather bench, behind an upright two-pane windscreen and under a short leatherette canopy, steering with a wooden wheel and driving the 20 hp side-valve four through a two-speed planetary gearbox worked by three floor pedals. You ride behind him in a tall enclosed cabin with door and quarter windows, a glass partition, tufted cloth upholstery, a bud vase and a brass speaking tube to give him directions. Brass radiator and drum headlamps, a louvred black bonnet, separate swept fenders with running boards and 30-inch wooden-spoke wheels on thin clincher tyres. Top speed is about 42 mph, and getting there takes a while.',
+ colors:[['Japan Black','#0b0b0c'],['Brewster Green','#1d3326'],['Coach Blue','#1c2740'],['Maroon','#4a1418']],dash:'classic',wheel:'round',sensors:'none',sound:'i4',driver:true,rideshare:true,chauffeur:true,backSeat:1.4,modelt:true},
 {id:'taxi',name:'Metro Cab Crown Vic',sub:'Classic yellow taxicab · cabbie driver',style:'sedan',L:5.39,W:1.99,H:1.47,wb:2.91,wr:0.34,hp:250,z60:8.6,top:120,range:'~400 mi (19 gal tank)',weight:'4,100 lb',drive:'4.6L V8 · 4-speed auto · RWD · body-on-frame',level:'Human driver (taxi)',
  tech:'A big, boxy, full-size four-door sedan in the mould of the classic Crown Victoria: long hood, upright trunk, chrome egg-crate grille and a V8 under the hood. It wears garish canary-yellow taxicab livery with a black-and-white checkerboard band down both sides, TAXI and fare decals on the doors and a TAXI sign on the roof that lights up (brighter at night, dark once your trip ends). A cabbie drives; you ride in the back right seat behind a plexiglass partition with a cash tray, fare and rider-rights notices, a back-seat TV and a ticking fare meter on the dash.',
  colors:[['Canary Yellow','#ffef00']],dash:'classic',wheel:'round',sensors:'none',sound:'v8',driver:true,rideshare:true,taxi:true},
@@ -2520,6 +2523,7 @@ const ENERGY={
  'starfire':{epa:290,ice:true,tankL:76,kg:1950,cda:0.78,crr:0.012,bte:0.17,idleKW:3.5,cityMul:2.4},
  'boosthatch':{epa:220,ice:true,tankL:68,kg:1320,cda:0.75,crr:0.012,bte:0.30,idleKW:6,cityMul:2.0},
  'taxi':{epa:400,ice:true,tankL:72,kg:1860,cda:0.75,crr:0.010,bte:0.32,idleKW:2.5,cityMul:0.75},
+ 'modelt':{epa:180,ice:true,tankL:37.9,kg:770,cda:1.9,crr:0.016,bte:0.12,idleKW:2,cityMul:1.3}, /* 10 US gal; ~13-21 mpg period figures */
  'century':{epa:350,ice:true,tankL:95,kg:2920,cda:0.95,crr:0.010,bte:0.30,idleKW:3,cityMul:0.75},
  'pullman':{epa:330,ice:true,tankL:90,kg:2810,cda:0.78,crr:0.009,bte:0.32,idleKW:3,cityMul:0.75},
  'wagon70':{epa:330,ice:true,tankL:83,kg:2220,cda:0.85,crr:0.011,bte:0.28,idleKW:3,cityMul:0.7},
@@ -9290,6 +9294,99 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  const _eye=window.eyePos;
  if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.scratch&&D[spec.scratch])return window.scratchEye(spec);return _eye.apply(this,arguments)};
  MODS.push({id:'scratchcars',frame(){const G=typeof game!=='undefined'?game:null,S=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.rotScreen;if(!S)return;const t=(performance.now()/1000)%20;S.rotation.x=t<9?0:t<10?(t-9)*Math.PI/2:t<19?Math.PI/2:(20-t)*Math.PI/2}}); /* BYD rotating screen: landscape ↔ portrait */
+})();
+</script>
+<script>/* mods/61zf-modelt.js */
+/* Ford Model T Town Car (spec.modelt), c.1915: the chauffeur sits out front in an open compartment under a short canopy
+   behind an upright two-pane windscreen; you ride in the tall enclosed rear cabin (coach-built box with door and quarter
+   windows and a glass partition to the chauffeur). Brass radiator and lamps, louvred black bonnet, separate swept fenders
+   and running boards, and 30-inch wooden-spoke wheels on a 100-inch wheelbase. Crew and back-seat camera come from the
+   shared chauffeur setup in 88b-century.js (spec.chauffeur / spec.backSeat). */
+(function(){
+ const EYE={x:0.02,y:1.56,z:-0.33}; /* chauffeur's eye: right-hand drive was long gone by 1915, so he sits on the left */
+ window.buildModelT=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{L,W,H,wr}=spec,fx=spec.wb/2-0.05,rx=-spec.wb/2-0.05,tz=0.71;
+  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.15,roughness:0.28,clearcoat:0.8,clearcoatRoughness:0.12}),
+   black=new THREE.MeshStandardMaterial({color:0x0c0c0d,roughness:0.45}),leather=new THREE.MeshStandardMaterial({color:0x17140f,roughness:0.75}),
+   brass=new THREE.MeshStandardMaterial({color:0xc9a24a,metalness:1,roughness:0.25}),wood=new THREE.MeshStandardMaterial({color:0x8a5a2b,roughness:0.6}),
+   glass=new THREE.MeshPhysicalMaterial({color:0x2a3a44,roughness:0.03,transparent:true,opacity:0.28,depthWrite:false,side:THREE.DoubleSide}),
+   tyreM=new THREE.MeshStandardMaterial({color:0x2a2a2a,roughness:0.95}),core=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.9});
+  const add=(geo,m,x,y,z,p=g)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;p.add(o);return o},box=(w,h,d,m,x,y,z,p)=>add(new THREE.BoxGeometry(w,h,d),m,x,y,z,p);
+  ud.paint=paint;ud.body=new THREE.Group();g.add(ud.body);ud.hood=new THREE.Group();g.add(ud.hood);ud.cab=new THREE.Group();g.add(ud.cab);
+  /* chassis, splash aprons */
+  box(3.0,0.1,0.72,black,-0.2,0.55,0);for(const s of [1,-1])box(1.75,0.18,0.03,black,-0.15,0.55,s*0.58);
+  /* brass radiator with honeycomb core and the script badge */
+  const rX=fx+0.06;box(0.08,0.62,0.56,brass,rX,1.0,0);box(0.085,0.5,0.46,core,rX+0.004,0.98,0);box(0.09,0.06,0.2,brass,rX+0.01,1.36,0);
+  const cap=add(new THREE.CylinderGeometry(0.035,0.04,0.06,14),brass,rX,1.36,0);
+  /* louvred black bonnet with a rounded crown, cowl and dash */
+  const hood=add(softBox(rX-0.62,0.42,0.6,0.07),black,(rX+0.62)/2-0.02,1.06,0);
+  for(const s of [1,-1])for(let k=0;k<10;k++)box(0.035,0.012,0.006,core,0.75+k*0.055,0.98,s*0.302);
+  box(0.12,0.5,0.82,paint,0.56,1.0,0);box(0.04,0.14,0.86,paint,0.56,1.21,0); /* cowl */
+  /* upright two-pane windscreen in a brass frame, stays down to the cowl */
+  for(const [y,h] of [[1.43,0.26],[1.7,0.24]])add(new THREE.PlaneGeometry(1.12,h),glass,0.54,y,0).rotation.y=Math.PI/2;
+  for(const y of [1.29,1.565,1.83])box(0.025,0.025,1.16,brass,0.54,y,0);for(const s of [1,-1])box(0.025,0.56,0.025,brass,0.54,1.56,s*0.58);
+  /* open chauffeur compartment: low painted sides, black leather bench, floor */
+  for(const s of [1,-1]){box(0.8,0.5,0.04,paint,0.12,0.95,s*0.74);box(0.82,0.035,0.06,black,0.12,1.21,s*0.74)}
+  box(0.85,0.03,1.42,black,0.12,0.66,0);
+  const fb=add(softBox(0.42,0.14,1.34,0.05),leather,0.0,0.98,0);const fbk=add(softBox(0.1,0.42,1.34,0.05),leather,-0.21,1.24,0);
+  /* steering column raked back to a wooden wheel, spark and throttle levers under it */
+  const col=add(new THREE.CylinderGeometry(0.02,0.02,0.62,8),black,0.33,1.02,EYE.z);col.rotation.z=0.75;
+  const sw=new THREE.Group();sw.position.set(0.16,1.24,EYE.z);sw.rotation.z=0.75;g.add(sw);
+  {const r=add(new THREE.TorusGeometry(0.19,0.018,8,28),wood,0,0,0,sw);r.rotation.x=Math.PI/2;for(let k=0;k<4;k++){const sp=add(new THREE.BoxGeometry(0.36,0.012,0.014),black,0,0,0,sw);sp.rotation.y=k*Math.PI/4}}
+  ud.steer=sw;
+  /* the coach-built rear cabin: wall panels around door and quarter windows, glass partition, small back light */
+  const cx0=-1.74,cx1=-0.27,cy0=0.62,cyB=1.33,cyT=1.88,cyR=2.06,hw=0.76;
+  box(cx1-cx0,cyB-cy0,1.52,paint,(cx0+cx1)/2,(cy0+cyB)/2,0); /* lower body tub */
+  box(cx1-cx0+0.02,0.025,1.55,black,(cx0+cx1)/2,cyB+0.012,0); /* belt moulding */
+  for(const s of [1,-1]){box(cx1-cx0,cyR-cyT,0.04,paint,(cx0+cx1)/2,(cyT+cyR)/2,s*hw); /* cant rail */
+   for(const [a,b] of [[cx0,cx0+0.2],[-1.02,-0.84],[cx1-0.06,cx1]])box(b-a,cyT-cyB,0.04,paint,(a+b)/2,(cyB+cyT)/2,s*hw); /* pillars */
+   for(const [a,b] of [[cx0+0.2,-1.02],[-0.84,cx1-0.06]])add(new THREE.PlaneGeometry(b-a,cyT-cyB),glass,(a+b)/2,(cyB+cyT)/2,s*(hw+0.005));
+   box(0.012,0.95,0.008,black,-0.84,1.12,s*(hw+0.022)); /* door shut line */
+   box(0.08,0.02,0.03,brass,-0.78,1.3,s*(hw+0.03)); /* door handle */
+   box(cx1-cx0,0.012,0.008,brass,(cx0+cx1)/2,1.22,s*(hw+0.022)); /* coach line */
+   const lamp=add(new THREE.CylinderGeometry(0.05,0.06,0.16,10),brass,0.56,1.24,s*0.46);} /* cowl oil lamps */
+  box(0.04,cyR-cy0,1.52,paint,cx0,(cy0+cyR)/2,0); /* back panel */
+  add(new THREE.PlaneGeometry(0.5,0.2),glass,cx0-0.025,1.66,0).rotation.y=-Math.PI/2;box(0.01,0.22,0.52,brass,cx0-0.02,1.66,0).visible=false;
+  /* partition to the chauffeur: panelled below, glass above, narrow pillars */
+  box(0.04,cyB-0.95+0.0,1.52,paint,cx1,(cyB+0.95)/2,0);box(0.04,cyR-cyT,1.52,paint,cx1,(cyT+cyR)/2,0);
+  for(const s of [1,-1])box(0.04,cyT-cyB,0.14,paint,cx1,(cyB+cyT)/2,s*(hw-0.07));
+  add(new THREE.PlaneGeometry(1.24,cyT-cyB),glass,cx1+0.005,(cyB+cyT)/2,0).rotation.y=Math.PI/2;
+  /* roof: leatherette top over the cabin, carried forward as the chauffeur's canopy on two brass-capped posts */
+  add(softBox(0.6-cx0+0.08,0.07,1.6,0.03),black,(cx0+0.6)/2-0.02,cyR+0.035,0);
+  for(const s of [1,-1])box(0.03,cyR-1.83,0.03,black,0.54,(cyR+1.83)/2,s*0.58);
+  /* swept black fenders over each wheel, running boards between them */
+  const fender=(x,front)=>{const R=wr+0.07,a0=front?0.25:0.2,a1=Math.PI-(front?0.15:0.35),sh=new THREE.Shape();sh.absarc(0,0,R+0.035,a0,a1,false);sh.absarc(0,0,R,a1,a0,true);
+   const geo=new THREE.ExtrudeGeometry(sh,{depth:0.2,bevelEnabled:false,curveSegments:24});for(const s of [1,-1]){const m=add(geo,black,x,wr,s*tz-0.1);if(s<0)m.position.z=-tz-0.1}};
+  fender(fx,true);fender(rx,false);
+  for(const s of [1,-1]){const fr=add(new THREE.BoxGeometry(0.62,0.03,0.2),black,fx-0.62,0.62,s*tz);fr.rotation.z=0.46; /* front fender sweeps down to the board */
+   const rr=add(new THREE.BoxGeometry(0.3,0.03,0.2),black,rx+0.5,0.56,s*tz);rr.rotation.z=-0.35;
+   box(1.38,0.03,0.24,black,(fx-0.88+rx+0.36)/2,0.48,s*(tz+0.02));box(1.38,0.01,0.2,core,(fx-0.88+rx+0.36)/2,0.497,s*(tz+0.02));} /* ribbed rubber tread */
+  /* lamps: brass drum headlamps on forks beside the radiator, kerosene tail lamp at the back left */
+  const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x2a1800),sigR=mk(0x2a1800);ud.lights={head,tail,sigL,sigR};
+  for(const s of [1,-1]){const d=add(new THREE.CylinderGeometry(0.11,0.11,0.14,18).rotateZ(Math.PI/2),brass,rX+0.02,1.08,s*0.44);const lens=add(new THREE.CircleGeometry(0.095,18),head,rX+0.095,1.08,s*0.44);lens.rotation.y=Math.PI/2;
+   box(0.02,0.3,0.02,brass,rX-0.02,0.9,s*0.44);const sg=add(new THREE.SphereGeometry(0.02,6,4),s<0?sigL:sigR,cx0-0.03,0.9,s*0.55)}
+  {const tl=add(new THREE.CylinderGeometry(0.05,0.05,0.12,10),black,cx0-0.06,0.92,-0.62);const tg=add(new THREE.CircleGeometry(0.04,12),tail,cx0-0.125,0.92,-0.62);tg.rotation.y=-Math.PI/2}
+  /* interior: tufted rear bench, carpet, headliner, a bud vase and a speaking tube to the chauffeur */
+  const I=new THREE.Group();g.add(I);ud.interior=I;const cloth=new THREE.MeshStandardMaterial({color:0x6b6455,roughness:0.95}),lining=new THREE.MeshStandardMaterial({color:0xcfc4ad,roughness:0.95,side:THREE.DoubleSide});
+  box(1.4,0.02,1.44,cloth,(cx0+cx1)/2,0.65,0,I);
+  add(softBox(0.55,0.2,1.4,0.07),cloth,cx0+0.45,0.96,0,I);const bk=add(softBox(0.14,0.62,1.4,0.06),cloth,cx0+0.13,1.34,0,I);bk.rotation.z=-0.1;
+  for(let i=0;i<6;i++)for(let j=0;j<3;j++)add(new THREE.SphereGeometry(0.012,6,4),brass,cx0+0.21,1.15+j*0.16,-0.6+i*0.24,I); /* buttons */
+  const hl=add(new THREE.PlaneGeometry(cx1-cx0-0.06,1.46),lining,(cx0+cx1)/2,cyR-0.012,0,I);hl.rotation.x=Math.PI/2;
+  for(const s of [1,-1]){const lw=add(new THREE.PlaneGeometry(cx1-cx0-0.06,cyB-cy0),lining,(cx0+cx1)/2,(cy0+cyB)/2+0.03,s*(hw-0.03),I)}
+  add(new THREE.CylinderGeometry(0.018,0.03,0.14,10),brass,cx1-0.05,1.62,0.66,I); /* bud vase */
+  {const tube=add(new THREE.CylinderGeometry(0.012,0.012,0.5,8),brass,cx1-0.04,1.5,-0.62,I);const mouth=add(new THREE.CylinderGeometry(0.03,0.015,0.05,10),brass,cx1-0.06,1.78,-0.62,I)} /* speaking tube */
+  ud.seats=[new THREE.Vector3(0.0,1.05,EYE.z),new THREE.Vector3(cx0+0.45,1.05,-EYE.z)];
+  /* wheels: thin clincher tyres on wooden felloes, twelve hickory spokes, brass hub caps */
+  const wheels=[],tg=new THREE.TorusGeometry(wr-0.045,0.045,10,32),fg=new THREE.TorusGeometry(wr-0.1,0.022,6,32),sg=new THREE.CylinderGeometry(0.016,0.02,wr-0.13,6),hg=new THREE.CylinderGeometry(0.07,0.07,0.16,14).rotateX(Math.PI/2);
+  for(const [x,front] of [[fx,true],[rx,false]])for(const sd of [1,-1]){const piv=new THREE.Group();piv.position.set(x,wr,sd*tz);const holder=new THREE.Group(),spin=new THREE.Group();
+   spin.add(new THREE.Mesh(tg,tyreM));spin.add(new THREE.Mesh(fg,wood));for(let k=0;k<12;k++){const s=new THREE.Mesh(sg,wood);const a=k*Math.PI/6;s.position.set(Math.cos(a)*(wr-0.13)/2,Math.sin(a)*(wr-0.13)/2,0);s.rotation.z=a-Math.PI/2;spin.add(s)}
+   spin.add(new THREE.Mesh(hg,brass));holder.add(spin);piv.add(holder);g.add(piv);wheels.push({piv,spin,front,sign:sd})}
+  ud.wheels=wheels;ud.modelt=true;
+  g.traverse(o=>{if(o.isMesh)o.castShadow=true});return g};
+ const _bc=window.buildCar;
+ window.buildCar=function(spec,colorHex,opts){if(spec&&spec.modelt)return buildModelT(spec,colorHex,opts||{});return _bc.apply(this,arguments)};
+ const _eye=window.eyePos;
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.modelt)return new THREE.Vector3(EYE.x,EYE.y,EYE.z);return _eye.apply(this,arguments)};
+ MODS.push({id:'modelt'});
 })();
 </script>
 <script>/* mods/62-trams.js */
