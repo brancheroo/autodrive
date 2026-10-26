@@ -10830,8 +10830,9 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   if(us.length<3||P.top(g0)-yW<0.05)return null; /* boot lid below the window line (saloon): nothing to add */
   const yAt=(u,z,yc)=>{let lo=P.bottom(u),hi=yc;for(let k=0;k<18;k++){const m=(lo+hi)/2;if(P.halfAt(u,m)>=z)lo=m;else hi=m}return lo}; /* highest point of the skin at this width */
   const NJ=12,pos=[],idx=[];
-  us.forEach((u,i)=>{const yc=P.top(u),K=0.8*P.halfAt(u,Math.max(yW,yc-0.08)),x=P.xOf(u)-0.006;
-   for(let j=0;j<=NJ;j++){const z=-K+2*K*j/NJ;pos.push(x,yAt(u,Math.abs(z),yc)+0.004,z)}
+  const gr=Math.min(P.sh.roofR||g0,g0+0.12);for(let u=g0+0.004;u<=gr-0.01;u+=0.004)us.push(u); /* carry on up the sloping hatch glass to the roof edge */
+  us.forEach((u,i)=>{const yc=P.top(u),up=u>g0,K=up?0.78*P.half(u)*(P.sh.tum||0.8):0.8*P.halfAt(u,Math.max(yW,yc-0.08)),x=P.xOf(u)-(up?0:0.006);
+   for(let j=0;j<=NJ;j++){const z=-K+2*K*j/NJ,t=Math.abs(z)/K;pos.push(x,up?yc+0.006-0.05*t*t*t*t:yAt(u,Math.abs(z),yc)+0.004,z)}
    if(i)for(let j=0;j<NJ;j++){const a=(i-1)*(NJ+1)+j,b=a+NJ+1;idx.push(a,b,a+1,a+1,b,b+1)}});
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setIndex(idx);geo.computeVertexNormals();geo.userData.shared=true;
   return GEO[spec.id]=geo}
