@@ -10975,6 +10975,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   const e=eyePos(spec),cg=new THREE.MeshPhysicalMaterial({color:0x1a2a36,transparent:true,opacity:0.32,roughness:0.03,metalness:0.2,clearcoat:1,side:THREE.DoubleSide,depthWrite:false});
   const can=new THREE.Mesh(new THREE.SphereGeometry(1,40,20,0,Math.PI*2,0,Math.PI/2),cg);can.scale.set(1.05,Math.max(0.3,H+0.08-H*0.6),W*0.42);can.position.set(e.x+0.15,H*0.6,0);g.add(can);
   const frame=new THREE.Mesh(new THREE.TorusGeometry(1,0.012,6,64),metal);frame.rotation.x=Math.PI/2;frame.scale.set(1.05,W*0.42,1);frame.position.copy(can.position);g.add(frame);
+  if(U.lidarSpin){let t=U.lidarSpin;while(t.parent&&t.parent!==g)t=t.parent;if(t.parent===g)t.position.y+=0.12} /* roof lidar sits on top of the canopy, not inside it */
   U.ax={jets,fans,canopy:can,eye:e};
   if(opts&&opts.interior)cabin(g,spec,e)}
  /* interior: one huge centre panel (the main screen, enlarged), every other dash screen removed, and a canopy HUD */
@@ -10983,8 +10984,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   for(const s of SCREENS){if(!mine.has(s.mesh))continue;if(s.kind==='hyper-main'&&!main)main=s.mesh;else s.mesh.visible=false}
   if(main){main.scale.multiplyScalar(2.6);main.position.y+=0.06}
   hudC=document.createElement('canvas');hudC.width=512;hudC.height=200;hudX=hudC.getContext('2d');hudT=new THREE.CanvasTexture(hudC);
-  const hm=new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.195),new THREE.MeshBasicMaterial({map:hudT,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}));
-  hm.position.set(e.x+0.6,e.y+0.2,e.z);hm.rotation.y=-Math.PI/2;g.add(hm);g.userData.ax.hud=hm}
+  const hm=new THREE.Mesh(new THREE.PlaneGeometry(0.4,0.156),new THREE.MeshBasicMaterial({map:hudT,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}));
+  hm.position.set(e.x+0.42,e.y+0.13,e.z);hm.rotation.y=-Math.PI/2;g.add(hm);g.userData.ax.hud=hm}
  function drawHud(G,lat,suction){if(!hudX)return;const x=hudX,v=G.ego.v*2.23694,W=512;x.clearRect(0,0,W,200);x.fillStyle='rgba(120,240,255,0.95)';x.textAlign='center';
   x.font='700 64px system-ui';x.fillText(Math.round(v)+'',W/2,70);x.font='600 20px system-ui';x.fillText(v>700?'MACH '+(v/761).toFixed(2):'MPH',W/2,96);
   x.textAlign='left';x.font='600 19px system-ui';x.fillText('⇆ JETS '+Math.round(lat*100)+'%',14,140);x.fillText('◎ SUCTION '+suction.toFixed(1)+' g'+(suction>1?' · INVERT OK':''),14,172);
