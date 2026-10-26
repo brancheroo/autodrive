@@ -11072,7 +11072,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  if(typeof _eye==='function')window.eyePos=function(spec){const e=_eye.apply(this,arguments);if(spec&&spec.pickupBed&&spec.eyeDx&&e&&e.isVector3)return e.clone().setX(e.x+spec.eyeDx);return e}; /* short pickup cab: the seat sits right against the back wall */
  const _bc=window.buildCar;
  window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.pickupBed&&MODEL[spec.id]&&!g.userData.pickupBed){bed(g,spec);if(opts&&opts.interior)clampCab(g,spec)}}catch(e){console.warn('pickupbed',e)}return g};
- MODS.push({id:'pickupbed'});
+ MODS.push({id:'pickupbed',start(){this.n=0},frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh||!G.spec||!G.spec.pickupBed)return;const m=G.ego.mesh;
+  if(m.userData.pbClamp!==m.userData.interior&&++this.n>30){m.userData.pbClamp=m.userData.interior;try{clampCab(m,G.spec)}catch(e){}}}}); /* trim again once the trip is running: other modules add cabin trim after the build */
 })();
 </script>
 <!--/mods-->
