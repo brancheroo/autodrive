@@ -9456,10 +9456,10 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const add=(geo,m,x,y,z,par=g)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;par.add(o);return o};
   /* giant stacks replace the stock pipes */
   g.traverse(o=>{if(o.isMesh&&o.geometry.type==='CylinderGeometry'&&o.geometry.parameters&&Math.abs(o.geometry.parameters.radiusBottom-0.075)<0.001&&Math.abs(o.position.x+0.55)<0.1)o.visible=false});
-  const stacks=[],flags=[];for(const z of [0.85,-0.85]){add(new THREE.CylinderGeometry(0.17,0.19,3.0,24),chrome,-0.6,FY+1.7,z);const tip=add(new THREE.CylinderGeometry(0.24,0.17,0.45,24),chrome,-0.66,FY+3.4,z);tip.rotation.z=-0.3;
-   for(const y of [0.9,1.6,2.3])add(new THREE.TorusGeometry(0.19,0.025,8,24),chrome,-0.6,FY+y,z).rotation.x=Math.PI/2; /* clamp bands */
-   stacks.push(new THREE.Vector3(-0.78,FY+3.62,z));
-   const fg=new THREE.PlaneGeometry(1.5,0.8,12,1).translate(-0.75,0,0);const f=add(fg,flagM,-0.6,FY+2.8,z+Math.sign(z)*0.2);f.userData.base=fg.attributes.position.array.slice();flags.push(f)}
+  const stacks=[],flags=[];for(const z of [0.85,-0.85]){add(new THREE.CylinderGeometry(0.17,0.19,2.3,24),chrome,-0.6,FY+1.35,z);const tip=add(new THREE.CylinderGeometry(0.24,0.17,0.45,24),chrome,-0.66,FY+2.7,z);tip.rotation.z=-0.3;
+   for(const y of [0.8,1.4,2.0])add(new THREE.TorusGeometry(0.19,0.025,8,24),chrome,-0.6,FY+y,z).rotation.x=Math.PI/2; /* clamp bands */
+   stacks.push(new THREE.Vector3(-0.78,FY+2.92,z));
+   const fg=new THREE.PlaneGeometry(1.5,0.8,12,1).translate(-0.75,0,0);const f=add(fg,flagM,-0.6,FY+2.1,z+Math.sign(z)*0.2);f.userData.base=fg.attributes.position.array.slice();flags.push(f)}
   /* flag decal on each side of the bed */
   for(const s of [1,-1]){const d=add(new THREE.PlaneGeometry(2.55,0.66),new THREE.MeshStandardMaterial({map:flagTex(),roughness:0.35,metalness:0.2,polygonOffset:true,polygonOffsetFactor:-2}),-1.75,FY+0.47,s*1.181);if(s<0)d.rotation.y=Math.PI;
    if(s<0)d.scale.x=-1} /* stars toward the front on both sides */
