@@ -2716,6 +2716,17 @@ function laneOffsetRaw(idx){let ni=NODEINFO.get(game.route.nodes[idx]);const fl=
 /* where to stop before a controlled node: clear of the crossing road – half the widest road through the node + 3 m
    (was a fixed 6–7 m, which on wide cross streets parked the car inside the lanes cross traffic uses) */
 function stopOff(c){if(c._so!=null&&c._soT>performance.now()-20000)return c._so;let hw=0;for(const T of TILES.values())for(const w of T.ways)if(w.nodes&&w.nodes.includes(c.id))hw=Math.max(hw,(w.w||7)/2);c._so=clamp(3+hw,7,16);c._soT=performance.now();return c._so}
+/* realistic cornering speed for a curve of radius R (m).
+   Normal driving: drivers accept more lateral g in tight, slow turns than on fast curves – about 0.4 g at walking-pace
+   corners falling to ~0.2 g at 70 mph (the same trend as highway side-friction design values) – so a(v) = A − B·v and
+   v² = a(v)·R. Tall vehicles corner a little gentler, sports cars a little harder; weather scales it (WX.latA), and it can
+   never exceed the tyres: 85% of road friction × the car's tyre grip (PHYS.gripK, incl. load sensitivity and downforce).
+   Chase / Express: driven at ~92% of the real tyre limit. Corners tighter than 7 m are taken on a 7 m line (cutting the
+   apex of a sharp junction corner, as drivers do). */
+function curveV(a,isEgo,chase,R){R=Math.max(R,7);const sp=a.spec,mu=WX.mu,gk=window.PHYS?PHYS.gripK(sp,a.v):1,tyre=Math.sqrt(0.85*mu*9.81*gk*R);
+ if(chase)return Math.sqrt(0.92*mu*9.81*gk*R);
+ const s=(WX.latA/2.2)*(isEgo?(window.UPG_GRIP||1)*(DRIVE_P[DRIVE.profile].lat||1):1)*(sp.H>1.75||/van|suv/.test(sp.style||'')?0.88:sp.style==='coupe'||sp.style==='roadster'?1.08:1);
+ const A=4.2*s,B=0.07*s;return Math.min(tyre,(-B*R+Math.sqrt(B*B*R*R+4*A*R))/2)}
 function plan(a,dt,lead,isEgo){
  const R=game.route,e=a;const look=Math.max(70,a.v*a.v/(2*2.2)+50);let target=1e9,reason='';
  const [,,idx]=routeLLnh(a.s);
@@ -2725,7 +2736,7 @@ function plan(a,dt,lead,isEgo){
  const brake=WX.brake*(isEgo&&fastOn()?1.8:1)*(isEgo&&!fastOn()?(DRIVE_P[DRIVE.profile].brk||1):1);
  const allow=(vc,d)=>Math.sqrt(Math.max(0,vc*vc+2*brake*Math.max(0,d)));
  // curvature
- for(let d=5;d<look&&!(isEgo&&a.spec.hyper&&chase&&window.HYX&&HYX.on);d+=5){const p0=routeXZ(a.s+d-5,0),p1=routeXZ(a.s+d+5,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh<0.02)continue;const Rr=10/dh,vc=Math.max(3.0,Math.sqrt(WX.latA*(isEgo?(window.UPG_GRIP||1):1)*(isEgo&&!chase?(DRIVE_P[DRIVE.profile].lat||1):1)*(chase?(a.spec.hyper&&isEgo?2.8:1.9*(isEgo&&window.PHYS?PHYS.gripK(a.spec,a.v):1)):1)*(isEgo&&a.spec.hyper?HB.grip:1)*(isEgo&&a.spec.hyper&&window.HOVER&&HOVER.on?0.7:1)*Rr)); /* fans up to 9× grip (planner keeps ~5% margin) */ /* hypercar: vacuum fans can triple grip */const v=allow(vc,d-4);if(v<target){target=v;reason=vc<8?'Slowing for turn':'Slowing for curve'}}
+ for(let d=5;d<look&&!(isEgo&&a.spec.hyper&&chase&&window.HYX&&HYX.on);d+=5){const p0=routeXZ(a.s+d-5,0),p1=routeXZ(a.s+d+5,0);let dh=Math.atan2(p1[3],p1[2])-Math.atan2(p0[3],p0[2]);dh=Math.abs(Math.atan2(Math.sin(dh),Math.cos(dh)));if(dh<0.02)continue;const Rr=10/dh,vc=Math.max(3.0,(isEgo&&a.spec.hyper&&chase)?Math.sqrt(WX.latA*2.8*HB.grip*(window.HOVER&&HOVER.on?0.7:1)*Rr):curveV(a,isEgo,chase,Rr)); /* fans up to 9× grip (planner keeps ~5% margin) */ /* hypercar: vacuum fans can triple grip */const v=allow(vc,d-4);if(v<target){target=v;reason=vc<8?'Slowing for turn':'Slowing for curve'}}
  // controls along route nodes
  const up=[];
  for(let i=idx+1;i<R.nodes.length&&R.cum[i]-a.s<look&&!chase;i++){const c=CONTROLS.get(R.nodes[i]);if(!c)continue;const d=R.cum[i]-a.s;
