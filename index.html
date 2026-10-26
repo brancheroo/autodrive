@@ -659,7 +659,7 @@ function flatPoly(buf,pts,y,col,abs=false){
  try{tris=THREE.ShapeUtils.triangulateShape(cont,[])}catch(e){return}
  const Y=p=>abs?y:groundY(p[0],p[1])+y-0.12; /* ground fills sit just under the terrain so a road in a shallow cut is never covered by grass */
  const Yc=abs?Y:p=>{const g=Y(p);return game&&game.route?roadCut(p[0],p[1],g):g}; /* ground fills: never above a nearby road */
- const emit=(a,b,c,dep)=>{const l=Math.max(Math.hypot(a[0]-b[0],a[1]-b[1]),Math.hypot(b[0]-c[0],b[1]-c[1]),Math.hypot(c[0]-a[0],c[1]-a[1]));if(!abs&&l>12&&dep<5){const ab=[(a[0]+b[0])/2,(a[1]+b[1])/2],bc=[(b[0]+c[0])/2,(b[1]+c[1])/2],ca=[(c[0]+a[0])/2,(c[1]+a[1])/2];emit(a,ab,ca,dep+1);emit(ab,b,bc,dep+1);emit(ca,bc,c,dep+1);emit(ab,bc,ca,dep+1);return} /* big flat triangles would bulge through the road between their corners: split them to follow the terrain */
+ const emit=(a,b,c,dep)=>{const l=Math.max(Math.hypot(a[0]-b[0],a[1]-b[1]),Math.hypot(b[0]-c[0],b[1]-c[1]),Math.hypot(c[0]-a[0],c[1]-a[1]));if(!abs&&l>30&&dep<3){const ab=[(a[0]+b[0])/2,(a[1]+b[1])/2],bc=[(b[0]+c[0])/2,(b[1]+c[1])/2],ca=[(c[0]+a[0])/2,(c[1]+a[1])/2];emit(a,ab,ca,dep+1);emit(ab,b,bc,dep+1);emit(ca,bc,c,dep+1);emit(ab,bc,ca,dep+1);return} /* big flat triangles would bulge through the road between their corners: split them to follow the terrain */
   buf.tri([a[0],Yc(a),a[1]],[b[0],Yc(b),b[1]],[c[0],Yc(c),c[1]],UP,[a[0]/6,a[1]/6],[b[0]/6,b[1]/6],[c[0]/6,c[1]/6],col)};
  for(const t of tris)emit(pts[t[0]],pts[t[1]],pts[t[2]],0)}
 function polyArea(pts){let a=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];a+=p[0]*q[1]-q[0]*p[1]}return a/2}
