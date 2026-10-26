@@ -10813,6 +10813,32 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  MODS.push({id:'grimeBadges'});
 })();
 </script>
+<script>/* mods/99k-rearglass.js */
+/* Rear window on the rear face. The lofted body only carries glass on its top surface between the rear-glass start
+   (sh.tail) and the roof, so on hatchbacks, estates and SUVs - whose rear window stands on the near-vertical tailgate -
+   the whole rear end read as painted metal right up to the roof. This lays a tinted glass panel onto that rear face,
+   following the body surface, from the side-window line up to where the roof glass begins and inset from the corners
+   like a real tailgate window. Saloons are unaffected: their boot lid sits below the window line, so the panel is empty. */
+(function(){
+ const SKIP=['angletruck','coach','dronewagon','ebike','formulae','hbike','isetta','keitruck','luce','moped','scratch','solarcar','vtol','wiener','gargantua','ecosemi','hyper','aegis'];
+ const GEO={},glassM=new THREE.MeshPhysicalMaterial({color:0x121820,metalness:0.1,roughness:0.04,clearcoat:1,envMapIntensity:1.6,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+ function panel(spec){if(spec.id in GEO)return GEO[spec.id];const P=mkProfile(spec);GEO[spec.id]=null;if(!P.halfAt)return null;
+  const g0=P.sh.tail||0,yW=P.belt(clamp(g0+0.06,0,1))+0.03; /* window bottom: level with the side-window base */
+  const us=[];for(let u=0;u<=g0+0.0001;u+=0.0015)if(P.top(u)>=yW)us.push(u);
+  if(us.length<3||P.top(g0)-yW<0.12)return null; /* boot lid below the window line (saloon): nothing to add */
+  const yAt=(u,z,yc)=>{let lo=P.bottom(u),hi=yc;for(let k=0;k<18;k++){const m=(lo+hi)/2;if(P.halfAt(u,m)>=z)lo=m;else hi=m}return lo}; /* highest point of the skin at this width */
+  const NJ=12,pos=[],idx=[];
+  us.forEach((u,i)=>{const yc=P.top(u),K=0.8*P.halfAt(u,Math.max(yW,yc-0.08)),x=P.xOf(u)-0.006;
+   for(let j=0;j<=NJ;j++){const z=-K+2*K*j/NJ;pos.push(x,yAt(u,Math.abs(z),yc)+0.004,z)}
+   if(i)for(let j=0;j<NJ;j++){const a=(i-1)*(NJ+1)+j,b=a+NJ+1;idx.push(a,b,a+1,a+1,b,b+1)}});
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setIndex(idx);geo.computeVertexNormals();geo.userData.shared=true;
+  return GEO[spec.id]=geo}
+ const _bc=window.buildCar;
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&!spec.style?.includes('pod')&&!SKIP.some(k=>spec[k])&&MODEL[spec.id]&&MODEL[spec.id].prof&&!g.userData.rearGlass){const geo=panel(spec);
+   if(geo){const m=new THREE.Mesh(geo,glassM);m.userData.noDent=true;const hb=g.userData.body;(hb&&hb.isObject3D?hb:g).add(m);g.userData.rearGlass=m}}}catch(e){console.warn('rearglass',e)}return g};
+ MODS.push({id:'rearglass'});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
