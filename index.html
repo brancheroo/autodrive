@@ -11052,6 +11052,10 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   for(let k=1;k<8;k++)add(new THREE.BoxGeometry(len-0.1,0.012,0.03),blk,mid,fy+0.026,-hw+0.04+(hw*2-0.08)*k/8); /* ribs */
   const ax=P.axles[1];for(const s of [1,-1])add(new THREE.BoxGeometry(P.R*2+0.06,0.16,0.26),blk,ax,fy+0.08,s*(hw-0.17)); /* wheel-well humps */
   add(new THREE.BoxGeometry(0.03,ry-fy,hw*2),blk,x1-0.02,(fy+ry)/2,0); /* front bed wall behind the cab */
+  {const ua=B.u1+0.004,ub=(P.sh.roofR||B.u1+0.02)-0.002,ya=ry+0.025,yb=P.top(ub)-0.05,xa=P.xOf(ua)-0.006,xb=P.xOf(ub)-0.006,ww=Math.min(P.halfAt(ua,ya),P.half(ub)*(P.sh.tum||0.8))*0.86; /* big cab-back window, above the bed rail up to the roof */
+   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute([xa,ya,-ww, xa,ya,ww, xb,yb,ww, xb,yb,-ww],3));geo.setIndex([0,1,2,0,2,3]);geo.computeVertexNormals();
+   const gm=new THREE.MeshPhysicalMaterial({color:0x121820,metalness:0.1,roughness:0.04,clearcoat:1,transparent:true,opacity:0.8,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2,depthWrite:false});
+   const w=new THREE.Mesh(geo,gm);G.add(w);U.cabBackGlass=w}
   G.userData.noDent=true;(U.body&&U.body.isObject3D&&U.body!==g?U.body:g).add(G);U.pickupBed=G}
  /* nothing of the cabin may reach past the cab's back wall into the bed: pull any interior vertex behind it up to the wall */
  function clampCab(g,spec){const I=g.userData.interior;if(!I)return;const P=mkProfile(spec),xr=P.xOf(spec.pickupBed.u1)+0.03,v=new THREE.Vector3();g.updateMatrixWorld(true);const gi=new THREE.Matrix4().copy(g.matrixWorld).invert();
