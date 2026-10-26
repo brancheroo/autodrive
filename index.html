@@ -10821,7 +10821,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    like a real tailgate window. Saloons are unaffected: their boot lid sits below the window line, so the panel is empty. */
 (function(){
  const SKIP=['angletruck','coach','dronewagon','ebike','formulae','hbike','isetta','keitruck','luce','moped','scratch','solarcar','vtol','wiener','gargantua','ecosemi','hyper','aegis'];
- const GEO={},glassM=new THREE.MeshPhysicalMaterial({color:0x121820,metalness:0.1,roughness:0.04,clearcoat:1,envMapIntensity:1.6,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+ const GEO={},glassM=new THREE.MeshPhysicalMaterial({color:0x121820,metalness:0.1,roughness:0.04,clearcoat:1,envMapIntensity:1.6,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2,side:THREE.DoubleSide});
  function panel(spec){if(spec.id in GEO)return GEO[spec.id];const P=mkProfile(spec);GEO[spec.id]=null;if(!P.halfAt)return null;
   const g0=P.sh.tail||0,yW=P.belt(clamp(g0+0.06,0,1))+0.03; /* window bottom: level with the side-window base */
   const us=[];for(let u=0;u<=g0+0.0001;u+=0.0015)if(P.top(u)>=yW)us.push(u);
