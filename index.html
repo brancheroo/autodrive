@@ -11066,7 +11066,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   /* small parts (headrests, visors) must stay under the low cab roof and its sloping back glass */
   const uOf=x=>clamp((x+spec.L/2)/spec.L,0,1);
   for(const T of [I,g.userData.tub])if(T)T.traverse(o=>{if(!o.isMesh||!o.visible||!o.geometry||!o.geometry.attributes.position)return;const b=new THREE.Box3().setFromObject(o);b.applyMatrix4(gi);const sz=new THREE.Vector3();b.getSize(sz);if(sz.x>1.2||b.isEmpty())return;
-   const cap=x=>P.top(uOf(x))-0.03;if(b.max.y<=Math.min(cap(b.min.x),cap(b.max.x)))return;const geo=o.geometry.clone(),pa=geo.attributes.position,toG=new THREE.Matrix4().multiplyMatrices(gi,o.matrixWorld),fromG=new THREE.Matrix4().copy(toG).invert();let hit=false;
+   const cap=x=>P.top(uOf(x))-0.03;if(b.max.y<=Math.min(cap(b.min.x),cap(b.max.x)))return;if(b.min.x>P.xOf((P.sh.roofR+P.sh.roofF)/2)){o.visible=false;return} /* front of the cab (visors under the raked screen): drop it rather than squash it onto the glass */const geo=o.geometry.clone(),pa=geo.attributes.position,toG=new THREE.Matrix4().multiplyMatrices(gi,o.matrixWorld),fromG=new THREE.Matrix4().copy(toG).invert();let hit=false;
    for(let i=0;i<pa.count;i++){v.fromBufferAttribute(pa,i).applyMatrix4(toG);const c=cap(v.x);if(v.y>c){v.y=c;hit=true;v.applyMatrix4(fromG);pa.setXYZ(i,v.x,v.y,v.z)}}if(hit){pa.needsUpdate=true;geo.computeBoundingBox();geo.computeBoundingSphere();o.geometry=geo}})}
  const _eye=window.eyePos;
  if(typeof _eye==='function')window.eyePos=function(spec){const e=_eye.apply(this,arguments);if(spec&&spec.pickupBed&&spec.eyeDx&&e&&e.isVector3)return e.clone().setX(e.x+spec.eyeDx);return e}; /* short pickup cab: the seat sits right against the back wall */
