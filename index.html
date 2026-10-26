@@ -610,13 +610,13 @@ function waitFor(fn,ms){return new Promise(res=>{const t0=performance.now();cons
 function densify(pts,maxd){const out=[pts[0]];for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],d=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.ceil(d/maxd);for(let k=1;k<=n;k++){const t=k/n,q=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];if(a[2]!==undefined&&b[2]!==undefined)q.push(a[2]+(b[2]-a[2])*t);out.push(q)}}return out}
 function ribbon(buf,pts,w,y,off=0){ // pts [[x,z(,y)]..]
  if(pts.length<2)return;pts=densify(pts,HIGH?3.5:6);const L=[],R=[];
- /* road engineering: level across the carriageway and a smoothed longitudinal profile with grades capped at ~10%, kept within
+ /* road engineering: level across the carriageway and a smoothed longitudinal profile with grades capped at ~7% (smoothed over ±4 points), kept within
     a shallow cut/fill (−0.1…+0.6 m: never deeper than the ground fills, which sit 0.12 m under the terrain) of the real ground, instead of copying every terrain bump edge by edge. Bridges/tunnels
     (explicit p[2]) keep their own profile. */
  const RH=[];{const n=pts.length,gc=pts.map(p=>p[2]!==undefined?null:groundY(p[0],p[1])),D=[0];for(let i=1;i<n;i++)D.push(D[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
-  for(let i=0;i<n;i++){if(gc[i]===null){RH.push(null);continue}let sum=0,c=0;for(let j=i-2;j<=i+2;j++)if(j>=0&&j<n&&gc[j]!==null){sum+=gc[j];c++}RH.push(sum/c)}
-  for(let i=1;i<n;i++)if(RH[i]!==null&&RH[i-1]!==null){const d=D[i]-D[i-1];RH[i]=clamp(RH[i],RH[i-1]-0.1*d,RH[i-1]+0.1*d)}
-  for(let i=n-2;i>=0;i--)if(RH[i]!==null&&RH[i+1]!==null){const d=D[i+1]-D[i];RH[i]=clamp(RH[i],RH[i+1]-0.1*d,RH[i+1]+0.1*d)}
+  for(let i=0;i<n;i++){if(gc[i]===null){RH.push(null);continue}let sum=0,c=0;for(let j=i-4;j<=i+4;j++)if(j>=0&&j<n&&gc[j]!==null){sum+=gc[j];c++}RH.push(sum/c)}
+  for(let i=1;i<n;i++)if(RH[i]!==null&&RH[i-1]!==null){const d=D[i]-D[i-1];RH[i]=clamp(RH[i],RH[i-1]-0.07*d,RH[i-1]+0.07*d)}
+  for(let i=n-2;i>=0;i--)if(RH[i]!==null&&RH[i+1]!==null){const d=D[i+1]-D[i];RH[i]=clamp(RH[i],RH[i+1]-0.07*d,RH[i+1]+0.07*d)}
   for(let i=0;i<n;i++)if(RH[i]!==null)RH[i]=clamp(RH[i],gc[i]-0.1,gc[i]+0.6)}
  for(let i=0;i<pts.length;i++){
   const p=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
@@ -658,7 +658,10 @@ function flatPoly(buf,pts,y,col,abs=false){
  const cont=pts.map(p=>new THREE.Vector2(p[0],p[1]));let tris;
  try{tris=THREE.ShapeUtils.triangulateShape(cont,[])}catch(e){return}
  const Y=p=>abs?y:groundY(p[0],p[1])+y-0.12; /* ground fills sit just under the terrain so a road in a shallow cut is never covered by grass */
- for(const t of tris){const a=pts[t[0]],b=pts[t[1]],c=pts[t[2]];buf.tri([a[0],Y(a),a[1]],[b[0],Y(b),b[1]],[c[0],Y(c),c[1]],UP,[a[0]/6,a[1]/6],[b[0]/6,b[1]/6],[c[0]/6,c[1]/6],col)}}
+ const Yc=abs?Y:p=>{const g=Y(p);return game&&game.route?roadCut(p[0],p[1],g):g}; /* ground fills: never above a nearby road */
+ const emit=(a,b,c,dep)=>{const l=Math.max(Math.hypot(a[0]-b[0],a[1]-b[1]),Math.hypot(b[0]-c[0],b[1]-c[1]),Math.hypot(c[0]-a[0],c[1]-a[1]));if(!abs&&l>12&&dep<5){const ab=[(a[0]+b[0])/2,(a[1]+b[1])/2],bc=[(b[0]+c[0])/2,(b[1]+c[1])/2],ca=[(c[0]+a[0])/2,(c[1]+a[1])/2];emit(a,ab,ca,dep+1);emit(ab,b,bc,dep+1);emit(ca,bc,c,dep+1);emit(ab,bc,ca,dep+1);return} /* big flat triangles would bulge through the road between their corners: split them to follow the terrain */
+  buf.tri([a[0],Yc(a),a[1]],[b[0],Yc(b),b[1]],[c[0],Yc(c),c[1]],UP,[a[0]/6,a[1]/6],[b[0]/6,b[1]/6],[c[0]/6,c[1]/6],col)};
+ for(const t of tris)emit(pts[t[0]],pts[t[1]],pts[t[2]],0)}
 function polyArea(pts){let a=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];a+=p[0]*q[1]-q[0]*p[1]}return a/2}
 function pip(pt,poly){let ins=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if(((a[1]>pt[1])!==(b[1]>pt[1]))&&(pt[0]<(b[0]-a[0])*(pt[1]-a[1])/(b[1]-a[1])+a[0]))ins=!ins}return ins}
 
@@ -1275,7 +1278,7 @@ function* buildTileGen(key){
     if(isBridge&&!overRoad){let wet=false;for(const el2 of (data.elements||[])){if(wet)break;if(el2===el||!el2.geometry||!(el2.tags||{}).waterway&&(el2.tags||{}).natural!=='water')continue;const q=el2.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);
       for(let i=1;i<pts.length&&!wet;i++)for(let j=1;j<q.length;j++){const a0=pts[i-1],b0=pts[i],c0=q[j-1],d0=q[j];const o=(u,v,w)=>(v[0]-u[0])*(w[1]-u[1])-(v[1]-u[1])*(w[0]-u[0]);if(o(a0,b0,c0)*o(a0,b0,d0)<0&&o(c0,d0,a0)*o(c0,d0,b0)<0){wet=true;break}}}
      overRoad=!wet} /* the road below is often in a neighbouring tile: any dry bridge is treated as an overpass */
-    const clr0=layer>=1?(overRoad?Math.max(6.2,5.3*layer+0.9):Math.min(3,1.8*layer)):1.5,MAXG=0.10,rampLen=Math.max(4,Math.min(tot*0.48,clr0*1.5/MAXG)),clr=Math.min(clr0,rampLen*MAXG/1.5); /* ramps no steeper than ~10% (smoothstep peak slope = 1.5·h/len): long bridges get long gentle approaches, short ones sit lower instead of climbing a wall */
+    const clr0=layer>=1?(overRoad?Math.max(6.2,5.3*layer+0.9):Math.min(3,1.8*layer)):1.5,MAXG=0.07,rampLen=Math.max(4,Math.min(tot*0.48,clr0*1.5/MAXG)),clr=Math.min(clr0,rampLen*MAXG/1.5); /* ramps no steeper than ~7% (smoothstep peak slope = 1.5·h/len): long bridges get long gentle approaches, short ones sit lower instead of climbing a wall */
     pts.forEach((p,i)=>{const lin=lerp(h0,h1,L[i]/tot);if(isTunnel){p.push(lin)}else{const g=groundY(p[0],p[1]),ramp=clamp(Math.min(L[i],tot-L[i])/rampLen,0,1);let y=Math.max(lin,g+clr*ramp*ramp*(3-2*ramp));for(const X of XING){const dd=Math.hypot(p[0]-X[0],p[1]-X[1]);y=Math.max(y,X[2]+5.6-Math.max(0,dd-6)/5)} /* full clearance right over each road/rail it crosses, whatever the span shape */p.push(y)}});
     if(el.nodes){el.nodes.forEach((nid,k)=>NODEH.set(nid,pts[kIdx[k]][2]));if(isBridge)for(let k=1;k<el.nodes.length;k++){const hs=[];for(let q=kIdx[k-1];q<=kIdx[k];q++)hs.push(pts[q][2]);if(hs.length>2){BRPROF.set(el.nodes[k-1]+'_'+el.nodes[k],hs);BRPROF.set(el.nodes[k]+'_'+el.nodes[k-1],hs.slice().reverse())}}}}
    if(isTunnel&&DRIVABLE.has(hw)){const len=[0];for(let i=1;i<pts.length;i++)len.push(len[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const lanes=+t.lanes||0;
@@ -2802,7 +2805,9 @@ const BRPROF=new Map(); /* bridge span height profiles between consecutive OSM n
 function routeY(s,off=0){const R=game.route,[,,i]=routeLLnh(s),h0=NODEH.get(R.nodes[i]),h1=NODEH.get(R.nodes[i+1]);
  {const P=BRPROF.get(R.nodes[i]+'_'+R.nodes[i+1]);if(P){const t=clamp((s-R.cum[i])/((R.cum[i+1]-R.cum[i])||1),0,1)*(P.length-1),j=Math.min(P.length-2,Math.floor(t));return lerp(P[j],P[j+1],t-j)}}
  if(h0!==undefined&&h1!==undefined){const t=clamp((s-R.cum[i])/((R.cum[i+1]-R.cum[i])||1),0,1);return lerp(h0,h1,t)}
- const p=routeXZ(s,off);return groundY(p[0],p[1])}
+ return routeGY(s)}
+/* smoothed ground profile along the route (same idea as the drawn road: an average over ±12 m), cached per metre once the terrain under it is loaded */
+const RGY=new Map();let RGYr=null;function routeGY(s){const R=game.route;if(RGYr!==R){RGY.clear();RGYr=R}const k=Math.round(s),c=RGY.get(k);if(c!==undefined)return c;let sum=0,n=0,ok=true;for(let d=-12;d<=12;d+=4){const p=routeXZ(clamp(k+d,0,R.total),0);if(elevLL(toLat(p[1]),toLon(p[0]))===null)ok=false;sum+=groundY(p[0],p[1]);n++}const v=sum/n;if(ok){RGY.set(k,v);if(RGY.size>20000)RGY.clear()}return v}
 function place(a,off){if(a.loose)return; // sliding after a collision: the physics owns the pose
 
  const [x,z,dx,dz,idx]=routeXZ(a.s,off!==undefined?off:laneOffsetAt(routeLLnh(a.s)[2]));
@@ -2813,14 +2818,14 @@ function place(a,off){if(a.loose)return; // sliding after a collision: the physi
  if(Math.abs(d)>1.2&&a.x===0)a.head=hh;else a.head+=d*k;
  a.lastYawRate=d*k;
  a.x=a.x===0&&a.z===0?x:lerp(a.x,x,0.5);a.z=a.z===0&&a.z===0?z:lerp(a.z,z,0.5);
- let y=routeY(a.s,off||0)+0.08;const isEgo=a===game.ego;if(isEgo||(a.rayT=(a.rayT||0)+1)%6===0)a.roadY=roadSurfaceY(a.x,a.z,y);if(a.roadY!=null&&a.roadY+0.03>y)y=a.roadY+0.03; // never below the drawn pavement
+ let y=routeY(a.s,off||0)+0.08;const isEgo=a===game.ego;if(isEgo||(a.rayT=(a.rayT||0)+1)%6===0)a.roadY=roadSurfaceY(a.x,a.z,y);if(a.roadY!=null&&Math.abs(a.roadY-y)<1.2)y=a.roadY+0.05;else if(a.roadY!=null&&a.roadY+0.03>y&&a.roadY-y<1.2)y=a.roadY+0.03; /* sit on the drawn pavement whenever it is found (not on a road in a tunnel below or above) */
  if(a===game.ego&&a.spec.hyper&&window.HOVER&&HOVER.on)y=Math.max(y,a.roadY!=null?a.roadY:y)+HOVER.h; /* hover: float HOVER.h metres above the road surface */
  a.y=a.y===undefined?y:(y>a.y?y:lerp(a.y,y,0.5));
  const m=a.mesh;m.position.set(a.x,a.y,a.z);m.rotation.y=a.head;
 }
 // height of the road surface actually drawn under (x,z): short downward ray onto this tile's road meshes + the route ribbon
 const RS_RAY=new THREE.Raycaster(),RS_DOWN=new THREE.Vector3(0,-1,0),RS_O=new THREE.Vector3();
-function roadSurfaceY(x,z,yGuess){const G=game,T=TILES.get(Math.floor(toLat(z)/TS)+'_'+Math.floor(toLon(x)/TS)),list=[];if(T){if(!T.roadMeshes)T.roadMeshes=T.group.children.filter(o=>o.isMesh&&!o.isInstancedMesh&&(o.material===MAT.road||o.material===MAT.road2||Object.values(SURF).includes(o.material)));list.push(...T.roadMeshes)}
+function roadSurfaceY(x,z,yGuess){const G=game,list=[],seen=new Set();for(const [ox,oz] of [[0,0],[15,0],[-15,0],[0,15],[0,-15]]){const T=TILES.get(Math.floor(toLat(z+oz)/TS)+'_'+Math.floor(toLon(x+ox)/TS));if(!T||seen.has(T))continue;seen.add(T); /* near a tile edge the road under the car may belong to the neighbouring tile */if(!T.roadMeshes)T.roadMeshes=T.group.children.filter(o=>o.isMesh&&!o.isInstancedMesh&&(o.material===MAT.road||o.material===MAT.road2||Object.values(SURF).includes(o.material)));list.push(...T.roadMeshes)}
  if(G.rr&&G.rr.mesh)list.push(G.rr.mesh);if(!list.length)return null;RS_O.set(x,yGuess+4,z);RS_RAY.set(RS_O,RS_DOWN);RS_RAY.far=9;let best=null;for(const h of RS_RAY.intersectObjects(list,false))if(best===null||h.point.y>best)best=h.point.y;return best}
 function spinWheels(a,dt,steer){if(a===game.ego&&(a.spec.hyper||a.spec.omni)&&a.mesh.userData.wheels){const G=game,cr=G.uturn&&G.uturn.pivot?G.uturn.wheel:(G.crab||0);for(const w of a.mesh.userData.wheels){w.spin.rotation.z-=Math.hypot(a.v,G.uturn&&G.uturn.pivot?1.5:0)*dt/a.spec.wr;const tgt=cr+(w.front?steer:w.mid?0:-steer*0.5)*(Math.abs(cr)<0.3?1:0.3); /* front steers, middle stays straight, rear counter-steers */w.piv.rotation.y=lerp(w.piv.rotation.y,clamp(tgt,-Math.PI/2,Math.PI/2),Math.min(1,dt*8))}const dr=a.mesh.userData.driver;return} /* 360° wheel pods: diagonal / sideways crab, pivot turns */if(a.mesh.userData.trailer)truckArticulate(a);const dr=a.mesh.userData.driver;if(dr&&dt>0){const u=dr.userData;u.t+=dt;if(u.mode==='drive'){dr.children.forEach(c=>{if(c.isGroup)c.rotation.y=clamp(steer||0,-0.5,0.5)*0.8});u.head.rotation.y=Math.sin(u.t*0.35)*0.35+(Math.sin(u.t*0.13)>0.8?0.7:0)}else if(u.mode==='rider')u.head.rotation.y=Math.sin(u.t*0.2)*0.8}for(const w of a.mesh.userData.wheels){w.spin.rotation.z-=a.v*dt/a.spec.wr*(a.dir||1)*(w.sign||1);const ks=Math.min(1,dt*10);if(w.front)w.piv.rotation.y+=(steer-w.piv.rotation.y)*ks;else if(a.spec.style==='pod')w.piv.rotation.y+=(-steer*0.6-w.piv.rotation.y)*ks}} /* steering eases to its angle instead of snapping */
 function glowTex(){if(glowTex.t)return glowTex.t;const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.25,'rgba(255,220,150,.8)');g.addColorStop(1,'rgba(255,160,40,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return glowTex.t=new THREE.CanvasTexture(c)}
