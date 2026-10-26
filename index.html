@@ -270,9 +270,9 @@ const CARS=[
 {id:'wedge',name:'Lamborgo Cuneo',sub:'Wedge hypercar · 24-turbo W24 + 4 × 2,000 hp e-motors',style:'coupe',L:4.6,W:2.05,H:1.07,wb:2.7,wr:0.36,hp:12000,z60:0.95,top:520,gripG:3,range:'~900 mi (est.) · 900 L (238 gal) tank, 10× stock',weight:'4,400 lb',drive:'4.0L W24 · one turbo per cylinder at 10 bar boost (4,000 hp) + 4 × 2,000 hp electric assist motors (one per wheel) · 12,000 hp combined · AWD',level:'SAE Level 4 · full assist suite + tracking satellite (fictional)',
  tech:'A razor-edged wedge in the 1970s supercar tradition, now hiding an absurd hybrid powertrain. The engine is a tiny 4.0-litre W24 (four banks of six, 167 cc per cylinder) with 24 turbochargers, one per cylinder, each running 10 bar of boost: about 4,000 hp. Four 2,000 hp electric motors, one at each wheel, add another 8,000 hp, fed by a battery that the KERS refills under braking. 12,000 hp in total; 0–60 is limited only by tyre grip (about 1 second) and it tops out near 520 mph. It carries every driving aid in the game: the full lidar, radar and camera suite, the predictive planner and the tracking satellite.',
  colors:[['Verde Mantis','#7ad21f'],['Arancio Borealis','#ff6a10'],['Giallo Orion','#ffd200'],['Bianco Monocerus','#f2f2ee'],['Nero Aldebaran','#121214']],dash:'center-mb',wheel:'round',sensors:'hyper',sound:'v12',driver:true,allaids:true,kers:true},
-{id:'aegis',name:'Morrows Aegis-X',sub:'Active-aero omni-wheel hypercar',style:'coupe',L:4.9,W:2.1,H:1.15,wb:2.8,wr:0.37,hp:4000,z60:1.2,top:7600,range:'effectively unlimited with regen · 30,000 kWh',weight:'4,000 lb (360 lb in lift mode)',drive:'4 × 1,000 hp hub motors · 360° steering · 4 × 1,000 hp downforce fans · twin rocket boosters',level:'SAE Level 5 · full Predictacar stack + tracking satellite + clearance drone (fictional)',
- tech:'Everything the Predictacar has, pushed further. Each wheel has its own 1,000 hp hub motor and turns a full 360°, so it can crab, strafe and spin on the spot. Four 1,000 hp fans pull it down for grip, or the active aero front and rear lifts it, cutting its effective weight by 90% on straights. Twin rocket boosters at the back add straight-line thrust, and on a clear road in Express or Cannonball it goes for its Mach 2 top speed; grid fins pop up from the roof under heavy braking. The body is clad in space-grade heat tiles. A small clearance drone drives ahead in your lane and nudges vehicles aside, and the collision shield stays on even in Cannonball, so it hits nothing. Regenerative braking puts almost all braking energy back into the battery.',
- colors:[['Shuttle White','#f1f1ee'],['Re-entry Black','#16171a'],['Ablative Orange','#ff6a10'],['Orbit Blue','#2a64c8']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',driver:true,hyper:true,omni:true,aegis:true,kers:true,kersTop:15200,kersSecs:60,kersAt:1300},
+{id:'aegis',name:'Morrows Aegis-X',sub:'Active-aero omni-wheel hypercar',style:'coupe',L:4.9,W:2.1,H:1.15,wb:2.8,wr:0.37,hp:4000,z60:0.3,top:1522,range:'effectively unlimited with regen · 30,000 kWh',weight:'4,000 lb (360 lb in lift mode)',drive:'4 × 1,000 hp hub motors on wide tyres · individually steered 360° wheels (crab walk) · 6 downforce fans · 8 attitude thrusters · twin rocket boosters',level:'SAE Level 5 · full Predictacar stack + tracking satellite + clearance drone (fictional)',
+ tech:'Everything the Predictacar has, pushed further. Each wheel has its own 1,000 hp hub motor and turns a full 360°, so it can crab, strafe and spin on the spot. Four 1,000 hp fans pull it down for grip, or the active aero front and rear lifts it, cutting its effective weight by 90% on straights. Twin rocket boosters at the back add straight-line thrust and acceleration is all but instant; on a clear road in Express or Cannonball it goes for its Mach 2 top speed. Eight attitude thrusters (nose, tail, both sides and all four corners) fire to hold it into corners, and two extra centre underfans bring suction to about 3 g, enough that it could drive upside down. The morphing rear wing narrows, drops and flattens for top speed, and widens, rises and steepens for grip; grid fins pop up from the roof under heavy braking. The passenger cell is closed under a glass canopy; inside there is just one huge centre panel and a head-up display on the canopy. It carries every driving aid in the game. The body is clad in space-grade heat tiles. A small clearance drone drives ahead in your lane and nudges vehicles aside, and the collision shield stays on even in Cannonball, so it hits nothing. Regenerative braking puts almost all braking energy back into the battery.',
+ colors:[['Shuttle White','#f1f1ee'],['Re-entry Black','#16171a'],['Ablative Orange','#ff6a10'],['Orbit Blue','#2a64c8']],dash:'hyper',wheel:'f1',sensors:'hyper',sound:'ev',driver:true,hyper:true,omni:true,aegis:true,allaids:true,kers:true,kersTop:1522,kersSecs:60,kersAt:1300},
 {id:'isetta',name:'Bubbli eSetta',sub:'Ultra-compact electric bubble car · single seater',style:'coupe',L:2.29,W:1.38,H:1.34,wb:1.5,wr:0.24,hp:12,z60:20,top:50,range:'~45 mi (est.) · 6 kWh',weight:'~650 lb',drive:'Single rear hub motor EV',level:'SAE Level 2 · supervised',
  tech:'An egg-shaped electric bubble car in the spirit of the 1950s Isetta. The whole front of the car is the door, there is room for exactly one person, and the rear wheels sit close together. At 1.75 m long and 1 m wide it barely fits one person – you fold yourself in through the front door – and it parks nose-in to the kerb and comes in glossy candy colours.',
  colors:[['Bubblegum Pink','#ff7ac8'],['Mint Candy','#7ff0c4'],['Lemon Drop','#ffe84a'],['Tangerine','#ff8a2a'],['Grape Soda','#9b5cff'],['Cotton Candy Blue','#7cc8ff'],['Cherry Red','#e8173a']],dash:'center-mb',wheel:'round',sensors:'gm',sound:'ev',driver:true,plim:true,isetta:true},
@@ -7838,9 +7838,9 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   start(){ST.pushed=0;if(drone){scene.remove(drone);drone=null}if(!hud){hud=document.createElement('div');hud.style.cssText='position:fixed;top:150px;left:50%;transform:translateX(-50%);z-index:61;font:700 11px system-ui;padding:3px 9px;border-radius:7px;background:#0e141dcc;color:#e8eef5;pointer-events:none';document.body.appendChild(hud)}
    hud.style.display=on()?'block':'none';if(on()){drone=makeDrone();scene.add(drone)}else if(ENERGY.aegis)ENERGY.aegis.kg=BASE_KG},
   sim(dt){if(!on()||dt<=0)return;const G=game,e=G.ego,a=e.acc||0,E=ENERGY.aegis;
-   /* 0 → Mach 10 (7,600 mph) in 5 s whenever the planner is running flat out (Express / Chase / Cannonball) and not braking */
-   const AM=(7600/MPH)/5,vTop=G.spec.top/MPH;
-   if(window.CANNON&&CANNON.on&&!G.paused){const rem=Math.max(0,G.route.total-e.s),vStop=Math.sqrt(2*AM*Math.max(0,rem-1)); /* Cannonball: magic avoidance, so drive the ideal profile: +Mach 10 per 5 s, and brake just as hard to arrive */
+   /* 0 → Mach 2 (1,522 mph) in 0.6 s – near-instant – whenever the planner is running flat out (Express / Chase / Cannonball) and not braking */
+   const AM=(1522/MPH)/0.6,vTop=G.spec.top/MPH;
+   if(window.CANNON&&CANNON.on&&!G.paused){const rem=Math.max(0,G.route.total-e.s),vStop=Math.sqrt(2*AM*Math.max(0,rem-1)); /* Cannonball: magic avoidance, so drive the ideal profile: +Mach 2 per 0.6 s, and brake just as hard to arrive */
     if(rem>50||e.v>3)e.v=Math.min(e.v+AM*dt,vTop,vStop)}
    else if(typeof fastOn==='function'&&fastOn()&&a>-0.3&&!G.paused)e.v=Math.min(vTop,e.v+AM*dt);
    /* regen: 98% of braking energy back into the battery */
@@ -10940,6 +10940,82 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&!spec.style?.includes('pod')&&!SKIP.some(k=>spec[k])&&MODEL[spec.id]&&MODEL[spec.id].prof&&!g.userData.rearGlass){const geo=panel(spec);
    if(geo){const m=new THREE.Mesh(geo,glassM);m.userData.noDent=true;const hb=g.userData.body;(hb&&hb.isObject3D?hb:g).add(m);g.userData.rearGlass=m}}}catch(e){console.warn('rearglass',e)}return g};
  MODS.push({id:'rearglass'});
+})();
+</script>
+<script>/* mods/99l-aegis-x2.js */
+/* Aegis-X upgrade package (spec.aegis):
+   - wider tyres (≈1.7× tread width)
+   - eight attitude thrusters – front, rear, both sides and all four corners – that fire to hold the car into corners
+     (outside side jets in a turn, diagonal corner pairs for yaw, nose jets under braking, tail jet on launch); they add
+     about 1 g of cornering force, so the planner's grip limit (PHYS.gripK) doubles for this car
+   - two extra large centre underfans; with the four corner fans the suction reaches ~3 g, well over the 1 g needed to
+     hold the car to a ceiling, so it could drive upside down (the HUD shows the margin)
+   - closed passenger cell: a tinted glass canopy over the cockpit
+   - morphing rear wing: narrows, drops and flattens for top speed; widens, rises and steepens for grip in corners and
+     under braking
+   - interior: the dash is stripped back to one huge centre panel, plus a head-up display projected on the canopy */
+(function(){
+ const cyan=new THREE.MeshBasicMaterial({color:0x9fe8ff,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false});
+ function kit(g,spec,opts){const U=g.userData,{L,W,H}=spec;g.userData.aegisX=true;
+  /* wider tyres: stretch each wheel along its axle (the steering pods sit on the pivot, so they keep their size) */
+  for(const w of U.wheels||[]){const h=w.spin&&w.spin.parent;if(h&&h!==w.piv)h.scale.z=1.7;else if(w.spin)w.spin.scale.z=1.7}
+  /* thrusters */
+  const metal=new THREE.MeshStandardMaterial({color:0x2c2e33,metalness:0.9,roughness:0.3}),jets=[],y=0.42;
+  const jet=(x,z,dx,dz,role)=>{const n=new THREE.Group();n.position.set(x,y,z);n.rotation.y=Math.atan2(-dz,dx);g.add(n);
+   const bell=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.07,0.1,14,1,true).rotateZ(-Math.PI/2),metal);bell.material.side=THREE.DoubleSide;n.add(bell);
+   const pl=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.5,12,1,true).rotateZ(Math.PI/2),cyan);pl.position.x=0.3;pl.scale.set(0.01,1,1);n.add(pl);jets.push({n,pl,role,dz,dx,k:0})};
+  jet(L/2+0.02,0,1,0,'nose');jet(-L/2-0.02,0,-1,0,'tail');
+  for(const s of [1,-1]){jet(0,s*(W/2+0.02),0,s,'side');jet(L/2-0.2,s*(W/2-0.12),0.7,s*0.7,'cornerF');jet(-L/2+0.2,s*(W/2-0.12),-0.7,s*0.7,'cornerR')}
+  /* centre underfans */
+  const fans=[];for(const fx of [0.55,-0.55]){const u=new THREE.Group();u.position.set(fx,0.09,0);u.rotation.x=Math.PI/2;g.add(u);
+   u.add(new THREE.Mesh(new THREE.TorusGeometry(0.3,0.035,8,32),metal));const rot=new THREE.Group();u.add(rot);
+   for(let k=0;k<9;k++){const b=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.26,0.012),new THREE.MeshStandardMaterial({color:0x9aa0a8,metalness:0.8,roughness:0.3}));b.position.y=0.14;b.rotation.y=0.5;const hd=new THREE.Group();hd.rotation.z=k/9*Math.PI*2;hd.add(b);rot.add(hd)}
+   const glow=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.014,6,32),new THREE.MeshBasicMaterial({color:0x00e5d4,transparent:true,opacity:0.2}));glow.position.z=0.03;u.add(glow);fans.push({rot,glow})}
+  /* glass canopy closing the passenger cell */
+  const e=eyePos(spec),cg=new THREE.MeshPhysicalMaterial({color:0x1a2a36,transparent:true,opacity:0.32,roughness:0.03,metalness:0.2,clearcoat:1,side:THREE.DoubleSide,depthWrite:false});
+  const can=new THREE.Mesh(new THREE.SphereGeometry(1,40,20,0,Math.PI*2,0,Math.PI/2),cg);can.scale.set(1.05,Math.max(0.3,H+0.08-H*0.6),W*0.42);can.position.set(e.x+0.15,H*0.6,0);g.add(can);
+  const frame=new THREE.Mesh(new THREE.TorusGeometry(1,0.012,6,64),metal);frame.rotation.x=Math.PI/2;frame.scale.set(1.05,W*0.42,1);frame.position.copy(can.position);g.add(frame);
+  U.ax={jets,fans,canopy:can,eye:e};
+  if(opts&&opts.interior)cabin(g,spec,e)}
+ /* interior: one huge centre panel (the main screen, enlarged), every other dash screen removed, and a canopy HUD */
+ let hudC=null,hudT=null,hudX=null;
+ function cabin(g,spec,e){const mine=new Set();g.traverse(o=>mine.add(o));let main=null;
+  for(const s of SCREENS){if(!mine.has(s.mesh))continue;if(s.kind==='hyper-main'&&!main)main=s.mesh;else s.mesh.visible=false}
+  if(main){main.scale.multiplyScalar(2.6);main.position.y+=0.06}
+  hudC=document.createElement('canvas');hudC.width=512;hudC.height=200;hudX=hudC.getContext('2d');hudT=new THREE.CanvasTexture(hudC);
+  const hm=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.24),new THREE.MeshBasicMaterial({map:hudT,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}));
+  hm.position.set(e.x+0.95,e.y-0.04,e.z);hm.rotation.y=-Math.PI/2;g.add(hm);g.userData.ax.hud=hm}
+ function drawHud(G,lat,suction){if(!hudX)return;const x=hudX,v=G.ego.v*2.23694,W=512;x.clearRect(0,0,W,200);x.fillStyle='rgba(120,240,255,0.95)';x.textAlign='center';
+  x.font='700 64px system-ui';x.fillText(Math.round(v)+'',W/2,70);x.font='600 20px system-ui';x.fillText(v>700?'MACH '+(v/761).toFixed(2):'MPH',W/2,96);
+  x.textAlign='left';x.font='600 19px system-ui';x.fillText('⇆ JETS '+Math.round(lat*100)+'%',14,140);x.fillText('◎ SUCTION '+suction.toFixed(1)+' g'+(suction>1?' · INVERT OK':''),14,172);
+  x.textAlign='right';x.fillText((window.AEGIS&&AEGIS.mode)||'',W-14,140);x.fillText('WING '+WING.mode,W-14,172);
+  x.strokeStyle='rgba(120,240,255,0.7)';x.lineWidth=2;x.beginPath();x.moveTo(W/2-40,110);x.lineTo(W/2+40,110);x.stroke();hudT.needsUpdate=true}
+ const _bc=window.buildCar;
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.aegis&&g&&!g.userData.aegisX)kit(g,spec,opts)}catch(err){console.warn('aegis-x2',err)}return g};
+ /* thrusters double the cornering grip the planner may use */
+ if(window.PHYS){const _gk=PHYS.gripK;PHYS.gripK=(spec,v)=>_gk(spec,v)*(spec&&spec.aegis?2:1)}
+ const WING={mode:'BALANCE',w:1,h:0,a:-0.16};let lastH=null,yawR=0,hudTick=0;
+ MODS.push({id:'aegis-x2',
+  start(){lastH=null;yawR=0},
+  preRender(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh||!G.spec||!G.spec.aegis)return;const m=G.ego.mesh,U=m.userData,A=U.ax;if(!A)return;
+   const e=G.ego,acc=e.acc||0,dt=1/60,lat=e.ayF||0,now=performance.now()/1000;
+   if(lastH!=null){let d=(e.head||0)-lastH;d=Math.atan2(Math.sin(d),Math.cos(d));yawR=lerp(yawR,d/dt,0.2)}lastH=e.head||0;
+   /* thrusters */
+   for(const j of A.jets){let t=0;if(j.role==='side')t=Math.max(0,-Math.sign(j.dz)*Math.sign(lat))*Math.min(1,Math.abs(lat)/5);
+    else if(j.role==='cornerF')t=Math.max(0,Math.sign(j.dz)*Math.sign(yawR))*Math.min(1,Math.abs(yawR)/0.6);
+    else if(j.role==='cornerR')t=Math.max(0,-Math.sign(j.dz)*Math.sign(yawR))*Math.min(1,Math.abs(yawR)/0.6);
+    else if(j.role==='nose')t=Math.min(1,Math.max(0,-acc-2)/6);else if(j.role==='tail')t=Math.min(1,Math.max(0,acc-2)/6);
+    j.k=lerp(j.k,t,0.3);const f=j.k*(0.85+0.15*Math.sin(now*60+j.n.position.x*7));j.pl.scale.set(Math.max(0.01,f),1,Math.max(0.01,f));j.pl.position.x=0.05+0.25*f;j.pl.visible=j.k>0.03}
+   /* underfans spin with the corner fans' load */
+   const load=(G.fans||[0,0,0,0]).reduce((q,v)=>q+v,0)/4;for(const f of A.fans){f.rot.rotation.z+=(4+load*60)*dt;f.glow.material.opacity=0.15+load*0.8}
+   const suction=2*(0.35+load)*1.5;
+   /* morphing wing: low/narrow/flat for speed, high/wide/steep for grip */
+   const wg=U.wing;if(wg){const curve=/curve|turn/i.test(G.status||'')||Math.abs(lat)>3,brake=acc<-4,fast=e.v>60&&!curve&&!brake;
+    WING.mode=brake?'AIRBRAKE':fast?'MAX SPEED':curve?'MAX GRIP':'BALANCE';
+    const tw=fast?0.8:curve||brake?1.35:1,th=fast?-0.12:curve||brake?0.16:0,ta=brake?-1.25:fast?-0.02:curve?-0.5:-0.16;
+    WING.w=lerp(WING.w,tw,0.08);WING.h=lerp(WING.h,th,0.08);WING.a=lerp(WING.a,ta,0.12);
+    wg.scale.z=WING.w;wg.position.y=0.1+WING.h;wg.rotation.z=WING.a}
+   if(A.hud&&++hudTick%6===0)drawHud(G,Math.max(...A.jets.filter(j=>j.role==='side').map(j=>j.k)),suction)}});
 })();
 </script>
 <!--/mods-->
