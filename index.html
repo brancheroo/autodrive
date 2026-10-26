@@ -1840,7 +1840,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  const body=new THREE.Mesh(lo,paint);body.castShadow=true;g.add(body);g.userData.body=body;
  { /* cabin tub under the open lid: floor, door liners, front/rear bulkheads, dash top — plus seats/console/wheel for cars without the full interior */
   const md0=MODEL[spec.id]||{},ic=(md0.int||{}),trimM=new THREE.MeshStandardMaterial({color:ic.dash||0x1c1d20,roughness:0.85,side:THREE.DoubleSide}),seatM=new THREE.MeshStandardMaterial({color:ic.seat||0x2a2a2d,roughness:0.9}),flM=new THREE.MeshStandardMaterial({color:0x151518,roughness:1,side:THREE.DoubleSide});
-  const uA=P.sh.roofR+0.015,uB=P.sh.cowl-0.01,xr=P.xOf(uA),xf=P.xOf(uB),um=(uA+uB)/2,bl=P.belt(um),fl=P.bottom(um)+0.3,hw=P.half(um)*0.9,len=Math.abs(xf-xr),cx=(xf+xr)/2,T=new THREE.Group();g.add(T);g.userData.tub=T;
+  const uA=P.sh.roofR+0.015,uB=P.sh.cowl-0.01,xr=P.xOf(uA),xf=P.xOf(uB),um=(uA+uB)/2,bl=P.belt(um),fl=Math.min(P.bottom(um)+0.3,P.top(um)-1.12) /* low cabs: the seats sink so the headrests stay under the roof */,hw=P.half(um)*0.9,len=Math.abs(xf-xr),cx=(xf+xr)/2,T=new THREE.Group();g.add(T);g.userData.tub=T;
   const bx=(w,h,d,m,x,y,z)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);T.add(o);return o};
   bx(len,0.03,hw*2,flM,cx,fl,0);for(const sd of [1,-1])bx(len,bl-fl,0.03,trimM,cx,(bl+fl)/2,sd*hw);if(!opts.interior)bx(0.03,bl-fl,hw*2,trimM,Math.min(xr,xf)+0.02,(bl+fl)/2,0);
   const front=Math.max(xr,xf);if(!opts.interior)bx(0.5,0.22,hw*2,trimM,front-0.25,bl-0.1,0); /* the full interior brings its own dash */
