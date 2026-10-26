@@ -10823,9 +10823,10 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  const SKIP=['angletruck','coach','dronewagon','ebike','formulae','hbike','isetta','keitruck','luce','moped','scratch','solarcar','vtol','wiener','gargantua','ecosemi','hyper','aegis'];
  const GEO={},glassM=new THREE.MeshPhysicalMaterial({color:0x121820,metalness:0.1,roughness:0.04,clearcoat:1,envMapIntensity:1.6,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2,side:THREE.DoubleSide});
  function panel(spec){if(spec.id in GEO)return GEO[spec.id];const P=mkProfile(spec);GEO[spec.id]=null;if(!P.halfAt)return null;
-  const g0=P.sh.tail||0,yW=P.belt(clamp(g0+0.06,0,1))+0.03; /* window bottom: level with the side-window base */
+  const g0=P.sh.tail||0,hatch=/suv|cross|van|wagon/.test(spec.style||'')||g0<=0.06||spec.id==='yugo';if(!hatch||g0>0.3)return null; /* saloons keep a painted boot lid; the van's long glass roof is not a tailgate */
+  const yW=P.belt(clamp(g0+0.06,0,1))+0.03; /* window bottom: level with the side-window base */
   const us=[];for(let u=0;u<=g0+0.0001;u+=0.0015)if(P.top(u)>=yW)us.push(u);
-  if(us.length<3||P.top(g0)-yW<0.12)return null; /* boot lid below the window line (saloon): nothing to add */
+  if(us.length<3||P.top(g0)-yW<0.05)return null; /* boot lid below the window line (saloon): nothing to add */
   const yAt=(u,z,yc)=>{let lo=P.bottom(u),hi=yc;for(let k=0;k<18;k++){const m=(lo+hi)/2;if(P.halfAt(u,m)>=z)lo=m;else hi=m}return lo}; /* highest point of the skin at this width */
   const NJ=12,pos=[],idx=[];
   us.forEach((u,i)=>{const yc=P.top(u),K=0.8*P.halfAt(u,Math.max(yW,yc-0.08)),x=P.xOf(u)-0.006;
