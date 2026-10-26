@@ -10193,7 +10193,7 @@ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&/[?&]opt=1/.test(locati
  const _pre=scene.onBeforeRender;
  scene.onBeforeRender=function(r,sc,cam){if(_pre)_pre.apply(this,arguments);if(cam!==cvCam||!on())return;const m=game.ego.mesh,e=driverEye(game.spec);m.updateMatrixWorld(true);
   const p=m.localToWorld(e.clone()),t=m.localToWorld(new THREE.Vector3(e.x+20,e.y-0.6,e.z));cam.position.copy(p);if(cam.fov!==70){cam.fov=70;cam.updateProjectionMatrix()}cam.lookAt(t);cam.updateMatrixWorld(true)};
- const HIDE=['cvOv','svOv','cvWhy','cvBev','cvStats','cvAct','radarBox'];
+ const HIDE=['cvOv','svOv','cvWhy','cvBev','cvStats','cvAct']; /* (not radarBox: the radar panel is retired, and un-hiding it here left an empty black square) */
  function panel(rs){const t=document.getElementById('cvTitle');if(t)t.textContent=rs?"DRIVER'S VIEW":'PERCEPTION';
   for(const id of HIDE){const el=document.getElementById(id);if(el)el.style.display=rs?'none':''}
   const w=document.getElementById('cvWrap');if(w)for(const b of w.querySelectorAll('button'))b.style.display=rs?'none':'';
