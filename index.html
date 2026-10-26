@@ -11015,6 +11015,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
     const tw=fast?0.8:curve||brake?1.35:1,th=fast?-0.12:curve||brake?0.16:0,ta=brake?-1.25:fast?-0.02:curve?-0.5:-0.16;
     WING.w=lerp(WING.w,tw,0.08);WING.h=lerp(WING.h,th,0.08);WING.a=lerp(WING.a,ta,0.12);
     wg.scale.z=WING.w;wg.position.y=0.1+WING.h;wg.rotation.z=WING.a}
+   if(A.hud)A.hud.visible=G.cam==='in'; /* drawn over everything, so only from the driver's seat */
    if(A.hud&&++hudTick%6===0)drawHud(G,A.hud,Math.max(...A.jets.filter(j=>j.role==='side').map(j=>j.k)),suction)}});
 })();
 </script>
