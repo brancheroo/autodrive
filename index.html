@@ -11240,6 +11240,20 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
     j.k+=(w-j.k)*0.3;const f=j.k*(0.85+0.15*Math.sin(t*55+j.n.position.x*9));j.pl.visible=j.k>0.04;j.pl.scale.set(Math.max(0.01,f),1,Math.max(0.01,f));j.pl.position.x=0.04+0.22*f}}});
 })();
 </script>
+<script>/* mods/zz-lightguard.js */
+/* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
+   lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
+   traffic car carrying a real light (rocket glow, taxi sign, cabin lamps) spawned or despawned. Traffic cars keep
+   their emissive lamp surfaces but lose real light sources; only the car you ride in (built with an interior) keeps
+   them, so the light count stays constant through a drive. LIGHTGUARD.changes counts any light-count changes left. */
+(function(){
+ const LG=window.LIGHTGUARD={stripped:0,changes:0,last:-1};
+ const _bc=window.buildCar;
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(g&&!(opts&&opts.interior)){const L=[];g.traverse(o=>{if(o.isLight)L.push(o)});
+   for(const l of L){if(l.target&&l.target.parent)l.target.parent.remove(l.target);if(l.parent)l.parent.remove(l);LG.stripped++}}}catch(e){console.warn('lightguard',e)}return g};
+ MODS.push({id:'lightguard',frame(){if(typeof scene==='undefined')return;let n=0;scene.traverseVisible(o=>{if(o.isLight)n++});if(LG.last>=0&&n!==LG.last)LG.changes++;LG.last=n}});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
