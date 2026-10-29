@@ -11251,7 +11251,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  const _bc=window.buildCar;
  window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(g&&!(opts&&opts.interior)){const L=[];g.traverse(o=>{if(o.isLight)L.push(o)});
    for(const l of L){if(l.target&&l.target.parent)l.target.parent.remove(l.target);if(l.parent)l.parent.remove(l);LG.stripped++}}}catch(e){console.warn('lightguard',e)}return g};
- MODS.push({id:'lightguard',frame(){if(typeof scene==='undefined')return;let n=0;scene.traverseVisible(o=>{if(o.isLight)n++});if(LG.last>=0&&n!==LG.last)LG.changes++;LG.last=n}});
+ MODS.push({id:'lightguard',frame(){if(typeof scene==='undefined'||(this.k=(this.k||0)+1)%60)return; /* check about once a second */let n=0;scene.traverseVisible(o=>{if(o.isLight)n++});if(LG.last>=0&&n!==LG.last)LG.changes++;LG.last=n}});
 })();
 </script>
 <!--/mods-->
