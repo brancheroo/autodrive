@@ -2826,6 +2826,7 @@ function place(a,off){if(a.loose)return; // sliding after a collision: the physi
  if(a===game.ego&&a.spec.hyper&&window.HOVER&&HOVER.on)y=Math.max(y,a.roadY!=null?a.roadY:y)+HOVER.h; /* hover: float HOVER.h metres above the road surface */
  a.y=a.y===undefined?y:(y>a.y?y:lerp(a.y,y,0.5));
  const m=a.mesh;m.position.set(a.x,a.y,a.z);m.rotation.y=a.head;
+ if(!isEgo&&!a.loose){const yf=routeY(a.s+2*(a.dir||1)),yb=routeY(a.s-2*(a.dir||1));a.pitch=lerp(a.pitch||0,clamp(Math.atan2(yf-yb,4),-0.25,0.25),0.2);m.rotation.order='YZX';m.rotation.z=a.pitch} /* traffic pitches with the grade instead of digging its nose or tail into the road */
 }
 // height of the road surface actually drawn under (x,z): short downward ray onto this tile's road meshes + the route ribbon
 const RS_RAY=new THREE.Raycaster(),RS_DOWN=new THREE.Vector3(0,-1,0),RS_O=new THREE.Vector3();
@@ -2862,9 +2863,11 @@ function updateWayCar(a,dt){if(a.loose)return true;
  if(window.WAY_HOOK){try{const v=WAY_HOOK(a,p,fx,fz,dt);if(v!=null)target=Math.min(target,v)}catch(err){}}
  a.v+=clamp((target-a.v)*0.8,-5,1.8)*dt;a.v=Math.max(0,a.v);a.s+=a.v*dt*a.dir;
  if(a.s<0||a.s>w.total)return false;
- const q=wayPos(w,a.s,off);a.x=q[0];a.z=q[1];let h=Math.atan2(-q[3]*a.dir,q[2]*a.dir);let d=h-a.head;d=Math.atan2(Math.sin(d),Math.cos(d));a.head+=d*Math.min(1,dt*6);if(!a.init){a.head=h;a.init=1}
+ const q=wayPos(w,a.s,off);if(a.init&&Math.hypot(q[0]-a.x,q[1]-a.z)<3){const k=Math.min(1,dt*8);a.x+=(q[0]-a.x)*k;a.z+=(q[1]-a.z)*k}else{a.x=q[0];a.z=q[1]} /* ease round polyline corners instead of snapping sideways out of the lane */let h=Math.atan2(-q[3]*a.dir,q[2]*a.dir);let d=h-a.head;d=Math.atan2(Math.sin(d),Math.cos(d));a.head+=d*Math.min(1,dt*6);if(!a.init){a.head=h;a.init=1}
  let wy;if(w.hts){let i=0;while(i<w.len.length-2&&w.len[i+1]<a.s)i++;const tt=(a.s-w.len[i])/((w.len[i+1]-w.len[i])||1);wy=lerp(w.pts[i][2],w.pts[i+1][2],clamp(tt,0,1))}else wy=groundY(a.x,a.z);
- a.mesh.position.set(a.x,wy+0.08,a.z);a.mesh.rotation.y=a.head;a.mesh.visible=!w.tunnel;return true}
+ if((a.rayT=(a.rayT||0)+1)%6===1)a.roadY=roadSurfaceY(a.x,a.z,wy);if(a.roadY!=null&&Math.abs(a.roadY-wy)<1.2)wy=a.roadY; /* sit on the drawn pavement, not the raw terrain under it */
+ const py=a.wy==null?wy:a.wy;a.wy=wy;const pt=Math.atan2(wy-py,Math.max(0.05,a.v*dt));a.pitch=lerp(a.pitch||0,clamp(a.v>0.3?pt:a.pitch||0,-0.25,0.25),Math.min(1,dt*3)); /* pitch with the grade */
+ a.mesh.position.set(a.x,wy+0.08,a.z);a.mesh.rotation.order='YZX';a.mesh.rotation.y=a.head;a.mesh.rotation.z=a.pitch*(a.dir||1)*(a.dir<0?-1:1);a.mesh.visible=!w.tunnel;return true}
 // pedestrians
 const PEDGEO={body:new THREE.CylinderGeometry(0.2,0.17,1.1,8).translate(0,1.05,0),head:new THREE.SphereGeometry(0.12,10,8).translate(0,1.72,0),leg:new THREE.BoxGeometry(0.12,0.55,0.12).translate(0,-0.27,0)};
 // ---- dog walkers: varied people, 10 breeds, leash colours; dog fully animated (trot gait with knee flex, tail wag, head bob,
