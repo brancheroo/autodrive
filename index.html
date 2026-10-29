@@ -2865,7 +2865,7 @@ function updateWayCar(a,dt){if(a.loose)return true;
  if(a.s<0||a.s>w.total)return false;
  const q=wayPos(w,a.s,off);if(a.init&&Math.hypot(q[0]-a.x,q[1]-a.z)<3){const k=Math.min(1,dt*8);a.x+=(q[0]-a.x)*k;a.z+=(q[1]-a.z)*k}else{a.x=q[0];a.z=q[1]} /* ease round polyline corners instead of snapping sideways out of the lane */let h=Math.atan2(-q[3]*a.dir,q[2]*a.dir);let d=h-a.head;d=Math.atan2(Math.sin(d),Math.cos(d));a.head+=d*Math.min(1,dt*6);if(!a.init){a.head=h;a.init=1}
  let wy;if(w.hts){let i=0;while(i<w.len.length-2&&w.len[i+1]<a.s)i++;const tt=(a.s-w.len[i])/((w.len[i+1]-w.len[i])||1);wy=lerp(w.pts[i][2],w.pts[i+1][2],clamp(tt,0,1))}else wy=groundY(a.x,a.z);
- if((a.rayT=(a.rayT||0)+1)%6===1)a.roadY=roadSurfaceY(a.x,a.z,wy);if(a.roadY!=null&&Math.abs(a.roadY-wy)<1.2)wy=a.roadY; /* sit on the drawn pavement, not the raw terrain under it */
+ const near=Math.hypot(a.x-game.ego.x,a.z-game.ego.z)<90;if((a.rayT=(a.rayT||0)+1)%(near?2:6)===1)a.roadY=roadSurfaceY(a.x,a.z,wy); /* cars you can see re-check the pavement every other frame */if(a.roadY!=null&&Math.abs(a.roadY-wy)<1.2)wy=a.roadY; /* sit on the drawn pavement, not the raw terrain under it */
  const py=a.wy==null?wy:a.wy;a.wy=wy;const pt=Math.atan2(wy-py,Math.max(0.05,a.v*dt));a.pitch=lerp(a.pitch||0,clamp(a.v>0.3?pt:a.pitch||0,-0.25,0.25),Math.min(1,dt*3)); /* pitch with the grade */
  a.mesh.position.set(a.x,wy+0.08,a.z);a.mesh.rotation.order='YZX';a.mesh.rotation.y=a.head;a.mesh.rotation.z=a.pitch*(a.dir||1)*(a.dir<0?-1:1);a.mesh.visible=!w.tunnel;return true}
 // pedestrians
