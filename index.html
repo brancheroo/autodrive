@@ -10385,7 +10385,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  const fareTxt=()=>tex('fare',512,256,(x,w,h)=>{x.fillStyle='#111';x.textAlign='center';x.font='800 40px Arial';x.fillText('RATE OF FARE',w/2,70);x.font='700 34px Arial';x.fillText('$3.00 FIRST 1/5 MILE',w/2,130);x.fillText('$2.50 PER MILE',w/2,180);x.font='600 24px Arial';x.fillText('LICENSED CAB No. 7J42',w/2,232)}); /* rear doors */
  const signTxt=lit=>tex('sign'+lit,256,96,(x,w,h)=>{x.fillStyle=lit?'#fff7c0':'#e8e2c8';x.fillRect(0,0,w,h);x.fillStyle=lit?'#d00000':'#5a3a3a';x.font='900 72px Arial Black, Arial';x.textAlign='center';x.fillText('TAXI',w/2,74);x.fillStyle='#111';x.font='700 16px Arial';x.fillText('7J42',w/2,92)});
  const notice=(k,title,lines,bg,fg)=>tex('n'+k,256,320,(x,w,h)=>{x.fillStyle=bg;x.fillRect(0,0,w,h);x.strokeStyle=fg;x.lineWidth=6;x.strokeRect(6,6,w-12,h-12);x.fillStyle=fg;x.textAlign='center';x.font='900 30px Arial';x.fillText(title,w/2,52);x.font='600 19px Arial';lines.forEach((l,i)=>x.fillText(l,w/2,96+i*30))});
- function livery(g,spec){const{L,W,H,wr}=spec,ud=g.userData;
+ function livery(g,spec){const{L,W,H,wr}=spec,ud=g.userData;if(spec.cabStyle)return; /* London / Japanese cabs get their own livery (88c-cabs.js) */
   /* checker band + door decals on both sides */
   for(const sd of [1,-1]){const band=new THREE.Mesh(new THREE.PlaneGeometry(L*0.9,0.12),new THREE.MeshStandardMaterial({map:checker(),roughness:0.6}));band.position.set(0,wr+0.47,sd*(W/2+0.012));if(sd<0)band.rotation.y=Math.PI;g.add(band);
    for(const dx of [0.36,-0.6]){const d=new THREE.Mesh(new THREE.PlaneGeometry(0.56,0.28),new THREE.MeshStandardMaterial({map:dx>0?doorTxt():fareTxt(),transparent:true,roughness:0.6}));d.position.set(dx,wr+0.27,sd*(W/2+0.014));if(sd<0)d.rotation.y=Math.PI;g.add(d)}}
@@ -10519,6 +10519,51 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  const _rv=window.riderView;
  if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.chauffeur){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r){r.visible=true;if(r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=G.cam!=='in'&&!o.userData.keepHidden}return}return _rv.apply(this,arguments)};
  MODS.push({id:'century'});
+})();
+</script>
+<script>/* mods/88c-cabs.js */
+/* Liveries for the London black cab (spec.cabStyle 'london') and the Japanese taxi ('jpn'). They share the cabbie, back-seat
+   rider, partition and meter from 88-taxi.js; this adds the outside: London - amber TAXI for-hire sign on the front of the
+   roof, chrome grille ring and badge, door seams with rear-hinged back doors; Japan - an andon roof lamp, a gold side
+   stripe, kanji door decal and the sliding rear door's track. Both set userData.taxiSign so the sign lights like the others. */
+(function(){
+ const tex=(w,h,draw)=>{const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t};
+ const TX={};const once=(k,w,h,f)=>TX[k]||(TX[k]=tex(w,h,f));
+ const blk=new THREE.MeshStandardMaterial({color:0x111214,roughness:0.5}),chr=new THREE.MeshStandardMaterial({color:0xd0d4d8,metalness:1,roughness:0.2});
+ function seams(g,spec,xs,handles){const{W,H,wr}=spec,belt=H*0.55;for(const sd of [1,-1]){for(const x of xs){const m=new THREE.Mesh(new THREE.BoxGeometry(0.012,belt-wr*0.7,0.006),blk);m.position.set(x,wr*0.7+(belt-wr*0.7)/2,sd*(W/2+0.008));g.add(m)}
+  for(const x of handles){const m=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.03,0.025),chr);m.position.set(x,belt-0.08,sd*(W/2+0.01));g.add(m)}}}
+ function london(g,spec){const{L,W,H,wr}=spec,ud=g.userData;
+  seams(g,spec,[L*0.31,L*0.05,-L*0.33],[L*0.07,-L*0.07]); /* front door, then rear-hinged back door (handle at its front edge) */
+  /* round chrome grille ring with the black badge, at the nose */
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.025,10,40),chr);ring.rotation.y=Math.PI/2;ring.position.set(L/2+0.005,wr+0.28,0);g.add(ring);
+  const grl=new THREE.Mesh(new THREE.CircleGeometry(0.19,40),blk);grl.rotation.y=Math.PI/2;grl.position.set(L/2+0.0,wr+0.28,0);g.add(grl);
+  /* amber TAXI sign at the front of the roof */
+  const t=once('ldn',256,80,(x,w,h)=>{x.fillStyle='#ffb000';x.fillRect(0,0,w,h);x.fillStyle='#111';x.font='900 58px Arial Black, Arial';x.textAlign='center';x.fillText('TAXI',w/2,62)});
+  const litM=new THREE.MeshStandardMaterial({map:t,emissive:0xffffff,emissiveMap:t,emissiveIntensity:0.6,roughness:0.4});
+  const S=new THREE.Group();S.position.set(L*0.17,H+0.005,0);g.add(S);
+  const box=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.12,0.5),[blk,blk,blk,blk,litM,litM]);box.rotation.y=Math.PI/2;box.position.y=0.06;S.add(box);
+  const fr=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.11,0.48),litM);fr.position.set(0.075,0.06,0);S.add(fr);
+  const pl=new THREE.PointLight(0xffb000,0,5,2);pl.position.set(0.2,0.1,0);S.add(pl);ud.taxiSign={mat:litM,light:pl};
+  /* "for hire" plate on the boot */
+  const pt=once('ldnplate',256,96,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.fillStyle='#111';x.font='700 28px Arial';x.textAlign='center';x.fillText('LICENSED',w/2,36);x.fillText('HACKNEY 47021',w/2,74)});
+  const pm=new THREE.Mesh(new THREE.PlaneGeometry(0.26,0.1),new THREE.MeshStandardMaterial({map:pt}));pm.rotation.y=-Math.PI/2;pm.position.set(-L/2-0.012,wr+0.55,0);g.add(pm)}
+ function jpn(g,spec){const{L,W,H,wr}=spec,ud=g.userData;
+  seams(g,spec,[L*0.3,L*0.04],[L*0.06]); /* front door seam and the sliding door's front edge */
+  const gold=new THREE.MeshStandardMaterial({color:0xc9a227,metalness:0.6,roughness:0.35});
+  const kj=once('kanji',512,160,(x,w,h)=>{x.fillStyle='#e8c860';x.font='900 92px "Hiragino Sans", "Yu Gothic", sans-serif';x.textAlign='center';x.fillText('個人タクシー',w/2,110)});
+  for(const sd of [1,-1]){const st=new THREE.Mesh(new THREE.BoxGeometry(L*0.86,0.035,0.004),gold);st.position.set(0,H*0.5,sd*(W/2+0.01));g.add(st);
+   const tr=new THREE.Mesh(new THREE.BoxGeometry(L*0.32,0.02,0.01),blk);tr.position.set(-L*0.16,H*0.53,sd*(W/2+0.01));g.add(tr); /* slide-door track */
+   const d=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.19),new THREE.MeshStandardMaterial({map:kj,transparent:true,roughness:0.6}));d.position.set(L*0.17,wr+0.33,sd*(W/2+0.014));if(sd<0)d.rotation.y=Math.PI;g.add(d)}
+  /* andon roof lamp: a small white lantern with a red mark */
+  const at=once('andon',256,128,(x,w,h)=>{x.fillStyle='#fffaf0';x.fillRect(0,0,w,h);x.fillStyle='#c00';x.beginPath();x.arc(w/2,h/2,40,0,Math.PI*2);x.fill();x.fillStyle='#fff';x.font='900 50px sans-serif';x.textAlign='center';x.fillText('個',w/2,h/2+18)});
+  const litM=new THREE.MeshStandardMaterial({map:at,emissive:0xffffff,emissiveMap:at,emissiveIntensity:0.6,roughness:0.4});
+  const S=new THREE.Group();S.position.set(L*0.05,H+0.005,0);g.add(S);S.add(new THREE.Mesh(new THREE.BoxGeometry(0.3,0.03,0.14),blk));
+  const lamp=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.12,0.15,24),litM);lamp.scale.z=0.6;lamp.rotation.y=Math.PI/2;lamp.position.y=0.1;S.add(lamp);
+  const pl=new THREE.PointLight(0xfff0d0,0,5,2);pl.position.y=0.25;S.add(pl);ud.taxiSign={mat:litM,light:pl};
+  /* chrome vertical-bar grille */
+  for(let k=-3;k<=3;k++){const b=new THREE.Mesh(new THREE.BoxGeometry(0.01,0.16,0.012),chr);b.position.set(L/2+0.004,wr+0.25,k*0.06);g.add(b)}}
+ const _bc=window.buildCar;
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.cabStyle&&g&&!g.userData.cabLivery){g.userData.cabLivery=true;(spec.cabStyle==='london'?london:jpn)(g,spec)}}catch(e){console.warn('cabs',e)}return g};
 })();
 </script>
 <script>/* mods/88c-pullman.js */
