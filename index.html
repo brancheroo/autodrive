@@ -10921,9 +10921,25 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    const tr=ay/9.81*sp.roll*Math.PI/180,tp=axc/9.81*sp.pitch*Math.PI/180; /* heading grows in a left turn and +x is forward, +z right: the roof swings to +z (out of a left turn) and the nose drops (−z rotation) under braking */ /* lean out of the turn; nose dips under braking */
    let tw=0;const wind=(typeof WX!=='undefined'&&WX.wind)||0;if(wind>8){const rel=Math.sin((WX.windDir||0)-h),side=G.spec.H*G.spec.L/(massOf(G.spec)/1000),gust=0.65+0.35*Math.sin(now/700)*Math.sin(now/1900);tw=clamp(wind*wind*0.00012*side*rel*gust,-3,3)*Math.PI/180} /* crosswind: side area ÷ mass sets how far a gust pushes the body — tall light vans sway, low heavy saloons barely */
    const w=Math.sqrt(sp.k),c=2*sp.z*w;S.rv+=(w*w*(tr+tw-S.r)-c*S.rv)*dt;S.r+=S.rv*dt;S.pv+=(w*w*(tp-S.p)-c*S.pv)*dt;S.p+=S.pv*dt; /* spring-damper: overshoot and settle */
-   S.r=clamp(S.r,-0.12,0.12);S.p=clamp(S.p,-0.08,0.08);if(Math.abs(S.r)<1e-4&&Math.abs(S.p)<1e-4)return;
-   S.applied={m,r:S.r,p:S.p};m.rotateX(S.r);m.rotateZ(S.p);m.updateMatrixWorld(true)},
-  postRender(){if(S.applied){const A=S.applied;A.m.rotateZ(-A.p);A.m.rotateX(-A.r);A.m.updateMatrixWorld(true);S.applied=null} /* undo in reverse, so the drift slip's own undo still matches */}});
+   S.r=clamp(S.r,-0.12,0.12);S.p=clamp(S.p,-0.08,0.08);
+   if(Math.abs(S.r)>=1e-4||Math.abs(S.p)>=1e-4){S.applied={m,r:S.r,p:S.p};m.rotateX(S.r);m.rotateZ(S.p)}
+   shocks(G,e,m);m.updateMatrixWorld(true)},
+  postRender(){if(S.applied){const A=S.applied;A.m.rotateZ(-A.p);A.m.rotateX(-A.r);A.m.updateMatrixWorld(true);S.applied=null} /* undo in reverse, so the drift slip's own undo still matches */
+   if(S.wsave){for(const [p,pos,q] of S.wsave){p.position.copy(pos);p.quaternion.copy(q)}S.wsave=null}
+   if(S.heave){S.heave.m.position.y-=S.heave.y;S.heave=null}}});
+ /* (3) working shocks. Body roll, pitch, dive and squat tilt the whole car group, which used to lift and bury the wheels with it.
+    Each wheel is now held where the road is: its hub is counter-moved against the body's suspension motion, so the body
+    moves on its springs over wheels that stay planted. Each wheel also follows small road bumps (per wheel, left and right
+    out of phase); the body takes only part of that, which is what the shocks absorb. Undone after drawing. */
+ const bump=(s,ph)=>Math.sin(s*1.9+ph)*0.5+Math.sin(s*4.7+ph*2.3)*0.3+Math.sin(s*10.3+ph*3.1)*0.2;
+ const _q=new THREE.Quaternion(),_b=new THREE.Quaternion(),_e=new THREE.Euler(),_v=new THREE.Vector3();
+ function shocks(G,e,m){const W=m.userData.wheels;if(!W||!W.length||G.spec.hyper||G.spec.omni)return;
+  _e.set(e.roll||0,m.rotation.y,e.pitch||0,'YZX');_b.setFromEuler(_e);_q.copy(_b).invert().multiply(m.quaternion); /* body's suspension rotation, in its own frame */
+  const rel=_q.clone().invert(),rough=(G.mode==='rally'||/gravel|dirt/.test(G.surface||''))?0.045:G.spec.style==='van'||G.spec.pickupBed?0.014:0.01,amp=rough*Math.min(1,(e.v||0)/6),s=e.s||0;
+  const sv=[];let sum=0;for(const w of W){const p=w.piv;if(!p)continue;const b=amp*bump(s+p.position.x,p.position.z>0?0:2.4);sv.push([p,b]);sum+=b}
+  if(!sv.length)return;const heave=sum/sv.length*0.35;S.heave={m,y:heave};m.position.y+=heave;S.wsave=[];
+  for(const [p,b] of sv){S.wsave.push([p,p.position.clone(),p.quaternion.clone()]);_v.copy(p.position).applyQuaternion(_q).sub(p.position); /* how far the body's tilt moved this hub */
+   p.position.sub(_v.applyQuaternion(rel));p.position.y+=b-heave;p.quaternion.premultiply(rel)}}
 })();
 </script>
 <script>/* mods/99e-cabin-detail.js */
