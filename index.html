@@ -10934,9 +10934,9 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  const bump=(s,ph)=>Math.sin(s*1.9+ph)*0.5+Math.sin(s*4.7+ph*2.3)*0.3+Math.sin(s*10.3+ph*3.1)*0.2;
  const _q=new THREE.Quaternion(),_b=new THREE.Quaternion(),_e=new THREE.Euler(),_v=new THREE.Vector3();
  function shocks(G,e,m){const W=m.userData.wheels;if(!W||!W.length||G.spec.hyper||G.spec.omni)return;
-  _e.set(e.roll||0,m.rotation.y,e.pitch||0,'YZX');_b.setFromEuler(_e);_q.copy(_b).invert().multiply(m.quaternion); /* body's suspension rotation, in its own frame */
+  _e.set(e.roll||0,m.rotation.y,e.pitch||0,'YZX');_b.setFromEuler(_e);_q.copy(_b).invert().multiply(m.quaternion); /* body's suspension rotation, in its own frame */_e.setFromQuaternion(_q,'YZX');_e.y=0;_q.setFromEuler(_e); /* roll and pitch only: a drift-slip yaw stays on the wheels */
   const rel=_q.clone().invert(),rough=(G.mode==='rally'||/gravel|dirt/.test(G.surface||''))?0.045:G.spec.style==='van'||G.spec.pickupBed?0.014:0.01,amp=rough*Math.min(1,(e.v||0)/6),s=e.s||0;
-  const sv=[];let sum=0;for(const w of W){const p=w.piv;if(!p)continue;const b=amp*bump(s+p.position.x,p.position.z>0?0:2.4);sv.push([p,b]);sum+=b}
+  const sv=[];let sum=0;for(const w of W){const p=w.piv;if(!p||p.parent!==m)continue;const b=amp*bump(s+p.position.x,p.position.z>0?0:2.4);sv.push([p,b]);sum+=b}
   if(!sv.length)return;const heave=sum/sv.length*0.35;S.heave={m,y:heave};m.position.y+=heave;S.wsave=[];
   for(const [p,b] of sv){S.wsave.push([p,p.position.clone(),p.quaternion.clone()]);_v.copy(p.position).applyQuaternion(_q).sub(p.position); /* how far the body's tilt moved this hub */
    p.position.sub(_v.applyQuaternion(rel));p.position.y+=b-heave;p.quaternion.premultiply(rel)}}
