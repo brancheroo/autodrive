@@ -1580,13 +1580,22 @@ function shapeOf(spec){return Object.assign({},SHAPE_T[spec.style],(MODEL[spec.i
 // procedural fine-detail maps (paint flake, tyre tread, plate)
 function noiseNormal(size,amp){const c=document.createElement('canvas');c.width=c.height=size;const x=c.getContext('2d'),im=x.createImageData(size,size);for(let i=0;i<im.data.length;i+=4){im.data[i]=128+(Math.random()-0.5)*amp;im.data[i+1]=128+(Math.random()-0.5)*amp;im.data[i+2]=255;im.data[i+3]=255}x.putImageData(im,0,0);const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(8,8);return t}
 const FLAKE=noiseNormal(256,70);
-function treadTex(){const c=document.createElement('canvas');c.width=1024;c.height=64;const x=c.getContext('2d');x.fillStyle='#181818';x.fillRect(0,0,1024,64); /* lathe UV: x = around the tyre, y = across the profile (sidewall · tread · sidewall) */
- x.fillStyle='#202020';x.fillRect(0,22,1024,20); /* tread face, slightly lighter (worn rubber) */
- x.fillStyle='#0b0b0b';for(const y of [25,30,35,39])x.fillRect(0,y,1024,1.6); /* circumferential grooves */
- for(let i=0;i<1024;i+=9){x.fillRect(i,22,1.2,3);x.fillRect(i+4,31,1.2,3);x.fillRect(i,40,1.2,2)} /* fine sipes */
- x.fillStyle='#262626';for(let i=0;i<1024;i+=128){x.fillRect(i+10,6,60,2.5);x.fillRect(i+10,55,60,2.5)} /* faint sidewall lettering band */
- const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;t.anisotropy=8;return t}
-const TREAD=treadTex();
+/* road-tyre tread, mapped across the tyre by axial position (v = (axle offset + 0.125) / 0.25, so 256 px per metre across;
+   1024 px around ≈ 2 mm each). A typical touring pattern: four circumferential main grooves (cut into the geometry too),
+   a solid centre rib with notches, intermediate ribs with angled sipes, and shoulder blocks split by lateral grooves that
+   run out onto the shoulder. Drawn twice: colour, and a bump map for depth. */
+function treadTex(bump){const c=document.createElement('canvas');c.width=1024;c.height=64;const x=c.getContext('2d'),Y=a=>(a+0.125)*256;
+ const deep=bump?'#000':'#070707',mid=bump?'#5a5a5a':'#121212',face=bump?'#fff':'#212121';
+ x.fillStyle=bump?'#c8c8c8':'#161616';x.fillRect(0,0,1024,64);x.fillStyle=face;x.fillRect(0,Y(-0.072),1024,Y(0.072)-Y(-0.072));
+ x.fillStyle=deep;for(const a of [-0.044,-0.016,0.016,0.044])x.fillRect(0,Y(a)-1.1,1024,2.2); /* main grooves */
+ for(let i=0;i<1024;i+=15){x.fillStyle=deep;x.beginPath();x.moveTo(i,Y(-0.08));x.lineTo(i+2,Y(-0.08));x.lineTo(i+4.5,Y(-0.048));x.lineTo(i+2.5,Y(-0.048));x.fill(); /* shoulder lateral grooves, open to the shoulder */
+  x.beginPath();x.moveTo(i+7,Y(0.08));x.lineTo(i+9,Y(0.08));x.lineTo(i+11.5,Y(0.048));x.lineTo(i+9.5,Y(0.048));x.fill();
+  x.strokeStyle=mid;x.lineWidth=0.8;x.beginPath();x.moveTo(i+7,Y(-0.07));x.lineTo(i+9,Y(-0.05));x.moveTo(i,Y(0.05));x.lineTo(i+2,Y(0.07));x.stroke(); /* shoulder block sipes */
+  for(const [a,b] of [[-0.039,-0.021],[0.021,0.039]]){x.beginPath();x.moveTo(i+3,Y(a));x.lineTo(i+8,Y(b));x.moveTo(i+10.5,Y(a));x.lineTo(i+15.5,Y(b));x.stroke()} /* intermediate rib sipes */
+  x.fillStyle=mid;x.fillRect(i+5,Y(-0.012),1,Y(-0.006)-Y(-0.012));x.fillRect(i+12,Y(0.006),1,Y(0.012)-Y(0.006))} /* centre-rib notches */
+ if(!bump){x.fillStyle='#262626';for(let i=0;i<1024;i+=128){x.fillRect(i+10,2,60,2);x.fillRect(i+10,60,60,2)}} /* faint sidewall lettering band */
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;if(!bump)t.encoding=THREE.sRGBEncoding;t.anisotropy=8;return t}
+const TREAD=treadTex(),TREAD_B=treadTex(true);
 function plateTex(){const c=document.createElement('canvas');c.width=512;c.height=256;const x=c.getContext('2d');x.scale(2,2);x.fillStyle='#f4f4f2';x.fillRect(0,0,256,128);x.strokeStyle='#223';x.lineWidth=4;x.strokeRect(4,4,248,120);x.fillStyle='#b01c1c';x.font='italic bold 26px serif';x.textAlign='center';x.fillText('Autodrive',128,34);x.fillStyle='#1a2a6c';x.font='bold 58px monospace';const r='ABCDEFGHJKLMNPRSTUVWXYZ';x.fillText(Math.floor(Math.random()*9+1)+r[Math.floor(Math.random()*23)]+r[Math.floor(Math.random()*23)]+r[Math.floor(Math.random()*23)]+Math.floor(Math.random()*900+100),128,100);const t=new THREE.CanvasTexture(c);t.userData.own=1;t.encoding=THREE.sRGBEncoding;return t}
 
 /* Catmull-Rom through [[u,value],…] keys (used by per-car measured profiles) */
@@ -1657,9 +1666,13 @@ const wheelCache={};
 function wheelSet(spec,rim,cal,lod){
  const key=spec.wr+rim.style+rim.n+rim.col+cal+(spec.id||spec.style)+(lod?':lod':'');if(wheelCache[key])return wheelCache[key];
  const wr=spec.wr,tw=0.25,rr=wr*(/^(yugo|starfire|taxi|wagon70|century|h2saab|isetta|rideshare)$/.test(spec.id||'')?0.64:/suv|van|pod/.test(spec.style)?0.71:0.76); /* modern low-profile tyres; classics and SUVs keep taller sidewalls */
- const prof=[[rr*0.98,-tw/2],[wr-0.04,-tw/2],[wr-0.008,-tw/2+0.03],[wr,-tw/2+0.06],[wr,tw/2-0.06],[wr-0.008,tw/2-0.03],[wr-0.04,tw/2],[rr*0.98,tw/2]].map(p=>new THREE.Vector2(p[0],p[1]));
- const tireG=new THREE.LatheGeometry(prof,lod?16:HIGH?72:48).rotateX(Math.PI/2);
- const tireM=new THREE.MeshStandardMaterial({color:0xffffff,map:TREAD,roughness:0.92});
+ const gr=lod?[]:[-0.044,-0.016,0.016,0.044],GW=0.004,GD=0.008; /* four main grooves, 8 mm wide and 8 mm deep (new-tyre depth) */
+ const prof=[[rr*0.98,-tw/2],[wr-0.04,-tw/2],[wr-0.008,-tw/2+0.03],[wr,-tw/2+0.06]];for(const a of gr)prof.push([wr,a-GW],[wr-GD,a-GW+0.0006],[wr-GD,a+GW-0.0006],[wr,a+GW]);
+ prof.push([wr,tw/2-0.06],[wr-0.008,tw/2-0.03],[wr-0.04,tw/2],[rr*0.98,tw/2]);for(const p of prof)p.length=2;
+ const tireG=new THREE.LatheGeometry(prof.map(p=>new THREE.Vector2(p[0],p[1])),lod?16:HIGH?72:48);
+ {const P=tireG.attributes.position,U=tireG.attributes.uv;for(let k=0;k<P.count;k++){const a=P.getY(k),r=Math.hypot(P.getX(k),P.getZ(k));let v=(a+tw/2)/tw;if(Math.abs(a)>tw/2-1e-4)v=a<0?0.06*clamp((r-rr)/(wr-rr),0,1):1-0.06*clamp((r-rr)/(wr-rr),0,1);U.setY(k,v)}U.needsUpdate=true} /* across-the-tyre texture coordinate by axle offset, so the drawn tread lines up with the cut grooves */
+ tireG.rotateX(Math.PI/2);tireG.computeVertexNormals();
+ const tireM=new THREE.MeshStandardMaterial({color:0xffffff,map:TREAD,bumpMap:lod?null:TREAD_B,bumpScale:0.6,roughness:0.92});
  const rimM=new THREE.MeshStandardMaterial({color:rim.col,metalness:0.85,roughness:0.28});
  const dark=new THREE.MeshStandardMaterial({color:0x151515,metalness:0.4,roughness:0.5});
  const parts=[];const face=tw/2-0.035;
