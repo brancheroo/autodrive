@@ -12338,6 +12338,10 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
     if(prev&&prev!==material){const rp=cm.get([object,prev,cx,lightsNode]);if(rp&&done.has(rp)){BB.subst++;BB.cur.sub++;BB.rs.subst=(BB.rs.subst||0)+1;return RD.call(this,object,prev,sc,cam,lightsNode,group,clip,passId)}} /* keep the old look until the new material is built */
     if(!prev){BB.skipped++;BB.cur.sk++;const w='new|ctx'+(cx&&cx.id)+'|'+material.type;BB.rs[w]=(BB.rs[w]||0)+1;return} /* first time in this view: appear a frame later */
     BB.rs.rebuildAllowed=(BB.rs.rebuildAllowed||0)+1}}
+  if(!BB.lsort&&lightsNode&&lightsNode.setLights){BB.lsort=true;const P=Object.getPrototypeOf(lightsNode),SL=P.setLights;
+   /* the light list is hashed in scene order: when a group holding lights was re-added to the scene, the same lights in a
+      new order counted as a new lighting setup and every material on screen rebuilt (≈1 s freeze, twice). Sorted by id. */
+   P.setLights=function(l){if(l&&l.length>1){const prev=this._lights;l=l.slice().sort((a,b)=>a.id-b.id);if(prev&&prev.length===l.length&&prev.every((x,i)=>x===l[i]))l=prev}return SL.call(this,l)};window.GPULOG&&GPULOG.log('lightSortInstalled')}
   if(!BB.hooked&&this._nodes){BB.hooked=true;const N=this._nodes,G=N.getForRender;BB.evict=0;
    const C=N.nodeBuilderCache;C.delete=function(){BB.evict++;return false};const PL=this._pipelines;if(PL){PL._releasePipeline=function(){BB.evict++};PL._releaseProgram=function(){}}
    N.getForRender=function(ro){const t0=performance.now();try{return G.apply(this,arguments)}finally{const d=performance.now()-t0;if(d>0.3){BB.ms+=d;BB.nb++;
