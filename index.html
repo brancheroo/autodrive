@@ -9,12 +9,12 @@
  if(/[?&]renderer=webgl/.test(location.search))want=false;if(!want||!navigator.gpu)return;window.__GPUBOOT=1;document.write('<plaintext id="gpuInert" style="display:none">'); /* the rest of this file becomes inert text; the page finishes parsing normally (window.stop() left Chrome never painting) */
  (async()=>{try{const ad=await navigator.gpu.requestAdapter();if(!ad)throw new Error('no WebGPU adapter');
   const html=await (await fetch(location.href,{cache:'no-store'})).text();
-  await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s)});
-  const T=window.THREE,keys=Object.keys(T).filter(k=>/^[A-Za-z_$][\w$]*$/.test(k));
-  const shim=URL.createObjectURL(new Blob(['const T=window.THREE;export default T;'+keys.map(k=>'export const '+k+'=T.'+k+';').join('')],{type:'text/javascript'}));
-  const im=document.createElement('script');im.type='importmap';im.textContent=JSON.stringify({imports:{three:shim}});document.head.appendChild(im);
-  const m=await import('https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/renderers/webgpu/WebGPURenderer.js');
-  window.__GPU={WebGPURenderer:m.default,rev:T.REVISION};
+   const M=await import('https://cdn.jsdelivr.net/npm/three@0.175.0/build/three.webgpu.min.js'); /* r175: core + WebGPURenderer + node materials in one module */
+   const T=Object.assign({},M);window.THREE=T;
+   /* shims for r149-era APIs the game code uses (removed in newer three) */
+   T.sRGBEncoding=3001;T.LinearEncoding=3000;if(!T.ShaderChunk)T.ShaderChunk={};if(!T.UniformsUtils)T.UniformsUtils={merge:a=>Object.assign({},...a),clone:u=>Object.assign({},u)};
+   if(!('encoding' in T.Texture.prototype))Object.defineProperty(T.Texture.prototype,'encoding',{get(){return this.colorSpace===T.SRGBColorSpace?3001:3000},set(v){this.colorSpace=v===3001?T.SRGBColorSpace:T.NoColorSpace},configurable:true});
+   window.__GPU={WebGPURenderer:M.WebGPURenderer,rev:M.REVISION};
   const out=html.replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.149\.0\/build\/three\.min\.js"><\/script>/,'');
   if(document.readyState!=='complete')await new Promise(r=>addEventListener('load',r,{once:true})); /* let the inert page finish loading first, so the game's own load checks run straight away */
   /* rebuild the page from the fetched HTML, then run its scripts in order (document.write is ignored after window.stop) */
