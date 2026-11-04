@@ -11843,7 +11843,7 @@ void main(){vec2 u=vU;
   start(){btn.style.display='block'},
   preRender(){const now=performance.now();if(GP._t)GP.ms.push(now-GP._t);GP._t=now;if(GP.ms.length>180)GP.ms.shift();graph();
    const B=GP.benchRun;if(B){B.n++;B.worst=Math.max(B.worst,GP.ms[GP.ms.length-1]||0);if(now-B.t0>15000){const fps=B.n*1000/(now-B.t0);GP.bench=`${fps.toFixed(0)} fps avg · worst ${B.worst.toFixed(0)} ms · score ${Math.round(fps*100/Math.max(1,B.worst/16.7))}`;GP.benchRun=null;const G=typeof game!=='undefined'&&game;if(G)G.status='⏱ '+GP.bench;if(pan.style.display!=='none')draw()}}
-   const G=typeof game!=='undefined'?game:null;want=!!(G&&G.route)&&live();
+   const G=typeof game!=='undefined'?game:null;want=!!(G&&G.route)&&live()&&!window.__GPU /* WebGPU mode: 99zzb-webgpu-fx draws the post effects */;
    if(!G||!G.ego)return;const v=G.ego.v||0;
    if(S.fov&&!GP.ab){const f=Math.max(0,Math.min(14,(v-30)/12));if(f>0.01){camera.fov+=f;GP._fovAdd=f;camera.updateProjectionMatrix()}}
    if(S.shake&&!GP.ab&&v>3){const t=now/1000,k=Math.min(1,v/90)*0.012+(Math.abs(G.ego.susP||0)+Math.abs(G.ego.susR||0))*0.08;camOff.set((Math.sin(t*37)+Math.sin(t*23.3))*k*0.5,(Math.sin(t*41.7)+Math.sin(t*29.1))*k*0.5,0);camera.position.add(camOff)}else camOff.set(0,0,0)},
@@ -12260,19 +12260,190 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   d.innerHTML=`Renderer: <b>${gpu?'WebGPU (experimental)':'WebGL'}</b><br><button style="margin-top:4px;background:#14202c;color:#dde;border:1px solid #345;border-radius:6px;padding:3px 8px;cursor:pointer">${gpu?'Switch back to WebGL':'Try WebGPU (reloads)'}</button>`+(gpu?'':`<div style="opacity:.65;margin-top:3px">${navigator.gpu?'Most Graphics+ effects are WebGL-only and turn off in WebGPU mode.':'This browser has no WebGPU.'}</div>`);
   d.querySelector('button').onclick=()=>setMode(gpu?'webgl':'webgpu');if(!gpu&&!navigator.gpu)d.querySelector('button').disabled=true;pan.appendChild(d)},1000); /* cheap 1 s check while the panel is open */
  if(!gpu)return;
- if(window.GFXPLUS)GFXPLUS.ab=true; /* off for this session only, not saved */
  const bg=new THREE.Color();let t=0;
  function scrub(sc){(sc||scene).traverse(o=>{const m=o.material;if(!m)return;const ms=Array.isArray(m)?m:[m];if(ms.some(x=>x&&(x.isShaderMaterial||x.isRawShaderMaterial))&&o.visible){o.visible=false;o.userData.gpuHidden=true}})}
  /* every render (showroom, main view, sensor panels): hide GLSL objects first, swallow async render failures */
  const R0=renderer.render.bind(renderer),seen=new WeakMap();
- let scis=false;const SS=renderer.setScissorTest.bind(renderer);renderer.setScissorTest=v=>{scis=!!v;try{SS(v)}catch(e){}};
- renderer.render=function(sc,cam){if(renderer._initialized===false)return; /* r175: wait for the async WebGPU init */if(!renderer.getRenderTarget()&&(scis||sc!==scene&&!renderer.autoClear))return; /* overlays drawn over the frame (autoClear off) would clear it to black on WebGPU r159 */ /* picture-in-picture panels would wipe the whole canvas on WebGPU r159: skipped */const now=performance.now();if(!seen.has(sc)||now-seen.get(sc)>500){seen.set(sc,now);try{scrub(sc)}catch(e){}}
+ let scis=false,inPost=false;const SS=renderer.setScissorTest.bind(renderer);renderer.setScissorTest=v=>{scis=!!v;try{SS(v)}catch(e){}};
+ renderer.render=function(sc,cam){if(renderer._initialized===false)return; /* r175: wait for the async WebGPU init */if(inPost)return R0(sc,cam);if(sc===scene&&cam===camera&&!renderer.getRenderTarget()&&window.GPUFX&&GPUFX.wants()){inPost=true;let ok=false;try{ok=GPUFX.render()}finally{inPost=false}if(ok)return} /* Graphics+ post effects (99zzb-webgpu-fx) */if(!renderer.getRenderTarget()&&(scis||sc!==scene&&!renderer.autoClear))return; /* overlays drawn over the frame (autoClear off) would clear it to black on WebGPU r159 */ /* picture-in-picture panels would wipe the whole canvas on WebGPU r159: skipped */const now=performance.now();if(!seen.has(sc)||now-seen.get(sc)>500){seen.set(sc,now);try{scrub(sc)}catch(e){}}
   try{const p=R0(sc,cam);if(p&&p.catch)p.catch(err=>{window.GPUERR=String(err)});return p}catch(err){window.GPUERR=String(err)}};
  MODS.push({id:'webgpu',
   start(){scrub()},
-  preRender(){if(window.GFXPLUS)GFXPLUS.ab=true; /* off for this session only, not saved */const now=performance.now();if(now-t>1000){t=now;scrub()}
+  preRender(){const now=performance.now();if(now-t>1000){t=now;scrub()}
    if(typeof skyMat!=='undefined'&&skyMat.uniforms&&skyMat.uniforms.hor){bg.copy(skyMat.uniforms.hor.value).lerp(skyMat.uniforms.top.value,0.45);scene.background=bg}}});
  const tag=document.createElement('div');tag.textContent='WebGPU · experimental';tag.style.cssText='position:fixed;left:8px;bottom:26px;z-index:55;font:11px system-ui;color:#9fd;background:#0008;padding:2px 6px;border-radius:6px';document.body.appendChild(tag);
+})();
+</script>
+<script>/* mods/99zzb-webgpu-fx.js */
+/* Graphics+ on WebGPU: the WebGL-only Graphics+ effects rebuilt as three.js node shaders (TSL), used only when the
+   experimental WebGPU renderer is on. Covers the post pipeline (FXAA, bloom, sun rays, lens flare, colour grades,
+   exposure, vignette, grain, chromatic aberration, sharpen, speed blur, heat haze, AO from depth, depth of field
+   when paused), the sky (gradient, sun, Mie glow, three cloud decks), living water, snow cover, worn roads and scuffed
+   lane paint, the smoke/spray/debris/dust particles, and soft sun shadows. Same ✨ FX switches as WebGL. */
+(function(){
+ if(!window.__GPU||!THREE.TSL)return;
+ const L=THREE.TSL;
+ const {Fn,uniform,float,vec2,vec3,vec4,uv,pass,renderOutput,mix,smoothstep,step,max,min,clamp,dot,length,exp,pow,sin,cos,fract,floor,abs,normalize,
+  positionLocal,positionWorld,normalWorld,normalView,materialColor,materialRoughness,materialEmissive,transformNormalToView,instancedDynamicBufferAttribute,
+  mx_fractal_noise_float,perspectiveDepthToViewZ,cameraNear,cameraFar,time,select}=L;
+ const GA=window.__GPUADD||{};
+ const S=()=>window.GFXPLUS?GFXPLUS.S:{on:1};
+ const ON=()=>!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab;
+ const tier=()=>window.GFX?GFX.get():'high';
+ const GFXE={err:null,post:false};window.GPUFX=GFXE;
+ const hsh=(p,a,b,k)=>fract(sin(dot(p,vec2(a,b))).mul(k));
+ const h1=p=>hsh(p,127.1,311.7,43758.5453);
+ /* value noise + 3-octave fbm, as in the WebGL road-wear shader */
+ const vn=p=>{const i=floor(p),f0=fract(p),f=f0.mul(f0).mul(float(3).sub(f0.mul(2)));
+  return mix(mix(h1(i),h1(i.add(vec2(1,0))),f.x),mix(h1(i.add(vec2(0,1))),h1(i.add(vec2(1,1))),f.x),f.y)};
+ const fbm=p=>vn(p).mul(0.5).add(vn(p.mul(2.03)).mul(0.25)).add(vn(p.mul(4.1)).mul(0.125));
+ const lum=c=>dot(c,vec3(0.299,0.587,0.114));
+
+ /* ---------- sky dome ---------- */
+ const SK={top:uniform(new THREE.Color()),hor:uniform(new THREE.Color()),sunDir:uniform(new THREE.Vector3(0,1,0)),sunCol:uniform(new THREE.Color(1,.95,.8)),
+  cCov:uniform(0.35),cT:uniform(0),cWind:uniform(new THREE.Vector2(1,0)),cOn:uniform(1)};
+ function skyNode(){
+  const d=normalize(positionLocal),mu=max(dot(d,SK.sunDir),0);
+  let c=mix(SK.hor,SK.top,pow(max(d.y,0),0.45));
+  c=c.add(SK.sunCol.mul(pow(mu,600).mul(4).add(pow(mu,8).mul(0.25))));
+  const g=0.76,mie=float((1-g*g)*0.006).div(pow(float(1+g*g).sub(mu.mul(2*g)),1.5));
+  const day=clamp(SK.sunDir.y.mul(4).add(0.3),0,1);
+  c=c.add(SK.sunCol.mul(mie).mul(day));
+  c=mix(c,c.mul(vec3(0.82,0.9,1.08)),smoothstep(0.3,1,d.y).mul(0.35).mul(day));
+  c=mix(c,c.add(vec3(0.06,0.06,0.07).mul(day)),smoothstep(0.12,0,d.y).mul(smoothstep(-0.05,0,d.y)));
+  /* three cloud decks, lit toward the sun */
+  const sunc=SK.sunCol.mul(day.mul(0.6).add(0.6)).add(0.05),amb=mix(vec3(0.08,0.09,0.12),vec3(0.62,0.68,0.78),day);
+  const cf=q=>mx_fractal_noise_float(vec3(q.x,q.y,0),4,2.0,0.5,1.0).mul(0.5).add(0.5);
+  let T=float(1),Lc=vec3(0,0,0);const dy=max(d.y,0.015),cov=float(1).sub(SK.cCov);
+  for(let i=0;i<3;i++){const p=d.mul(float(1700+i*700).div(dy));const q=p.xz.div(2600).add(SK.cWind.mul(SK.cT).mul(0.004)).add(i*3.7);
+   const den=max(cf(q).sub(cov),0).mul(1.3-i*0.3),sh=max(cf(q.add(SK.sunDir.xz.mul(0.12))).sub(cov),0),lit=exp(sh.mul(-3.5));
+   const col=amb.add(sunc.mul(lit).mul(mie.mul(60).add(0.55))),a=float(1).sub(exp(den.mul(-4)));
+   Lc=Lc.add(T.mul(a).mul(col));T=T.mul(float(1).sub(a))}
+  const fade=smoothstep(0.015,0.12,d.y).mul(SK.cOn).mul(step(0.02,SK.cCov));
+  c=mix(c,c.mul(T).add(Lc),fade);
+  return select(d.y.lessThan(0),SK.hor,c)}
+ let skyDone=false;
+ function setupSky(){if(skyDone||typeof sky==='undefined'||typeof skyMat==='undefined')return;skyDone=true;
+  const m=new THREE.MeshBasicNodeMaterial({side:THREE.BackSide,depthWrite:false,depthTest:false,fog:false});m.toneMapped=false;m.colorNode=skyNode();
+  sky.material=m;sky.visible=true;delete sky.userData.gpuHidden}
+ function skyFrame(){if(typeof skyMat==='undefined')return;const U=skyMat.uniforms;SK.top.value.copy(U.top.value);SK.hor.value.copy(U.hor.value);SK.sunDir.value.copy(U.sunDir.value);SK.sunCol.value.copy(U.sunCol.value);
+  if(U.cCov){SK.cCov.value=U.cCov.value;SK.cT.value=U.cT.value;SK.cWind.value.copy(U.cWind.value);SK.cOn.value=U.cOn.value}else SK.cOn.value=0}
+
+ /* ---------- snow, road wear, paint wear ---------- */
+ const uSnow=uniform(0),uWear=uniform(1);
+ const snowOn=(base,r)=>{const up=normalWorld.y,wp=positionWorld.xz;
+  const nz=hsh(floor(wp.mul(1.7)),12.99,78.23,43758.5).mul(0.35).add(hsh(floor(wp.mul(0.31)),39.3,11.1,1731.7).mul(0.65));
+  const sn=uSnow.mul(smoothstep(0.45,0.8,up)).mul(smoothstep(float(1).sub(uSnow.mul(1.2)),float(1.05).sub(uSnow),nz.add(0.25)));
+  return vec4(mix(base.rgb,vec3(0.93*r,0.95*r,0.98*r),sn),base.a)};
+ const roadWear=base=>{const p=positionWorld.xz,w=uWear;let c=base.rgb;
+  const patchy=step(0.72,vn(floor(p.div(vec2(7,4))).mul(0.37).add(3.1)));c=c.mul(float(1).sub(patchy.mul(0.3).mul(w)));
+  const cr=abs(fbm(p.mul(0.35)).sub(0.5)),crack=float(1).sub(smoothstep(0,0.012,cr)).mul(step(0.68,vn(p.mul(0.05))));c=c.mul(float(1).sub(crack.mul(0.55).mul(w)));
+  const seam=abs(fbm(p.mul(0.12).add(7)).sub(0.5)),tar=float(1).sub(smoothstep(0,0.006,seam)).mul(step(0.6,vn(p.mul(0.03).add(2))));c=mix(c,vec3(0.05,0.05,0.05),tar.mul(0.75).mul(w));
+  const oil=smoothstep(0.78,0.95,vn(p.mul(0.6).add(11))).mul(step(0.7,vn(p.mul(0.08))));c=c.mul(float(1).sub(oil.mul(0.3).mul(w)));
+  const cell=floor(p.div(23)),ctr=cell.add(0.2).add(vec2(h1(cell),h1(cell.add(5))).mul(0.6)).mul(23),dd=length(p.sub(ctr));
+  const mh=float(1).sub(smoothstep(0.33,0.36,dd)).mul(step(h1(cell.add(9)),0.22)),rim=smoothstep(0.30,0.33,dd).mul(mh),grid=step(0.5,fract(p.x.add(p.y).mul(6)));
+  c=mix(c,vec3(0.13,0.13,0.13).add(grid.mul(0.04)).add(rim.mul(0.08)),mh.mul(w));
+  return vec4(c,base.a)};
+ const paintWear=base=>{const p=positionWorld.xz;const wear=smoothstep(0.35,0.75,fbm(p.mul(1.6))).mul(0.55).add(smoothstep(0.6,0.9,vn(p.mul(0.07))).mul(0.3)).mul(step(0.9,abs(normalWorld.y)));
+  return vec4(mix(base.rgb,vec3(0.36,0.36,0.36),wear.mul(uWear)),base.a)};
+ const KIND=new WeakMap(); /* material -> 'road' | 'paint' */
+ try{KIND.set(MAT.road,'road');KIND.set(MAT.road2,'road');KIND.set(MAT.white,'paint');KIND.set(MAT.yellow,'paint')}catch(e){}
+ const done=new WeakMap();let interior=new WeakSet(),snowWanted=false;
+ function nodeFor(m){const k=KIND.get(m);let c=materialColor;if(k==='road')c=roadWear(c);else if(k==='paint')c=paintWear(c);
+  if(snowWanted&&!interior.has(m))c=snowOn(c,m.isMeshLambertMaterial?0.8:1);return c===materialColor?null:c}
+ function dress(m){if(!m||m.isNodeMaterial||!(m.isMeshStandardMaterial||m.isMeshLambertMaterial))return;const tag=(snowWanted?'s':'')+(interior.has(m)?'i':'');if(done.get(m)===tag)return;done.set(m,tag);
+  const n=nodeFor(m);if(n||m.colorNode){m.colorNode=n||null;if(KIND.get(m)==='road')m.roughnessNode=mix(materialRoughness,float(0.35),smoothstep(0.78,0.95,vn(positionWorld.xz.mul(0.6).add(11))).mul(step(0.7,vn(positionWorld.xz.mul(0.08)))).mul(uWear));m.needsUpdate=true}}
+ function dressAll(){scene.traverse(o=>{if(o.material)for(const m of [].concat(o.material))dress(m)})}
+
+ /* ---------- water ---------- */
+ const WT=uniform(0),WA=uniform(1),WD=uniform(new THREE.Vector2(1,0.3));
+ function setupWater(){const m=typeof MAT!=='undefined'&&MAT.water;if(!m||m.normalNode)return;
+  const p=positionWorld.xz,d1=normalize(WD),d2=vec2(d1.y.negate(),d1.x),d3=d2.mul(0.7).add(d1.mul(0.7)),d4=vec2(0.31,-0.95);
+  const a1=dot(p,d1).mul(0.55).sub(WT.mul(1.6)),a2=dot(p,d3).mul(1.3).sub(WT.mul(2.3)),a3=dot(p,d4).mul(3.1).sub(WT.mul(3.7));
+  const g=d1.mul(cos(a1).mul(0.55)).add(d3.mul(cos(a2).mul(0.35))).add(d4.mul(cos(a3).mul(0.18)));
+  const nW=normalize(vec3(g.x.mul(-0.35).mul(WA),1,g.y.mul(-0.35).mul(WA)));
+  m.normalNode=normalize(mix(normalView,transformNormalToView(nW),WA.mul(0.85)));
+  const cl=floor(p.mul(2.5)),ph=WT.mul(2.5).add(hsh(cl,7.7,3.1,91.7)),hc=fract(sin(dot(cl,vec2(12.9898,78.233)).add(floor(ph).mul(17.3))).mul(43758.5)),f=fract(p.mul(2.5)).sub(0.5);
+  const sp=step(0.992,hc).mul(pow(sin(fract(ph).mul(3.1416)),3)).mul(smoothstep(0.25,0,length(f)));
+  m.emissiveNode=materialEmissive.add(vec3(1,0.97,0.9).mul(sp).mul(1.2).mul(WA));m.needsUpdate=true}
+
+ /* ---------- particles: WebGL point sprites -> instanced sprites ---------- */
+ const parts=[];const seenPts=new WeakSet();
+ function setupParticles(){scene.traverse(o=>{if(!o.isPoints||seenPts.has(o)||!o.material||!o.material.uniforms||!o.material.uniforms.op)return;seenPts.add(o);
+  const g=o.geometry,pa=g.attributes.position,aa=g.attributes.alpha;if(!pa||!aa)return;const N=pa.count,U=o.material.uniforms;
+  const P=new THREE.InstancedBufferAttribute(pa.array,3),A=new THREE.InstancedBufferAttribute(aa.array,1);
+  const m=new THREE.SpriteNodeMaterial({transparent:true,depthWrite:false,blending:o.material.blending});
+  const a=instancedDynamicBufferAttribute(A,'float');
+  m.positionNode=instancedDynamicBufferAttribute(P,'vec3');
+  m.scaleNode=float(U.s.value*0.45).mul(float(3).sub(a.mul(2)));
+  m.colorNode=vec4(vec3(U.c.value.r,U.c.value.g,U.c.value.b),1);
+  m.opacityNode=a.mul(U.op.value).mul(smoothstep(0.5,0.1,length(uv().sub(0.5))));
+  const s=new THREE.Sprite(m);s.count=N;s.frustumCulled=false;s.renderOrder=4;(o.parent||scene).add(s);parts.push({o,s,P,A})})}
+
+ /* ---------- post pipeline ---------- */
+ let post=null,key='',sp=null;
+ const PU={px:uniform(new THREE.Vector2(1/1280,1/720)),sun:uniform(new THREE.Vector3(0.5,0.5,0)),sunCol:uniform(new THREE.Color(1,0.9,0.7)),spd:uniform(0),haze:uniform(0),expo:uniform(1),dof:uniform(0),
+  lift:uniform(new THREE.Vector3()),gain:uniform(new THREE.Vector3(1,1,1)),sat:uniform(1),contrast:uniform(1)};
+ const GRADES={neutral:[[0,0,0],[1,1,1],1,1],cinematic:[[0.01,0.012,0.02],[1.03,1,0.95],1.08,1.06],golden:[[0.02,0.01,0],[1.1,1.0,0.85],1.1,1.04],vintage:[[0.04,0.03,0.02],[1.02,0.97,0.85],0.78,0.94],cool:[[0,0.01,0.03],[0.93,1,1.08],1.0,1.05],vivid:[[0,0,0],[1,1,1],1.3,1.1]};
+ function build(k){
+  if(!post)post=new THREE.PostProcessing(renderer);post.outputColorTransform=false;
+  sp=pass(scene,camera);const tex=sp.getTextureNode('output'),dep=sp.getTextureNode('depth');
+  const t=u=>tex.sample(u).rgb,lz=u=>perspectiveDepthToViewZ(dep.sample(u).x,cameraNear,cameraFar).negate();
+  const px=PU.px;let u=uv();
+  if(k.haze){const yb=float(1).sub(u.y),band=smoothstep(0.62,0.42,yb).mul(smoothstep(0.25,0.45,yb));u=vec2(u.x.add(sin(yb.mul(180).add(time.mul(9))).mul(0.0012).mul(PU.haze).mul(band)),u.y)}
+  const cc=u.sub(0.5);let c;
+  if(k.speedblur){c=vec3(0,0,0);for(let i=0;i<6;i++)c=c.add(t(u.sub(cc.mul(i/6*0.06).mul(PU.spd))));c=c.div(6)}else c=t(u);
+  if(k.ca){const a=length(cc).mul(0.005);c=vec3(mix(c.x,t(u.add(cc.mul(a))).x,0.85),c.y,mix(c.z,t(u.sub(cc.mul(a))).z,0.85))}
+  if(k.sharpen){const s=t(u.add(vec2(px.x,0))).add(t(u.sub(vec2(px.x,0)))).add(t(u.add(vec2(0,px.y)))).add(t(u.sub(vec2(0,px.y))));c=c.add(c.sub(s.mul(0.25)).mul(0.35))}
+  const z0=lz(u);
+  if(k.dof){const zf=lz(vec2(0.5,0.55)),kk=clamp(abs(z0.sub(zf)).div(max(zf,1)).mul(1.5),0,1).mul(PU.dof);let a=vec3(0,0,0);
+   for(let i=0;i<8;i++){const an=i*0.785;a=a.add(t(u.add(vec2(Math.cos(an),Math.sin(an)).mul(px).mul(kk.mul(6)))))}c=mix(c,a.div(8),kk)}
+  if(k.ao){let oc=float(0);const r=clamp(float(1.2).div(z0),0.004,0.03),jit=hsh(u,12.9898,78.233,43758.5453).mul(0.785);
+   for(let i=0;i<8;i++){const an=jit.add(i*0.785),o=vec2(cos(an),sin(an)).mul(r).mul(0.5+0.5*((i*0.37)%1));const zs=lz(u.add(o.mul(vec2(px.x.div(px.y),1)))),dz=z0.sub(zs);
+    oc=oc.add(step(z0.mul(0.04),dz).mul(float(1).sub(smoothstep(0,z0.mul(0.05).add(1.5),dz))))}
+   c=c.mul(float(1).sub(oc.div(8).mul(0.55).mul(step(z0,cameraFar.mul(0.5)))))}
+  let bt=null;
+  if((k.bloom||k.rays)&&GA.bloom){const b=GA.bloom(tex,0.55,0.35,k.rays&&!k.bloom?0.95:0.8);bt=b.getTextureNode?b.getTextureNode():b;if(k.bloom)c=c.add(b.rgb)}
+  if(k.rays||k.flare){const sp2=PU.sun.xy,asp=px.y.div(px.x),r=length(u.sub(sp2).mul(vec2(asp,1)));
+   if(k.rays&&bt&&bt.sample){let vis=float(0);const st=sp2.sub(u).div(12);for(let i=1;i<=12;i++)vis=vis.add(lum(bt.sample(u.add(st.mul(i))).rgb));
+    c=c.add(PU.sunCol.mul(vis.div(12).mul(0.35).mul(PU.sun.z).mul(exp(r.mul(-2.5))))).add(PU.sunCol.mul(PU.sun.z.mul(0.08).mul(exp(r.mul(-6)))))}
+   if(k.flare){const gv=vec2(0.5,0.5).sub(sp2);for(let i=1;i<5;i++){const gp=sp2.add(gv.mul(i*0.55)),dd=length(u.sub(gp).mul(vec2(asp,1)));c=c.add(PU.sunCol.mul(vec3(0.6,0.8,1)).mul(PU.sun.z.mul(0.05).mul(smoothstep(0.05+0.02*i,0,dd))))}}}
+  c=max(c,vec3(0,0,0));
+  let o=renderOutput(vec4(c,1)).rgb;
+  o=o.mul(PU.expo).mul(PU.gain).add(PU.lift);o=mix(vec3(lum(o)),o,PU.sat);o=o.sub(0.5).mul(PU.contrast).add(0.5);
+  if(k.vignette)o=o.mul(float(1).sub(dot(cc,cc).mul(0.55)));
+  if(k.grain)o=o.add(hsh(u.mul(vec2(1931,1733)).add(time),12.9898,78.233,43758.5453).sub(0.5).mul(0.05));
+  let out=vec4(clamp(o,0,1),1);
+  if(k.fxaa&&GA.fxaa)out=GA.fxaa(out);
+  post.outputNode=out;post.needsUpdate=true}
+ const live=()=>{const s=S();return s.on&&!(window.GFXPLUS&&GFXPLUS.ab)&&(tier()!=='low'||s.lowToo)};
+ const sv=new THREE.Vector3();let expo=1,lastT=performance.now();
+ function postFrame(){const s=S(),G=typeof game!=='undefined'?game:null,v=G&&G.ego?G.ego.v||0:0,now=performance.now(),dt=Math.min(0.1,(now-lastT)/1000);lastT=now;
+  const k={fxaa:!!s.fxaa,bloom:!!s.bloom,rays:!!s.rays,flare:!!s.flare,vignette:!!s.vignette,grain:!!s.grain,ca:!!s.ca,sharpen:!!s.sharpen,speedblur:!!s.speedblur,haze:!!s.haze,ao:!!s.ao,dof:!!s.dof};
+  const kk=JSON.stringify(k);if(kk!==key){key=kk;build(k)}
+  const W=renderer.domElement.width||1,H=renderer.domElement.height||1;PU.px.value.set(1/W,1/H);
+  const g=GRADES[s.grade]||GRADES.neutral;PU.lift.value.set(...g[0]);PU.gain.value.set(...g[1]);PU.sat.value=g[2];PU.contrast.value=g[3];
+  PU.spd.value=s.speedblur?Math.max(0,Math.min(1,(v-35)/120)):0;
+  const hot=typeof WX!=='undefined'&&WX&&/clear|sun|hot/i.test(WX.key||'clear');PU.haze.value=s.haze&&(hot||G&&G.spec&&(G.spec.aegis||G.spec.rocket))&&v>8?Math.min(1,v/40):0;
+  PU.dof.value=s.dof&&(G&&G.paused||window.GFXPLUS&&GFXPLUS.photo)?1:0;
+  if(typeof sun!=='undefined'){sv.copy(sun.position).sub(sun.target.position).normalize().multiplyScalar(5000).add(camera.position).project(camera);
+   const on=sv.z<1&&Math.abs(sv.x)<1.3&&Math.abs(sv.y)<1.3;PU.sun.value.set(sv.x*0.5+0.5,0.5-sv.y*0.5,on?Math.min(1,sun.intensity/1.6)*Math.max(0,1-Math.max(Math.abs(sv.x),Math.abs(sv.y))*0.6):0);PU.sunCol.value.copy(sun.color)}
+  if(s.exposure){const tgt=G&&G.inTunnel?1.35:(typeof sun!=='undefined'&&sun.intensity<0.1?1.15:1);expo+=(tgt-expo)*Math.min(1,dt*(tgt>expo?0.8:2.5))}else expo=1;PU.expo.value=expo}
+ /* called by the WebGPU render wrapper (99zz-webgpu) for the main view */
+ GFXE.wants=()=>!GFXE.broken&&live()&&typeof game!=='undefined'&&!!game.route;
+ GFXE.render=()=>{try{postFrame();post.render();GFXE.post=true;return true}catch(e){GFXE.err=String(e);GFXE.broken=true;return false}};
+
+ MODS.push({id:'webgpufx',
+  start(){setupSky();setupWater();this._dt=0},
+  preRender(){const now=performance.now(),on=ON();
+   setupSky();skyFrame();
+   WT.value=now/1000%1000;WA.value=on?1:0;if(typeof WX!=='undefined'&&WX.windDir!==undefined)WD.value.set(Math.cos(WX.windDir),Math.sin(WX.windDir));
+   uWear.value=on?1:0;const sc=window.SNOWCOVER;uSnow.value=sc?sc.value:0;
+   if(uSnow.value>0.001&&!snowWanted){snowWanted=true;this._dt=0} /* snow nodes are only built once it actually snows, to spare a recompile */
+   const G=typeof game!=='undefined'?game:null;if(G&&G.ego&&G.ego.mesh&&G.ego.mesh!==this._m){this._m=G.ego.mesh;interior=new WeakSet();const ud=G.ego.mesh.userData;if(ud.interior)ud.interior.traverse(o=>{if(o.material)for(const m of [].concat(o.material))interior.add(m)});this._dt=0}
+   if(now-(this._dt||0)>2000){this._dt=now;try{dressAll();setupParticles()}catch(e){GFXE.err=String(e)}}
+   for(const p of parts){p.P.needsUpdate=true;p.A.needsUpdate=true;p.s.visible=on}
+   if(renderer.shadowMap){const want=on&&tier()!=='low'?THREE.PCFSoftShadowMap:THREE.PCFShadowMap;if(renderer.shadowMap.type!==want){renderer.shadowMap.type=want;renderer.shadowMap.needsUpdate=true}}}});
 })();
 </script>
 <script>/* mods/zz-lightguard.js */
