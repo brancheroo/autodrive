@@ -1430,12 +1430,25 @@ placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
   for(const sp in by){const L=by[sp];if(!L.length)continue;const G=TREESP[sp],wood=new THREE.InstancedMesh(G.wood,MAT.bark,L.length),leaf=new THREE.InstancedMesh(G.leaf,G.mat,L.length);
    L.forEach((t,i)=>{const r=rng(t[2]),sc=Math.min((sp==='conifer'?0.75:0.7)+r()*0.6,t[3]||9);q.setFromAxisAngle(UPV,r()*6.283);s.set(sc,sc*(0.85+r()*0.35),sc);p.set(t[0],groundY(t[0],t[1])-0.1,t[1]);m.compose(p,q,s);wood.setMatrixAt(i,m);leaf.setMatrixAt(i,m);
     col.setHSL((sp==='palm'?0.23:0.26)+(r()-0.5)*0.05,0.9,0.95-r()*0.25);if(WX.snow>0.3&&sp!=='palm')col.lerp(new THREE.Color(0xffffff),0.35);leaf.setColorAt(i,col)});
-   wood.castShadow=true;leaf.castShadow=true;leaf.receiveShadow=true;wood.frustumCulled=leaf.frustumCulled=false;T.group.add(wood,leaf);if(performance.now()>BT_DEADLINE)yield;}}
+   wood.castShadow=true;leaf.castShadow=true;leaf.receiveShadow=true;wood.frustumCulled=leaf.frustumCulled=false;if(window.__GPU){T.group.add(bakeInst(wood),bakeInst(leaf))}else T.group.add(wood,leaf);if(performance.now()>BT_DEADLINE)yield;}}
  if(performance.now()>BT_DEADLINE)yield;
  T.swept=roadSweep(T.group,RQ);scene.add(T.group);TILES.set(key,T);setTimeout(()=>mkTile(key),0);
 
 }
 const UPV=new THREE.Vector3(0,1,0);
+/* WebGPU three.js compiles a separate shader for every InstancedMesh (its uuid is part of the material key), which made
+   each streamed tile's trees cost seconds of compiling. In WebGPU mode the static tree instances are baked into one
+   plain mesh per species, which shares a single compiled material with every other tile. */
+function bakeInst(im){const g0=im.geometry.index?im.geometry.toNonIndexed():im.geometry,n=g0.attributes.position.count,N=im.count,
+  P=new Float32Array(n*N*3),Nr=new Float32Array(n*N*3),hasUv=!!g0.attributes.uv,U=hasUv?new Float32Array(n*N*2):null,C=new Float32Array(n*N*3),
+  sp=g0.attributes.position,sn=g0.attributes.normal,su=g0.attributes.uv,sc=g0.attributes.color,m=new THREE.Matrix4(),nm=new THREE.Matrix3(),v=new THREE.Vector3(),ic=new THREE.Color(1,1,1);
+ for(let k=0;k<N;k++){im.getMatrixAt(k,m);nm.getNormalMatrix(m);if(im.instanceColor)im.getColorAt(k,ic);const o=k*n;
+  for(let i=0;i<n;i++){const j=(o+i)*3;v.fromBufferAttribute(sp,i).applyMatrix4(m);P[j]=v.x;P[j+1]=v.y;P[j+2]=v.z;
+   if(sn){v.fromBufferAttribute(sn,i).applyMatrix3(nm).normalize();Nr[j]=v.x;Nr[j+1]=v.y;Nr[j+2]=v.z}
+   C[j]=(sc?sc.getX(i):1)*ic.r;C[j+1]=(sc?sc.getY(i):1)*ic.g;C[j+2]=(sc?sc.getZ(i):1)*ic.b;
+   if(U){U[(o+i)*2]=su.getX(i);U[(o+i)*2+1]=su.getY(i)}}}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(P,3));g.setAttribute('normal',new THREE.BufferAttribute(Nr,3));if(U)g.setAttribute('uv',new THREE.BufferAttribute(U,2));g.setAttribute('color',new THREE.BufferAttribute(C,3));g.computeBoundingSphere();
+ if(g0!==im.geometry)g0.dispose();const mesh=new THREE.Mesh(g,im.material);mesh.castShadow=im.castShadow;mesh.receiveShadow=im.receiveShadow;mesh.userData.merged=true;mesh.userData.bakedTrees=true;im.dispose&&im.dispose();return mesh}
 // ---- realistic trees: three species built once (broadleaf, conifer, palm), each = wood mesh + foliage mesh, drawn instanced per tile
 function mergeG(list){let n=0;for(const g of list)n+=g.index?g.index.count:g.attributes.position.count;const P=new Float32Array(n*3),N=new Float32Array(n*3),U=new Float32Array(n*2),C=new Float32Array(n*3);let o=0;
  for(let g of list){if(g.index)g=g.toNonIndexed();const p=g.attributes.position,nm=g.attributes.normal,uv=g.attributes.uv,c=g.attributes.color;for(let i=0;i<p.count;i++,o++){P.set([p.getX(i),p.getY(i),p.getZ(i)],o*3);N.set([nm.getX(i),nm.getY(i),nm.getZ(i)],o*3);U.set(uv?[uv.getX(i),uv.getY(i)]:[0,0],o*2);C.set(c?[c.getX(i),c.getY(i),c.getZ(i)]:[1,1,1],o*3)}}
