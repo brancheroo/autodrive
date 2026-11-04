@@ -12396,7 +12396,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 /* WebGPU diagnostics log (window.GPULOG): one timeline of everything that can cause a compile or a long frame –
    every material build (from GPUBUILD), long frames, material needsUpdate calls with their caller, scene adds/removes,
    light/fog/environment changes, shadow/tone-mapping/graphics-tier changes. Ring buffer of 20000 events. */
-(function(){if(!window.__GPU)return;
+(function(){if(!window.__GPU||!/[?&]gpulog=1/.test(location.search))return; /* off unless the page is opened with ?gpulog=1 */
  const L=[];const t0=performance.now();const log=(k,...a)=>{L.push([Math.round(performance.now()-t0),k,...a]);if(L.length>20000)L.splice(0,2000)};
  window.GPULOG={L,log,dump:(from=0,to=1e12,kinds)=>L.filter(e=>e[0]>=from&&e[0]<=to&&(!kinds||kinds.includes(e[1])))};
  const where=()=>(new Error().stack||'').split('\n').slice(3,6).map(x=>x.trim().replace(/https?:\/\/[^ )]*\//,'').slice(0,80)).join(' < ');
