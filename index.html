@@ -12259,7 +12259,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   d.querySelector('button').onclick=()=>setMode(gpu?'webgl':'webgpu');if(!gpu&&!navigator.gpu)d.querySelector('button').disabled=true;pan.appendChild(d)},1000); /* cheap 1 s check while the panel is open */
  if(!gpu)return;
  if(window.GFXPLUS)GFXPLUS.ab=true; /* off for this session only, not saved */
- const bg=new THREE.Color();let t=0,fogK='',lt=0,lsig='';
+ const bg=new THREE.Color();let t=0;
  function scrub(sc){(sc||scene).traverse(o=>{const m=o.material;if(!m)return;const ms=Array.isArray(m)?m:[m];if(ms.some(x=>x&&(x.isShaderMaterial||x.isRawShaderMaterial))&&o.visible){o.visible=false;o.userData.gpuHidden=true}})}
  /* every render (showroom, main view, sensor panels): hide GLSL objects first, swallow async render failures */
  const R0=renderer.render.bind(renderer),seen=new WeakMap();
@@ -12268,11 +12268,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   try{const p=R0(sc,cam);if(p&&p.catch)p.catch(err=>{window.GPUERR=String(err)});return p}catch(err){window.GPUERR=String(err)}};
  MODS.push({id:'webgpu',
   start(){scrub()},
-  preRender(){const f=scene.fog,now0=performance.now();
-   if(now0-lt>1000){lt=now0;let L='';scene.traverse(x=>{if(x.isLight&&x.visible)L+=x.type[0]+(x.castShadow?'s':'')+(x.parent?x.parent.type[0]:'')});lsig=L}
-   const k=(f?f.near+'|'+f.far:'none')+'#'+lsig;
-   if(k!==fogK){fogK=k;window.GPUREBUILDS=(window.GPUREBUILDS||0)+1;if(f){const nf=new THREE.Fog(f.color.getHex(),f.near,f.far);nf.color=f.color;scene.fog=nf}} /* WebGPU (r175) keeps the lights and fog it first compiled each material with, which left the trip view black after the showroom; a fresh Fog object makes it rebuild them (a one-off hitch when lights or fog distances change) */
-if(window.GFXPLUS)GFXPLUS.ab=true; /* off for this session only, not saved */const now=performance.now();if(now-t>1000){t=now;scrub()}
+  preRender(){if(window.GFXPLUS)GFXPLUS.ab=true; /* off for this session only, not saved */const now=performance.now();if(now-t>1000){t=now;scrub()}
    if(typeof skyMat!=='undefined'&&skyMat.uniforms&&skyMat.uniforms.hor){bg.copy(skyMat.uniforms.hor.value).lerp(skyMat.uniforms.top.value,0.45);scene.background=bg}}});
  const tag=document.createElement('div');tag.textContent='WebGPU · experimental';tag.style.cssText='position:fixed;left:8px;bottom:26px;z-index:55;font:11px system-ui;color:#9fd;background:#0008;padding:2px 6px;border-radius:6px';document.body.appendChild(tag);
 })();
