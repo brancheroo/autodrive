@@ -2836,6 +2836,7 @@ function plan(a,dt,lead,isEgo){
  if(isEgo&&a.spec.hyper){ /* ROCKETS: fire when the motors are maxed out and there's still a lot of speed to gain; +~1 g of thrust, not grip-limited */
   const maxed=acc>=amax*0.9&&target>a.v+6&&a.v>8&&!a.loose;game.rocketT=maxed?Math.min(1.2,(game.rocketT||0)+dt):Math.max(0,(game.rocketT||0)-dt*1.5);const on=game.rocketT>0.3;
   if(on!==!!game.rocket){game.rocket=on;rocketSound(on)}if(on){acc+=(9.5+Math.min(20,a.v/15))*clamp((target-a.v)/20,0.3,1)*(a.spec.aegis?100:a.spec.hbike?8:1);if(a.spec.aegis||a.spec.hbike)acc=Math.min(acc,Math.max(0,(target-a.v)/Math.max(dt,1e-3)))} /* thrust builds with speed: ~3 g near 1000 mph; Aegis-X: 100× thrust, but never past the planner's target speed in one step */}
+ if(window.REAL)acc=REAL.acc(a,acc,target,isEgo,chase,dt); /* what the car and its tyres can really deliver (99o-realism) */
  a.v=Math.max(0,a.v+acc*dt);a.s+=a.v*dt;a.acc=acc;
  if(a.v<0.05&&target<0.3)a.v=0;
  return reason}
@@ -10929,7 +10930,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   susp(spec){const st=spec.style,tall=spec.H>1.75,soft=/s580|pullman|century|escalade|wagon70|starfire|taxi|lucid|i7/.test(spec.id);
    if(spec.gripG>=2||spec.formulae)return {roll:0.4,pitch:0.3,k:60,z:0.9};
    if(st==='coupe')return {roll:1.6,pitch:1.1,k:28,z:0.7};
-   return {roll:(soft?4.5:tall?4:2.8)*(st==='van'?1.2:1),pitch:soft?3.2:tall?2.8:2,k:soft?12:18,z:soft?0.45:0.55}}}; /* degrees per g, spring stiffness, damping ratio */
+   const arb=clamp((spec.H*0.38)/((spec.W||1.8)*0.5)/0.32,0.7,1.5); /* roll grows with cg height over half-track: the anti-roll bars of a tall narrow van can only do so much */
+   return {roll:(soft?4.5:tall?4:2.8)*(st==='van'?1.2:1)*arb,pitch:soft?3.2:tall?2.8:2,k:soft?12:18,z:soft?0.45:0.55}}}; /* degrees per g, spring stiffness, damping ratio */
  const S={r:0,rv:0,p:0,pv:0,lastH:null,lastV:null,lastT:0,applied:null};PHYS.body=S; /* exposed for the HUD / tests */
  MODS.push({id:'physics',
   start(){Object.assign(S,{r:0,rv:0,p:0,pv:0,lastH:null,lastV:null,applied:null})},
@@ -10955,7 +10957,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  function shocks(G,e,m){const W=m.userData.wheels;if(!W||!W.length||G.spec.hyper||G.spec.omni)return;
   _e.set(e.roll||0,m.rotation.y,e.pitch||0,'YZX');_b.setFromEuler(_e);_q.copy(_b).invert().multiply(m.quaternion); /* body's suspension rotation, in its own frame */_e.setFromQuaternion(_q,'YZX');_e.y=0;_q.setFromEuler(_e); /* roll and pitch only: a drift-slip yaw stays on the wheels */
   const rel=_q.clone().invert(),rough=(G.mode==='rally'||/gravel|dirt/.test(G.surface||''))?0.045:G.spec.style==='van'||G.spec.pickupBed?0.014:0.01,amp=rough*Math.min(1,(e.v||0)/6),s=e.s||0;
-  const sv=[];let sum=0;for(const w of W){const p=w.piv;if(!p||p.parent!==m)continue;const b=amp*bump(s+p.position.x,p.position.z>0?0:2.4);sv.push([p,b]);sum+=b}
+  const sv=[];let sum=0;for(const w of W){const p=w.piv;if(!p||p.parent!==m)continue;const b=amp*bump(s+p.position.x,p.position.z>0?0:2.4)+(window.REAL&&REAL.on?REAL.road(s+p.position.x,p.position.z>0?1:0):0);sv.push([p,b]);sum+=b}
   if(!sv.length)return;const heave=sum/sv.length*0.35;S.heave={m,y:heave};m.position.y+=heave;S.wsave=[];
   for(const [p,b] of sv){S.wsave.push([p,p.position.clone(),p.quaternion.clone()]);_v.copy(p.position).applyQuaternion(_q).sub(p.position); /* how far the body's tilt moved this hub */
    p.position.sub(_v.applyQuaternion(rel));p.position.y+=b-heave;p.quaternion.premultiply(rel)}}
@@ -11348,6 +11350,114 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
     else if(j.role==='cornerR')w=Math.max(0,-Math.sign(j.dz)*Math.sign(yawR))*Math.min(1,Math.abs(yawR)/0.5);
     else if(j.role==='nose')w=Math.min(1,Math.max(0,-acc-1.5)/5);else w=Math.min(1,Math.max(0,acc-1.5)/5);
     j.k+=(w-j.k)*0.3;const f=j.k*(0.85+0.15*Math.sin(t*55+j.n.position.x*9));j.pl.visible=j.k>0.04;j.pl.scale.set(Math.max(0.01,f),1,Math.max(0.01,f));j.pl.position.x=0.04+0.22*f}}});
+})();
+</script>
+<script>/* mods/99o-realism.js */
+/* Physics realism pass. The route planner decides what acceleration a car wants; REAL.acc then holds it to what the car and
+   its tyres can really deliver, and the frame hooks show the result.
+   - Power and resistance (every car): engine power ÷ speed, minus aero drag, rolling resistance and the hill's grade, so
+     heavy trucks crawl up steep streets. The ego's drag falls in a slipstream (a car ahead in the lane within 35 m).
+   - Driven wheels and weight transfer (ego): FWD / RWD / AWD from the drivetrain text; launch grip comes from the load on
+     the driven axle, which shifts rearward under acceleration (cg height × accel ÷ wheelbase). Too much throttle spins the
+     wheels: modern cars cut power (TCS light), classics lose grip, squeal, smoke and lay rubber.
+   - Friction circle: grip used for cornering is not available for braking or accelerating (√(μg² − a_lat²)).
+   - Tyre model: grip rises with slip angle to a peak (~7°) and falls ~15% past it; beyond the peak the car slides (FWD
+     pushes wide, RWD rotates; the ESC light shows) and the slide scrubs speed. Tyres warm from cold to their ~80 °C window,
+     lose grip when they overheat, and wear (grip and tread depth both drop).
+   - Aquaplaning: in the rain there are puddles; above ~(55 mph × √(tread / 8 mm)) grip collapses in standing water.
+   - Brakes heat with braking power and cool with airflow; past ~400 °C they fade. Classics lock up without ABS.
+   - Gears: combustion cars shift (a quarter-second torque gap between gears) and pull hardest mid-rev.
+   - Gusts nudge the car sideways; potholes and speed humps jolt the wheels and the body (see 99d-physics).
+   - Feedback: tyre squeal, skid marks, tyre smoke, TCS / ESC / ABS / AQUA lights, and a telemetry panel (G key): g-g
+     circle with the grip limit, wheel loads, tyre and brake temperatures, slip angle, gear, surface and grip figure. */
+(function(){
+ const G0=9.81,massOf=sp=>((typeof ENERGY!=='undefined'&&ENERGY[sp.id])||{}).kg||1600,E=sp=>(typeof ENERGY!=='undefined'&&ENERGY[sp.id])||{};
+ const special=sp=>sp.hyper||sp.aegis||sp.omni||sp.hbike||sp.thrusters||sp.formulae;
+ const layout=sp=>{const d=(sp.drive||'')+' '+(sp.sub||'');if(/AWD|4×4|4x4|four-wheel|all-wheel|dual motor|tri-motor|quad|omni/i.test(d))return 'awd';if(/RWD|rear/i.test(d))return 'rwd';if(/FWD|front/i.test(d))return 'fwd';return /EV|motor/i.test(d)?'rwd':'fwd'};
+ const frontW=sp=>{const l=layout(sp);if(sp.style==='coupe'&&(+sp.hp||0)>=500)return 0.43;return l==='fwd'?0.61:l==='awd'?0.56:0.52};
+ const modern=sp=>!(sp.dash==='classic'||sp.dash==='yugo'||/wagon70|starfire|taxi$|century|modelt|isetta|rampage/.test(sp.id));
+ const R=window.REAL={on:true,tT:22,bT:40,wear:0,gear:1,shiftT:0,spin:0,slide:0,lock:0,aqua:0,alpha:0,util:0,draft:0,ax:0,ay:0,loads:[0.25,0.25,0.25,0.25],lights:{},layout,
+  gripScale(){const t=R.tT,tk=t<80?0.88+0.12*clamp((t-20)/60,0,1):1-clamp((t-110)/200,0,0.25);return tk*(1-0.08*R.wear)*(1-R.aqua*0.85)},
+  tread(){return 8-6.4*R.wear}};
+ /* every grip figure the planner uses for the ego includes tyre temperature, wear and aquaplaning */
+ if(window.PHYS){const _gk=PHYS.gripK;PHYS.gripK=(sp,v)=>{const k=_gk(sp,v);return typeof game!=='undefined'&&game&&sp===game.spec&&R.on?k*R.gripScale():k}}
+ const hash=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x)};
+ R.puddle=s=>{if(!(WX.rain>0.15||WX.mu<0.8))return 0;const b=Math.floor(s/40),h=hash(b);if(h>0.35+0.4*(1-Math.min(1,WX.rain||0.5)))return 0;const st=b*40+hash(b+7)*30;return s>st&&s<st+4+hash(b+3)*6?1:0};
+ /* road defects for the wheels (99d-physics adds these to its bumps): potholes about every 150 m, speed humps on slow streets */
+ R.road=(s,side)=>{let y=0;const b=Math.floor(s/150),p=b*150+hash(b*3+side)*140;if(Math.abs(s-p)<0.35&&hash(b*5+side)<0.5)y-=0.035*(1-Math.abs(s-p)/0.35);
+  if(game&&game.limitMph<=25){const hb=Math.floor(s/220),hp=hb*220+110;if(hash(hb*9)<0.3&&Math.abs(s-hp)<1.8)y+=0.075*Math.cos((s-hp)/1.8*Math.PI/2)}return y};
+ const gradeAt=s=>{try{return clamp((routeY(s+4)-routeY(s-4))/8,-0.2,0.2)}catch(e){return 0}};
+ function draftOf(e){const G=game;let best=1e9;for(const o of G.agents||[]){if(o.kind!=='route'||o===e)continue;const d=o.s-e.s;if(d>3&&d<35&&Math.abs((o.off||0)-(e.off||0))<1.6&&d<best)best=d}return best<35?0.4*(1-best/35):0}
+ /* gear for combustion cars: 6 speeds (5 for classics), shift points spread up to top speed */
+ const gearOf=(sp,v)=>{const top=(+sp.top||120)/MPH,n=modern(sp)?6:4,pts=[0.17,0.3,0.45,0.6,0.78].slice(0,n-1).map(f=>f*top);let g=1;for(const p of pts)if(v>p)g++;return{g,n,lo:g>1?pts[g-2]:0,hi:pts[g-1]||top}};
+ R.acc=function(a,acc,target,isEgo,chase,dt){const sp=a.spec;if(!R.on||!sp||dt<=0||special(sp)||a.loose)return acc;
+  const m=massOf(sp),en=E(sp),cda=en.cda||0.7,crr=en.crr||0.011,v=a.v,gr=a.kind==='route'||isEgo?gradeAt(a.s):0;
+  const draft=isEgo?draftOf(a):0;if(isEgo)R.draft=draft;
+  const res=(0.5*1.2*cda*(1-draft)*v*v+crr*m*G0)/m+G0*gr; /* m/s² of drag + rolling + hill */
+  if(acc>0){const P=(+sp.hp||150)*745.7*0.85,ap=P/Math.max(v,3)/m-res;acc=Math.min(acc,Math.max(gr>0?0:-0.3,ap+(isEgo?0:0.3)))}
+  else if(gr<-0.03&&acc>-0.5)acc+=0; /* coasting downhill: the planner holds speed with the brakes (they heat) */
+  if(!isEgo)return acc;
+  const G=game,e=a,mu=muAt(e)*(window.PHYS?PHYS.gripK(sp,v):1),lay=layout(sp),wf0=frontW(sp),h=(sp.H||1.45)*0.38,wb=sp.wb||2.7;
+  const ay=Math.abs(e.ayF||0),cap=mu*G0,lonCap=Math.sqrt(Math.max(0,cap*cap-ay*ay)); /* friction circle */
+  const wf=clamp(wf0-acc*h/(G0*wb),0.2,0.8),drv=lay==='awd'?1:lay==='fwd'?wf:1-wf;
+  /* aquaplaning */
+  const vAq=24.5*Math.sqrt(Math.max(0.2,R.tread()/8)),inP=R.puddle(e.s);R.aqua=lerp(R.aqua,inP&&v>vAq?clamp((v-vAq)/6,0,1):0,Math.min(1,dt*8));
+  /* traction under power */
+  R.spin=0;R.lights.tcs=0;if(acc>0){const trac=lonCap*drv;if(acc>trac){R.spin=clamp((acc-trac)/Math.max(trac,0.5),0,2);if(modern(sp)){acc=trac*0.97;R.lights.tcs=1}else acc=trac*0.82}}
+  /* braking: grip on all four, ABS on modern cars, fade when hot */
+  R.lock=0;R.lights.abs=0;if(acc<0){const fade=R.bT>400?1-clamp((R.bT-400)/600,0,0.5):1,bc=lonCap*0.98*fade;if(-acc>bc){if(modern(sp)){acc=-bc;R.lights.abs=1}else{R.lock=clamp((-acc-bc)/bc,0,1);acc=-bc*0.85}}
+   R.bT+=(m*-acc*v)/(m*14)*dt} /* brake heat: kinetic power into ~14 J/K per kg of car */
+  R.bT-=(R.bT-25)*(0.012+v*0.0012)*dt;
+  /* gears (combustion): a short torque gap at each upshift, and pull that peaks mid-rev */
+  if(en.ice){const gi=gearOf(sp,v);if(gi.g!==R.gear){if(gi.g>R.gear&&acc>0.5)R.shiftT=modern(sp)?0.18:0.35;R.gear=gi.g}R.gearN=gi.n;R.rpmF=clamp((v-gi.lo)/Math.max(1,gi.hi-gi.lo),0,1);
+   if(acc>0){acc*=0.82+0.18*Math.sin(Math.PI*(0.25+0.6*R.rpmF));if(R.shiftT>0){R.shiftT-=dt;acc*=0.25}}}else{R.gear=1;R.gearN=1;R.rpmF=clamp(v/((+sp.top||100)/MPH),0,1)}
+  /* tyre slip model: utilisation of the grip circle → slip angle; past the peak the tyre slides and scrubs speed */
+  const ax=acc,u=Math.hypot(ay,ax)/Math.max(cap,0.5);R.util=u;R.ax=ax;R.ay=e.ayF||0;
+  R.alpha=u<1?7*(1-Math.sqrt(Math.max(0,1-u))):7+(u-1)*20;R.slide=u>1.02?clamp(u-1,0,1):0;R.lights.esc=R.slide>0.05&&modern(sp)?1:0;
+  if(R.slide>0)acc-=R.slide*cap*0.35; /* past the peak grip falls ~15%: the slide scrubs speed */
+  /* tyre temperature and wear from the work the tyres do */
+  const work=(ay+Math.abs(ax))*v*(1+3*(R.spin+R.slide+R.lock));R.tT+=(work*0.0016-(R.tT-(WX.temp??18))*0.008*(1+v/40))*dt;R.wear=Math.min(1,R.wear+work*1.5e-8*dt*60);
+  /* wheel loads (FL FR RL RR, fractions of weight) for the panel */
+  const lat=clamp((e.ayF||0)*h/(G0*(sp.W||1.8)*0.85),-0.45,0.45);R.loads=[wf*(0.5-lat),wf*(0.5+lat),(1-wf)*(0.5-lat),(1-wf)*(0.5+lat)];
+  return acc};
+ /* traffic surfaces: cars near you sample the road surface too (every 2 s) */
+ const _mu=window.muAt;if(_mu)window.muAt=function(a){const G=game;if(!G||a===G.ego||!a||a.x==null)return _mu(a);const e=G.ego;if(!e||Math.hypot(a.x-e.x,a.z-e.z)>150)return WX.mu;const now=performance.now();if(!a.surfT||now-a.surfT>2000){a.surfT=now;try{a.surface=surfAt(a.x,a.z)}catch(err){a.surface='asphalt'}}const k=SURF_MU[a.surface]||1;return WX.mu*k*(WX.mu<0.9&&k<0.9?0.8:1)};
+ /* ---------- feedback: squeal, skid marks, smoke, lights, telemetry ---------- */
+ let ac=null,sq=null,sqG=null;function squeal(level){try{if(!ac){ac=new (window.AudioContext||window.webkitAudioContext)();const n=ac.createBuffer(1,ac.sampleRate,ac.sampleRate),d=n.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+   const src=ac.createBufferSource();src.buffer=n;src.loop=true;sq=ac.createBiquadFilter();sq.type='bandpass';sq.frequency.value=1400;sq.Q.value=9;sqG=ac.createGain();sqG.gain.value=0;src.connect(sq);sq.connect(sqG);sqG.connect(ac.destination);src.start()}
+  if(ac.state==='suspended'&&level>0)ac.resume();const t=ac.currentTime;sqG.gain.setTargetAtTime(Math.min(0.12,level*0.1)*(game&&game.paused?0:1),t,0.05);sq.frequency.setTargetAtTime(1100+level*500+Math.sin(t*9)*80,t,0.05)}catch(e){}}
+ const SK=[],SKN=500;let skI=0,skM=null,skG=null;const lastP=new Map();
+ function mark(p,prev,w){if(!skM){skM=new THREE.MeshBasicMaterial({color:0x0b0b0b,transparent:true,opacity:0.55,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});skG=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2)}
+  let q=SK[skI];if(!q){q=new THREE.Mesh(skG,skM);q.renderOrder=2;scene.add(q);SK[skI]=q}skI=(skI+1)%SKN;const dx=p.x-prev.x,dz=p.z-prev.z,l=Math.hypot(dx,dz);if(l<0.05||l>3){q.visible=false;return}
+  q.visible=true;q.position.set((p.x+prev.x)/2,(p.y+prev.y)/2+0.015,(p.z+prev.z)/2);q.rotation.set(0,-Math.atan2(dz,dx),0);q.scale.set(l,1,w)}
+ const SM=[];let smT=null;function puff(p){if(!smT){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,2,32,32,32);g.addColorStop(0,'rgba(235,235,235,0.7)');g.addColorStop(1,'rgba(235,235,235,0)');x.fillStyle=g;x.fillRect(0,0,64,64);smT=new THREE.CanvasTexture(c)}
+  let s=SM.find(o=>!o.visible);if(!s){if(SM.length>60)return;s=new THREE.Sprite(new THREE.SpriteMaterial({map:smT,transparent:true,depthWrite:false}));scene.add(s);SM.push(s)}s.visible=true;s.position.copy(p);s.position.y+=0.2;s.userData.t=0;s.scale.setScalar(0.6)}
+ function lights(){let el=document.getElementById('realLights');if(!el){el=document.createElement('div');el.id='realLights';el.style.cssText='position:fixed;left:10px;top:150px;display:flex;gap:4px;z-index:5;pointer-events:none;font:800 10px system-ui';document.body.appendChild(el)}
+  const L=[['TCS',R.lights.tcs,'#ffb000'],['ESC',R.lights.esc,'#ffb000'],['ABS',R.lights.abs,'#ffb000'],['AQUA',R.aqua>0.1,'#3aa0ff'],['BRAKE HOT',R.bT>400,'#ff4030'],['SLIP',R.spin>0.1||R.lock>0.1,'#ff7a00']].filter(x=>x[1]);
+  const html=L.map(([t,,c])=>`<span style="background:${c};color:#000;padding:2px 5px;border-radius:4px">${t}</span>`).join('');if(el.innerHTML!==html)el.innerHTML=html}
+ let tel=null,telOn=false;addEventListener('keydown',ev=>{if((ev.key==='g'||ev.key==='G')&&!/INPUT|TEXTAREA|SELECT/.test((ev.target&&ev.target.tagName)||'')){telOn=!telOn;if(tel)tel.style.display=telOn?'block':'none'}});
+ function telemetry(){if(!telOn)return;if(!tel){tel=document.createElement('canvas');tel.width=440;tel.height=300;tel.style.cssText='position:fixed;right:10px;top:200px;width:220px;height:150px;z-index:6;border-radius:10px;background:#0b0f16e6;pointer-events:none';document.body.appendChild(tel)}tel.style.display='block';
+  const x=tel.getContext('2d'),G=game,sp=G.spec,mu=muAt(G.ego)*(window.PHYS?PHYS.gripK(sp,G.ego.v):1);x.clearRect(0,0,440,300);x.save();x.scale(2,2);
+  const cx=60,cy=72,rs=48/Math.max(1,mu*G0*1.2);x.strokeStyle='#ffffff30';x.lineWidth=1;for(const k of [0.5,1])x.beginPath(),x.arc(cx,cy,k*48/1.2,0,7),x.stroke();
+  x.strokeStyle='#4be38a';x.beginPath();x.arc(cx,cy,mu*G0*rs,0,7);x.stroke();x.fillStyle=R.util>1?'#ff5040':'#ffd23a';x.beginPath();x.arc(cx+clamp(R.ay,-30,30)*rs,cy-clamp(R.ax,-30,30)*rs,3.5,0,7);x.fill();
+  x.fillStyle='#cfd8e3';x.font='600 8px system-ui';x.fillText('g-g · grip '+(mu).toFixed(2)+' g',8,12);
+  const bx=125;R.loads.forEach((l,i)=>{const px=bx+(i%2)*40,py=26+Math.floor(i/2)*40;x.fillStyle='#ffffff20';x.fillRect(px,py,30,30);x.fillStyle='#4ba3ff';const hh=clamp(l/0.5,0,1.4)*21;x.fillRect(px,py+30-hh,30,hh);x.fillStyle='#fff';x.fillText(Math.round(l*100)+'%',px+5,py+12)});
+  x.fillStyle='#cfd8e3';const L=[`tyres ${Math.round(R.tT)}°C · wear ${Math.round(R.wear*100)}% · tread ${R.tread().toFixed(1)} mm`,`slip angle ${R.alpha.toFixed(1)}° · use ${Math.round(R.util*100)}%`,`brakes ${Math.round(R.bT)}°C · ${layout(sp).toUpperCase()}${R.gearN>1?' · gear '+R.gear+'/'+R.gearN:''}`,`${G.surface||'asphalt'} · μ ${muAt(G.ego).toFixed(2)}${R.draft>0.02?' · draft −'+Math.round(R.draft*100)+'% drag':''}`];
+  L.forEach((t,i)=>x.fillText(t,8,128+i*10.5));x.restore()}
+ let gustX=0,applied=null;
+ MODS.push({id:'realism',
+  start(){Object.assign(R,{tT:(WX.temp??18),bT:40,wear:0,gear:1,shiftT:0,spin:0,slide:0,lock:0,aqua:0,alpha:0,util:0});lastP.clear();for(const q of SK)if(q)q.visible=false},
+  preRender(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh||!G.spec||!R.on){squeal(0);return}const e=G.ego,m=e.mesh,sp=G.spec;if(special(sp)){squeal(0);return}
+   const lvl=G.paused?0:clamp(Math.max(R.spin,R.slide*1.5,R.lock,(R.util-0.85)*2),0,1);squeal(lvl);lights();telemetry();
+   /* slip you can see: the body yaws into the slide (RWD tail out, FWD nose wide), plus crosswind gusts nudging it sideways */
+   const lay=layout(sp),yaw=(R.slide>0||R.spin>0.3&&lay==='rwd'?1:0)*Math.sign(R.ay||0)*(lay==='fwd'?-0.5:1)*Math.min(0.25,(R.alpha*Math.PI/180)*(lay==='rwd'?1.2:0.6)+R.spin*0.05*(lay==='rwd'?1:0));
+   const wind=(WX.wind||0),gt=performance.now()/1000,gust=wind>6?wind*0.004*(Math.sin(gt*0.7)*Math.sin(gt*0.23+1)):0;gustX=lerp(gustX,gust,0.05);
+   applied={m,yaw,gx:gustX};m.rotateY(yaw);const s=Math.sin(e.head||0),c=Math.cos(e.head||0);m.position.x+=-s*gustX;m.position.z+=c*gustX;
+   /* marks and smoke from the wheels that are sliding */
+   const W=m.userData.wheels||[];if(lvl>0.15&&e.v>1.5){m.updateMatrixWorld(true);for(const w of W){if(!w.piv)continue;const drivenW=lay==='awd'||(lay==='fwd')===!!w.front,on=R.lock>0.1||R.slide>0.1||(R.spin>0.15&&drivenW);if(!on)continue;
+     const p=new THREE.Vector3();w.piv.getWorldPosition(p);p.y=m.position.y;const pr=lastP.get(w);if(pr)mark(p,pr,0.2);lastP.set(w,p.clone());if((R.spin>0.4&&drivenW||R.lock>0.5)&&Math.random()<0.35)puff(p)}}else lastP.clear();
+   for(const s2 of SM)if(s2.visible){s2.userData.t+=1/60;s2.scale.setScalar(0.6+s2.userData.t*3);s2.position.y+=0.01;s2.material.opacity=Math.max(0,0.6-s2.userData.t*0.4);if(s2.userData.t>1.5)s2.visible=false}},
+  postRender(){if(applied){const A=applied,e=game&&game.ego,s=Math.sin(e?e.head||0:0),c=Math.cos(e?e.head||0:0);A.m.position.x-=-s*A.gx;A.m.position.z-=c*A.gx;A.m.rotateY(-A.yaw);applied=null}}});
 })();
 </script>
 <script>/* mods/zz-lightguard.js */
