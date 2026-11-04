@@ -12349,6 +12349,8 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
       the object is drawn once its pipeline is ready; objects already on screen keep the immediate path, so none blink. */
    BE.createRenderPipeline=function(ro,promises){if(!promises&&BB.asyncOK){BB.asyncPipes++;const P=[];const t=performance.now();const r=CRP.call(this,ro,P);Promise.all(P).then(()=>{window.GPULOG&&GPULOG.log('pipeReady',Math.round(performance.now()-t),ro.material&&ro.material.type)});return r}return CRP.call(this,ro,promises)};
    BE.draw=function(ro,info){const pd=this.get(ro.pipeline);if(!pd||!pd.pipeline){BB.pipeWait++;return}return DR.call(this,ro,info)}}
+  if(!BB.thook&&this._textures&&this._textures.updateTexture){BB.thook=true;const TX=this._textures,UT=TX.updateTexture;BB.texMs=0;
+   TX.updateTexture=function(t){const t0=performance.now();try{return UT.apply(this,arguments)}finally{const d=performance.now()-t0;BB.texMs+=d;if(d>2&&window.GPULOG)GPULOG.log('texUpload',Math.round(d),t&&t.image&&(t.image.width+'x'+t.image.height),t&&t.name||'',t&&t.generateMipmaps?'mips':'')}}}
   if(!BB.hooked&&this._nodes){BB.hooked=true;const N=this._nodes,G=N.getForRender;BB.evict=0;
    const C=N.nodeBuilderCache;C.delete=function(){BB.evict++;return false};const PL=this._pipelines;if(PL){PL._releasePipeline=function(){BB.evict++};PL._releaseProgram=function(){}}
    N.getForRender=function(ro){const t0=performance.now();try{return G.apply(this,arguments)}finally{const d=performance.now()-t0;if(d>0.3){BB.ms+=d;BB.nb++;
@@ -12387,7 +12389,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  let prev='',last=performance.now(),seenB=0;
  (function f(){const n=performance.now(),dt=n-last;last=n;const B=window.GPUBUILD;
   if(B&&B.kb.length>seenB){for(let i=seenB;i<B.kb.length;i++)log('build',...B.kb[i]);seenB=B.kb.length}
-  if(dt>100)log('LONGFRAME',Math.round(dt),B?Math.round(B.ms):0,B?B.nb:0);
+  if(dt>100)log('LONGFRAME',Math.round(dt),B?Math.round(B.ms):0,B?B.nb:0,B?Math.round(B.texMs||0):0);if(B)B.texMs=0;
   try{const a=[];if(window.scene)scene.traverse(o=>{if(o.isLight)a.push(o.type[0]+o.id+(o.castShadow?'s':'')+(o.visible?'':'h'))});
    const k=[a.join(' '),scene.fog&&scene.fog.uuid,scene.environment&&scene.environment.uuid,renderer.shadowMap.type,renderer.shadowMap.enabled,renderer.toneMapping,window.GFX&&GFX.get()].join('|');if(k!==prev){log('sceneState',k);prev=k}}catch(e){}
   requestAnimationFrame(f)})();
