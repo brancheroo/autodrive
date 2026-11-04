@@ -9,7 +9,9 @@
  if(/[?&]renderer=webgl/.test(location.search))want=false;if(!want||!navigator.gpu)return;window.__GPUBOOT=1;document.write('<plaintext id="gpuInert" style="display:none">'); /* the rest of this file becomes inert text; the page finishes parsing normally (window.stop() left Chrome never painting) */
  (async()=>{try{const ad=await navigator.gpu.requestAdapter();if(!ad)throw new Error('no WebGPU adapter');
   const html=await (await fetch(location.href,{cache:'no-store'})).text();
-   const M=await import('https://cdn.jsdelivr.net/npm/three@0.175.0/build/three.webgpu.min.js'); /* r175: core + WebGPURenderer + node materials in one module */
+   {const B='https://cdn.jsdelivr.net/npm/three@0.175.0/';const im=document.createElement('script');im.type='importmap';im.textContent=JSON.stringify({imports:{'three/webgpu':B+'build/three.webgpu.min.js','three/tsl':B+'build/three.tsl.min.js','three':B+'build/three.webgpu.min.js','three/addons/':B+'examples/jsm/'}});document.head.appendChild(im)} /* lets the WebGPU post-effect add-ons share this same three */
+   const M=await import('three/webgpu');
+   try{const [bl,fx]=await Promise.all([import('three/addons/tsl/display/BloomNode.js'),import('three/addons/tsl/display/FXAANode.js')]);window.__GPUADD={bloom:bl.bloom,fxaa:fx.fxaa}}catch(e){window.__GPUADD={};console.warn('WebGPU post add-ons failed',e)} /* r175: core + WebGPURenderer + node materials in one module */
    const T=Object.assign({},M);window.THREE=T;
    /* shims for r149-era APIs the game code uses (removed in newer three) */
    T.sRGBEncoding=3001;T.LinearEncoding=3000;if(!T.ShaderChunk)T.ShaderChunk={};if(!T.UniformsUtils)T.UniformsUtils={merge:a=>Object.assign({},...a),clone:u=>Object.assign({},u)};
