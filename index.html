@@ -12013,7 +12013,7 @@ float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
  const grp=new THREE.Group();Object.values(P).forEach(m=>grp.add(m));let added=false,builtAt=-1e9,route=null;
  const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),Yx=new THREE.Vector3(0,1,0),V=new THREE.Vector3(),S1=new THREE.Vector3(1,1,1);
  const h=x=>{const s=Math.sin(x*12.9898+78.233)*43758.5453;return s-Math.floor(s)};
- const town=s=>{try{const R=game.route,n=NODEINFO.get(R.nodes[routeLLnh(s)[2]])||{};return /^(residential|tertiary|secondary|primary|unclassified|living_street)(_link)?$/.test(n.hw||'')}catch(e){return false}};
+ const town=s=>{try{const R=game.route,n=NODEINFO.get(R.nodes[routeLLnh(s)[2]])||{};const hw=n.hw||'';return !hw||/^(residential|tertiary|secondary|primary|unclassified|living_street)(_link)?$/.test(hw) /* untagged nodes count as town streets */}catch(e){return false}};
  function half(s){let l=1;try{l=window.LANES?LANES.count(s):1}catch(e){}return l*3.6*(routeOnewayAt(s)?0.5:1)+0.4}
  function put(m,i,x,y,z,yaw){Q.setFromAxisAngle(Yx,yaw);M.compose(V.set(x,y,z),Q,S1);m.setMatrixAt(i,M)}
  function build(){const G=game,e=G.ego,R=G.route;const C={};for(const k in P)C[k]=0;
