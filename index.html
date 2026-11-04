@@ -12331,7 +12331,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const L=THREE.TSL;
  const {Fn,uniform,float,vec2,vec3,vec4,uv,pass,renderOutput,mix,smoothstep,step,max,min,clamp,dot,length,exp,pow,sin,cos,fract,floor,abs,normalize,
   positionLocal,positionWorld,normalWorld,normalView,materialColor,materialRoughness,materialEmissive,transformNormalToView,instancedDynamicBufferAttribute,
-  mx_fractal_noise_float,perspectiveDepthToViewZ,cameraNear,cameraFar,time,select}=L;
+  mx_fractal_noise_float,perspectiveDepthToViewZ,cameraNear,cameraFar,time,select,Loop}=L;
  const GA=window.__GPUADD||{};
  const S=()=>window.GFXPLUS?GFXPLUS.S:{on:1};
  const ON=()=>!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab;
@@ -12435,26 +12435,30 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   if(!post)post=new THREE.PostProcessing(renderer);post.outputColorTransform=false;
   sp=pass(scene,camera);const tex=sp.getTextureNode('output'),dep=sp.getTextureNode('depth');
   const t=u=>tex.sample(u).rgb,lz=u=>perspectiveDepthToViewZ(dep.sample(u).x,cameraNear,cameraFar).negate();
-  const px=PU.px;let u=uv();
+  const px=PU.px;
+  let bloomN=null,bt=null;if((k.bloom||k.rays)&&GA.bloom){bloomN=GA.bloom(tex,0.22,0.3,k.rays&&!k.bloom?1.1:1.0) /* soft: only real highlights (sun, lamps, glints) glow */;bt=bloomN.getTextureNode?bloomN.getTextureNode():bloomN}
+  /* the multi-tap effects use real shader loops (Loop): unrolled JS loops made a node graph of thousands of nodes that took
+     three.js 2–3 s to build, freezing the game at every trip start and every effects-setting change */
+  const body=Fn(()=>{let u=uv();
   if(k.haze){const yb=float(1).sub(u.y),band=smoothstep(0.62,0.42,yb).mul(smoothstep(0.25,0.45,yb));u=vec2(u.x.add(sin(yb.mul(180).add(time.mul(9))).mul(0.0012).mul(PU.haze).mul(band)),u.y)}
-  const cc=u.sub(0.5);let c;
-  if(k.speedblur){c=vec3(0,0,0);for(let i=0;i<6;i++)c=c.add(t(u.sub(cc.mul(i/6*0.06).mul(PU.spd))));c=c.div(6)}else c=t(u);
-  if(k.ca){const a=length(cc).mul(0.005);c=vec3(mix(c.x,t(u.add(cc.mul(a))).x,0.85),c.y,mix(c.z,t(u.sub(cc.mul(a))).z,0.85))}
-  if(k.sharpen){const s=t(u.add(vec2(px.x,0))).add(t(u.sub(vec2(px.x,0)))).add(t(u.add(vec2(0,px.y)))).add(t(u.sub(vec2(0,px.y))));c=c.add(c.sub(s.mul(0.25)).mul(0.35))}
-  const z0=lz(u);
-  if(k.dof){const zf=lz(vec2(0.5,0.55)),kk=clamp(abs(z0.sub(zf)).div(max(zf,1)).mul(1.5),0,1).mul(PU.dof);let a=vec3(0,0,0);
-   for(let i=0;i<8;i++){const an=i*0.785;a=a.add(t(u.add(vec2(Math.cos(an),Math.sin(an)).mul(px).mul(kk.mul(6)))))}c=mix(c,a.div(8),kk)}
-  if(k.ao){let oc=float(0);const r=clamp(float(1.2).div(z0),0.004,0.03),jit=hsh(u,12.9898,78.233,43758.5453).mul(0.785);
-   for(let i=0;i<8;i++){const an=jit.add(i*0.785),o=vec2(cos(an),sin(an)).mul(r).mul(0.5+0.5*((i*0.37)%1));const zs=lz(u.add(o.mul(vec2(px.x.div(px.y),1)))),dz=z0.sub(zs);
-    oc=oc.add(step(z0.mul(0.04),dz).mul(float(1).sub(smoothstep(0,z0.mul(0.05).add(1.5),dz))))}
-   c=c.mul(float(1).sub(oc.div(8).mul(0.3).mul(smoothstep(2.5,7,z0)).mul(step(z0,cameraFar.mul(0.5)))))} /* gentle, and faded out inside the first few metres: the cab interior was going black */
-  let bt=null;
-  if((k.bloom||k.rays)&&GA.bloom){const b=GA.bloom(tex,0.22,0.3,k.rays&&!k.bloom?1.1:1.0) /* soft: only real highlights (sun, lamps, glints) glow */;bt=b.getTextureNode?b.getTextureNode():b;if(k.bloom)c=c.add(b.rgb)}
+  const cc=u.sub(0.5),c=vec3(0,0,0).toVar();
+  if(k.speedblur){Loop(6,({i})=>{c.addAssign(t(u.sub(cc.mul(float(i).mul(0.01)).mul(PU.spd))))});c.divAssign(6)}else c.assign(t(u));
+  if(k.ca){const a=length(cc).mul(0.005);c.assign(vec3(mix(c.x,t(u.add(cc.mul(a))).x,0.85),c.y,mix(c.z,t(u.sub(cc.mul(a))).z,0.85)))}
+  if(k.sharpen){const sh=t(u.add(vec2(px.x,0))).add(t(u.sub(vec2(px.x,0)))).add(t(u.add(vec2(0,px.y)))).add(t(u.sub(vec2(0,px.y))));c.assign(c.add(c.sub(sh.mul(0.25)).mul(0.35)))}
+  const z0=lz(u).toVar();
+  if(k.dof){const zf=lz(vec2(0.5,0.55)),kk=clamp(abs(z0.sub(zf)).div(max(zf,1)).mul(1.5),0,1).mul(PU.dof).toVar(),a=vec3(0,0,0).toVar();
+   Loop(8,({i})=>{const an=float(i).mul(0.785);a.addAssign(t(u.add(vec2(cos(an),sin(an)).mul(px).mul(kk.mul(6)))))});c.assign(mix(c,a.div(8),kk))}
+  if(k.ao){const oc=float(0).toVar(),r=clamp(float(1.2).div(z0),0.004,0.03).toVar(),jit=hsh(u,12.9898,78.233,43758.5453).mul(0.785).toVar(),ax=vec2(px.x.div(px.y),1);
+   Loop(8,({i})=>{const fi=float(i),an=jit.add(fi.mul(0.785)),o=vec2(cos(an),sin(an)).mul(r).mul(fract(fi.mul(0.37)).mul(0.5).add(0.5)),dz=z0.sub(lz(u.add(o.mul(ax))));
+    oc.addAssign(step(z0.mul(0.04),dz).mul(float(1).sub(smoothstep(0,z0.mul(0.05).add(1.5),dz))))});
+   c.mulAssign(float(1).sub(oc.div(8).mul(0.3).mul(smoothstep(2.5,7,z0)).mul(step(z0,cameraFar.mul(0.5)))))} /* gentle, and faded out inside the first few metres: the cab interior was going black */
+  if(k.bloom&&bloomN)c.addAssign(bloomN.rgb);
   if(k.rays||k.flare){const sp2=PU.sun.xy,asp=px.y.div(px.x),r=length(u.sub(sp2).mul(vec2(asp,1)));
-   if(k.rays&&bt&&bt.sample){let vis=float(0);const st=sp2.sub(u).div(12);for(let i=1;i<=12;i++)vis=vis.add(lum(bt.sample(u.add(st.mul(i))).rgb));
-    c=c.add(PU.sunCol.mul(vis.div(12).mul(0.35).mul(PU.sun.z).mul(exp(r.mul(-2.5))))).add(PU.sunCol.mul(PU.sun.z.mul(0.08).mul(exp(r.mul(-6)))))}
-   if(k.flare){const gv=vec2(0.5,0.5).sub(sp2);for(let i=1;i<5;i++){const gp=sp2.add(gv.mul(i*0.55)),dd=length(u.sub(gp).mul(vec2(asp,1)));c=c.add(PU.sunCol.mul(vec3(0.6,0.8,1)).mul(PU.sun.z.mul(0.05).mul(smoothstep(0.05+0.02*i,0,dd))))}}}
-  c=max(c,vec3(0,0,0));
+   if(k.rays&&bt&&bt.sample){const vis=float(0).toVar(),st=sp2.sub(u).div(12);Loop(12,({i})=>{vis.addAssign(lum(bt.sample(u.add(st.mul(float(i).add(1)))).rgb))});
+    c.addAssign(PU.sunCol.mul(vis.div(12).mul(0.35).mul(PU.sun.z).mul(exp(r.mul(-2.5)))).add(PU.sunCol.mul(PU.sun.z.mul(0.08).mul(exp(r.mul(-6))))))}
+   if(k.flare){const gv=vec2(0.5,0.5).sub(sp2);Loop(4,({i})=>{const fi=float(i).add(1),gp=sp2.add(gv.mul(fi.mul(0.55))),dd=length(u.sub(gp).mul(vec2(asp,1)));c.addAssign(PU.sunCol.mul(vec3(0.6,0.8,1)).mul(PU.sun.z.mul(0.05).mul(smoothstep(fi.mul(0.02).add(0.05),0,dd))))})}}
+  return max(c,vec3(0,0,0))});
+  const c=body();const u=uv(),cc=u.sub(0.5);
   let o=renderOutput(vec4(c,1)).rgb;
   o=o.mul(PU.expo).mul(PU.gain).add(PU.lift);o=mix(vec3(lum(o)),o,PU.sat);o=o.sub(0.5).mul(PU.contrast).add(0.5);
   if(k.vignette)o=o.mul(float(1).sub(dot(cc,cc).mul(0.55)));
