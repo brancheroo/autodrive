@@ -11924,7 +11924,7 @@ void main(){vec2 u=vU;
     const sh=typeof CRASH!=='undefined'?CRASH.shake||0:0;if(sh>lastShake+0.3){tmp.set(sp.L/2,(sp.H||1.4)*0.4,0);m.localToWorld(tmp);for(let i=0;i<Math.min(80,30+sh*40);i++)emit(DB,tmp.x,tmp.y,tmp.z,fx*v*0.4+(Math.random()-0.5)*7,1+Math.random()*5,fz*v*0.4+(Math.random()-0.5)*7,2.5+Math.random()*2,9.8)}lastShake=sh}
    step(SM,dt,1.6);step(SP,dt,2.5);step(DB,dt,0.3);step(DU,dt,1.2);
    /* reflections */
-   const tier=window.GFX?GFX.get():'high',refOn=on&&tier==='ultra'&&!G.fast;
+   const tier=window.GFX?GFX.get():'high',refOn=on&&tier==='ultra'&&!G.fast&&!window.__GPU; /* WebGPU: a six-face cube render costs 0.2–0.8 s per face there, so live reflections stay off */
    if(refMesh!==m){if(refMesh)refApply(false);refSetup(m)}
    refApply(refOn);if(!refOn)return;refT-=dt;if(refT>0)return;refT=1;
    const vis=m.visible;m.visible=false;SM.pts.visible=SP.pts.visible=DB.pts.visible=DU.pts.visible=false;cubeCam.position.copy(m.position);cubeCam.position.y+=(sp.H||1.4)*0.8;const sa=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;
