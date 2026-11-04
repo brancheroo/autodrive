@@ -1,6 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>/* Experimental WebGPU mode (Settings → Renderer, or ?renderer=webgpu). The normal game uses three r149 + WebGL.
+   In WebGPU mode this stops the page, loads three r159 (the last classic build) plus its WebGPURenderer module (whose
+   `import 'three'` is mapped onto that same global THREE through an import map), then re-writes this page without the
+   r149 script so the game builds a WebGPURenderer instead. Falls back to WebGL if the browser has no WebGPU. */
+(function(){if(window.__GPUBOOT)return;let want=false;try{want=/[?&]renderer=webgpu/.test(location.search)||localStorage.getItem('renderer')==='webgpu'}catch(e){}
+ if(/[?&]renderer=webgl/.test(location.search))want=false;if(!want||!navigator.gpu)return;window.__GPUBOOT=1;window.stop();
+ (async()=>{try{const ad=await navigator.gpu.requestAdapter();if(!ad)throw new Error('no WebGPU adapter');
+  const html=await (await fetch(location.href,{cache:'no-store'})).text();
+  await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s)});
+  const T=window.THREE,keys=Object.keys(T).filter(k=>/^[A-Za-z_$][\w$]*$/.test(k));
+  const shim=URL.createObjectURL(new Blob(['const T=window.THREE;export default T;'+keys.map(k=>'export const '+k+'=T.'+k+';').join('')],{type:'text/javascript'}));
+  const im=document.createElement('script');im.type='importmap';im.textContent=JSON.stringify({imports:{three:shim}});document.head.appendChild(im);
+  const m=await import('https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/renderers/webgpu/WebGPURenderer.js');
+  window.__GPU={WebGPURenderer:m.default,rev:T.REVISION};
+  const out=html.replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.149\.0\/build\/three\.min\.js"><\/script>/,'');
+  document.open();document.write(out);document.close()}
+ catch(err){console.warn('WebGPU mode failed, using WebGL',err);try{localStorage.setItem('renderer','webgl')}catch(e){}location.replace(location.pathname+'?renderer=webgl')}})()})();
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Autodrive</title>
@@ -420,7 +438,8 @@ function biome(lat,lon,date){
 
 // ============================================================ RENDERER / SCENE
 const canvas=$('view');
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true,logarithmicDepthBuffer:true});
+const GPU_MODE=!!window.__GPU;const renderer=GPU_MODE?new __GPU.WebGPURenderer({canvas,antialias:true}):new THREE.WebGLRenderer({canvas,antialias:true,logarithmicDepthBuffer:true}); /* WebGPU mode: see the boot script at the top */
+if(GPU_MODE){renderer.getContext=()=>({getContextAttributes:()=>({}),getProgramParameter:()=>true,getAttachedShaders:()=>[]});renderer.capabilities=renderer.capabilities||{isWebGL2:true,maxTextureSize:8192,getMaxAnisotropy:()=>8};renderer.info=renderer.info||{};renderer.info.programs=renderer.info.programs||[];if(!renderer.readRenderTargetPixels)renderer.readRenderTargetPixels=()=>{};if(!renderer.compile)renderer.compile=()=>{}}
 // quality tier from device capability; dynamic resolution keeps frame rate ≥ ~50 fps
 const HIGH=(navigator.deviceMemory||8)>=8&&(navigator.hardwareConcurrency||8)>=8&&renderer.capabilities.maxTextureSize>=8192;
 const Q={maxPR:Math.min(devicePixelRatio*(HIGH?1.25:1),HIGH?2.5:1.5),minPR:Math.min(devicePixelRatio,HIGH?1.5:1.25),pr:Math.min(devicePixelRatio,HIGH?2:1.5),fps:60,t:0};
