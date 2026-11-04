@@ -12247,7 +12247,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   const d=document.createElement('div');d.dataset.rmode=1;d.style.cssText='margin-top:8px;border-top:1px solid #2a3a4a;padding-top:6px';
   d.innerHTML=`Renderer: <b>${gpu?'WebGPU (experimental)':'WebGL'}</b><br><button style="margin-top:4px;background:#14202c;color:#dde;border:1px solid #345;border-radius:6px;padding:3px 8px;cursor:pointer">${gpu?'Switch back to WebGL':'Try WebGPU (reloads)'}</button>`+(gpu?'':`<div style="opacity:.65;margin-top:3px">${navigator.gpu?'Most Graphics+ effects are WebGL-only and turn off in WebGPU mode.':'This browser has no WebGPU.'}</div>`);
   d.querySelector('button').onclick=()=>setMode(gpu?'webgl':'webgpu');if(!gpu&&!navigator.gpu)d.querySelector('button').disabled=true;pan.appendChild(d)});
- mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style']});
+ mo.observe(document.body,{childList:true,subtree:true});
  if(!gpu)return;
  if(window.GFXPLUS)GFXPLUS.S.on=0;
  const bg=new THREE.Color();let t=0;
