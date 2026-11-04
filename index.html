@@ -11914,7 +11914,10 @@ void main(){vec2 u=vU;
   frame(){const nw=performance.now(),dt=Math.min(0.1,(nw-(this._t||nw))/1000)||0.016;this._t=nw;
    const on=!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab;const sc=window.GAMESCALE||((typeof game!=='undefined'&&game&&game.scale)||1);
    if(snowing())U.base=Math.min(0.85,(U.base||0)+dt*sc/90);else if(!(typeof WX!=='undefined'&&WX.snowCover))U.base=Math.max(0,(U.base||0)-dt*sc/240);
-   U.value=on?U.base||0:0}});
+   U.value=on?U.base||0:0;
+   const G=typeof game!=='undefined'?game:null;if(G&&G.ego&&G.ego.mesh&&G.ego.mesh!==this._m){this._m=G.ego.mesh;const ud=G.ego.mesh.userData,keep=function(){};const roots=[ud.interior,ud.cab].filter(Boolean);
+    /* the cabin stays dry: its materials skip the snow uniform (and get their own shader program) */
+    for(const r of roots)r.traverse(o=>{const ms=o.material?[].concat(o.material):[];for(const mt of ms)if(mt&&!Object.prototype.hasOwnProperty.call(mt,'onBeforeCompile')){mt.onBeforeCompile=keep;mt.needsUpdate=true}})}}});
 })();
 </script>
 <script>/* mods/zz-lightguard.js */
