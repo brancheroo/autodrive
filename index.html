@@ -12111,7 +12111,7 @@ float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
  vec2 g=d1*cos(a1)*0.55+(d2*0.7+d1*0.7)*cos(a2)*0.35+vec2(0.31,-0.95)*cos(a3)*0.18;
  vec3 nW=normalize(vec3(-g.x*0.35*wA,1.,-g.y*0.35*wA));normal=normalize(mix(normal,normalize((viewMatrix*vec4(nW,0.)).xyz),0.85*wA));}`)
    .replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
-{vec2 cl=floor(vWW.xz*2.5);float ph=wT*2.5+fract(sin(dot(cl,vec2(7.7,3.1)))*91.7);float hc=fract(sin(dot(cl,vec2(12.9898,78.233))+floor(ph)*17.3)*43758.5);vec2 f=fract(vWW.xz*2.5)-0.5;float sp=step(0.992,hc)*pow(sin(fract(ph)*3.1416),3.)*smoothstep(0.25,0.,length(f));totalEmissiveRadiance+=vec3(1.,0.97,0.9)*sp*1.2*wA;}}`)};
+{vec2 cl=floor(vWW.xz*2.5);float ph=wT*2.5+fract(sin(dot(cl,vec2(7.7,3.1)))*91.7);float hc=fract(sin(dot(cl,vec2(12.9898,78.233))+floor(ph)*17.3)*43758.5);vec2 f=fract(vWW.xz*2.5)-0.5;float sp=step(0.992,hc)*pow(sin(fract(ph)*3.1416),3.)*smoothstep(0.25,0.,length(f));totalEmissiveRadiance+=vec3(1.,0.97,0.9)*sp*1.2*wA;}`)};
  m.customProgramCacheKey=()=>'waterlive';m.needsUpdate=true;
  MODS.push({id:'waterlive',frame(){const on=!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab;A.value=on?1:0;T.value=performance.now()/1000%1000;
   if(typeof WX!=='undefined'&&WX.windDir!==undefined)WD.value.set(Math.cos(WX.windDir),Math.sin(WX.windDir));}});
