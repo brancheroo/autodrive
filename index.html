@@ -10958,7 +10958,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   _e.set(e.roll||0,m.rotation.y,e.pitch||0,'YZX');_b.setFromEuler(_e);_q.copy(_b).invert().multiply(m.quaternion); /* body's suspension rotation, in its own frame */_e.setFromQuaternion(_q,'YZX');_e.y=0;_q.setFromEuler(_e); /* roll and pitch only: a drift-slip yaw stays on the wheels */
   const rel=_q.clone().invert(),rough=(G.mode==='rally'||/gravel|dirt/.test(G.surface||''))?0.045:G.spec.style==='van'||G.spec.pickupBed?0.014:0.01,amp=rough*Math.min(1,(e.v||0)/6),s=e.s||0;
   const sv=[];let sum=0;for(const w of W){const p=w.piv;if(!p||p.parent!==m)continue;const b=amp*bump(s+p.position.x,p.position.z>0?0:2.4)+(window.REAL&&REAL.on?REAL.road(s+p.position.x,p.position.z>0?1:0):0);sv.push([p,b]);sum+=b}
-  if(!sv.length)return;const heave=sum/sv.length*0.35;S.heave={m,y:heave};m.position.y+=heave;S.wsave=[];
+  if(!sv.length)return;const heave=window.SUSP4?SUSP4.step(sv,G,e):sum/sv.length*0.35; /* SUSP4 (99r): per-corner spring/damper replaces the simple split */S.heave={m,y:heave};m.position.y+=heave;S.wsave=[];
   for(const [p,b] of sv){S.wsave.push([p,p.position.clone(),p.quaternion.clone()]);_v.copy(p.position).applyQuaternion(_q).sub(p.position); /* how far the body's tilt moved this hub */
    p.position.sub(_v.applyQuaternion(rel));p.position.y+=b-heave;p.quaternion.premultiply(rel)}}
 })();
@@ -11451,7 +11451,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    const lvl=G.paused?0:clamp(Math.max(R.spin,R.slide*1.5,R.lock,(R.util-0.85)*2),0,1);squeal(lvl);lights();telemetry();
    /* slip you can see: the body yaws into the slide (RWD tail out, FWD nose wide), plus crosswind gusts nudging it sideways */
    const lay=layout(sp),yaw=(R.slide>0||R.spin>0.3&&lay==='rwd'?1:0)*Math.sign(R.ay||0)*(R.bal!=null?R.bal:(lay==='fwd'?-0.5:1)) /* bal from 99q: + oversteer, − understeer */*Math.min(0.25,(R.alpha*Math.PI/180)*(lay==='rwd'?1.2:0.6)+R.spin*0.05*(lay==='rwd'?1:0));
-   const wind=(WX.wind||0),gt=performance.now()/1000,gust=wind>6?wind*0.004*(Math.sin(gt*0.7)*Math.sin(gt*0.23+1)):0;gustX=lerp(gustX,gust,0.05);
+   const wind=(WX.wind||0),gt=performance.now()/1000,gust=wind>6?wind*0.004*(R.gustK?R.gustK(sp):1)*(Math.sin(gt*0.7)*Math.sin(gt*0.23+1)):0; /* gustK (99r): tall light vehicles get pushed harder */gustX=lerp(gustX,gust,0.05);
    applied={m,yaw,gx:gustX};m.rotateY(yaw);const s=Math.sin(e.head||0),c=Math.cos(e.head||0);m.position.x+=s*gustX;m.position.z+=c*gustX; /* sideways: forward is (cos h, −sin h) */
    /* marks and smoke from the wheels that are sliding */
    const W=m.userData.wheels||[];if(lvl>0.15&&e.v>1.5){m.updateMatrixWorld(true);for(const w of W){if(!w.piv)continue;const drivenW=lay==='awd'||(lay==='fwd')===!!w.front,on=R.lock>0.1||R.slide>0.1||(R.spin>0.15&&drivenW);if(!on)continue;
@@ -11637,6 +11637,87 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    Y.pulse=Math.max(0,Y.pulse-dt);Y.shudder=Math.max(0,Y.shudder-dt);
    if(G.cam==='in'&&(Y.pulse>0||Y.shudder>0)){const t=now/1000,a=(Y.pulse>0?0.006*Math.sign(Math.sin(t*95)):0)+(Y.shudder>0?0.012*Math.sin(t*60):0);cs=a;camera.position.y+=a}},
   postRender(){if(cs!=null){camera.position.y-=cs;cs=null}}});
+})();
+</script>
+<script>/* mods/99r-realism4.js */
+/* Physics realism, batch 4: suspension, steering, aero, road and vehicle (on top of 99d / 99o / 99p / 99q). Ego car.
+   Suspension: a spring and damper at each corner (SUSP4.step, called by 99d's shocks): body ride frequency per car type
+   (sports ~1.9 Hz, saloons 1.4, limousines and land yachts 1.1, trucks 1.6), dampers stiffer in rebound than bump, bump stops
+   and bottoming out (a jolt), unsprung wheel mass with its own hop, crests flying the car and landing compression,
+   air suspension lowering luxury cars at speed, extra travel and floppier geometry on lifted trucks, load-levelling vans.
+   Anti-roll bar balance (front-heavy bars push the car toward understeer), anti-dive and anti-squat on modern cars.
+   Wheels: camber change with body roll, bump steer with travel, Ackermann (the inside front wheel turns further),
+   rear-wheel steer on the cars that have it (opposite below 40 mph, same way above), countersteer in a slide.
+   Aero: front/rear downforce balance on downforce cars shifts the handling balance at speed; crosswind pushes tall light
+   vehicles harder; spray behind cars in the rain.
+   Road: the surface dries after rain (still slick for a while); the first minutes of rain lift an oil film; snow ruts
+   resist lane changes; autumn leaves; gravel flicked up by the tyres; concrete highway seams thump; banked corners tilt
+   the car into the turn.
+   Vehicle: yaw inertia from mass and length (heavy long cars rotate slowly into a slide); crash damage pulls the car and
+   costs grip. */
+(function(){
+ if(!window.REAL||!REAL.x)return;const R=REAL,X=R.x,Z=R.z={travel:[0,0,0,0],tv:[0,0,0,0],hv:0,h:0,wetRes:0,rainT:0,yawI:0,bottom:0};
+ const lux=sp=>/s580|pullman|century|escalade|lucid|i7|maybach|rolls/.test(sp.id)||sp.chauffeur;
+ const lifted=sp=>/j800|merica|hummer/.test(sp.id);
+ const ride=sp=>sp.gripG>=2||sp.style==='coupe'?1.9:lux(sp)||/wagon70|starfire/.test(sp.id)?1.1:sp.style==='van'||sp.pickupBed||lifted(sp)?1.6:1.4;
+ const rearSteer=sp=>/taycan|i7|s580|escalade|hummer|cybertruck|lucid/.test(sp.id);
+ window.SUSP4={step(sv,G,e){const sp=G.spec,dt=1/60,f=ride(sp),w=2*Math.PI*f,zB=0.3,zR=0.5,travelMax=lifted(sp)?0.25:sp.style==='van'?0.12:0.09;
+   /* each wheel: unsprung mass on the tyre spring (~12 Hz hop) following the road input */
+   let avg=0;sv.forEach(([p,b],i)=>{const wh=2*Math.PI*12,x=Z.travel[i]||0;let v=Z.tv[i]||0;v+=(wh*wh*(b-x)-2*0.35*wh*v)*dt;Z.travel[i]=x+v*dt;Z.tv[i]=v;avg+=Z.travel[i]});avg/=sv.length;
+   /* body heave on the springs, with bump (compression) softer than rebound */
+   const comp=avg-Z.h,zeta=Z.hv<0?zB:zR;Z.hv+=(w*w*comp-2*zeta*w*Z.hv)*dt;Z.h+=Z.hv*dt;
+   /* landing after a crest flight: compress hard */
+   if(X.air>0.2)Z.land=1;else if(Z.land){Z.hv-=0.6;Z.land=0}
+   /* bump stops: travel past the limit bottoms out with a jolt */
+   const rel=Z.h-avg;if(Math.abs(rel)>travelMax){Z.h=avg+Math.sign(rel)*travelMax;Z.hv*=-0.2;if(rel<0)Z.bottom=0.2}
+   let h=Z.h;if(lux(sp)&&e.v>31)h-=0.02; /* air suspension lowers at speed */
+   sv.forEach((s,i)=>{s[1]=Z.travel[i]});return h}};
+ /* anti-dive / anti-squat and load levelling: modern cars pitch less; vans barely squat */
+ if(window.PHYS){const _s=PHYS.susp;PHYS.susp=sp=>{const o=Object.assign({},_s(sp));if(!(sp.dash==='classic'||sp.dash==='yugo'))o.pitch*=0.7;if(sp.style==='van')o.pitch*=0.8;if(lifted(sp))o.roll*=1.4;return o}}
+ const _gs=R.gripScale;R.gripScale=function(){let k=_gs();const G=game;if(!G||!G.spec)return k;
+  if(Z.wetRes>0&&!(WX.rain>0.1))k*=1-0.2*Z.wetRes; /* drying road */
+  if(WX.rain>0.1&&Z.rainT<600)k*=1-0.1*(1-Z.rainT/600); /* first-rain oil film */
+  if(/snow|blizzard/.test(WX.key||'')&&Math.abs((G.ego.off||0)-(Z.lastOff??(G.ego.off||0)))>0.002)k*=0.85; /* climbing out of the ruts */
+  const mo=new Date().getMonth();if(mo>=8&&mo<=10&&WX.mu<0.9&&Math.sin((G.ego.s||0)/23)>0.85)k*=0.85; /* wet leaves */
+  const d=G.ego.mesh&&G.ego.mesh.userData.dmg||0;k*=1-Math.min(0.2,d*0.25);
+  return k};
+ /* handling balance additions: anti-roll bars, aero balance, damage pull */
+ const _acc=R.acc;R.acc=function(a,acc,target,isEgo,chase,dt){const r=_acc.apply(this,arguments);const sp=a.spec;if(!isEgo||!sp||sp.hyper||sp.aegis||sp.omni||sp.thrusters)return r;
+  const v=a.v;let b=R.bal??0;b-=sp.style==='coupe'?0.05:0.15; /* most road cars have front-biased roll stiffness: a touch of understeer */
+  if(sp.gripG>=2)b+=(sp.aeroBal??-0.1)*Math.min(1,v*v/3000);R.bal=clamp(b,-1,1.2);
+  /* yaw inertia: heavy, long cars take longer to rotate into a slide */
+  const kg=((typeof ENERGY!=='undefined'&&ENERGY[sp.id])||{}).kg||1600,I=kg*(sp.L||4.5)**2/12;Z.yawI=lerp(Z.yawI,R.slide,Math.min(1,dt*6000/I));R.slide=Z.yawI;
+  Z.lastOff=a.off;return r};
+ /* spray sprites behind cars ahead in the rain */
+ const SP=[];let spT=null;function spray(x,y,z){if(!spT){const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d'),gr=g.createRadialGradient(32,32,2,32,32,32);gr.addColorStop(0,'rgba(220,228,236,0.55)');gr.addColorStop(1,'rgba(220,228,236,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);spT=new THREE.CanvasTexture(c)}
+  let s=SP.find(o=>!o.visible);if(!s){if(SP.length>80)return;s=new THREE.Sprite(new THREE.SpriteMaterial({map:spT,transparent:true,depthWrite:false}));scene.add(s);SP.push(s)}s.visible=true;s.position.set(x,y+0.4,z);s.userData.t=0;s.scale.setScalar(1)}
+ const GR=[];function grit(p){let s=GR.find(o=>!o.visible);if(!s){if(GR.length>40)return;s=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.03,0.03),new THREE.MeshBasicMaterial({color:0x6b5a45}));scene.add(s);GR.push(s)}s.visible=true;s.position.copy(p);s.userData.v=new THREE.Vector3((Math.random()-0.5)*2,2+Math.random()*2,(Math.random()-0.5)*2);s.userData.t=0}
+ let saved=null,camS=null,bankS=null,last=performance.now(),seamS=0;
+ MODS.push({id:'realism4',
+  start(){Object.assign(Z,{travel:[0,0,0,0],tv:[0,0,0,0],hv:0,h:0,wetRes:0,rainT:0,yawI:0,bottom:0})},
+  preRender(){const now=performance.now(),dt=Math.min(0.05,(now-last)/1000);last=now;const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh||!G.spec||G.paused)return;const e=G.ego,m=e.mesh,sp=G.spec;if(sp.hyper||sp.aegis||sp.omni)return;
+   if(WX.rain>0.1){Z.rainT+=dt;Z.wetRes=1}else{Z.rainT=0;Z.wetRes=Math.max(0,Z.wetRes-dt/300)}
+   /* wheels: camber with roll, bump steer, Ackermann, rear steer, countersteer (99d restores the hubs after drawing) */
+   const roll=window.PHYS&&PHYS.body?PHYS.body.r:0,W=m.userData.wheels||[],st=W.find(w=>w.front);const steer=st?st.piv.rotation.y:0;
+   if(PHYS.body&&PHYS.body.wsave)W.forEach((w,i)=>{const p=w.piv;if(!p||p.parent!==m)return;const side=Math.sign(p.position.z)||1;
+    let y=0;if(w.front){const inner=Math.sign(steer)===-side;y+=steer*(inner?0.12:-0.08); /* Ackermann */if(R.slide>0.05&&(R.bal||0)>0.2)y+=-Math.sign(R.ay||0)*Math.min(0.35,R.slide*0.5)} /* countersteer */
+    else if(rearSteer(sp))y+=-steer*(e.v<18?0.25:-0.1);
+    y+=(Z.travel[i]||0)*0.3*side; /* bump steer */p.rotateY(y);p.rotateX(-roll*0.35*side)}); /* camber follows the body a little */
+   /* banked corners: highway curves lean the car into the turn (up to 4°) */
+   const bank=(sp&&e.v>15&&G.limitMph>=55)?clamp(-(R.ay||0)/9.81*0.07,-0.07,0.07):0;bankS={m,b:bank};m.rotateX(bank);
+   /* concrete seams thump every 5 m; bottoming out jolts the view */
+   let jolt=0;if(G.surface==='concrete'&&e.v>5){const k=Math.floor((e.s||0)/5);if(k!==seamS){seamS=k;jolt=0.004}}if(Z.bottom>0){Z.bottom-=dt;jolt+=0.015}
+   if(G.cam==='in'&&jolt){camS=jolt;camera.position.y-=jolt}
+   /* spray behind cars ahead in rain; grit off the tyres on gravel */
+   if(WX.rain>0.2)for(const o of G.agents||[]){if(o.x==null||!(o.v>12))continue;const d=Math.hypot(o.x-e.x,o.z-e.z);if(d<45&&Math.random()<0.25){const h=o.head??(o.mesh?o.mesh.rotation.y:0);spray(o.x-Math.cos(h)*2.5,(o.mesh?o.mesh.position.y:0),o.z+Math.sin(h)*2.5)}}
+   for(const s of SP)if(s.visible){s.userData.t+=dt;s.scale.setScalar(1+s.userData.t*4);s.material.opacity=Math.max(0,0.5-s.userData.t*0.5);if(s.userData.t>1)s.visible=false}
+   if(/gravel|dirt/.test(G.surface||'')&&e.v>6&&Math.random()<0.4&&W.length){const w=W[2+(Math.random()*2|0)]||W[0];const p=new THREE.Vector3();w.piv.getWorldPosition(p);grit(p)}
+   for(const s of GR)if(s.visible){s.userData.t+=dt;s.userData.v.y-=9.81*dt;s.position.addScaledVector(s.userData.v,dt);if(s.userData.t>0.8)s.visible=false}
+   /* damage pull: a bent car crabs a little */
+   const d=m.userData.dmg||0;if(d>0.15){saved={m,y:d*0.04};m.rotateY(saved.y)}},
+  postRender(){if(saved){saved.m.rotateY(-saved.y);saved=null}if(bankS){bankS.m.rotateX(-bankS.b);bankS=null}if(camS){camera.position.y+=camS;camS=null}}});
+ /* crosswind scales with side area over mass (99o's gust nudge) */
+ R.gustK=sp=>clamp((sp.H||1.45)*(sp.L||4.5)/((((typeof ENERGY!=='undefined'&&ENERGY[sp.id])||{}).kg||1600)/1000)/4,0.4,3);
 })();
 </script>
 <script>/* mods/zz-lightguard.js */
