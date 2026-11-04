@@ -11936,7 +11936,7 @@ float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
   sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\n'+NOISE).replace('#include <map_fragment>',`#include <map_fragment>
 {vec2 p=vWP.xz;float w=uWear;
  float patchy=step(0.72,rwN(floor(p/vec2(7.,4.))*0.37+3.1));diffuseColor.rgb*=1.-0.3*patchy*w;
- float cr=abs(rwF(p*0.35)-0.5);float crack=(1.-smoothstep(0.0,0.012,cr))*step(0.55,rwN(p*0.05));diffuseColor.rgb*=1.-0.55*crack*w;
+ float cr=abs(rwF(p*0.35)-0.5);float crack=(1.-smoothstep(0.0,0.012,cr))*step(0.68,rwN(p*0.05));diffuseColor.rgb*=1.-0.55*crack*w;
  float seam=abs(rwF(p*0.12+7.)-0.5);float tar=(1.-smoothstep(0.0,0.006,seam))*step(0.6,rwN(p*0.03+2.));diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.05),0.75*tar*w);
  float oil=smoothstep(0.78,0.95,rwN(p*0.6+11.))*step(0.7,rwN(p*0.08));diffuseColor.rgb*=1.-0.3*oil*w;
  vec2 cell=floor(p/23.),c=(cell+0.2+0.6*vec2(rwH(cell),rwH(cell+5.)))*23.;float d=length(p-c);
@@ -12021,10 +12021,10 @@ float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
   for(let s=s0;s<Math.min(R.total-2,e.s+AHEAD);s+=STEP){if(!town(s))continue;const hw=half(s),r=h(s*0.731+R.total);
    const p0=routeXZ(s,0),p1=routeXZ(s+2,0),yaw=Math.atan2(-(p1[1]-p0[1]),p1[0]-p0[0]);
    if(s%45===0)for(const side of [-1,1]){if(C.drain>=MAX*2)break;const p=routeXZ(s+side*3,side*(hw-0.35));put(P.drain,C.drain++,p[0],groundY(p[0],p[1]),p[1],yaw)}
-   const side=-1,off=side*(hw+1.6);
+   const side=-1,off=side*(hw+2.2);
    if(r<0.13&&C.seat<MAX){const p=routeXZ(s,off-0.6*side);const y=groundY(p[0],p[1]);const by=yaw+(side<0?Math.PI:0);for(const k of ['seat','back','legs'])put(P[k],C[k]++,p[0],y,p[1],by)}
    else if(r<0.3&&C.bin<MAX){const p=routeXZ(s,off);const y=groundY(p[0],p[1]);put(P.bin,C.bin++,p[0],y,p[1],0);put(P.binLid,C.binLid++,p[0],y,p[1],0)}
-   if(h(s*1.37)<0.12&&C.hyd<MAX){const sd=h(s*2.1)<0.5?-1:1,p=routeXZ(s+4,sd*(hw+0.7));const y=groundY(p[0],p[1]);put(P.hyd,C.hyd++,p[0],y,p[1],yaw);put(P.hydCap,C.hydCap++,p[0],y,p[1],yaw);put(P.hydNoz,C.hydNoz++,p[0],y,p[1],yaw)}}
+   if(h(s*1.37)<0.12&&C.hyd<MAX){const sd=h(s*2.1)<0.5?-1:1,p=routeXZ(s+4,sd*(hw+1.3));const y=groundY(p[0],p[1]);put(P.hyd,C.hyd++,p[0],y,p[1],yaw);put(P.hydCap,C.hydCap++,p[0],y,p[1],yaw);put(P.hydNoz,C.hydNoz++,p[0],y,p[1],yaw)}}
   for(const k in P){P[k].count=C[k];P[k].instanceMatrix.needsUpdate=true}builtAt=e.s;route=R}
  MODS.push({id:'streetprops',
   start(){if(!added){scene.add(grp);added=true}builtAt=-1e9;route=null},
