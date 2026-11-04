@@ -10049,7 +10049,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  const pop=()=>{const c=C();if(!c)return;const b=c.createBuffer(1,c.sampleRate*0.08,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(c.sampleRate*0.01));const s=c.createBufferSource(),g=c.createGain();g.gain.value=0.35;s.buffer=b;s.connect(g);g.connect(M());s.start()};
  let lastSig=0,lastBlink=false,bridgeD=0,gravel=null,rattle=null,squeal=null,singT=0;
  MODS.push({id:'audiox',disable(){for(const v of AU.voices)v.g.gain.value=0;AU.fm=null},
-  start(){AU.lastNav={};AU.beltT=1.2;AU.fm=null;setTimeout(()=>{try{if(UIX.load('aiRadio',true)&&typeof AIFM!=='undefined'&&!AIFM.on&&typeof aifmToggle==='function')aifmToggle()}catch(e){}},1200); /* AI Radio (sung lyrics) plays by default */UIX.btn('navBtn',AU.navOn?'🧭':'🧭̸','Navigation voice on/off',function(){AU.navOn=!AU.navOn;UIX.save('navVoice2',AU.navOn);this.textContent=AU.navOn?'🧭':'🧭̸'});UIX.btn('fmBtn','📻','Local radio: cycle / off',radio)},
+  start(){AU.lastNav={};AU.beltT=1.2;AU.fm=null;setTimeout(()=>{try{if(UIX.load('aiRadio',false)&&typeof AIFM!=='undefined'&&!AIFM.on&&typeof aifmToggle==='function')aifmToggle()}catch(e){}},1200); /* AI Radio (sung lyrics) plays by default */UIX.btn('navBtn',AU.navOn?'🧭':'🧭̸','Navigation voice on/off',function(){AU.navOn=!AU.navOn;UIX.save('navVoice2',AU.navOn);this.textContent=AU.navOn?'🧭':'🧭̸'});UIX.btn('fmBtn','📻','Local radio: cycle / off',radio)},
   frame(){const G=game;if(!G||!G.route||!G.ego||!C())return;const c=C(),dt=1/60,e=G.ego;listener();
    if(AU.beltT>0){AU.beltT-=dt;if(AU.beltT<=0)chime()}
    /* 76 engines */
