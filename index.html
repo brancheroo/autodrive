@@ -11891,6 +11891,32 @@ void main(){vec2 u=vU;
    try{cubeCam.update(renderer,scene)}catch(err){}renderer.shadowMap.autoUpdate=sa;m.visible=vis;SM.pts.visible=SP.pts.visible=DB.pts.visible=true}});
 })();
 </script>
+<script>/* mods/99w-snowcover.js */
+/* Graphics+ 4: snow builds up on every upward-facing surface (roofs, car bonnets, ledges, verges) while it snows,
+   in a patchy noise pattern, and slowly melts away once it stops. Done with one small shader patch on standard
+   materials, driven by a single shared uniform. */
+(function(){
+ const U={value:0};window.SNOWCOVER=U;
+ THREE.ShaderChunk.lights_physical_pars_fragment='uniform float uSnow;\n'+THREE.ShaderChunk.lights_physical_pars_fragment;
+ THREE.ShaderChunk.lights_physical_fragment+=`
+#ifndef FLAT_SHADED
+{vec3 upV=normalize((viewMatrix*vec4(0.,1.,0.,0.)).xyz);float up=dot(normal,upV);
+ vec3 wp=(inverse(viewMatrix)*vec4(-vViewPosition,1.)).xyz;float nz=fract(sin(dot(floor(wp.xz*1.7),vec2(12.99,78.23)))*43758.5)*0.35+fract(sin(dot(floor(wp.xz*0.31),vec2(39.3,11.1)))*1731.7)*0.65;
+ float sn=uSnow*smoothstep(0.45,0.8,up)*smoothstep(1.-uSnow*1.2,1.05-uSnow,nz+0.25);
+ material.diffuseColor=mix(material.diffuseColor,vec3(0.93,0.95,0.98),sn);material.roughness=mix(material.roughness,0.75,sn);}
+#endif
+`;
+ const prev=THREE.Material.prototype.onBeforeCompile;
+ THREE.Material.prototype.onBeforeCompile=function(sh,r){if(sh.fragmentShader&&sh.fragmentShader.indexOf('lights_physical_fragment')>=0)sh.uniforms.uSnow=U;if(prev)return prev.call(this,sh,r)};
+ const snowing=()=>typeof WX!=='undefined'&&(/snow|blizzard/i.test(WX.key||'')||WX.snow>0.2);
+ MODS.push({id:'snowcover',
+  start(){U.base=typeof WX!=='undefined'&&WX.snowCover?0.6:0},
+  frame(){const nw=performance.now(),dt=Math.min(0.1,(nw-(this._t||nw))/1000)||0.016;this._t=nw;
+   const on=!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab;const sc=window.GAMESCALE||((typeof game!=='undefined'&&game&&game.scale)||1);
+   if(snowing())U.base=Math.min(0.85,(U.base||0)+dt*sc/90);else if(!(typeof WX!=='undefined'&&WX.snowCover))U.base=Math.max(0,(U.base||0)-dt*sc/240);
+   U.value=on?U.base||0:0}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
