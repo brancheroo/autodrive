@@ -12268,7 +12268,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  /* picture-in-picture panels (scissored renders to the screen): WebGPU clears the whole canvas on each render, so each
     panel is drawn into its own offscreen target and then pasted into its rectangle without clearing the frame */
  let vp=[0,0,innerWidth,innerHeight];const SV=renderer.setViewport.bind(renderer);renderer.setViewport=(x,y,w,h,...r)=>{if(x&&x.isVector4)vp=[x.x,x.y,x.z,x.w];else vp=[x,y,w,h];return SV(x,y,w,h,...r)};
- const pipRT=new Map(),pipCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1),pipScene=new THREE.Scene(),pipMat=new THREE.MeshBasicNodeMaterial({depthTest:false,depthWrite:false}),pipQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),pipMat);pipQuad.frustumCulled=false;pipScene.add(pipQuad);
+ const pipRT=new Map(),pipCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1),pipScene=new THREE.Scene(),pipMat=new THREE.MeshBasicNodeMaterial({depthTest:false,depthWrite:false}),pipQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),pipMat);pipQuad.frustumCulled=false;pipScene.add(pipQuad);window.__PIP={pipMat,pipRT,pipScene,get vp(){return vp}};
  function pip(sc,cam){const pr=renderer.getPixelRatio(),[x,y,w,h]=vp,W=Math.max(1,Math.round(w*pr)),H=Math.max(1,Math.round(h*pr)),key=sc.id+':'+cam.id;let rt=pipRT.get(key);
   if(!rt){rt=new THREE.RenderTarget(W,H,{samples:1});pipRT.set(key,rt)}else if(rt.width!==W||rt.height!==H)rt.setSize(W,H);
   const ac=renderer.autoClear;renderer.setRenderTarget(rt);renderer.autoClear=true;try{R0(sc,cam)}finally{renderer.setRenderTarget(null)}
