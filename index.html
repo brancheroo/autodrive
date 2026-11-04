@@ -11992,7 +11992,7 @@ float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
   start(){if(!added){scene.add(grp);added=true}builtAt=-1e9;route=null},
   disable(){grp.visible=false},
   frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego)return;const on=(!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab)&&!G.fast&&(G.ego.v||0)<90;grp.visible=on;if(!on)return;
-   if(route!==G.route||Math.abs(G.ego.s-builtAt)>200){try{build()}catch(err){}}}});
+   if(route!==G.route||Math.abs(G.ego.s-builtAt)>200||performance.now()-(this._bt||0)>6000){this._bt=performance.now();try{build()}catch(err){}} /* also every 6 s, so spots fix themselves once road tiles finish loading */}});
 })();
 </script>
 <script>/* mods/99z-streetprops.js */
@@ -12039,7 +12039,7 @@ float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
   start(){if(!added){scene.add(grp);added=true}builtAt=-1e9;route=null},
   disable(){grp.visible=false},
   frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego)return;const on=(!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab)&&!G.fast&&(G.ego.v||0)<70;grp.visible=on;if(!on)return;
-   if(route!==G.route||Math.abs(G.ego.s-builtAt)>150){try{build()}catch(err){}}}});
+   if(route!==G.route||Math.abs(G.ego.s-builtAt)>150||performance.now()-(this._bt||0)>6000){this._bt=performance.now();try{build()}catch(err){}} /* also every 6 s, so spots fix themselves once road tiles finish loading */}});
 })();
 </script>
 <script>/* mods/zz-lightguard.js */
