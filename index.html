@@ -12342,11 +12342,17 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    /* the light list is hashed in scene order: when a group holding lights was re-added to the scene, the same lights in a
       new order counted as a new lighting setup and every material on screen rebuilt (≈1 s freeze, twice). Sorted by id. */
    P.setLights=function(l){if(l&&l.length>1){const prev=this._lights;l=l.slice().sort((a,b)=>a.id-b.id);if(prev&&prev.length===l.length&&prev.every((x,i)=>x===l[i]))l=prev}return SL.call(this,l)};window.GPULOG&&GPULOG.log('lightSortInstalled')}
+  if(!BB.apipe&&this.backend&&this.backend.createRenderPipeline&&this.backend.draw){BB.apipe=true;const BE=this.backend,CRP=BE.createRenderPipeline,DR=BE.draw;BB.asyncPipes=0;BB.pipeWait=0;
+   /* GPU pipelines were created synchronously, so the GPU process compiling them stalled the next frame (most of the
+      start-up hitches). For objects appearing in a view for the first time they are now created in the background and
+      the object is drawn once its pipeline is ready; objects already on screen keep the immediate path, so none blink. */
+   BE.createRenderPipeline=function(ro,promises){if(!promises&&BB.asyncOK){BB.asyncPipes++;const P=[];const t=performance.now();const r=CRP.call(this,ro,P);Promise.all(P).then(()=>{window.GPULOG&&GPULOG.log('pipeReady',Math.round(performance.now()-t),ro.material&&ro.material.type)});return r}return CRP.call(this,ro,promises)};
+   BE.draw=function(ro,info){const pd=this.get(ro.pipeline);if(!pd||!pd.pipeline){BB.pipeWait++;return}return DR.call(this,ro,info)}}
   if(!BB.hooked&&this._nodes){BB.hooked=true;const N=this._nodes,G=N.getForRender;BB.evict=0;
    const C=N.nodeBuilderCache;C.delete=function(){BB.evict++;return false};const PL=this._pipelines;if(PL){PL._releasePipeline=function(){BB.evict++};PL._releaseProgram=function(){}}
    N.getForRender=function(ro){const t0=performance.now();try{return G.apply(this,arguments)}finally{const d=performance.now()-t0;if(d>0.3){BB.ms+=d;BB.nb++;
     const rec=[Math.round(t0),+d.toFixed(1),ro.material&&ro.material.type,ro.context&&ro.context.id,BB.drawn?'drawnInView':'firstInView',Math.round(BB.ms)];if(BB.drawn){let diff='newRO';const k0=RK.get(ro);if(k0){try{diff=[k0.m!==ro.getMaterialCacheKey()?'MAT':'',k0.g!==ro.getGeometryCacheKey()?'GEO':'',k0.s!==this.getCacheKey(ro.scene,ro.lightsNode)?'SCENE':'',k0.rs!==ro.object.receiveShadow?'RS':'',k0.ik!==ro.initialCacheKey?'IK':''].join('')||'same'}catch(e){diff='err'}}rec.push(diff,ro.object&&ro.object.type,ro.object&&ro.object.parent&&(ro.object.parent.name||ro.object.parent.type),BB.lastMat===ro.material?'sameMat':'otherMat')}if(BB.cur&&BB.cur.b.length<80)BB.cur.b.push(rec);if(BB.kb.length<2000)BB.kb.push(rec)}}}} /* time every real build */
-  BB.drawn=!!(per&&per.get(cx));BB.lastMat=per&&per.get(cx);
+  BB.drawn=!!(per&&per.get(cx));BB.asyncOK=!BB.drawn;BB.lastMat=per&&per.get(cx);
   const nb=BB.nb,r=RD.apply(this,arguments);
   if(cm&&BB.nb===nb){const ro=cm.get([object,material,cx,lightsNode]);if(ro){done.add(ro);if(!RK.has(ro)){try{RK.set(ro,{m:ro.getMaterialCacheKey(),g:ro.getGeometryCacheKey(),s:this._nodes.getCacheKey(sc,lightsNode),rs:object.receiveShadow,ik:ro.initialCacheKey})}catch(e){}}if(!per){per=new Map();LASTOK.set(object,per)}per.set(cx,material)}}
   return r};
