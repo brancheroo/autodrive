@@ -11830,7 +11830,7 @@ void main(){vec2 u=vU;
  let discs=[],dia=[],heat=0,lastV=0,mesh=null;
  function setup(){const G=game,ud=G.ego.mesh.userData,wr=G.spec.wr||0.33;mesh=G.ego.mesh;discs=[];dia=[];heat=0;lastV=G.ego.v||0;
   for(const w of ud.wheels||[]){if(!w.piv)continue;const m=new THREE.Mesh(new THREE.TorusGeometry(wr*0.42,wr*0.12,6,20),glowMat());m.renderOrder=3;w.piv.add(m);discs.push({m,front:!!w.front})}
-  const flames=[];mesh.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&o.material.blending===THREE.AdditiveBlending&&o.geometry&&o.geometry.type==='ConeGeometry'&&o.material.color.getHex()===0xff7a20)flames.push(o)});
+  const flames=[];mesh.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&o.material.blending===THREE.AdditiveBlending&&o.geometry&&o.geometry.type==='ConeGeometry'&&(c=>c.r>0.95&&c.g>0.4&&c.g<0.55&&c.b<0.2)(o.material.color)&&o.geometry.parameters.height>1)flames.push(o)});
   for(const f of flames){const p=f.geometry.parameters,Lh=p.height,r=p.radius;for(let i=0;i<4;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(r*0.42*(1-i*0.15),10,8),diaMat);d.scale.set(1,0.45,1);d.position.y=Lh*0.5-Lh*(0.12+i*0.2);f.add(d);dia.push(d)}}}
  function clear(){for(const d of discs){d.m.parent&&d.m.parent.remove(d.m);d.m.geometry.dispose();d.m.material.dispose()}for(const d of dia){d.parent&&d.parent.remove(d);d.geometry.dispose()}discs=[];dia=[];mesh=null}
  MODS.push({id:'gfxplus2',
