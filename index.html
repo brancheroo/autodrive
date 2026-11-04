@@ -12042,6 +12042,41 @@ float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
    if(route!==G.route||Math.abs(G.ego.s-builtAt)>150||performance.now()-(this._bt||0)>6000){this._bt=performance.now();try{build()}catch(err){}} /* also every 6 s, so spots fix themselves once road tiles finish loading */}});
 })();
 </script>
+<script>/* mods/99za-rooftops.js */
+/* Graphics+ 8: rooftop clutter. Flat-roofed buildings over ~8 m get boxy AC units and vent stacks, and taller ones
+   sometimes a wooden water tank on legs (more often in New York-style cores). Collected as buildings are emitted,
+   drawn as instanced meshes for the roofs within ~700 m of the camera, refreshed every few seconds. */
+(function(){
+ const MAXAC=500,MAXV=300,MAXT=60;
+ const L=c=>new THREE.MeshLambertMaterial({color:c});
+ function IM(g,m,n){const x=new THREE.InstancedMesh(g,m,n);x.castShadow=true;x.frustumCulled=false;x.count=0;return x}
+ const ac=IM(new THREE.BoxGeometry(1.6,1,1.1).translate(0,0.5,0),L(0xb9bcbf),MAXAC),fan=IM(new THREE.CylinderGeometry(0.38,0.38,0.06,12).translate(0.3,1.03,0),L(0x3a3d40),MAXAC);
+ const vent=IM(new THREE.CylinderGeometry(0.16,0.16,1.2,8).translate(0,0.6,0),L(0x8d9196),MAXV);
+ const tank=IM(new THREE.CylinderGeometry(1.6,1.7,3.2,14).translate(0,4.6,0),L(0x6b4f35),MAXT),roofC=IM(new THREE.ConeGeometry(1.8,1,14).translate(0,6.7,0),L(0x4b3a2a),MAXT),legs=IM(new THREE.BoxGeometry(2.8,3,2.8).translate(0,1.5,0),new THREE.MeshLambertMaterial({color:0x3a3a3a,wireframe:true}),MAXT);
+ const grp=new THREE.Group();grp.add(ac,fan,vent,tank,roofC,legs);let added=false;
+ const RECS=new Map();window.ROOFTOPS={RECS};
+ const orig=window.emitBuilding;
+ if(typeof orig==='function')window.emitBuilding=function(t,ring,id,ctx,isPart){const rec=orig.apply(this,arguments);
+  try{const sh=(t&&t['roof:shape'])||'flat';if(rec&&rec.h>8&&sh==='flat'&&!isPart){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const p of rec.ring){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);z0=Math.min(z0,p[1]);z1=Math.max(z1,p[1])}
+   if((x1-x0)*(z1-z0)>120)RECS.set(id,{ring:rec.ring,y:(rec.base||0)+rec.h,h:rec.h,x0,x1,z0,z1,id:+String(id).replace(/\D/g,'').slice(-9)||1})}}catch(e){}return rec};
+ const h=x=>{const s=Math.sin(x*12.9898+78.233)*43758.5453;return s-Math.floor(s)};
+ const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),Y=new THREE.Vector3(0,1,0),V=new THREE.Vector3(),S=new THREE.Vector3(1,1,1);
+ const inR=(x,z,r)=>{try{return pip([x,z],r)}catch(e){return true}};
+ function build(){const cx=camera.position.x,cz=camera.position.z;let na=0,nv=0,nt=0;const near=[];
+  for(const [k,r] of RECS){const dx=(r.x0+r.x1)/2-cx,dz=(r.z0+r.z1)/2-cz,d=dx*dx+dz*dz;if(d>2500*2500){RECS.delete(k);continue}if(d<700*700)near.push([d,r])}
+  near.sort((a,b)=>a[0]-b[0]);
+  for(const [,r] of near){const sd=r.id*0.0137,w=r.x1-r.x0,dd=r.z1-r.z0,cnt=Math.min(6,1+Math.floor(w*dd/250*h(sd)));
+   for(let i=0;i<cnt&&na<MAXAC;i++){const x=r.x0+w*(0.2+0.6*h(sd+i*1.7)),z=r.z0+dd*(0.2+0.6*h(sd+i*2.9));if(!inR(x,z,r.ring))continue;Q.setFromAxisAngle(Y,Math.round(h(sd+i)*4)*Math.PI/2);M.compose(V.set(x,r.y,z),Q,S);ac.setMatrixAt(na,M);fan.setMatrixAt(na,M);na++}
+   for(let i=0;i<3&&nv<MAXV;i++){if(h(sd+i*5.1)<0.4)continue;const x=r.x0+w*(0.15+0.7*h(sd+i*3.3)),z=r.z0+dd*(0.15+0.7*h(sd+i*4.4));if(!inR(x,z,r.ring))continue;M.compose(V.set(x,r.y,z),Q.identity(),S);vent.setMatrixAt(nv++,M)}
+   if(r.h>18&&nt<MAXT&&h(sd+9.9)<0.25){const x=r.x0+w*(0.3+0.4*h(sd+7)),z=r.z0+dd*(0.3+0.4*h(sd+8));if(inR(x,z,r.ring)){M.compose(V.set(x,r.y,z),Q.identity(),S);tank.setMatrixAt(nt,M);roofC.setMatrixAt(nt,M);legs.setMatrixAt(nt,M);nt++}}}
+  ac.count=fan.count=na;vent.count=nv;tank.count=roofC.count=legs.count=nt;[ac,fan,vent,tank,roofC,legs].forEach(m=>m.instanceMatrix.needsUpdate=true)}
+ MODS.push({id:'rooftops',
+  start(){if(!added){scene.add(grp);added=true}this._bt=0},
+  disable(){grp.visible=false},
+  frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.route)return;const on=(!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab)&&!G.fast&&(window.GFX?GFX.get()!=='low':true);grp.visible=on;if(!on)return;
+   const now=performance.now();if(now-(this._bt||0)>3000){this._bt=now;try{build()}catch(e){}}}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
