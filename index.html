@@ -16,6 +16,7 @@
   const m=await import('https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/renderers/webgpu/WebGPURenderer.js');
   window.__GPU={WebGPURenderer:m.default,rev:T.REVISION};
   const out=html.replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.149\.0\/build\/three\.min\.js"><\/script>/,'');
+  if(document.readyState!=='complete')await new Promise(r=>addEventListener('load',r,{once:true})); /* let the inert page finish loading first, so the game's own load checks run straight away */
   /* rebuild the page from the fetched HTML, then run its scripts in order (document.write is ignored after window.stop) */
   const doc=new DOMParser().parseFromString(out,'text/html');const list=[...doc.querySelectorAll('script')].map(x=>{const o={src:x.getAttribute('src'),text:x.textContent,type:x.type};x.remove();return o});
   document.documentElement.replaceChildren(document.adoptNode(doc.head),document.adoptNode(doc.body));
