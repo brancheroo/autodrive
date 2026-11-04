@@ -11450,7 +11450,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   preRender(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh||!G.spec||!R.on){squeal(0);return}const e=G.ego,m=e.mesh,sp=G.spec;if(special(sp)){squeal(0);return}
    const lvl=G.paused?0:clamp(Math.max(R.spin,R.slide*1.5,R.lock,(R.util-0.85)*2),0,1);squeal(lvl);lights();telemetry();
    /* slip you can see: the body yaws into the slide (RWD tail out, FWD nose wide), plus crosswind gusts nudging it sideways */
-   const lay=layout(sp),yaw=(R.slide>0||R.spin>0.3&&lay==='rwd'?1:0)*Math.sign(R.ay||0)*(lay==='fwd'?-0.5:1)*Math.min(0.25,(R.alpha*Math.PI/180)*(lay==='rwd'?1.2:0.6)+R.spin*0.05*(lay==='rwd'?1:0));
+   const lay=layout(sp),yaw=(R.slide>0||R.spin>0.3&&lay==='rwd'?1:0)*Math.sign(R.ay||0)*(R.bal!=null?R.bal:(lay==='fwd'?-0.5:1)) /* bal from 99q: + oversteer, − understeer */*Math.min(0.25,(R.alpha*Math.PI/180)*(lay==='rwd'?1.2:0.6)+R.spin*0.05*(lay==='rwd'?1:0));
    const wind=(WX.wind||0),gt=performance.now()/1000,gust=wind>6?wind*0.004*(Math.sin(gt*0.7)*Math.sin(gt*0.23+1)):0;gustX=lerp(gustX,gust,0.05);
    applied={m,yaw,gx:gustX};m.rotateY(yaw);const s=Math.sin(e.head||0),c=Math.cos(e.head||0);m.position.x+=s*gustX;m.position.z+=c*gustX; /* sideways: forward is (cos h, −sin h) */
    /* marks and smoke from the wheels that are sliding */
@@ -11563,6 +11563,81 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
     x.fillText(`brakes F ${Math.round(X.bF)}° R ${Math.round(X.bR)}° · ρ ${X.rho.toFixed(2)} · tip ${Math.round(Math.abs(X.tip)*100)}% · Shift+L log`,8,183);
     for(let i=0;i<4;i++){const px=125+(i%2)*40,py=26+Math.floor(i/2)*40;const tt=R.tT+(i<2?6:0)+(X.blown===i?60:0),hue=clamp(220-(tt-20)*2,0,220);x.strokeStyle=`hsl(${hue},90%,55%)`;x.lineWidth=2;x.strokeRect(px,py,30,30);x.lineWidth=1}x.restore()}},
   postRender(){if(tipA){tipA.m.position.y-=tipA.y;tipA.m.rotateX(-tipA.r);tipA=null}if(camSave){camera.position.x-=camSave[0];camera.position.y-=camSave[1];camera.position.z-=camSave[2];camSave=null}}});
+})();
+</script>
+<script>/* mods/99q-realism3.js */
+/* Physics realism, batch 3 (on top of REAL / REAL.x from 99o and 99p): tyres, wheels and drivetrain. Ego car.
+   - Four-tyre balance: each axle's grip (its load share × tyre load sensitivity) against the lateral force it must make
+     decides whether a slide is understeer (front gives up first) or oversteer (rear), instead of a rule by drive layout;
+     an AWD car's centre split (60:40 rear for sporty, 40:60 front for FWD-based) and power on the driven axle tip it.
+   - Camber loss: grip falls a little as the body rolls. Relaxation: tyres need a moment to build cornering force after
+     the load changes (utilisation lags, so quick flicks overshoot the grip).
+   - Studded tyres on ice in deep cold. Uneven wear: inner/outer edge wear per tyre from cornering.
+   - Space-saver spare after a blowout: 50 mph limit from then on.
+   - Wheel speeds: the driven wheels visibly spin faster in wheelspin; locked wheels stop turning.
+   - Hill hold (HOLD light) when stopped on a slope; EV regen blending (brakes stay cooler); ABS pulse you can feel; EBD.
+   - Engines: torque-curve shape by engine (V8/V12 flat and early, turbo four mid-range, NA four peaky), shift times by
+     gearbox (dual-clutch fast, manual slow with clutch slip on launch and an occasional classic stall), driveline shudder.
+   - Differentials: an open diff lets the unloaded inside wheel spin when powering out of a tight corner; limited-slip
+     (performance cars) mostly doesn't; torque vectoring on performance AWD adds a little corner-exit grip.
+   - Low range: trucks get double torque below 18 mph on steep or loose ground. */
+(function(){
+ if(!window.REAL||!REAL.x)return;const R=REAL,X=R.x,G0=9.81,Y=R.y={wearIO:[[0,0],[0,0],[0,0],[0,0]],stall:0,hold:0,spinVis:0,lockVis:0,pulse:0,util:0,lastGear:1,shudder:0};
+ const perf=sp=>(+sp.hp||0)>=400||sp.style==='coupe'||sp.gripG>=1.6;
+ const engine=sp=>{const d=sp.drive||'';return /V12/.test(d)?'v12':/V8/.test(d)?'v8':/turbo/i.test(d)?'turbo4':/diesel/i.test(d)?'diesel':'na4'};
+ const box=sp=>{const d=sp.drive||'';return /dual-clutch|DCT|PDK/i.test(d)||perf(sp)&&!/manual/i.test(d)?'dct':/manual/i.test(d)?'manual':/CVT/i.test(d)?'cvt':'auto'};
+ const classic=sp=>sp.dash==='classic'||sp.dash==='yugo'||/wagon70|starfire|century|modelt|isetta|rampage/.test(sp.id);
+ const _gs=R.gripScale;R.gripScale=function(){let k=_gs();const G=game,sp=G&&G.spec;if(!sp)return k;
+  const roll=window.PHYS&&PHYS.body?Math.abs(PHYS.body.r):0;k*=1-Math.min(0.06,roll*0.8); /* camber loss */
+  if((WX.temp??18)<-2&&WX.mu<0.45&&X.winter)k*=1.4; /* studs on ice */
+  if(X.blown>=0&&Y.spare)k*=0.9;
+  if(R.layout(sp)==='awd'&&perf(sp)&&Math.abs(R.ay||0)>3&&(R.ax||0)>0)k*=1.03; /* torque vectoring */
+  return k};
+ const _acc=R.acc;R.acc=function(a,acc,target,isEgo,chase,dt){let r=_acc.apply(this,arguments);const sp=a.spec;if(!isEgo||!sp||dt<=0||sp.hyper||sp.aegis||sp.omni||sp.thrusters)return r;
+  const G=game,e=a,v=e.v,lay=R.layout(sp),ay=R.ay||0,eng=engine(sp),bx=box(sp),en=(typeof ENERGY!=='undefined'&&ENERGY[sp.id])||{};
+  /* relaxation length: cornering force builds over ~0.5 m of travel */
+  Y.util=lerp(Y.util,R.util,Math.min(1,v*dt/0.5+0.05));
+  /* four-tyre balance: lateral demand shared by axle load; each axle's capacity with load sensitivity (μ ∝ load^-0.1) */
+  const L=R.loads||[0.25,0.25,0.25,0.25],fL=L[0]+L[1],rL=L[2]+L[3],cap=ld=>ld*Math.pow(Math.max(ld,0.05)/0.5,-0.1);
+  const split=lay==='awd'?(perf(sp)?0.6:0.4):lay==='rwd'?1:0,pw=Math.max(0,r)/G0;
+  const fMargin=cap(fL)*Math.sqrt(Math.max(0,1-(pw*(1-split)/Math.max(fL,0.1))**2))-fL*Y.util,rMargin=cap(rL)*Math.sqrt(Math.max(0,1-(pw*split/Math.max(rL,0.1))**2))-rL*Y.util;
+  R.bal=clamp((fMargin-rMargin)*6,-1,1.2);
+  /* uneven wear: the outside edges of the loaded side work hardest */
+  const wr=Math.abs(ay)*v*1e-7*dt*60;for(let i=0;i<4;i++){const outside=(i%2===0)===(ay>0);Y.wearIO[i][outside?1:0]+=wr*(outside?1.6:0.6)}
+  /* blowout → space-saver: limp to a stop, fit the spare, then 50 mph max */
+  if(X.blown>=0){if(!Y.spare&&v<0.5){Y.spareT=(Y.spareT||0)+dt;if(Y.spareT>4){Y.spare=true;G.status='Space-saver spare fitted · 50 mph max'}}if(Y.spare){r=Math.min(r,(22.3-v)*0.8);if(v<22.3&&r<0)r=Math.max(r,-6)}}
+  if(Y.spare&&X.blown>=0&&v<22.3&&r>=0)r=Math.max(r,Math.min(acc,1.5)); /* the spare lifts 99p's limp-home limit */
+  if(r>0){
+   /* torque curve shape by engine (ICE only) */
+   if(en.ice){const f=R.rpmF||0,shape=eng==='v8'||eng==='v12'?1.05-0.15*f:eng==='turbo4'?0.85+0.3*Math.sin(Math.PI*clamp(f*1.2,0,1)):eng==='diesel'?1.1-0.3*f:0.8+0.3*f;r*=clamp(shape,0.7,1.15)}
+   /* gearbox: shift gap length, clutch slip launches, classic stalls */
+   if(en.ice&&R.gear!==Y.lastGear){if(R.gear>Y.lastGear)R.shiftT=bx==='dct'?0.06:bx==='manual'?0.45:bx==='cvt'?0:0.22;if(classic(sp))Y.shudder=0.25;Y.lastGear=R.gear}
+   if(bx==='manual'&&v<3)r*=0.7+0.1*v;
+   if(Y.stall>0){Y.stall-=dt;r=0;G.status='Stalled · restarting'}else if(bx==='manual'&&classic(sp)&&v<0.3&&acc>0.5&&!Y.launchT&&Math.random()<0.05){Y.stall=1.2}
+   Y.launchT=v<0.3&&acc>0.5?1:Math.max(0,(Y.launchT||0)-dt);
+   /* open differential: the inside wheel unloads in a tight corner and spins away the power */
+   const lim=!perf(sp)&&lay!=='awd'?Math.max(0.6,(1-0.45*Math.min(1,Math.abs(ay)/6))):1;const tracOpen=Math.max(0.5,R.util<0.01?99:(muAt(e)*G0)*lim*(lay==='fwd'?L[0]+L[1]:L[2]+L[3])*2);if(lim<1&&r>tracOpen){R.spin=Math.max(R.spin,(r-tracOpen)/tracOpen);r=tracOpen}
+   /* low range for trucks on steep or loose ground */
+   const steep=(()=>{try{return Math.abs((routeY(e.s+4)-routeY(e.s-4))/8)}catch(err){return 0}})();if(/4×4|4x4/.test(sp.drive||'')&&v<8&&(steep>0.12||/gravel|dirt/.test(G.surface||'')))r*=2}
+  else if(r<0){
+   /* EV regen carries up to ~0.25 g, so the friction brakes heat less; EBD moves bias rearward when light */
+   if(!en.ice&&en.kwh){const regen=Math.min(1,2.5/Math.max(-r,0.1));X.bF-=(-r*v*0.7*0.11)*dt*regen;X.bR-=(-r*v*0.3*0.11)*dt*regen}
+   if(R.lights.abs)Y.pulse=0.15}
+  /* hill hold */
+  let gr=0;try{gr=(routeY(e.s+3)-routeY(e.s-3))/6}catch(err){}Y.hold=v<0.2&&Math.abs(gr)>0.03?Math.min(3,(Y.hold||0)+dt):0;
+  return r};
+ /* wheel speeds you can see, ABS pulse and shift shudder in the view, HOLD light */
+ let last=performance.now(),cs=null;
+ MODS.push({id:'realism3',
+  start(){Object.assign(Y,{wearIO:[[0,0],[0,0],[0,0],[0,0]],stall:0,hold:0,pulse:0,util:0,lastGear:1,shudder:0,spare:false,spareT:0});R.bal=null},
+  preRender(){const now=performance.now(),dt=Math.min(0.05,(now-last)/1000);last=now;const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh||!G.spec||G.paused)return;const e=G.ego,m=e.mesh,sp=G.spec;if(sp.hyper||sp.aegis||sp.omni)return;
+   const lay=R.layout(sp);for(const w of m.userData.wheels||[]){if(!w.spin||typeof wheelR!=='function')continue;const rr=wheelR(m,w,sp),driven=lay==='awd'||(lay==='fwd')===!!w.front,sg=w.sign||1;
+    if(R.spin>0.05&&driven)w.spin.rotation.z-=R.spin*Math.max(e.v,4)*dt/rr*1.5*sg; /* spinning faster than the road */
+    if(R.lock>0.3&&(w.front||R.lock>0.7))w.spin.rotation.z+=e.v*dt/rr*sg} /* locked: cancel this frame's roll */
+   const el=document.getElementById('realLights');if(el&&Y.hold>1&&!el.textContent.includes('HOLD'))el.insertAdjacentHTML('beforeend','<span style="background:#4be38a;color:#000;padding:2px 5px;border-radius:4px">HOLD</span>');
+   Y.pulse=Math.max(0,Y.pulse-dt);Y.shudder=Math.max(0,Y.shudder-dt);
+   if(G.cam==='in'&&(Y.pulse>0||Y.shudder>0)){const t=now/1000,a=(Y.pulse>0?0.006*Math.sign(Math.sin(t*95)):0)+(Y.shudder>0?0.012*Math.sin(t*60):0);cs=a;camera.position.y+=a}},
+  postRender(){if(cs!=null){camera.position.y-=cs;cs=null}}});
 })();
 </script>
 <script>/* mods/zz-lightguard.js */
