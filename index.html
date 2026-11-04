@@ -5150,8 +5150,8 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
    OSM extras…) take objects out of the scene without freeing their GPU buffers; three.js keeps every undisposed
    geometry/texture alive, so long drives grew to 10k+ geometries and gigabytes of memory.
    Every object added directly to the scene is recorded; once it has been out of the scene for 10 s its geometries,
-   materials and canvas textures are disposed. Shared cached car shapes are skipped. Disposing is safe even if an
-   object is re-used later – three.js simply uploads it again on the next render. */
+   materials and canvas textures are disposed. Shared cached car shapes are skipped. Geometry still used by
+   anything in the scene is kept: WebGL would re-upload it, WebGPU fails the frame. */
 (function(){
  const GC={freed:0,tracked:0};window.GC=GC;const tracked=new Set();
  const _add=scene.add.bind(scene);scene.add=function(...objs){for(const o of objs)if(o&&o.isObject3D){tracked.add(o);o.__detT=0}return _add(...objs)};
@@ -5160,7 +5160,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
   if(typeof grassGeo==='function'){}return K}
  function free(root,K){root.traverse(o=>{if(o.geometry&&!K.has(o.geometry)&&!(o.geometry.userData&&o.geometry.userData.shared))o.geometry.dispose();const ms=Array.isArray(o.material)?o.material:o.material?[o.material]:[];
    for(const m of ms){if(m.userData&&m.userData.shared)continue;for(const k of ['map','normalMap','emissiveMap','roughnessMap','alphaMap'])if(m[k]&&m[k].isCanvasTexture&&!(m[k].userData&&m[k].userData.shared)){m[k].dispose();m[k].needsUpdate=true /* shared canvas textures (glow, contact shadow…) must re-upload when used again – without this they come back blank and draw as solid rectangles */}} /* materials are NOT disposed: they are shared, and disposing forces shader recompiles (long freezes) */});GC.freed++}
- function sweep(){try{const now=performance.now();let K=null;for(const o of tracked){if(o.parent){o.__detT=0;continue}if(!o.__detT){o.__detT=now;continue}if(now-o.__detT<10000)continue;K=K||keepGeo();free(o,K);tracked.delete(o)}GC.tracked=tracked.size}catch(e){}}
+ function sweep(){try{const now=performance.now();let K=null;for(const o of tracked){if(o.parent){o.__detT=0;continue}if(!o.__detT){o.__detT=now;continue}if(now-o.__detT<10000)continue;if(!K){K=keepGeo();scene.traverse(x=>{if(x.geometry)K.add(x.geometry)}) /* never dispose geometry a live object still shares (WebGPU fails the whole frame on it; WebGL re-uploads every time) */}free(o,K);tracked.delete(o)}GC.tracked=tracked.size}catch(e){}}
  setInterval(sweep,3000);
  MODS.push({id:'gc'});
 })();
