@@ -11761,7 +11761,7 @@ void main(){vec2 u=vU;
  if(sun.z>0.){vec2 sp=sun.xy;float asp=px.y/px.x;vec2 d=(u-sp)*vec2(asp,1.);float r=length(d);
   if(rays>0.){float vis=0.;vec2 st=(sp-u)/12.;vec2 q=u;for(int i=0;i<12;i++){q+=st;vis+=lu(texture2D(b,q).rgb);}c+=sunCol*vis/12.*0.35*rays*sun.z*exp(-r*2.5);c+=sunCol*0.08*sun.z*rays*exp(-r*6.);}
   if(flare>0.){vec2 g=0.5-sp;for(int i=1;i<5;i++){vec2 gp=sp+g*float(i)*0.55;float dd=length((u-gp)*vec2(asp,1.));c+=sunCol*vec3(0.6,0.8,1.)*0.05*flare*sun.z*smoothstep(0.05+0.02*float(i),0.,dd);}}}
- c*=expo;c=c*gain+lift;float l=lu(c);c=mix(vec3(l),c,sat);c=(c-0.5)*contrast+0.5;
+ c=max(c,vec3(0.));c=mix(c*12.92,1.055*pow(c,vec3(1./2.4))-0.055,step(vec3(0.0031308),c)); c*=expo;c=c*gain+lift;float l=lu(c);c=mix(vec3(l),c,sat);c=(c-0.5)*contrast+0.5;
  if(vig>0.)c*=1.-dot(cc,cc)*0.55*vig;
  if(grain>0.)c+=(h(u*vec2(1931.,1733.)+time)-0.5)*0.05*grain;
  gl_FragColor=vec4(clamp(c,0.,1.),1.);}`});
