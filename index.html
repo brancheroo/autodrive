@@ -11843,6 +11843,54 @@ void main(){vec2 u=vU;
    const t=performance.now()/1000;for(const d of dia){const f=d.parent;d.visible=on&&f&&f.visible&&f.material.opacity>0.05;if(d.visible)d.material.opacity=0.7+Math.sin(t*60)*0.2}}});
 })();
 </script>
+<script>/* mods/99v-gfxplus3.js */
+/* Graphics+ 3: live reflections on your car (a small cube camera refreshed about once a second, High/Ultra only),
+   exhaust smoke from fuel-burning cars (thicker under throttle and in the cold), tyre spray and splashes on wet roads,
+   and a burst of debris on impacts. All particles share two point pools in world space. */
+(function(){
+ const ON=()=>!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab;
+ const N=700;
+ function pool(color,size,blend,op){const g=new THREE.BufferGeometry(),p=new Float32Array(N*3).fill(-1e5),a=new Float32Array(N);g.setAttribute('position',new THREE.BufferAttribute(p,3));g.setAttribute('alpha',new THREE.BufferAttribute(a,1));
+  const m=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:blend,uniforms:{c:{value:new THREE.Color(color)},s:{value:size},op:{value:op}},
+   vertexShader:'attribute float alpha;varying float vA;uniform float s;void main(){vA=alpha;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=s*(1.+ (1.-alpha)*2.)*300./max(1.,-mv.z);gl_Position=projectionMatrix*mv;}',
+   fragmentShader:'uniform vec3 c;uniform float op;varying float vA;void main(){float d=length(gl_PointCoord-0.5);if(d>0.5)discard;gl_FragColor=vec4(c,vA*op*smoothstep(0.5,0.1,d));}'});
+  const pts=new THREE.Points(g,m);pts.frustumCulled=false;pts.renderOrder=4;return {pts,p,a,v:new Float32Array(N*3),life:new Float32Array(N),max:new Float32Array(N),grav:new Float32Array(N),i:0}}
+ const SM=pool(0x9a9a9a,0.5,THREE.NormalBlending,0.45),SP=pool(0xe8eef4,0.35,THREE.NormalBlending,0.55),DB=pool(0x2a2622,0.12,THREE.NormalBlending,1);
+ let added=false;
+ function emit(P,x,y,z,vx,vy,vz,life,g){const i=P.i;P.i=(P.i+1)%N;P.p[i*3]=x;P.p[i*3+1]=y;P.p[i*3+2]=z;P.v[i*3]=vx;P.v[i*3+1]=vy;P.v[i*3+2]=vz;P.life[i]=life;P.max[i]=life;P.grav[i]=g}
+ function step(P,dt,drag){for(let i=0;i<N;i++){if(P.life[i]<=0){if(P.a[i]){P.a[i]=0;P.p[i*3+1]=-1e5}continue}P.life[i]-=dt;const k=i*3;P.v[k+1]-=P.grav[i]*dt;const d=Math.exp(-drag*dt);P.v[k]*=d;P.v[k+1]*=P.grav[i]?1:d;P.v[k+2]*=d;
+   P.p[k]+=P.v[k]*dt;P.p[k+1]+=P.v[k+1]*dt;P.p[k+2]+=P.v[k+2]*dt;if(P.grav[i]&&P.p[k+1]<0.03){P.p[k+1]=0.03;P.v[k+1]*=-0.3;P.v[k]*=0.6;P.v[k+2]*=0.6}P.a[i]=Math.max(0,P.life[i]/P.max[i])}
+  P.pts.geometry.attributes.position.needsUpdate=true;P.pts.geometry.attributes.alpha.needsUpdate=true}
+ /* reflections */
+ let cubeRT=null,cubeCam=null,refT=0,refMesh=null,refMats=[];
+ function refSetup(m){refMats=[];if(!cubeRT){cubeRT=new THREE.WebGLCubeRenderTarget(128,{generateMipmaps:true,minFilter:THREE.LinearMipmapLinearFilter});cubeCam=new THREE.CubeCamera(0.5,400,cubeRT)}
+  m.traverse(o=>{const mt=o.isMesh&&o.material;if(!mt||Array.isArray(mt)||!mt.isMeshStandardMaterial)return;if((mt.metalness>0.3||mt.roughness<0.35)&&!mt.envMap){refMats.push(mt)}});refMesh=m}
+ function refApply(on){for(const mt of refMats){const want=on?cubeRT.texture:null;if(mt.envMap!==want){mt.envMap=want;mt.needsUpdate=true}}}
+ let lastV=0,lastShake=0,acc=0,cam=new THREE.Vector3(),tmp=new THREE.Vector3();
+ MODS.push({id:'gfxplus3',
+  start(){if(!added){scene.add(SM.pts,SP.pts,DB.pts);added=true}refMesh=null},
+  disable(){refApply(false)},
+  frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh)return;const e=G.ego,m=e.mesh,sp=G.spec;
+   const nw=performance.now(),dt=Math.min(0.1,(nw-(this._t||nw))/1000)||0.016;this._t=nw;const on=ON();
+   SM.pts.visible=SP.pts.visible=DB.pts.visible=on;
+   const v=e.v||0,a=(v-lastV)/Math.max(dt,1e-3);lastV=v;acc+=(a-acc)*Math.min(1,dt*5);
+   const fx=Math.cos(e.head),fz=-Math.sin(e.head);
+   if(on){const en=window.ENERGY&&ENERGY[sp.id]||{};
+    if(en.ice&&!G.paused){const thr=Math.max(0,Math.min(1,acc/3)),rate=(3+thr*40)*(v<1?0.6:1);let n=rate*dt+Math.random();n=n|0;
+     for(let i=0;i<n;i++){tmp.set(-sp.L/2-0.05,(sp.wr||0.33)*0.55,(Math.random()<0.5?-1:1)*sp.W*0.25);m.localToWorld(tmp);emit(SM,tmp.x,tmp.y,tmp.z,-fx*(1+Math.random())+(Math.random()-0.5)*0.6+fx*v*0.85,0.4+Math.random()*0.5,-fz*(1+Math.random())+(Math.random()-0.5)*0.6+fz*v*0.85,1.2+thr*1.2,0)}}
+    const wet=typeof WX!=='undefined'&&(WX.wet||0)>0.2;
+    if(wet&&v>4){const n=(v*(WX.wet||0.5)*2.2*dt+Math.random())|0;for(let i=0;i<n;i++){const side=Math.random()<0.5?-1:1;tmp.set((Math.random()<0.5?-1:1)*(sp.wb||2.6)/2,0.1,side*sp.W*0.45);m.localToWorld(tmp);
+      emit(SP,tmp.x,tmp.y,tmp.z,fx*v*0.6+(Math.random()-0.5)*2+fz*side*1.5,1+Math.random()*2.2,fz*v*0.6+(Math.random()-0.5)*2-fx*side*1.5,0.5+Math.random()*0.5,6)}}
+    const sh=typeof CRASH!=='undefined'?CRASH.shake||0:0;if(sh>lastShake+0.3){tmp.set(sp.L/2,(sp.H||1.4)*0.4,0);m.localToWorld(tmp);for(let i=0;i<Math.min(80,30+sh*40);i++)emit(DB,tmp.x,tmp.y,tmp.z,fx*v*0.4+(Math.random()-0.5)*7,1+Math.random()*5,fz*v*0.4+(Math.random()-0.5)*7,2.5+Math.random()*2,9.8)}lastShake=sh}
+   step(SM,dt,1.6);step(SP,dt,2.5);step(DB,dt,0.3);
+   /* reflections */
+   const tier=window.GFX?GFX.get():'high',refOn=on&&tier!=='low'&&!G.fast;
+   if(refMesh!==m){if(refMesh)refApply(false);refSetup(m)}
+   refApply(refOn);if(!refOn)return;refT-=dt;if(refT>0)return;refT=tier==='ultra'?0.5:1.2;
+   const vis=m.visible;m.visible=false;SM.pts.visible=SP.pts.visible=DB.pts.visible=false;cubeCam.position.copy(m.position);cubeCam.position.y+=(sp.H||1.4)*0.8;const sa=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;
+   try{cubeCam.update(renderer,scene)}catch(err){}renderer.shadowMap.autoUpdate=sa;m.visible=vis;SM.pts.visible=SP.pts.visible=DB.pts.visible=true}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
