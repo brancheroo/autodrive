@@ -11405,7 +11405,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   /* traction under power */
   R.spin=0;R.lights.tcs=0;if(acc>0){const trac=lonCap*drv;if(acc>trac){R.spin=clamp((acc-trac)/Math.max(trac,0.5),0,2);if(modern(sp)){acc=trac*0.97;R.lights.tcs=1}else acc=trac*0.82}}
   /* braking: grip on all four, ABS on modern cars, fade when hot */
-  R.lock=0;R.lights.abs=0;if(acc<0){const fade=R.bT>400?1-clamp((R.bT-400)/600,0,0.5):1,bc=lonCap*0.98*fade;if(-acc>bc){if(modern(sp)){acc=-bc;R.lights.abs=1}else{R.lock=clamp((-acc-bc)/bc,0,1);acc=-bc*0.85}}
+  R.lock=0;R.lights.abs=0;if(acc<0){const fade=R.bT>400?1-clamp((R.bT-400)/600,0,0.5):1,bc=Math.max(lonCap*0.98,muAt(e)*G0*0.85)*fade; /* never weaker than the stopping distance the planner assumed (fade aside), or it would run into things */if(-acc>lonCap*0.98){if(modern(sp))R.lights.abs=1;else R.lock=clamp((-acc-lonCap)/Math.max(lonCap,0.5),0,1)}if(-acc>bc)acc=-bc;
    R.bT+=(m*-acc*v)/(m*14)*dt} /* brake heat: kinetic power into ~14 J/K per kg of car */
   R.bT-=(R.bT-25)*(0.012+v*0.0012)*dt;
   /* gears (combustion): a short torque gap at each upshift, and pull that peaks mid-rev */
@@ -11436,7 +11436,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   const L=[['TCS',R.lights.tcs,'#ffb000'],['ESC',R.lights.esc,'#ffb000'],['ABS',R.lights.abs,'#ffb000'],['AQUA',R.aqua>0.1,'#3aa0ff'],['BRAKE HOT',R.bT>400,'#ff4030'],['SLIP',R.spin>0.1||R.lock>0.1,'#ff7a00']].filter(x=>x[1]);
   const html=L.map(([t,,c])=>`<span style="background:${c};color:#000;padding:2px 5px;border-radius:4px">${t}</span>`).join('');if(el.innerHTML!==html)el.innerHTML=html}
  let tel=null,telOn=false;addEventListener('keydown',ev=>{if((ev.key==='g'||ev.key==='G')&&!/INPUT|TEXTAREA|SELECT/.test((ev.target&&ev.target.tagName)||'')){telOn=!telOn;if(tel)tel.style.display=telOn?'block':'none'}});
- function telemetry(){if(!telOn)return;if(!tel){tel=document.createElement('canvas');tel.width=440;tel.height=300;tel.style.cssText='position:fixed;right:10px;top:200px;width:220px;height:150px;z-index:6;border-radius:10px;background:#0b0f16e6;pointer-events:none';document.body.appendChild(tel)}tel.style.display='block';
+ function telemetry(){if(!telOn)return;if(!tel){tel=document.createElement('canvas');tel.width=440;tel.height=300;tel.style.cssText='position:fixed;right:10px;top:250px;width:220px;height:150px;z-index:6;border-radius:10px;background:#0b0f16e6;pointer-events:none';document.body.appendChild(tel)}tel.style.display='block';
   const x=tel.getContext('2d'),G=game,sp=G.spec,mu=muAt(G.ego)*(window.PHYS?PHYS.gripK(sp,G.ego.v):1);x.clearRect(0,0,440,300);x.save();x.scale(2,2);
   const cx=60,cy=72,rs=48/Math.max(1,mu*G0*1.2);x.strokeStyle='#ffffff30';x.lineWidth=1;for(const k of [0.5,1])x.beginPath(),x.arc(cx,cy,k*48/1.2,0,7),x.stroke();
   x.strokeStyle='#4be38a';x.beginPath();x.arc(cx,cy,mu*G0*rs,0,7);x.stroke();x.fillStyle=R.util>1?'#ff5040':'#ffd23a';x.beginPath();x.arc(cx+clamp(R.ay,-30,30)*rs,cy-clamp(R.ax,-30,30)*rs,3.5,0,7);x.fill();
