@@ -1359,7 +1359,7 @@ function* buildTileGen(key){
    ring=fitBuilding(ring,BROADS);if(!ring)continue;bAdd(ring,key);
    const rec=emitBuilding(t,ring,el.id,BC,isPart);if(!isPart)bRecs.push(rec);
   }else if(t.amenity==='fuel'&&pts.length>3){fuelCanopy(BC,pts.slice(0,-1),t)
-  }else if(t.natural==='water'){if(!SAT.ok)flatPoly(bWa,pts,0.015)}
+  }else if(t.natural==='water'){flatPoly(bWa,pts,0.015) /* drawn over the satellite photos too, so rivers and lakes get live water */}
   else if(t.barrier){const b=t.barrier,hh=parseH(t.height)||({wall:1.8,city_wall:4,fence:1.5,hedge:1.4,retaining_wall:1.6,guard_rail:0.8,jersey_barrier:0.82})[b]||1.5;
    const col=new THREE.Color(b==='hedge'?'#2f5a2a':b==='fence'?'#6b6358':b==='guard_rail'?'#a8adb2':'#b8b0a2');wallC(RQ,bWall,pts,0,hh,b==='hedge'?0.9:b==='fence'||b==='guard_rail'?0.06:0.3,col,0.2)}
   else if(t.natural==='tree_row'){for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],d=Math.hypot(b[0]-a[0],b[1]-a[1]);for(let s=0;s<d;s+=8)trees.push([a[0]+(b[0]-a[0])*s/d,a[1]+(b[1]-a[1])*s/d,el.id+s])}}
