@@ -12297,9 +12297,15 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
      scene render (sensor panels, all six reflection faces). Pass the game's one-per-frame request to each light instead. */
   const SM=renderer.shadowMap,want=!!(SM.autoUpdate||SM.needsUpdate);for(const l of lights)if(l.shadow){l.shadow.autoUpdate=false;l.shadow.needsUpdate=want}
   boosting=true;const keep=lights.map(l=>l.intensity);for(const l of lights)l.intensity*=Math.PI;try{return R1.call(this,sc,cam)}finally{lights.forEach((l,i)=>{l.intensity=keep[i]});boosting=false;if(want)SM.needsUpdate=false}};
+ /* shader warm-up: WebGPU compiles a material's pipeline the first time it is drawn, freezing that frame (~200 ms per new
+    building/roof material). New tiles are hidden and revealed a few meshes per frame (02b-perf), so compile each finished
+    tile in the background first; by the time its meshes appear the pipelines are ready. */
+ const warmed=new WeakSet();let warmT=0;
+ function warmTiles(){if(typeof TILES==='undefined'||!renderer.compileAsync)return;for(const T of TILES.values()){const g=T&&T.group;if(!g||warmed.has(g)||typeof BT!=='undefined'&&BT.T===T)continue;warmed.add(g);
+   const hid=[];g.traverse(o=>{if(!o.visible){o.visible=true;hid.push(o)}});try{const p=renderer.compileAsync(g,camera,scene);if(p&&p.catch)p.catch(()=>{})}catch(e){}finally{for(const o of hid)o.visible=false}return /* one tile per call */}}
  MODS.push({id:'webgpu',
   start(){scrub()},
-  preRender(){const now=performance.now();if(now-t>1000){t=now;scrub()}
+  preRender(){const nw=performance.now();if(nw-warmT>300){warmT=nw;warmTiles()}const now=performance.now();if(now-t>1000){t=now;scrub()}
    if(typeof skyMat!=='undefined'&&skyMat.uniforms&&skyMat.uniforms.hor){bg.copy(skyMat.uniforms.hor.value).lerp(skyMat.uniforms.top.value,0.45);scene.background=bg}}});
  const tag=document.createElement('div');tag.textContent='WebGPU · experimental';tag.style.cssText='position:fixed;left:8px;bottom:26px;z-index:55;font:11px system-ui;color:#9fd;background:#0008;padding:2px 6px;border-radius:6px';document.body.appendChild(tag);
 })();
