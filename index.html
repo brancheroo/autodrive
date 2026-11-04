@@ -12133,10 +12133,13 @@ float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
     const side=mt===L.sigL?'L':'R',out=Math.sign(c.z)||1;
     for(let i=0;i<3;i++){const g=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.02,sz.x)+0.012,Math.max(0.02,sz.y)+0.012,sz.z/3+0.004),amb.clone());g.material.opacity=0;g.position.set(c.x,c.y,c.z-out*sz.z/3+out*i*sz.z/3);m.add(g);segs.push({g,side,i})}}
    else if(mt.isMeshBasicMaterial&&mt.color&&mt.color.getHex()===0xcfd6dc)revs.push({o,base:mt.color.getHex()})});
-  const sp=game.spec;revLight=new THREE.SpotLight(0xffffff,0,14,0.9,0.6,1.5);revLight.position.set(-sp.L/2,0.6,0);const tg=new THREE.Object3D();tg.position.set(-sp.L/2-6,-0.5,0);m.add(revLight,tg);revLight.target=tg;
+  const sp=game.spec;
+  /* cars built without reverse lamps get a pair of small white lenses low on the tail */
+  if(!revs.length)for(const z of [-1,1]){const mt=new THREE.MeshBasicMaterial({color:0x5c6064});const q=new THREE.Mesh(new THREE.PlaneGeometry(0.16,0.07),mt);q.rotation.y=-Math.PI/2;q.position.set(-sp.L/2-0.03,(sp.wr||0.33)*1.9,z*sp.W*0.3);m.add(q);revs.push({o:q,base:0x5c6064,own:true})}
+  revLight=new THREE.SpotLight(0xffffff,0,14,0.9,0.6,1.5);revLight.position.set(-sp.L/2,0.6,0);const tg=new THREE.Object3D();tg.position.set(-sp.L/2-6,-0.5,0);m.add(revLight,tg);revLight.target=tg;
   plate=new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.14),plateM);plate.rotation.y=-Math.PI/2;plate.position.set(-sp.L/2-0.035,(sp.wr||0.33)*1.55,0);m.add(plate)}
  function clear(){for(const s of segs){s.g.parent&&s.g.parent.remove(s.g);s.g.geometry.dispose();s.g.material.dispose()}segs=[];if(revLight&&revLight.parent){revLight.parent.remove(revLight.target);revLight.parent.remove(revLight)}if(plate&&plate.parent)plate.parent.remove(plate);
-  for(const r of revs)if(r.o.material.color)r.o.material.color.setHex(r.base);revs=[];mesh=null}
+  for(const r of revs){if(r.own){r.o.parent&&r.o.parent.remove(r.o);r.o.geometry.dispose();r.o.material.dispose()}else if(r.o.material.color)r.o.material.color.setHex(r.base)}revs=[];mesh=null}
  MODS.push({id:'carlights',
   start(){clear()},disable(){clear()},
   frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh)return;if(G.ego.mesh!==mesh){clear();try{setup(G.ego.mesh)}catch(e){}}
