@@ -11817,7 +11817,7 @@ void main(){vec2 u=vU;
  /* panel */
  const ITEMS=[['on','Graphics+ effects'],['ao','Ambient occlusion (contact shadows)'],['dof','Depth of field when paused / photo'],['fxaa','Anti-aliasing (FXAA)'],['bloom','Bloom on lights'],['rays','Sun rays'],['flare','Lens flare'],['exposure','Auto exposure (tunnels/night)'],['sharpen','Sharpening'],['vignette','Vignette'],['grain','Film grain'],['ca','Chromatic aberration'],['speedblur','Speed motion blur'],['haze','Heat haze'],['shake','Speed / road camera shake'],['fov','Speed field-of-view stretch'],['graph','Frame-time graph'],['lowToo','Also on Low graphics']];
  const btn=document.createElement('div');btn.textContent='✨ FX';btn.title='Graphics+ effects (B = before/after, P = photo, J = benchmark)';btn.style.cssText='position:fixed;right:8px;top:148px;z-index:56;font:11px system-ui;color:#dfe;background:#0009;padding:2px 7px;border-radius:6px;cursor:pointer;display:none';document.body.appendChild(btn);
- const pan=document.createElement('div');pan.style.cssText='position:fixed;right:8px;top:172px;z-index:60;width:240px;max-height:70vh;overflow:auto;background:#0b1118ee;border:1px solid #2a3a4a;border-radius:10px;padding:10px;font:12px system-ui;color:#dde;display:none';document.body.appendChild(pan);
+ const pan=document.createElement('div');pan.id='gfxPanel';pan.style.cssText='position:fixed;right:8px;top:172px;z-index:60;width:240px;max-height:70vh;overflow:auto;background:#0b1118ee;border:1px solid #2a3a4a;border-radius:10px;padding:10px;font:12px system-ui;color:#dde;display:none';document.body.appendChild(pan);
  function draw(){pan.innerHTML='<b>Graphics+</b><div style="opacity:.7;margin:2px 0 6px">B before/after · P photo · J benchmark</div>'+ITEMS.map(([k,l])=>`<label style="display:block;margin:3px 0"><input type=checkbox data-k="${k}" ${S[k]?'checked':''}> ${l}</label>`).join('')+
   '<div style="margin-top:6px">Colour style <select data-g style="background:#0e141d;color:#dde;border:1px solid #334">'+Object.keys(GRADES).map(g=>`<option ${S.grade===g?'selected':''}>${g}</option>`).join('')+'</select></div>'+
   `<div style="margin-top:6px">${GP.bench?'Last benchmark: '+GP.bench:''}</div>`;
@@ -12246,11 +12246,10 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  function setMode(m){try{localStorage.setItem('renderer',m)}catch(e){}location.href=location.pathname+'?renderer='+m}
  window.setRendererMode=setMode;
  /* renderer switch inside the ✨ FX panel */
- const mo=new MutationObserver(()=>{const pan=[...document.querySelectorAll('div')].find(d=>d.innerHTML&&d.innerHTML.startsWith('<b>Graphics+'));if(!pan||pan.querySelector('[data-rmode]'))return;
+ setInterval(()=>{const pan=document.getElementById('gfxPanel');if(!pan||pan.style.display==='none'||pan.querySelector('[data-rmode]'))return;
   const d=document.createElement('div');d.dataset.rmode=1;d.style.cssText='margin-top:8px;border-top:1px solid #2a3a4a;padding-top:6px';
   d.innerHTML=`Renderer: <b>${gpu?'WebGPU (experimental)':'WebGL'}</b><br><button style="margin-top:4px;background:#14202c;color:#dde;border:1px solid #345;border-radius:6px;padding:3px 8px;cursor:pointer">${gpu?'Switch back to WebGL':'Try WebGPU (reloads)'}</button>`+(gpu?'':`<div style="opacity:.65;margin-top:3px">${navigator.gpu?'Most Graphics+ effects are WebGL-only and turn off in WebGPU mode.':'This browser has no WebGPU.'}</div>`);
-  d.querySelector('button').onclick=()=>setMode(gpu?'webgl':'webgpu');if(!gpu&&!navigator.gpu)d.querySelector('button').disabled=true;pan.appendChild(d)});
- mo.observe(document.body,{childList:true,subtree:true});
+  d.querySelector('button').onclick=()=>setMode(gpu?'webgl':'webgpu');if(!gpu&&!navigator.gpu)d.querySelector('button').disabled=true;pan.appendChild(d)},1000); /* cheap 1 s check while the panel is open */
  if(!gpu)return;
  if(window.GFXPLUS)GFXPLUS.ab=true; /* off for this session only, not saved */
  const bg=new THREE.Color();let t=0;
