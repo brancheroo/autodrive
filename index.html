@@ -11921,6 +11921,37 @@ void main(){vec2 u=vU;
     for(const r of roots)r.traverse(o=>{const ms=o.material?[].concat(o.material):[];for(const mt of ms)if(mt&&!Object.prototype.hasOwnProperty.call(mt,'onBeforeCompile')){mt.onBeforeCompile=keep;mt.needsUpdate=true}})}}});
 })();
 </script>
+<script>/* mods/99x-roadwear.js */
+/* Graphics+ 5: worn roads. A shader patch on the road materials adds darker resurfaced patches, hairline cracks,
+   tar-sealed seams, oil stains and the odd manhole cover, all placed from world position so they stay put; lane paint
+   gets scuffed and faded where tyres run over it. One shared uniform fades it all out with the ✨ FX switch. */
+(function(){
+ const U={value:1};window.ROADWEAR=U;
+ const NOISE=`varying vec3 vWP;uniform float uWear;
+float rwH(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float rwN(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(rwH(i),rwH(i+vec2(1,0)),f.x),mix(rwH(i+vec2(0,1)),rwH(i+vec2(1,1)),f.x),f.y);}
+float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
+ function patchRoad(m){m.onBeforeCompile=sh=>{sh.uniforms.uWear=U;
+  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;').replace('#include <project_vertex>','#include <project_vertex>\nvWP=(modelMatrix*vec4(transformed,1.)).xyz;');
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\n'+NOISE).replace('#include <map_fragment>',`#include <map_fragment>
+{vec2 p=vWP.xz;float w=uWear;
+ float patchy=step(0.72,rwN(floor(p/vec2(7.,4.))*0.37+3.1));diffuseColor.rgb*=1.-0.22*patchy*w;
+ float cr=abs(rwF(p*0.35)-0.5);float crack=(1.-smoothstep(0.0,0.012,cr))*step(0.45,rwN(p*0.05));diffuseColor.rgb*=1.-0.55*crack*w;
+ float seam=abs(rwF(p*0.12+7.)-0.5);float tar=(1.-smoothstep(0.0,0.006,seam))*step(0.6,rwN(p*0.03+2.));diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.05),0.75*tar*w);
+ float oil=smoothstep(0.78,0.95,rwN(p*0.6+11.))*step(0.7,rwN(p*0.08));diffuseColor.rgb*=1.-0.3*oil*w;
+ vec2 cell=floor(p/23.),c=(cell+0.2+0.6*vec2(rwH(cell),rwH(cell+5.)))*23.;float d=length(p-c);
+ if(rwH(cell+9.)<0.22){float mh=1.-smoothstep(0.33,0.36,d);float rim=smoothstep(0.30,0.33,d)*mh;float grid=step(0.5,fract((p.x+p.y)*6.));diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.13+0.04*grid)+rim*0.08,mh*w);}
+}`).replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\n{float oil2=smoothstep(0.78,0.95,rwN(vWP.xz*0.6+11.))*step(0.7,rwN(vWP.xz*0.08));roughnessFactor=mix(roughnessFactor,0.35,oil2*uWear);}')};
+  m.customProgramCacheKey=()=>'roadwear';m.needsUpdate=true}
+ function patchPaint(m){m.onBeforeCompile=sh=>{sh.uniforms.uWear=U;
+  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;').replace('#include <project_vertex>','#include <project_vertex>\nvWP=(modelMatrix*vec4(transformed,1.)).xyz;');
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\n'+NOISE).replace('#include <map_fragment>',`#include <map_fragment>
+{float s=rwF(vWP.xz*1.6);float wear=smoothstep(0.35,0.75,s)*0.55+smoothstep(0.6,0.9,rwN(vWP.xz*0.07))*0.3;vec3 fn=normalize(cross(dFdx(vWP),dFdy(vWP)));wear*=step(0.9,abs(fn.y)); /* flat ground markings only, not white trim on buses or signs */diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.36),wear*uWear);}`)};
+  m.customProgramCacheKey=()=>'paintwear';m.needsUpdate=true}
+ try{patchRoad(MAT.road);patchRoad(MAT.road2);patchPaint(MAT.white);patchPaint(MAT.yellow)}catch(e){}
+ MODS.push({id:'roadwear',frame(){const on=!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab;U.value=on?1:0}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
