@@ -12041,7 +12041,7 @@ float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
   for(let s=s0;s<Math.min(R.total-2,e.s+AHEAD);s+=STEP){if(!town(s))continue;const hw=half(s),r=h(s*0.731+R.total);
    const p0=routeXZ(s,0),p1=routeXZ(s+2,0),yaw=Math.atan2(-(p1[1]-p0[1]),p1[0]-p0[0]);
    if(s%45===0)for(const side of [-1,1]){if(C.drain>=MAX*2)break;const p=routeXZ(s+side*3,side*(hw-0.35));put(P.drain,C.drain++,p[0],groundY(p[0],p[1]),p[1],yaw)}
-   /* verges: shrubs and flower clumps in town, rocks out of town; never on the road or inside a building */
+   /* verges: shrubs, flower clumps and the odd rock; never on the road or inside a building */
    for(const vs of [-1,1]){const rv=h(s*3.17+vs*11.3);if(rv>0.35)continue;const p=curb(s+rv*20,vs*(hw+4+rv*6));if(!p)continue;let inB=false;try{inB=!!bAt(p[0],p[1])}catch(err){}if(inB)continue;const y=groundY(p[0],p[1]),sc=0.7+rv*1.5;
     Q.setFromAxisAngle(Yx,rv*40);V.set(p[0],y,p[1]);
     if(rv<0.15&&C.flower<MAX*3){M.compose(V,Q,new THREE.Vector3(sc,sc,sc));P.flower.setMatrixAt(C.flower,M);P.flower.setColorAt(C.flower,new THREE.Color().setHSL([0.0,0.13,0.83,0.92,0.6][Math.floor(rv*33)%5],0.75,0.6));C.flower++}
