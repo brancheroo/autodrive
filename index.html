@@ -12278,6 +12278,11 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   paste(rt.texture)}
  renderer.render=function(sc,cam){if(renderer._initialized===false)return; /* r175: wait for the async WebGPU init */if(inPost)return R0(sc,cam);if(scis&&!renderer.getRenderTarget()&&sc!==scene&&renderer.autoClear===false){const tx=blitTex(sc);if(tx){try{paste(tx)}catch(err){window.GPUERR=String(err)}return}}if(scis&&!renderer.getRenderTarget()&&renderer.autoClear!==false||scis&&!renderer.getRenderTarget()&&sc===scene){try{scrub(sc)}catch(e){}try{pip(sc,cam)}catch(err){window.GPUERR=String(err)}return}if(sc===scene&&cam===camera&&!renderer.getRenderTarget()&&window.GPUFX&&GPUFX.wants()){inPost=true;let ok=false;try{ok=GPUFX.render()}finally{inPost=false}if(ok)return} /* Graphics+ post effects (99zzb-webgpu-fx) */if(!renderer.getRenderTarget()&&(scis||sc!==scene&&!renderer.autoClear))return; /* overlays drawn over the frame (autoClear off) would clear it to black on WebGPU r159 */ /* picture-in-picture panels would wipe the whole canvas on WebGPU r159: skipped */const now=performance.now();if(!seen.has(sc)||now-seen.get(sc)>500){seen.set(sc,now);try{scrub(sc)}catch(e){}}
   try{const p=R0(sc,cam);if(p&&p.catch)p.catch(err=>{window.GPUERR=String(err)});return p}catch(err){window.GPUERR=String(err)}};
+ /* newer three.js measures light in physical units: the same intensity numbers come out about π times dimmer than
+    in WebGL (r149's legacy lighting), so every light is scaled up by π just for the main-scene render, then restored */
+ const R1=renderer.render;let lights=[],lt=0,boosting=false;
+ renderer.render=function(sc,cam){if(sc!==scene||boosting)return R1.call(this,sc,cam);const now=performance.now();if(now-lt>1000){lt=now;lights=[];sc.traverse(o=>{if(o.isLight)lights.push(o)})}
+  boosting=true;const keep=lights.map(l=>l.intensity);for(const l of lights)l.intensity*=Math.PI;try{return R1.call(this,sc,cam)}finally{lights.forEach((l,i)=>{l.intensity=keep[i]});boosting=false}};
  MODS.push({id:'webgpu',
   start(){scrub()},
   preRender(){const now=performance.now();if(now-t>1000){t=now;scrub()}
