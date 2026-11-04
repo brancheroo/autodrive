@@ -12302,10 +12302,10 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const done=new WeakSet(); /* render objects that have been drawn once without needing a build */
  const RD=renderer._renderObjectDirect;
  if(RD)renderer._renderObjectDirect=function(object,material,sc,cam,lightsNode,group,clip,passId){
-  if(BB.seen!==BB.fr){BB.seen=BB.fr;BB.ms=0}
+  if(BB.seen!==BB.fr){if(BB.ms>150)(BB.fl=BB.fl||[]).push(BB.cur);BB.cur={ms:0,b:[],sk:0,allow:0};BB.seen=BB.fr;BB.ms=0}
   let cm=null,key=null;try{cm=this._objects.getChainMap(passId);key=[object,material,this._currentRenderContext,lightsNode]}catch(e){}
-  if(BB.ms>12&&cm){const ro=cm.get(key);if(!ro||!done.has(ro)){BB.skipped++;return}} /* over budget: anything not yet proven built waits for a later frame */
-  if(!BB.hooked&&this._nodes){BB.hooked=true;const N=this._nodes,G=N.getForRender;N.getForRender=function(){const t0=performance.now();try{return G.apply(this,arguments)}finally{const d=performance.now()-t0;if(d>0.3){BB.ms+=d;BB.nb++}}}} /* time the builds (cache hits cost ~0) */
+  if(BB.ms>12&&cm){const ro=cm.get(key);if(!ro||!done.has(ro)){BB.skipped++;BB.cur.sk++;return}BB.cur.allow++} /* over budget: anything not yet proven built waits for a later frame */
+  if(!BB.hooked&&this._nodes){BB.hooked=true;const N=this._nodes,G=N.getForRender;N.getForRender=function(){const t0=performance.now();try{return G.apply(this,arguments)}finally{const d=performance.now()-t0;if(d>0.3){BB.ms+=d;BB.nb++;const ro=arguments[0];if(BB.cur&&BB.cur.b.length<60)BB.cur.b.push([+d.toFixed(1),ro.material&&ro.material.type,ro.object&&(ro.object.name||ro.object.type),done.has(ro)?'DONE':'new',BB.ms|0,ro.context&&ro.context.id,ro.passId||''])}}}} /* time the builds (cache hits cost ~0) */
   const nb=BB.nb,r=RD.apply(this,arguments);
   if(cm&&BB.nb===nb){const ro=cm.get(key);if(ro)done.add(ro)}
   return r};
