@@ -3,7 +3,7 @@
 <head>
 <script>/* Experimental WebGPU mode (Settings → Renderer, or ?renderer=webgpu). The normal game uses three r149 + WebGL.
    In WebGPU mode this stops the page, loads three r159 (the last classic build) plus its WebGPURenderer module (whose
-   `import 'three'` is mapped onto that same global THREE through an import map), then re-writes this page without the
+   `import 'three'` is mapped onto that same global THREE through an import map), then rebuilds this page without the
    r149 script so the game builds a WebGPURenderer instead. Falls back to WebGL if the browser has no WebGPU. */
 (function(){if(window.__GPUBOOT)return;let want=false;try{want=/[?&]renderer=webgpu/.test(location.search)||localStorage.getItem('renderer')==='webgpu'}catch(e){}
  if(/[?&]renderer=webgl/.test(location.search))want=false;if(!want||!navigator.gpu)return;window.__GPUBOOT=1;window.stop();
@@ -16,7 +16,10 @@
   const m=await import('https://cdn.jsdelivr.net/npm/three@0.159.0/examples/jsm/renderers/webgpu/WebGPURenderer.js');
   window.__GPU={WebGPURenderer:m.default,rev:T.REVISION};
   const out=html.replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.149\.0\/build\/three\.min\.js"><\/script>/,'');
-  document.open();document.write(out);document.close()}
+  /* rebuild the page from the fetched HTML, then run its scripts in order (document.write is ignored after window.stop) */
+  const doc=new DOMParser().parseFromString(out,'text/html');const list=[...doc.querySelectorAll('script')].map(x=>{const o={src:x.getAttribute('src'),text:x.textContent,type:x.type};x.remove();return o});
+  document.documentElement.replaceChildren(document.adoptNode(doc.head),document.adoptNode(doc.body));
+  for(const sc of list){if(sc.type&&sc.type!=='text/javascript')continue;const n=document.createElement('script');if(sc.src){n.src=sc.src;await new Promise(r=>{n.onload=n.onerror=r;document.body.appendChild(n)})}else{n.textContent=sc.text;document.body.appendChild(n)}}}
  catch(err){console.warn('WebGPU mode failed, using WebGL',err);try{localStorage.setItem('renderer','webgl')}catch(e){}location.replace(location.pathname+'?renderer=webgl')}})()})();
 </script>
 <meta charset="utf-8">
