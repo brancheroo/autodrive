@@ -12298,14 +12298,17 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
     time an object is drawn – a new tile or traffic wave meant seconds of frozen frames. Each animation frame may now spend
     ~16 ms on such builds; any further object that would still need a build is skipped for that frame and drawn a frame or
     two later. Objects whose material is already built are never skipped. */
- const BB={ms:0,fr:0,seen:-1,skipped:0};window.GPUBUILD=BB;(function tick(){BB.fr++;requestAnimationFrame(tick)})();
+ const BB={ms:0,fr:0,seen:-1,skipped:0,nb:0};window.GPUBUILD=BB;(function tick(){BB.fr++;requestAnimationFrame(tick)})();
+ const done=new WeakSet(); /* render objects that have been drawn once without needing a build */
  const RD=renderer._renderObjectDirect;
  if(RD)renderer._renderObjectDirect=function(object,material,sc,cam,lightsNode,group,clip,passId){
-  if(BB.seen!==BB.fr){if(BB.ms>200)(BB.fl=BB.fl||[]).push([BB.ms|0,BB.nb,BB.ns]);BB.seen=BB.fr;BB.ms=0;BB.nb=0;BB.ns=0}
-  if(BB.ms>16){try{const cm=this._objects.getChainMap(passId),ro=cm.get([object,material,this._currentRenderContext,lightsNode]),N=this._nodes;
-   if(ro===undefined||N.get(ro).nodeBuilderState===undefined&&!N.nodeBuilderCache.has(N.getForRenderCacheKey(ro))){BB.skipped++;BB.ns++;return}}catch(e){BB.err=String(e)}} /* over budget: anything that would still need a build waits a frame (looked up without creating anything) */
-  if(!BB.hooked&&this._nodes){BB.hooked=true;const N=this._nodes,G=N.getForRender;N.getForRender=function(ro){const t0=performance.now();try{return G.apply(this,arguments)}finally{const d=performance.now()-t0;BB.ms+=d;BB.nb++;if(d>80){(BB.big=BB.big||[]).push([Math.round(d),ro.material&&ro.material.type,ro.object&&(ro.object.name||ro.object.type),ro.object&&ro.object.isMesh&&ro.geometry&&ro.geometry.attributes.position&&ro.geometry.attributes.position.count,BB.ms|0])}}}} /* time the builds themselves */
-  const t0=performance.now();try{return RD.apply(this,arguments)}finally{}};
+  if(BB.seen!==BB.fr){BB.seen=BB.fr;BB.ms=0}
+  let cm=null,key=null;try{cm=this._objects.getChainMap(passId);key=[object,material,this._currentRenderContext,lightsNode]}catch(e){}
+  if(BB.ms>12&&cm){const ro=cm.get(key);if(!ro||!done.has(ro)){BB.skipped++;return}} /* over budget: anything not yet proven built waits for a later frame */
+  if(!BB.hooked&&this._nodes){BB.hooked=true;const N=this._nodes,G=N.getForRender;N.getForRender=function(){const t0=performance.now();try{return G.apply(this,arguments)}finally{const d=performance.now()-t0;if(d>0.3){BB.ms+=d;BB.nb++}}}} /* time the builds (cache hits cost ~0) */
+  const nb=BB.nb,r=RD.apply(this,arguments);
+  if(cm&&BB.nb===nb){const ro=cm.get(key);if(ro)done.add(ro)}
+  return r};
  if(RD&&renderer._handleObjectFunction===RD)renderer._handleObjectFunction=renderer._renderObjectDirect; /* three.js keeps its own reference to the draw function */
  /* newer three.js measures light in physical units: the same intensity numbers come out about π times dimmer than
     in WebGL (r149's legacy lighting), so every light is scaled up by π just for the main-scene render, then restored */
