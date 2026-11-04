@@ -11436,8 +11436,8 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   const L=[['TCS',R.lights.tcs,'#ffb000'],['ESC',R.lights.esc,'#ffb000'],['ABS',R.lights.abs,'#ffb000'],['AQUA',R.aqua>0.1,'#3aa0ff'],['BRAKE HOT',R.bT>400,'#ff4030'],['SLIP',R.spin>0.1||R.lock>0.1,'#ff7a00']].filter(x=>x[1]);
   const html=L.map(([t,,c])=>`<span style="background:${c};color:#000;padding:2px 5px;border-radius:4px">${t}</span>`).join('');if(el.innerHTML!==html)el.innerHTML=html}
  let tel=null,telOn=false;addEventListener('keydown',ev=>{if((ev.key==='g'||ev.key==='G')&&!/INPUT|TEXTAREA|SELECT/.test((ev.target&&ev.target.tagName)||'')){telOn=!telOn;if(tel)tel.style.display=telOn?'block':'none'}});
- function telemetry(){if(!telOn)return;if(!tel){tel=document.createElement('canvas');tel.width=440;tel.height=300;tel.style.cssText='position:fixed;right:10px;top:330px;width:220px;height:150px;z-index:6;border-radius:10px;background:#0b0f16e6;pointer-events:none';document.body.appendChild(tel)}tel.style.display='block';
-  const x=tel.getContext('2d'),G=game,sp=G.spec,mu=muAt(G.ego)*(window.PHYS?PHYS.gripK(sp,G.ego.v):1);x.clearRect(0,0,440,300);x.save();x.scale(2,2);
+ function telemetry(){if(!telOn)return;if(!tel){tel=document.createElement('canvas');tel.width=440;tel.height=380;tel.style.cssText='position:fixed;right:10px;top:330px;width:220px;height:190px;z-index:6;border-radius:10px;background:#0b0f16e6;pointer-events:none';document.body.appendChild(tel)}tel.style.display='block';
+  const x=tel.getContext('2d'),G=game,sp=G.spec,mu=muAt(G.ego)*(window.PHYS?PHYS.gripK(sp,G.ego.v):1);x.clearRect(0,0,440,380);x.save();x.scale(2,2);
   const cx=60,cy=72,rs=48/Math.max(1,mu*G0*1.2);x.strokeStyle='#ffffff30';x.lineWidth=1;for(const k of [0.5,1])x.beginPath(),x.arc(cx,cy,k*48/1.2,0,7),x.stroke();
   x.strokeStyle='#4be38a';x.beginPath();x.arc(cx,cy,mu*G0*rs,0,7);x.stroke();x.fillStyle=R.util>1?'#ff5040':'#ffd23a';x.beginPath();x.arc(cx+clamp(R.ay,-30,30)*rs,cy-clamp(R.ax,-30,30)*rs,3.5,0,7);x.fill();
   x.fillStyle='#cfd8e3';x.font='600 8px system-ui';x.fillText('g-g · grip '+(mu).toFixed(2)+' g',8,12);
@@ -11452,12 +11452,117 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    /* slip you can see: the body yaws into the slide (RWD tail out, FWD nose wide), plus crosswind gusts nudging it sideways */
    const lay=layout(sp),yaw=(R.slide>0||R.spin>0.3&&lay==='rwd'?1:0)*Math.sign(R.ay||0)*(lay==='fwd'?-0.5:1)*Math.min(0.25,(R.alpha*Math.PI/180)*(lay==='rwd'?1.2:0.6)+R.spin*0.05*(lay==='rwd'?1:0));
    const wind=(WX.wind||0),gt=performance.now()/1000,gust=wind>6?wind*0.004*(Math.sin(gt*0.7)*Math.sin(gt*0.23+1)):0;gustX=lerp(gustX,gust,0.05);
-   applied={m,yaw,gx:gustX};m.rotateY(yaw);const s=Math.sin(e.head||0),c=Math.cos(e.head||0);m.position.x+=-s*gustX;m.position.z+=c*gustX;
+   applied={m,yaw,gx:gustX};m.rotateY(yaw);const s=Math.sin(e.head||0),c=Math.cos(e.head||0);m.position.x+=s*gustX;m.position.z+=c*gustX; /* sideways: forward is (cos h, −sin h) */
    /* marks and smoke from the wheels that are sliding */
    const W=m.userData.wheels||[];if(lvl>0.15&&e.v>1.5){m.updateMatrixWorld(true);for(const w of W){if(!w.piv)continue;const drivenW=lay==='awd'||(lay==='fwd')===!!w.front,on=R.lock>0.1||R.slide>0.1||(R.spin>0.15&&drivenW);if(!on)continue;
      const p=new THREE.Vector3();w.piv.getWorldPosition(p);p.y=m.position.y;const pr=lastP.get(w);if(pr)mark(p,pr,0.2);lastP.set(w,p.clone());if((R.spin>0.4&&drivenW||R.lock>0.5)&&Math.random()<0.35)puff(p)}}else lastP.clear();
    for(const s2 of SM)if(s2.visible){s2.userData.t+=1/60;s2.scale.setScalar(0.6+s2.userData.t*3);s2.position.y+=0.01;s2.material.opacity=Math.max(0,0.6-s2.userData.t*0.4);if(s2.userData.t>1.5)s2.visible=false}},
-  postRender(){if(applied){const A=applied,e=game&&game.ego,s=Math.sin(e?e.head||0:0),c=Math.cos(e?e.head||0:0);A.m.position.x-=-s*A.gx;A.m.position.z-=c*A.gx;A.m.rotateY(-A.yaw);applied=null}}});
+  postRender(){if(applied){const A=applied,e=game&&game.ego,s=Math.sin(e?e.head||0:0),c=Math.cos(e?e.head||0:0);A.m.position.x-=s*A.gx;A.m.position.z-=c*A.gx;A.m.rotateY(-A.yaw);applied=null}}});
+})();
+</script>
+<script>/* mods/99p-realism2.js */
+/* Physics realism, batch 2 (builds on REAL from 99o-realism). Ego car only unless noted.
+   Tyres: grip curve per tyre type (summer / all-season / winter / off-road / slick: peak slip and fall-off past it); surface and
+   core temperatures; pressure rising with heat (grip and rolling resistance follow it); winter tyres in cold places (better
+   below 7 °C, worse above); gravel stuck in the tread after leaving a loose road; kerb and pothole damage; blowouts from heat
+   or bald tyres; rolling resistance that grows with speed and soft tyres.
+   Brakes: rotating mass adds ~4% to the effective mass; per-car brake bias (front discs run hotter); cold pads bite less;
+   wet discs grab late until they dry; glowing discs when very hot; engine braking that depends on the gear.
+   Engines: turbo lag (spool-up) and supercharger response; rev-limiter stutter in top gear; torque-converter slip at low
+   speed on automatics; electric power falling above base speed and with low or very high charge and battery heat.
+   Aero: lift at speed on cars without downforce; turbulent air behind another car costs downforce cars grip; air density
+   from altitude and temperature (engines and drag); the wake of passing trucks buffets the car.
+   Road: paint lines and manhole covers are slick in the wet; hot summer asphalt loses a little grip; black ice on bridges
+   below 3 °C; crests unload the tyres (and fly the car over sharp ones); landings compress it.
+   Vehicle: fuel weight falls as the tank empties; two-wheel tip-up when lateral g nears the rollover threshold (track ÷ 2h).
+   Feel: the driver's head moves with g-forces and buzzes on rough roads.
+   Telemetry (G): speed / throttle / brake / slip traces and a four-tyre temperature and wear map. L saves a CSV data log. */
+(function(){
+ if(!window.REAL)return;const R=REAL,G0=9.81,X=R.x={sT:22,cT:22,press:1,gravel:0,dmg:0,blown:-1,bF:40,bR:40,wetB:0,boost:0,crestG:0,air:0,tip:0,rho:1,log:[],trace:[],fuel:1};
+ const E=sp=>(typeof ENERGY!=='undefined'&&ENERGY[sp.id])||{};
+ const tyreType=sp=>{if(sp.gripG>=2||sp.formulae)return 'slick';if(/j800|merica|hummer|gwagen|keitruck|rampage|cybertruck|angletruck/.test(sp.id)||/4×4/.test(sp.drive||''))return 'offroad';if(X.winter)return 'winter';if(sp.style==='coupe'||(+sp.hp||0)>=500)return 'summer';return 'allseason'};
+ const CURVE={summer:{peak:6,fall:0.18},allseason:{peak:7,fall:0.15},winter:{peak:9,fall:0.1},offroad:{peak:10,fall:0.08},slick:{peak:5,fall:0.25}};
+ const surfMul=(t,surf,temp)=>{let k=1;if(t==='winter')k*=temp<7?1.08:0.9;if(t==='summer'&&temp<7)k*=0.85;if(t==='offroad')k*=/gravel|dirt/.test(surf)?1.15:0.93;if(t==='slick'&&/gravel|dirt/.test(surf))k*=0.6;return k};
+ const hash=n=>{const x=Math.sin(n*91.7+17.3)*43758.5;return x-Math.floor(x)};
+ /* grip: everything above multiplies REAL's tyre factor */
+ const _gs=R.gripScale;R.gripScale=function(){const G=game,sp=G&&G.spec;let k=_gs();if(!sp)return k;const temp=WX.temp??18,t=tyreType(sp);
+  k*=surfMul(t,G.surface||'asphalt',temp);k*=1-0.12*Math.abs(X.press-1.05)/0.2; /* best near +5% over cold pressure */
+  k*=1-X.gravel*0.25;if(X.blown>=0)k*=0.55;k*=1-X.dmg*0.15;
+  const v=G.ego?G.ego.v:0;if(!(sp.gripG>=2))k*=1-Math.min(0.06,v*v/40000*0.06); /* aero lift */else if(R.draft>0.05)k*=1-R.draft*0.5; /* dirty air */
+  if(temp>35)k*=0.97;if(WX.mu<0.9&&X.paint)k*=0.7;if(temp<3&&X.bridge&&WX.mu<1.01)k*=0.45; /* paint / manholes in the wet; black ice */
+  return k*clamp(1-X.crestG,0.2,1.2)};
+ /* power, brakes and the rest, after REAL's own limits */
+ const _acc=R.acc;R.acc=function(a,acc,target,isEgo,chase,dt){let r=_acc.apply(this,arguments);const sp=a.spec;if(!isEgo||!sp||dt<=0||sp.hyper||sp.aegis||sp.omni||sp.thrusters)return r;
+  const G=game,e=a,en=E(sp),v=e.v,drv=(sp.drive||'')+' '+(sp.sub||''),ice=!!en.ice,temp=WX.temp??18;
+  /* air density from altitude and temperature: engines breathe less up high (turbos compensate), drag falls */
+  let alt=0;try{alt=clamp(routeY(e.s),0,4500)}catch(err){}X.rho=Math.exp(-alt/8500)*288/(273+temp);
+  if(r>0){if(ice&&!/turbo/i.test(drv))r*=0.3+0.7*X.rho;
+   /* turbo spool: boost builds over ~0.8 s of throttle and fades off it; superchargers respond at once */
+   const turbo=/turbo/i.test(drv),want=r>1?1:0;X.boost+=(want-X.boost)*Math.min(1,dt*(want?1.3:3));if(turbo)r*=0.7+0.3*X.boost;
+   /* rev limiter in top gear */
+   if(ice&&R.gear===R.gearN&&R.rpmF>=0.99)r*=(performance.now()%160<60)?0:1;
+   /* torque converter: soft take-up below walking pace on automatics */
+   if(ice&&/auto|CVT/i.test(drv)&&v<2)r*=0.75+0.125*v;
+   /* EV: constant torque to base speed, then power falls; battery limits at low charge and when hot */
+   if(!ice&&en.kwh){const soc=G.soc??1;r*=soc<0.1?0.55:soc<0.2?0.8:1;X.batT=(X.batT??25)+(r*v*0.0004-(X.batT-25)*0.002)*dt*60;if(X.batT>55)r*=0.75}}
+  else if(r<0){
+   /* rotating wheels and driveline: ~4% more to stop. Pads: cold bite less, wet discs grab late */
+   const bias=sp.style==='coupe'?0.62:0.7;X.bF+=(-r*v*bias*0.11)*dt;X.bR+=(-r*v*(1-bias)*0.11)*dt;
+   const pad=X.bF<60?0.92:1,wet=WX.mu<0.8?1-0.25*Math.max(0,1-X.wetB):1;X.wetB=Math.min(1,X.wetB+dt*0.6*(-r>2?1:0));r*=pad*wet/1.04}
+  if(r<0.3&&ice&&R.gear>0)r-=0.15*(R.gearN-R.gear+1)/R.gearN*(v>3?1:0); /* engine braking, stronger in low gears */
+  X.bF-=(X.bF-temp)*(0.012+v*0.0012)*dt;X.bR-=(X.bR-temp)*(0.015+v*0.0013)*dt;X.wetB=WX.mu<0.8?Math.max(0,X.wetB-dt*0.05):1;
+  /* rolling resistance with speed and pressure */
+  r-=(0.0005*v*v/100+Math.max(0,1-X.press)*0.05)*(r>0?1:0);
+  /* fuel weight */
+  if(ice&&en.tankL){const kg=en.kg||1600,fuelKg=en.tankL*0.74*(G.soc??1);if(r>0)r*=(kg)/(kg-en.tankL*0.74+fuelKg)}
+  /* tyre temperatures: surface reacts fast to slip, the core follows slowly; pressure follows the core */
+  const work=(Math.abs(R.ay)+Math.abs(R.ax))*v*(1+3*(R.spin+R.slide+R.lock));X.sT+=(work*0.004-(X.sT-X.cT)*0.15-(X.sT-temp)*0.01*(1+v/30))*dt;X.cT+=((X.sT-X.cT)*0.05-(X.cT-temp)*0.004)*dt;
+  R.tT=X.cT*0.6+X.sT*0.4;X.press=1+(X.cT-20)*0.0025;
+  /* loose surfaces leave gravel in the tread, which clears over ~100 m of asphalt */
+  if(/gravel|dirt/.test(G.surface||''))X.gravel=Math.min(1,X.gravel+dt*0.5);else X.gravel=Math.max(0,X.gravel-v*dt/100);
+  /* blowout: very hot or bald tyres */
+  if(X.blown<0&&(R.tT>140||R.wear>0.97)&&Math.random()<dt*0.02){X.blown=Math.floor(Math.random()*4);G.status='💥 Tyre blowout!'}
+  if(X.blown>=0)r=Math.min(r,Math.max(0,(15-v)*0.5));
+  /* slip curve per tyre type */
+  const C=CURVE[tyreType(sp)];R.alpha=R.util<1?C.peak*(1-Math.sqrt(Math.max(0,1-R.util))):C.peak+(R.util-1)*20;if(R.slide>0)r-=R.slide*C.fall*G0*0.5;
+  /* road detail: paint stripes / manhole covers (hash along the route), black ice on bridges */
+  X.paint=hash(Math.floor(e.s/7))<0.12;try{X.bridge=!!(R.way&&R.way.hts)}catch(err){}
+  /* crests: vertical curvature unloads the tyres (and launches the car if it drops below 0 g) */
+  try{const y0=routeY(e.s-6),y1=routeY(e.s),y2=routeY(e.s+6),k=(y0-2*y1+y2)/36,gv=-k*v*v/G0;X.crestG=lerp(X.crestG,clamp(gv,-0.6,1.5),0.3);if(gv>1){X.air=Math.min(0.6,X.air+dt*v*0.04)}}catch(err){}
+  /* kerb / pothole damage at speed */
+  if(v>18&&R.road&&R.road(e.s,0)<-0.03&&Math.random()<0.02)X.dmg=Math.min(1,X.dmg+0.1);
+  /* rollover threshold: track ÷ (2 × cg height) */
+  const ssf=(sp.W||1.8)*0.85/(2*(sp.H||1.45)*0.42),tipT=Math.abs(R.ay)/G0/ssf;X.tip=lerp(X.tip,tipT>0.8?Math.min(1,(tipT-0.8)*3)*Math.sign(R.ay):0,0.2);
+  /* data log, ~5 Hz */
+  X.n=(X.n||0)+1;if(X.n%12===0){X.log.push([+(G.ego.s|0),+v.toFixed(2),+r.toFixed(2),+(R.ay||0).toFixed(2),+R.alpha.toFixed(1),Math.round(R.tT),Math.round(X.bF),R.gear,G.surface||'',+X.press.toFixed(3)]);if(X.log.length>20000)X.log.shift();
+   X.trace.push([v,Math.max(0,r),Math.max(0,-r),R.slide+R.spin+R.lock]);if(X.trace.length>150)X.trace.shift()}
+  return r};
+ /* which way is under the car (for bridges), from REAL's surface sampling */
+ const _sa=window.surfAt;if(_sa)window.surfAt=function(x,z){const r=_sa(x,z);const e=game&&game.ego;if(!e||Math.hypot(x-e.x,z-e.z)>3)return r; /* only the ego's own lookup decides the bridge flag */try{let best=null,bd=1e9;for(const T of TILES.values())for(const w of T.ways){if(!w.hts)continue;const P=w.pts;for(let i=0;i<P.length-1;i++){const a=P[i],b=P[i+1],dx=b[0]-a[0],dz=b[1]-a[1],l2=dx*dx+dz*dz||1,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/l2,0,1),ex=a[0]+dx*t-x,ez=a[1]+dz*t-z,d=ex*ex+ez*ez;if(d<bd){bd=d;best=w}}}R.way=bd<64?best:null}catch(e){}return r};
+ addEventListener('keydown',ev=>{if((ev.key==='l'||ev.key==='L')&&ev.shiftKey&&X.log.length){const csv='s_m,v_ms,acc_ms2,lat_ms2,slip_deg,tyre_C,brake_C,gear,surface,pressure\n'+X.log.map(r=>r.join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='autodrive-telemetry.csv';a.click()}});
+ /* glowing discs, head motion, tip-up, flight over crests, truck wake; telemetry extras */
+ let glowM=null,camSave=null,tipA=null,wakeT=0;
+ MODS.push({id:'realism2',
+  start(){Object.assign(X,{sT:WX.temp??18,cT:WX.temp??18,press:1,gravel:0,dmg:0,blown:-1,bF:40,bR:40,wetB:1,boost:0,crestG:0,air:0,tip:0,log:[],trace:[]});X.winter=(()=>{try{return (WX.temp??18)<5||/snow|alpine|tundra/i.test(JSON.stringify(game.bio||''))}catch(e){return false}})()},
+  preRender(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh||!G.spec)return;const e=G.ego,m=e.mesh,sp=G.spec;if(sp.hyper||sp.aegis||sp.omni)return;
+   /* brake discs glow above ~450 °C (a dim red light on the front wheels' inner side) */
+   const W=m.userData.wheels||[];if(X.bF>450){if(!glowM)glowM=new THREE.MeshBasicMaterial({color:0xff3010,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});glowM.opacity=Math.min(0.8,(X.bF-450)/300);
+    for(const w of W)if(w.front&&w.spin&&!w.glow){const d=new THREE.Mesh(new THREE.CircleGeometry(sp.wr*0.55,24),glowM);d.position.z=-Math.sign(w.piv.position.z||1)*0.06;w.spin.add(d);w.glow=d}}else if(glowM)glowM.opacity=0;
+   /* rollover tip-up and flight over crests */
+   tipA={m,r:X.tip*0.12,y:X.air*0.15};m.rotateX(tipA.r);m.position.y+=tipA.y;X.air=Math.max(0,X.air-0.03);
+   /* truck wake: a buffet when a big vehicle passes close by */
+   for(const o of G.agents||[]){if(!o.spec||!(o.spec.L>8)||o.x==null)continue;const d=Math.hypot(o.x-e.x,o.z-e.z);if(d<6&&Math.abs((o.v||0)-e.v)>5)wakeT=0.6}
+   wakeT=Math.max(0,wakeT-1/60);
+   /* driver's head: leans against the g-forces, buzzes on rough roads and in a truck's wake */
+   if(G.cam==='in'){const s=Math.sin(e.head||0),c=Math.cos(e.head||0),lon=clamp(-(R.ax||0)*0.006,-0.05,0.05),lat=clamp((R.ay||0)*0.005,-0.05,0.05),bz=(/gravel|dirt|sett/.test(G.surface||'')?0.004:0.001)*Math.min(1,e.v/10)+wakeT*0.01,t=performance.now();
+    const dx=c*lon+s*lat+Math.sin(t*0.09)*bz,dz=-s*lon+c*lat+Math.cos(t*0.07)*bz,dy=Math.sin(t*0.11)*bz;camSave=[dx,dy,dz];camera.position.x+=dx;camera.position.y+=dy;camera.position.z+=dz}
+   /* telemetry extras when the panel (G) is open */
+   const tel=[...document.querySelectorAll('canvas')].find(c=>c.width===440&&c.height===380&&c.style.display!=='none'&&c.style.position==='fixed');if(tel){const x=tel.getContext('2d');x.save();x.scale(2,2);
+    const T=X.trace,x0=125,y0=105,w=90,h=18;x.fillStyle='#ffffff10';x.fillRect(x0,y0,w,h);const line=(k,col,sc)=>{x.strokeStyle=col;x.beginPath();T.forEach((p,i)=>{const px=x0+i/150*w,py=y0+h-clamp(p[k]*sc,0,h);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()};line(0,'#cfd8e3',0.4);line(1,'#4be38a',3);line(2,'#ff5040',3);line(3,'#ffb000',15);
+    x.font='600 7px system-ui';x.fillStyle='#cfd8e3';x.fillText(`P ${(X.press*2.3).toFixed(2)} bar · core ${Math.round(X.cT)}° · surf ${Math.round(X.sT)}°${X.blown>=0?' · BLOWOUT':''}${X.gravel>0.1?' · gravel':''}`,8,174);
+    x.fillText(`brakes F ${Math.round(X.bF)}° R ${Math.round(X.bR)}° · ρ ${X.rho.toFixed(2)} · tip ${Math.round(Math.abs(X.tip)*100)}% · Shift+L log`,8,183);
+    for(let i=0;i<4;i++){const px=125+(i%2)*40,py=26+Math.floor(i/2)*40;const tt=R.tT+(i<2?6:0)+(X.blown===i?60:0),hue=clamp(220-(tt-20)*2,0,220);x.strokeStyle=`hsl(${hue},90%,55%)`;x.lineWidth=2;x.strokeRect(px,py,30,30);x.lineWidth=1}x.restore()}},
+  postRender(){if(tipA){tipA.m.position.y-=tipA.y;tipA.m.rotateX(-tipA.r);tipA=null}if(camSave){camera.position.x-=camSave[0];camera.position.y-=camSave[1];camera.position.z-=camSave[2];camSave=null}}});
 })();
 </script>
 <script>/* mods/zz-lightguard.js */
