@@ -11952,6 +11952,45 @@ float rwF(vec2 p){return rwN(p)*0.5+rwN(p*2.03)*0.25+rwN(p*4.1)*0.125;}`;
  MODS.push({id:'roadwear',frame(){const on=!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab;U.value=on?1:0}});
 })();
 </script>
+<script>/* mods/99y-powerlines.js */
+/* Graphics+ 6: wooden utility poles with cross-arms and insulators every ~40 m along the roadside of your route,
+   strung with three sagging wires, on ordinary streets (not motorways or service lanes). Built in a window
+   around the car and rebuilt as you go; one instanced mesh per part plus one line set for the wires. */
+(function(){
+ const MAXP=40,SP=40,BACK=120,AHEAD=1400;
+ const poleM=new THREE.MeshLambertMaterial({color:0x5a4632}),armM=new THREE.MeshLambertMaterial({color:0x4a3a2a}),insM=new THREE.MeshLambertMaterial({color:0x6f8a7a}),txM=new THREE.MeshLambertMaterial({color:0x8a9096});
+ const poles=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.11,0.15,10,7).translate(0,5,0),poleM,MAXP);
+ const arms=new THREE.InstancedMesh(new THREE.BoxGeometry(0.12,0.12,2.4).translate(0,9.3,0),armM,MAXP);
+ const ins=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.05,0.05,0.18,6),insM,MAXP*3);
+ const tx=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.28,0.28,0.9,10).translate(0.32,7.6,0),txM,MAXP);
+ const wg=new THREE.BufferGeometry(),wpos=new Float32Array(MAXP*3*8*2*3);wg.setAttribute('position',new THREE.BufferAttribute(wpos,3));
+ const wires=new THREE.LineSegments(wg,new THREE.LineBasicMaterial({color:0x1a1a1a}));wires.frustumCulled=false;
+ [poles,arms,ins,tx].forEach(m=>{m.castShadow=true;m.frustumCulled=false;m.count=0});
+ const grp=new THREE.Group();grp.add(poles,arms,ins,tx,wires);let added=false,builtAt=-1e9,route=null;
+ const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),Y=new THREE.Vector3(0,1,0),V=new THREE.Vector3(),S1=new THREE.Vector3(1,1,1);
+ const okRoad=s=>{try{const R=game.route,i=routeLLnh(s)[2],n=NODEINFO.get(R.nodes[i])||{},hw=n.hw||'';return !/^(motorway|trunk)(_link)?$|^(service|track|path|footway|cycleway)$/.test(hw)}catch(e){return false}};
+ function half(s){let l=1;try{l=window.LANES?LANES.count(s):1}catch(e){}return l*3.6*(routeOnewayAt(s)?0.5:1)+0.4}
+ function build(){const G=game,e=G.ego,R=G.route;let n=0,ni=0,wi=0;const tops=[];
+  const s0=Math.max(0,Math.ceil((e.s-BACK)/SP)*SP);
+  for(let s=s0;s<Math.min(R.total,e.s+AHEAD)&&n<MAXP;s+=SP){
+   if(!okRoad(s)){tops.push(null);continue}
+   const off=half(s)+2.6,p=routeXZ(s,off),q=routeXZ(Math.min(R.total,s+2),off);const y=groundY(p[0],p[1]);if(!isFinite(y)){tops.push(null);continue}
+   const yaw=Math.atan2(-(q[1]-p[1]),q[0]-p[0]);Q.setFromAxisAngle(Y,yaw);
+   M.compose(V.set(p[0],y,p[1]),Q,S1);poles.setMatrixAt(n,M);arms.setMatrixAt(n,M);
+   const c=Math.cos(yaw),sn=Math.sin(yaw),pts=[];for(const k of [-1.05,0,1.05]){const lx=p[0]+sn*k,lz=p[1]+c*k;ins.setMatrixAt(n*3+pts.length,M.compose(V.set(lx,y+9.45,lz),Q,S1));pts.push([lx,y+9.55,lz])}
+   tops.push(pts);n++}
+  /* sagging wire spans between consecutive poles (8 segments each) */
+  for(let i=1;i<tops.length;i++){const a=tops[i-1],b=tops[i];if(!a||!b)continue;for(let w=0;w<3;w++){const A=a[w],B=b[w];
+    for(let k=0;k<8;k++){const t0=k/8,t1=(k+1)/8;for(const t of [t0,t1]){const sag=Math.sin(Math.PI*t)*0.9;wpos[wi++]=A[0]+(B[0]-A[0])*t;wpos[wi++]=A[1]+(B[1]-A[1])*t-sag;wpos[wi++]=A[2]+(B[2]-A[2])*t}}}}
+  poles.count=arms.count=n;ins.count=n*3;let tc=0;for(let i=0;i<n;i++)if(i%4===1){poles.getMatrixAt(i,M);tx.setMatrixAt(tc++,M)}tx.count=tc;
+  [poles,arms,ins,tx].forEach(m=>m.instanceMatrix.needsUpdate=true);wg.setDrawRange(0,wi/3);wg.attributes.position.needsUpdate=true;builtAt=e.s;route=R}
+ MODS.push({id:'powerlines',
+  start(){if(!added){scene.add(grp);added=true}builtAt=-1e9;route=null},
+  disable(){grp.visible=false},
+  frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego)return;const on=(!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab)&&!G.fast&&(G.ego.v||0)<90;grp.visible=on;if(!on)return;
+   if(route!==G.route||Math.abs(G.ego.s-builtAt)>200){try{build()}catch(err){}}}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
