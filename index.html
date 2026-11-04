@@ -5501,8 +5501,18 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
 (function(){
  window.PARKQ=[];const POOL=[],MAX=36,PER=8,R=180;let tpl=null,chk=0,scanI=0,PRUNE=0;const ZERO=new THREE.Matrix4().makeScale(0,0,0),_m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_v=new THREE.Vector3(),_s=new THREE.Vector3(1,1,1),UP=new THREE.Vector3(0,1,0);
  const _reb=window.rebase;window.rebase=function(){PARKQ.length=0;for(const p of POOL){hide(p);p.q=null}return _reb.apply(this,arguments)};
+ /* WebGPU three.js compiles a separate shader for every InstancedMesh (≈240 here, twice each with shadows: seconds of
+    freezing). In WebGPU mode each part is instead PER plain meshes sharing the part's geometry and material, behind the
+    same setMatrixAt / instanceMatrix / count calls, so they share compiled shaders with every other car. */
+ function plainPool(geo,mat){const g=new THREE.Group(),ms=[];g.isPlainPool=true;let shadow=false,recv=false;
+  for(let k=0;k<PER;k++){const m=new THREE.Mesh(geo,mat);m.matrixAutoUpdate=false;m.visible=false;g.add(m);ms.push(m)}
+  g.setMatrixAt=(k,M)=>{const m=ms[k];m.matrix.copy(M);m.matrixWorldNeedsUpdate=true;m.visible=M.determinant()!==0};
+  g.instanceMatrix={needsUpdate:false};g.count=0;
+  Object.defineProperty(g,'castShadow',{get:()=>shadow,set:v=>{shadow=v;for(const m of ms)m.castShadow=v}});
+  Object.defineProperty(g,'receiveShadow',{get:()=>recv,set:v=>{recv=v;for(const m of ms)m.receiveShadow=v}});
+  return g}
  function templates(){if(tpl)return tpl;tpl=[];for(let i=0;i<8;i++){const sp=TRAFFIC_SPECS[i%TRAFFIC_SPECS.length];const m=buildCar(sp,TCOLS[(i*5)%TCOLS.length]);if(window.PERF)PERF.bake(m);m.updateMatrixWorld(true);const parts=[];
-   m.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||Array.isArray(o.material))return;const im=new THREE.InstancedMesh(o.geometry,o.material,PER);im.castShadow=o.castShadow;im.receiveShadow=true;im.frustumCulled=false;for(let k=0;k<PER;k++)im.setMatrixAt(k,ZERO);im.instanceMatrix.needsUpdate=true;im.count=0; /* only slots in use are drawn */scene.add(im);parts.push({im,local:o.matrixWorld.clone()})});
+   m.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||Array.isArray(o.material))return;const im=window.__GPU?plainPool(o.geometry,o.material):new THREE.InstancedMesh(o.geometry,o.material,PER);im.castShadow=o.castShadow;im.receiveShadow=true;im.frustumCulled=false;for(let k=0;k<PER;k++)im.setMatrixAt(k,ZERO);im.instanceMatrix.needsUpdate=true;im.count=0; /* only slots in use are drawn */scene.add(im);parts.push({im,local:o.matrixWorld.clone()})});
    tpl.push({sp,parts,used:new Array(PER).fill(false)})}return tpl}
  function fit(T){const top=T.used.lastIndexOf(true)+1;for(const pt of T.parts)pt.im.count=top}
  function show(p){const T=tpl[p.t];fit(T);_q.setFromAxisAngle(UP,p.h);_v.set(p.q.x,p.q.y-0.025,p.q.z);_m.compose(_v,_q,_s);for(const pt of T.parts){pt.im.setMatrixAt(p.k,new THREE.Matrix4().multiplyMatrices(_m,pt.local));pt.im.instanceMatrix.needsUpdate=true}}
