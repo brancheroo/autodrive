@@ -12281,7 +12281,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    when paused), the sky (gradient, sun, Mie glow, three cloud decks), living water, snow cover, worn roads and scuffed
    lane paint, the smoke/spray/debris/dust particles, and soft sun shadows. Same ✨ FX switches as WebGL. */
 (function(){
- if(!window.__GPU||!THREE.TSL)return;
+ if(!window.__GPU||!THREE.TSL||/[?&]gpufx=off/.test(location.search))return;
  const L=THREE.TSL;
  const {Fn,uniform,float,vec2,vec3,vec4,uv,pass,renderOutput,mix,smoothstep,step,max,min,clamp,dot,length,exp,pow,sin,cos,fract,floor,abs,normalize,
   positionLocal,positionWorld,normalWorld,normalView,materialColor,materialRoughness,materialEmissive,transformNormalToView,instancedDynamicBufferAttribute,
