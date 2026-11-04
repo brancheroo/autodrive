@@ -8345,8 +8345,12 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
     and line the inside of the new roof with a headliner shaped from the shell itself */
  function fitInterior(g,I,S){g.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(g.matrixWorld).invert(),bb=new THREE.Box3();let hl=null;
   I.traverse(o=>{if(!o.isMesh||!o.visible)return;bb.setFromObject(o).applyMatrix4(inv);let lim=Infinity;
-   for(const x of [bb.min.x,(bb.min.x+bb.max.x)/2,bb.max.x])for(const z of [bb.min.z,(bb.min.z+bb.max.z)/2,bb.max.z])lim=Math.min(lim,roofAt(S,(x+S.L/2)/S.L,z)-0.035);
-   const over=bb.max.y-lim;if(over<=0)return;const sz=bb.getSize(new THREE.Vector3());
+   const sz=bb.getSize(new THREE.Vector3()),cx=(bb.min.x+bb.max.x)/2,cz=(bb.min.z+bb.max.z)/2;
+   /* roof over the part's centre line only: the box corners of wide parts (dash, seats, door cards) sit outside the tapered
+      sides, where the "roof" is near the sill, and hid the whole dashboard and both front seats */
+   for(const x of [bb.min.x+sz.x*0.25,cx,bb.max.x-sz.x*0.25])lim=Math.min(lim,roofAt(S,(x+S.L/2)/S.L,Math.min(Math.abs(cz),0.25)*Math.sign(cz))-0.035);
+   const over=bb.max.y-lim;if(over<=0)return;
+   if(over<0.18&&!(o.material&&o.material.side===THREE.DoubleSide)&&sz.y>over*2){o.position.y-=over;return} /* pokes a little: lower it to fit */
    if(sz.y<0.4&&sz.x<0.6&&sz.z<0.6&&o.parent!==I&&!(o.material&&o.material.side===THREE.DoubleSide)){o.position.y-=over} /* seat parts (headrests): drop to fit */
    else if(sz.y<0.4&&o.parent===I&&!(o.material&&o.material.side===THREE.DoubleSide)){o.visible=false;o.userData.inOnly=0} /* loose cabin bits (visors…) with nowhere to go */ /* headrests, grab handles, visors… */
    else{o.visible=false;o.userData.inOnly=0; /* the camera re-shows inOnly parts in the interior view */if(!hl&&o.material&&o.material.side===THREE.DoubleSide)hl=o.material}}); /* headliner, roof pillars */
