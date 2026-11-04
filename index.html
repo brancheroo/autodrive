@@ -12370,10 +12370,10 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   boosting=true;const keep=lights.map(l=>l.intensity);for(const l of lights)l.intensity*=Math.PI;try{return R1.call(this,sc,cam)}finally{lights.forEach((l,i)=>{l.intensity=keep[i]});boosting=false;if(want)SM.needsUpdate=false}};
  /* start-of-trip warm-up (called while the loading screen is still up): every material around the start is compiled
     now, with no per-frame budget, while the camera turns a quarter turn per frame so all four directions get drawn.
-    Finishes once no build has happened for 400 ms (at most 4 s). */
+    Finishes once no build has happened for 400 ms (at most 2 s). */
  const UPW=new THREE.Vector3(0,1,0);let warmK=0;
  window.gpuWarm=async function(){BB.warm=true;warmK=0;const t0=performance.now();let lastN=BB.nb,quiet=performance.now();
-  while(performance.now()-t0<4000){await new Promise(r=>requestAnimationFrame(r));if(BB.nb!==lastN){lastN=BB.nb;quiet=performance.now()}else if(performance.now()-quiet>400&&warmK>8)break}
+  while(performance.now()-t0<2000){await new Promise(r=>requestAnimationFrame(r));if(BB.nb!==lastN){lastN=BB.nb;quiet=performance.now()}else if(performance.now()-quiet>400&&warmK>8)break}
   BB.warm=false;window.GPULOG&&GPULOG.log('warmDone',Math.round(performance.now()-t0),BB.nb)};
  MODS.push({id:'webgpu',
   start(){scrub()},
