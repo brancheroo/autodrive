@@ -4107,6 +4107,7 @@ $('go').onclick=async()=>{
   {const [fx,fy]=terrTileOf(addrA.lat,addrA.lon);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)loadTerr(Math.floor(fx)+i,Math.floor(fy)+j)}
   const k=tileKey(addrA.lat,addrA.lon);await Promise.race([fetchTile(k),sleep(20000)]);await waitFor(()=>tileTerrReady(k),8000);
   game=null;startGame(selCar,selColor,addrA,addrB,route2);buildTile(k);
+  if(window.__GPU&&game){$('loadTxt').textContent='Preparing graphics…';const wasP=game.paused;game.paused=true;await sleep(1200);if(game){game.paused=wasP;if(window.GPULOG)GPULOG.log('loadScreenHidden')}} /* WebGPU compiles shaders and uploads textures during the first second of a trip: let that happen behind the loading screen, with the car held still */
   $('load').style.display='none'}
  catch(err){$('load').style.display='none';$('msg').textContent='Could not start: '+err.message}};
 renderCars();renderInfo();(document.readyState==='loading'?addEventListener('DOMContentLoaded',refreshShowcar):refreshShowcar());socPreview(); /* showroom car after the feature modules (bobblehead etc.) have loaded */
