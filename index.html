@@ -15,6 +15,7 @@
    T.sRGBEncoding=3001;T.LinearEncoding=3000;if(!T.ShaderChunk)T.ShaderChunk={};if(!T.UniformsUtils)T.UniformsUtils={merge:a=>Object.assign({},...a),clone:u=>Object.assign({},u)};
    if(!('encoding' in T.Texture.prototype))Object.defineProperty(T.Texture.prototype,'encoding',{get(){return this.colorSpace===T.SRGBColorSpace?3001:3000},set(v){this.colorSpace=v===3001?T.SRGBColorSpace:T.NoColorSpace},configurable:true});
    if(M.InstanceNode){const su=M.InstanceNode.prototype.setup;M.InstanceNode.prototype.setup=function(b){if(this.instanceMatrix&&this.instanceMatrix.count>1000)this.count=Math.max(this.count,this.instanceMatrix.count);return su.call(this,b)}} /* r175 picks a 64 KB uniform buffer from the count at first draw; the game's instanced meshes start at 0 and grow to 60,000, so decide by capacity */
+   {const sg=new T.Sprite().geometry;sg.dispose=function(){}} /* every Sprite shares one geometry; the game's cleanup disposes it, which on WebGPU destroys the buffer all other sprites still use */
    window.__GPU={WebGPURenderer:M.WebGPURenderer,rev:M.REVISION};
   const out=html.replace(/<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.149\.0\/build\/three\.min\.js"><\/script>/,'');
   if(document.readyState!=='complete')await new Promise(r=>addEventListener('load',r,{once:true})); /* let the inert page finish loading first, so the game's own load checks run straight away */
