@@ -12426,7 +12426,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   if(k.ao){let oc=float(0);const r=clamp(float(1.2).div(z0),0.004,0.03),jit=hsh(u,12.9898,78.233,43758.5453).mul(0.785);
    for(let i=0;i<8;i++){const an=jit.add(i*0.785),o=vec2(cos(an),sin(an)).mul(r).mul(0.5+0.5*((i*0.37)%1));const zs=lz(u.add(o.mul(vec2(px.x.div(px.y),1)))),dz=z0.sub(zs);
     oc=oc.add(step(z0.mul(0.04),dz).mul(float(1).sub(smoothstep(0,z0.mul(0.05).add(1.5),dz))))}
-   c=c.mul(float(1).sub(oc.div(8).mul(0.55).mul(step(z0,cameraFar.mul(0.5)))))}
+   c=c.mul(float(1).sub(oc.div(8).mul(0.3).mul(smoothstep(2.5,7,z0)).mul(step(z0,cameraFar.mul(0.5)))))} /* gentle, and faded out inside the first few metres: the cab interior was going black */
   let bt=null;
   if((k.bloom||k.rays)&&GA.bloom){const b=GA.bloom(tex,0.22,0.3,k.rays&&!k.bloom?1.1:1.0) /* soft: only real highlights (sun, lamps, glints) glow */;bt=b.getTextureNode?b.getTextureNode():b;if(k.bloom)c=c.add(b.rgb)}
   if(k.rays||k.flare){const sp2=PU.sun.xy,asp=px.y.div(px.x),r=length(u.sub(sp2).mul(vec2(asp,1)));
