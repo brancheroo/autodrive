@@ -12351,6 +12351,12 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    BE.draw=function(ro,info){const pd=this.get(ro.pipeline);if(!pd||!pd.pipeline){BB.pipeWait++;return}return DR.call(this,ro,info)}}
   if(!BB.thook&&this._textures&&this._textures.updateTexture){BB.thook=true;const TX=this._textures,UT=TX.updateTexture;BB.texMs=0;
    TX.updateTexture=function(t){const t0=performance.now();try{return UT.apply(this,arguments)}finally{const d=performance.now()-t0;BB.texMs+=d;if(d>2&&window.GPULOG)GPULOG.log('texUpload',Math.round(d),t&&t.image&&(t.image.width+'x'+t.image.height),t&&t.name||'',t&&t.generateMipmaps?'mips':'')}}}
+  if(!BB.tdefer&&this.backend&&this.backend.updateTexture){BB.tdefer=true;const BE=this.backend,BUT=BE.updateTexture;BB.texDeferred=0;let tf=-1,tms=0;
+   /* large image uploads (2048² facade/ground textures, ~10–30 ms each with mipmaps) are spread out: once a frame has
+      spent 6 ms uploading, further big images wait for a later frame (the surface shows untextured for that moment) */
+   BE.updateTexture=function(tex,opt){if(tf!==BB.fr){tf=BB.fr;tms=0}const im=tex&&tex.image,big=im&&im.width*im.height>=1048576&&!tex.isRenderTargetTexture&&!tex.isDepthTexture;
+    if(big&&tms>6){BB.texDeferred++;window.GPULOG&&GPULOG.log('texDefer',im.width+'x'+im.height);requestAnimationFrame(()=>{tex.needsUpdate=true});return}
+    const t0=performance.now();try{return BUT.call(this,tex,opt)}finally{tms+=performance.now()-t0}}}
   if(!BB.hooked&&this._nodes){BB.hooked=true;const N=this._nodes,G=N.getForRender;BB.evict=0;
    const C=N.nodeBuilderCache;C.delete=function(){BB.evict++;return false};const PL=this._pipelines;if(PL){PL._releasePipeline=function(){BB.evict++};PL._releaseProgram=function(){}}
    N.getForRender=function(ro){const t0=performance.now();try{return G.apply(this,arguments)}finally{const d=performance.now()-t0;if(d>0.3){BB.ms+=d;BB.nb++;
