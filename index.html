@@ -11726,7 +11726,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    graph, an A/B compare key, a photo mode and a benchmark, with a ✨ FX panel that toggles each one.
    Only the main scene render is intercepted; sensor panels and mirrors render normally. */
 (function(){
- const DEF={fxaa:1,bloom:1,flare:1,rays:1,grade:'cinematic',vignette:1,grain:0,ca:0,sharpen:1,speedblur:1,haze:1,exposure:1,shake:1,fov:1,graph:0,on:1};
+ const DEF={ao:1,dof:1,fxaa:1,bloom:1,flare:1,rays:1,grade:'cinematic',vignette:1,grain:0,ca:0,sharpen:1,speedblur:1,haze:1,exposure:1,shake:1,fov:1,graph:0,on:1};
  let S={...DEF};try{S={...DEF,...JSON.parse(localStorage.getItem('gfxplus')||'{}')}}catch(e){}
  const save=()=>{try{localStorage.setItem('gfxplus',JSON.stringify(S))}catch(e){}};
  const GP={S,ab:false,ms:[],bench:null};window.GFXPLUS=GP;
@@ -11741,11 +11741,12 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   fragmentShader:'uniform sampler2D t;uniform vec2 d;varying vec2 vU;void main(){vec3 c=texture2D(t,vU).rgb*0.227;c+=(texture2D(t,vU+d*1.385).rgb+texture2D(t,vU-d*1.385).rgb)*0.316;c+=(texture2D(t,vU+d*3.23).rgb+texture2D(t,vU-d*3.23).rgb)*0.07;gl_FragColor=vec4(c,1.);}'});
  const comp=new THREE.ShaderMaterial({vertexShader:VS,depthTest:false,depthWrite:false,
   uniforms:{t:{value:null},b:{value:null},px:{value:new THREE.Vector2()},time:{value:0},sun:{value:new THREE.Vector3(0.5,0.5,0)},sunCol:{value:new THREE.Color(1,0.9,0.7)},
-   fxaa:{value:1},bloom:{value:1},flare:{value:1},rays:{value:1},vig:{value:1},grain:{value:0},ca:{value:0},sharp:{value:1},spd:{value:0},haze:{value:0},expo:{value:1},
+   dep:{value:null},nf:{value:new THREE.Vector2(0.1,1000)},ao:{value:0},dof:{value:0},fxaa:{value:1},bloom:{value:1},flare:{value:1},rays:{value:1},vig:{value:1},grain:{value:0},ca:{value:0},sharp:{value:1},spd:{value:0},haze:{value:0},expo:{value:1},
    lift:{value:new THREE.Vector3()},gain:{value:new THREE.Vector3(1,1,1)},sat:{value:1},contrast:{value:1}},
-  fragmentShader:`uniform sampler2D t,b;uniform vec2 px;uniform float time,fxaa,bloom,flare,rays,vig,grain,ca,sharp,spd,haze,expo,sat,contrast;uniform vec3 sun,sunCol,lift,gain;varying vec2 vU;
+  fragmentShader:`uniform sampler2D t,b,dep;uniform vec2 px,nf;uniform float ao,dof,time,fxaa,bloom,flare,rays,vig,grain,ca,sharp,spd,haze,expo,sat,contrast;uniform vec3 sun,sunCol,lift,gain;varying vec2 vU;
 float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
 float lu(vec3 c){return dot(c,vec3(0.299,0.587,0.114));}
+float lz(vec2 u){float d=texture2D(dep,u).x;return nf.x*nf.y/(nf.y-d*(nf.y-nf.x));}
 vec3 fx(vec2 u){vec3 rgbM=texture2D(t,u).rgb;if(fxaa<0.5)return rgbM;
  vec3 nw=texture2D(t,u+vec2(-1.,-1.)*px).rgb,ne=texture2D(t,u+vec2(1.,-1.)*px).rgb,sw=texture2D(t,u+vec2(-1.,1.)*px).rgb,se=texture2D(t,u+vec2(1.,1.)*px).rgb;
  float lNW=lu(nw),lNE=lu(ne),lSW=lu(sw),lSE=lu(se),lM=lu(rgbM),mn=min(lM,min(min(lNW,lNE),min(lSW,lSE))),mx=max(lM,max(max(lNW,lNE),max(lSW,lSE)));
@@ -11757,6 +11758,9 @@ void main(){vec2 u=vU;
  if(spd>0.01){c=vec3(0.);for(int i=0;i<6;i++){float f=float(i)/6.;c+=fx(u-cc*f*spd*0.06);}c/=6.;}else c=fx(u);
  if(ca>0.){float a=0.0025*ca*length(cc)*2.;c.r=mix(c.r,texture2D(t,u+cc*a).r,0.85);c.b=mix(c.b,texture2D(t,u-cc*a).b,0.85);}
  if(sharp>0.){vec3 s=texture2D(t,u+vec2(px.x,0.)).rgb+texture2D(t,u-vec2(px.x,0.)).rgb+texture2D(t,u+vec2(0.,px.y)).rgb+texture2D(t,u-vec2(0.,px.y)).rgb;c+=(c-s*0.25)*0.35*sharp;}
+ float z0=lz(u);
+ if(dof>0.){float zf=lz(vec2(0.5,0.45));float k=clamp(abs(z0-zf)/max(zf,1.)*1.5,0.,1.)*dof;if(k>0.02){vec3 a=vec3(0.);for(int i=0;i<8;i++){float an=float(i)*0.785;a+=texture2D(t,u+vec2(cos(an),sin(an))*px*6.*k).rgb;}c=mix(c,a/8.,k);}}
+ if(ao>0.&&z0<nf.y*0.5){float oc=0.;float r=clamp(1.2/z0,0.004,0.03);for(int i=0;i<8;i++){float an=float(i)*0.785+h(u)*0.785;vec2 o=vec2(cos(an),sin(an))*r*(0.5+0.5*fract(float(i)*0.37));float zs=lz(u+o*vec2(px.x/px.y,1.));float dz=z0-zs;oc+=step(0.04*z0,dz)*(1.-smoothstep(0.,1.5+z0*0.05,dz));}c*=1.-oc/8.*0.55*ao;}
  if(bloom>0.)c+=texture2D(b,u).rgb*0.55*bloom;
  if(sun.z>0.){vec2 sp=sun.xy;float asp=px.y/px.x;vec2 d=(u-sp)*vec2(asp,1.);float r=length(d);
   if(rays>0.){float vis=0.;vec2 st=(sp-u)/12.;vec2 q=u;for(int i=0;i<12;i++){q+=st;vis+=lu(texture2D(b,q).rgb);}c+=sunCol*vis/12.*0.35*rays*sun.z*exp(-r*2.5);c+=sunCol*0.08*sun.z*rays*exp(-r*6.);}
@@ -11767,7 +11771,7 @@ void main(){vec2 u=vU;
  gl_FragColor=vec4(clamp(c,0.,1.),1.);}`});
  const GRADES={neutral:[[0,0,0],[1,1,1],1,1],cinematic:[[0.01,0.012,0.02],[1.03,1,0.95],1.08,1.06],golden:[[0.02,0.01,0],[1.1,1.0,0.85],1.1,1.04],vintage:[[0.04,0.03,0.02],[1.02,0.97,0.85],0.78,0.94],cool:[[0,0.01,0.03],[0.93,1,1.08],1.0,1.05],vivid:[[0,0,0],[1,1,1],1.3,1.1]};
  function ensure(){const v=renderer.getDrawingBufferSize(new THREE.Vector2());if(rtM&&v.x===W&&v.y===H)return;W=v.x;H=v.y;[rtM,rtA,rtB].forEach(r=>r&&r.dispose());
-  rtM=new THREE.WebGLRenderTarget(W,H,{samples:0});rtM.texture.encoding=renderer.outputEncoding;const q=tier()==='ultra'?2:4;rtA=new THREE.WebGLRenderTarget(Math.max(1,W/q|0),Math.max(1,H/q|0));rtB=rtA.clone()}
+  rtM=new THREE.WebGLRenderTarget(W,H,{samples:0});rtM.depthTexture=new THREE.DepthTexture(W,H);rtM.depthTexture.type=THREE.UnsignedIntType;rtM.texture.encoding=renderer.outputEncoding;const q=tier()==='ultra'?2:4;rtA=new THREE.WebGLRenderTarget(Math.max(1,W/q|0),Math.max(1,H/q|0));rtB=rtA.clone()}
  const pass=(m,tgt)=>{fsq.material=m;renderer.setRenderTarget(tgt);renderer.render(fsc,fcam)};
  let want=false,expo=1,lastT=performance.now(),camOff=new THREE.Vector3(),baseFov=null;const sv=new THREE.Vector3();
  const R0=renderer.render.bind(renderer);
@@ -11777,7 +11781,7 @@ void main(){vec2 u=vU;
     blur.uniforms.t.value=rtA.texture;blur.uniforms.d.value.set(1/rtA.width,0);pass(blur,rtB);blur.uniforms.t.value=rtB.texture;blur.uniforms.d.value.set(0,1/rtA.height);pass(blur,rtA)}
    const G=typeof game!=='undefined'?game:null,v=G&&G.ego?G.ego.v||0:0,now=performance.now(),dt=Math.min(0.1,(now-lastT)/1000);lastT=now;
    U.t.value=rtM.texture;U.b.value=rtA.texture;U.px.value.set(1/W,1/H);U.time.value=now/1000%100;
-   U.fxaa.value=S.fxaa?1:0;U.bloom.value=S.bloom?1:0;U.flare.value=S.flare?1:0;U.rays.value=S.rays&&doB?1:0;U.vig.value=S.vignette?1:0;U.grain.value=S.grain?1:0;U.ca.value=S.ca?1:0;U.sharp.value=S.sharpen?1:0;
+   U.dep.value=rtM.depthTexture;U.nf.value.set(cam.near,cam.far);U.ao.value=S.ao?1:0;U.dof.value=S.dof&&(G&&G.paused||GP.photo)?1:0;U.fxaa.value=S.fxaa?1:0;U.bloom.value=S.bloom?1:0;U.flare.value=S.flare?1:0;U.rays.value=S.rays&&doB?1:0;U.vig.value=S.vignette?1:0;U.grain.value=S.grain?1:0;U.ca.value=S.ca?1:0;U.sharp.value=S.sharpen?1:0;
    U.spd.value=S.speedblur?Math.max(0,Math.min(1,(v-35)/120)):0;
    const hot=typeof WX!=='undefined'&&WX&&/clear|sun|hot/i.test(WX.key||'clear');U.haze.value=S.haze&&(hot||G&&G.spec&&(G.spec.aegis||G.spec.rocket))&&v>8?Math.min(1,v/40):0;
    if(typeof sun!=='undefined'&&sun.intensity>0.05){sv.copy(sun.position).sub(sun.target.position).normalize().multiplyScalar(5000).add(cam.position).project(cam);
@@ -11789,7 +11793,7 @@ void main(){vec2 u=vU;
  const gc=document.createElement('canvas');gc.width=180;gc.height=48;gc.style.cssText='position:fixed;right:8px;top:196px;z-index:55;background:#000a;border-radius:6px;display:none;pointer-events:none';document.body.appendChild(gc);const gx=gc.getContext('2d');
  function graph(){gc.style.display=S.graph?'block':'none';if(!S.graph)return;gx.clearRect(0,0,180,48);gx.strokeStyle='#335';gx.beginPath();gx.moveTo(0,48-16.7*1.4);gx.lineTo(180,48-16.7*1.4);gx.stroke();gx.fillStyle='#7fd';GP.ms.forEach((m,i)=>{const h=Math.min(48,m*1.4);gx.fillStyle=m>33?'#f66':m>18?'#fc6':'#7fd';gx.fillRect(i,48-h,1,h)});gx.fillStyle='#ccd';gx.font='10px ui-monospace,monospace';const a=GP.ms.reduce((x,y)=>x+y,0)/Math.max(1,GP.ms.length);gx.fillText(a.toFixed(1)+' ms',4,10)}
  /* panel */
- const ITEMS=[['on','Graphics+ effects'],['fxaa','Anti-aliasing (FXAA)'],['bloom','Bloom on lights'],['rays','Sun rays'],['flare','Lens flare'],['exposure','Auto exposure (tunnels/night)'],['sharpen','Sharpening'],['vignette','Vignette'],['grain','Film grain'],['ca','Chromatic aberration'],['speedblur','Speed motion blur'],['haze','Heat haze'],['shake','Speed / road camera shake'],['fov','Speed field-of-view stretch'],['graph','Frame-time graph'],['lowToo','Also on Low graphics']];
+ const ITEMS=[['on','Graphics+ effects'],['ao','Ambient occlusion (contact shadows)'],['dof','Depth of field when paused / photo'],['fxaa','Anti-aliasing (FXAA)'],['bloom','Bloom on lights'],['rays','Sun rays'],['flare','Lens flare'],['exposure','Auto exposure (tunnels/night)'],['sharpen','Sharpening'],['vignette','Vignette'],['grain','Film grain'],['ca','Chromatic aberration'],['speedblur','Speed motion blur'],['haze','Heat haze'],['shake','Speed / road camera shake'],['fov','Speed field-of-view stretch'],['graph','Frame-time graph'],['lowToo','Also on Low graphics']];
  const btn=document.createElement('div');btn.textContent='✨ FX';btn.title='Graphics+ effects (B = before/after, P = photo, J = benchmark)';btn.style.cssText='position:fixed;right:8px;top:148px;z-index:56;font:11px system-ui;color:#dfe;background:#0009;padding:2px 7px;border-radius:6px;cursor:pointer;display:none';document.body.appendChild(btn);
  const pan=document.createElement('div');pan.style.cssText='position:fixed;right:8px;top:172px;z-index:60;width:240px;max-height:70vh;overflow:auto;background:#0b1118ee;border:1px solid #2a3a4a;border-radius:10px;padding:10px;font:12px system-ui;color:#dde;display:none';document.body.appendChild(pan);
  function draw(){pan.innerHTML='<b>Graphics+</b><div style="opacity:.7;margin:2px 0 6px">B before/after · P photo · J benchmark</div>'+ITEMS.map(([k,l])=>`<label style="display:block;margin:3px 0"><input type=checkbox data-k="${k}" ${S[k]?'checked':''}> ${l}</label>`).join('')+
@@ -11798,8 +11802,8 @@ void main(){vec2 u=vU;
   pan.querySelectorAll('input').forEach(i=>i.onchange=()=>{S[i.dataset.k]=i.checked?1:0;save()});pan.querySelector('select').onchange=e=>{S.grade=e.target.value;save()}}
  btn.onclick=()=>{const o=pan.style.display==='none';pan.style.display=o?'block':'none';if(o)draw()};
  /* photo mode: hide HUD, save a PNG through the full pipeline */
- function photo(){const hid=[];document.querySelectorAll('body > *:not(canvas):not(script)').forEach(el=>{if(el.style.display!=='none'){hid.push([el,el.style.visibility]);el.style.visibility='hidden'}});
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{try{const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='autodrive-photo-'+Date.now()+'.png';document.body.appendChild(a);a.click();a.remove()}catch(e){}setTimeout(()=>hid.forEach(([el,v])=>el.style.visibility=v),400)}))}
+ function photo(){GP.photo=true;setTimeout(()=>GP.photo=false,700);const hid=[];document.querySelectorAll('body > *:not(canvas):not(script)').forEach(el=>{if(el.style.display!=='none'){hid.push([el,el.style.visibility]);el.style.visibility='hidden'}});
+  GP.snap=hid;}
  function bench(){if(GP.benchRun)return;GP.benchRun={t0:performance.now(),n:0,worst:0};const G=typeof game!=='undefined'&&game;if(G)G.status='⏱ Graphics benchmark – 15 s'}
  const preserve=renderer.getContext().getContextAttributes&&renderer.getContext().getContextAttributes().preserveDrawingBuffer;
  addEventListener('keydown',e=>{if(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;const k=e.key.toLowerCase();
@@ -11813,7 +11817,30 @@ void main(){vec2 u=vU;
    if(!G||!G.ego)return;const v=G.ego.v||0;
    if(S.fov&&!GP.ab){const f=Math.max(0,Math.min(14,(v-30)/12));if(f>0.01){camera.fov+=f;GP._fovAdd=f;camera.updateProjectionMatrix()}}
    if(S.shake&&!GP.ab&&v>3){const t=now/1000,k=Math.min(1,v/90)*0.012+(Math.abs(G.ego.susP||0)+Math.abs(G.ego.susR||0))*0.08;camOff.set((Math.sin(t*37)+Math.sin(t*23.3))*k*0.5,(Math.sin(t*41.7)+Math.sin(t*29.1))*k*0.5,0);camera.position.add(camOff)}else camOff.set(0,0,0)},
-  postRender(){if(camOff.lengthSq())camera.position.sub(camOff);if(GP._fovAdd){camera.fov-=GP._fovAdd;camera.updateProjectionMatrix();GP._fovAdd=0}}});
+  postRender(){if(GP.snap&&GP.snapN===undefined)GP.snapN=3;if(GP.snap&&--GP.snapN<=0){const hid=GP.snap;GP.snap=null;GP.snapN=undefined;try{const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='autodrive-photo-'+Date.now()+'.png';document.body.appendChild(a);a.click();a.remove()}catch(e){}setTimeout(()=>hid.forEach(([el,v])=>el.style.visibility=v),300)}if(camOff.lengthSq())camera.position.sub(camOff);if(GP._fovAdd){camera.fov-=GP._fovAdd;camera.updateProjectionMatrix();GP._fovAdd=0}}});
+})();
+</script>
+<script>/* mods/99u-gfxplus2.js */
+/* Graphics+ 2: brake discs that glow orange-red after hard or repeated braking and cool off slowly, and Mach-diamond
+   shock rings inside the rocket exhaust when the boosters fire. Toggled with the ✨ FX panel's master switch. */
+(function(){
+ const ON=()=>!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab;
+ const glowMat=()=>new THREE.MeshBasicMaterial({color:0xff4a10,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+ const diaMat=new THREE.MeshBasicMaterial({color:0xfff4d0,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false});
+ let discs=[],dia=[],heat=0,lastV=0,mesh=null;
+ function setup(){const G=game,ud=G.ego.mesh.userData,wr=G.spec.wr||0.33;mesh=G.ego.mesh;discs=[];dia=[];heat=0;lastV=G.ego.v||0;
+  for(const w of ud.wheels||[]){if(!w.piv)continue;const m=new THREE.Mesh(new THREE.TorusGeometry(wr*0.42,wr*0.12,6,20),glowMat());m.renderOrder=3;w.piv.add(m);discs.push({m,front:!!w.front})}
+  const flames=[];mesh.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&o.material.blending===THREE.AdditiveBlending&&o.geometry&&o.geometry.type==='ConeGeometry'&&o.material.color.getHex()===0xff7a20)flames.push(o)});
+  for(const f of flames){const p=f.geometry.parameters,Lh=p.height,r=p.radius;for(let i=0;i<4;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(r*0.42*(1-i*0.15),10,8),diaMat);d.scale.set(1,0.45,1);d.position.y=Lh*0.5-Lh*(0.12+i*0.2);f.add(d);dia.push(d)}}}
+ function clear(){for(const d of discs){d.m.parent&&d.m.parent.remove(d.m);d.m.geometry.dispose();d.m.material.dispose()}for(const d of dia){d.parent&&d.parent.remove(d);d.geometry.dispose()}discs=[];dia=[];mesh=null}
+ MODS.push({id:'gfxplus2',
+  start(){clear()},disable(){clear()},
+  frame(dt){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh)return;if(G.ego.mesh!==mesh){clear();setup()}
+   const nw=performance.now();dt=Math.min(0.1,(nw-(this._t||nw))/1000)||0.016;this._t=nw;const v=G.ego.v||0,dec=Math.max(0,(lastV-v)/Math.max(dt,1e-3));lastV=v;
+   heat+=dec>2?dec*v*dt/400:0;heat*=Math.exp(-dt*(0.04+v*0.003));heat=Math.min(heat,1.2);
+   const on=ON(),a=on?Math.max(0,Math.min(1,(heat-0.25)*1.4)):0;
+   for(const d of discs){d.m.visible=a>0.01;d.m.material.opacity=a*(d.front?1:0.7);d.m.material.color.setRGB(1,0.25+a*0.35,0.05+a*0.1)}
+   const t=performance.now()/1000;for(const d of dia){const f=d.parent;d.visible=on&&f&&f.visible&&f.material.opacity>0.05;if(d.visible)d.material.opacity=0.7+Math.sin(t*60)*0.2}}});
 })();
 </script>
 <script>/* mods/zz-lightguard.js */
