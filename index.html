@@ -11875,7 +11875,7 @@ void main(){vec2 u=vU;
    SM.pts.visible=SP.pts.visible=DB.pts.visible=on;
    const v=e.v||0,a=(v-lastV)/Math.max(dt,1e-3);lastV=v;acc+=(a-acc)*Math.min(1,dt*5);
    const fx=Math.cos(e.head),fz=-Math.sin(e.head);
-   if(on){const en=window.ENERGY&&ENERGY[sp.id]||{};
+   if(on){const en=typeof ENERGY!=="undefined"&&ENERGY[sp.id]||{};
     if(en.ice&&!G.paused){const thr=Math.max(0,Math.min(1,acc/3)),rate=(3+thr*40)*(v<1?0.6:1);let n=rate*dt+Math.random();n=n|0;
      for(let i=0;i<n;i++){tmp.set(-sp.L/2-0.05,(sp.wr||0.33)*0.55,(Math.random()<0.5?-1:1)*sp.W*0.25);m.localToWorld(tmp);emit(SM,tmp.x,tmp.y,tmp.z,-fx*(1+Math.random())+(Math.random()-0.5)*0.6+fx*v*0.85,0.4+Math.random()*0.5,-fz*(1+Math.random())+(Math.random()-0.5)*0.6+fz*v*0.85,1.2+thr*1.2,0)}}
     const wet=typeof WX!=='undefined'&&(WX.wet||0)>0.2;
