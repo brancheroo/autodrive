@@ -11720,6 +11720,102 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  R.gustK=sp=>clamp((sp.H||1.45)*(sp.L||4.5)/((((typeof ENERGY!=='undefined'&&ENERGY[sp.id])||{}).kg||1600)/1000)/4,0.4,3);
 })();
 </script>
+<script>/* mods/99t-gfxplus.js */
+/* Graphics+ : a post-processing pipeline for the main view (FXAA, bloom, lens flare, sun rays, colour grading, vignette,
+   film grain, chromatic aberration, sharpening, speed blur, heat haze, auto exposure), speed camera effects, a frame-time
+   graph, an A/B compare key, a photo mode and a benchmark, with a ✨ FX panel that toggles each one.
+   Only the main scene render is intercepted; sensor panels and mirrors render normally. */
+(function(){
+ const DEF={fxaa:1,bloom:1,flare:1,rays:1,grade:'cinematic',vignette:1,grain:0,ca:0,sharpen:1,speedblur:1,haze:1,exposure:1,shake:1,fov:1,graph:0,on:1};
+ let S={...DEF};try{S={...DEF,...JSON.parse(localStorage.getItem('gfxplus')||'{}')}}catch(e){}
+ const save=()=>{try{localStorage.setItem('gfxplus',JSON.stringify(S))}catch(e){}};
+ const GP={S,ab:false,ms:[],bench:null};window.GFXPLUS=GP;
+ const tier=()=>window.GFX?GFX.get():'high';
+ const live=()=>S.on&&!GP.ab&&tier()!=='low'||S.on&&!GP.ab&&tier()==='low'&&S.lowToo;
+ let rtM=null,rtA=null,rtB=null,W=0,H=0;
+ const fsq=new THREE.Mesh(new THREE.PlaneGeometry(2,2));const fsc=new THREE.Scene();fsc.add(fsq);const fcam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);fsq.frustumCulled=false;
+ const VS='varying vec2 vU;void main(){vU=uv;gl_Position=vec4(position.xy,0.,1.);}';
+ const bright=new THREE.ShaderMaterial({uniforms:{t:{value:null},th:{value:0.8}},vertexShader:VS,depthTest:false,depthWrite:false,
+  fragmentShader:'uniform sampler2D t;uniform float th;varying vec2 vU;void main(){vec3 c=texture2D(t,vU).rgb;float l=max(c.r,max(c.g,c.b));gl_FragColor=vec4(c*smoothstep(th,th+0.25,l),1.);}'});
+ const blur=new THREE.ShaderMaterial({uniforms:{t:{value:null},d:{value:new THREE.Vector2()}},vertexShader:VS,depthTest:false,depthWrite:false,
+  fragmentShader:'uniform sampler2D t;uniform vec2 d;varying vec2 vU;void main(){vec3 c=texture2D(t,vU).rgb*0.227;c+=(texture2D(t,vU+d*1.385).rgb+texture2D(t,vU-d*1.385).rgb)*0.316;c+=(texture2D(t,vU+d*3.23).rgb+texture2D(t,vU-d*3.23).rgb)*0.07;gl_FragColor=vec4(c,1.);}'});
+ const comp=new THREE.ShaderMaterial({vertexShader:VS,depthTest:false,depthWrite:false,
+  uniforms:{t:{value:null},b:{value:null},px:{value:new THREE.Vector2()},time:{value:0},sun:{value:new THREE.Vector3(0.5,0.5,0)},sunCol:{value:new THREE.Color(1,0.9,0.7)},
+   fxaa:{value:1},bloom:{value:1},flare:{value:1},rays:{value:1},vig:{value:1},grain:{value:0},ca:{value:0},sharp:{value:1},spd:{value:0},haze:{value:0},expo:{value:1},
+   lift:{value:new THREE.Vector3()},gain:{value:new THREE.Vector3(1,1,1)},sat:{value:1},contrast:{value:1}},
+  fragmentShader:`uniform sampler2D t,b;uniform vec2 px;uniform float time,fxaa,bloom,flare,rays,vig,grain,ca,sharp,spd,haze,expo,sat,contrast;uniform vec3 sun,sunCol,lift,gain;varying vec2 vU;
+float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+float lu(vec3 c){return dot(c,vec3(0.299,0.587,0.114));}
+vec3 fx(vec2 u){vec3 rgbM=texture2D(t,u).rgb;if(fxaa<0.5)return rgbM;
+ vec3 nw=texture2D(t,u+vec2(-1.,-1.)*px).rgb,ne=texture2D(t,u+vec2(1.,-1.)*px).rgb,sw=texture2D(t,u+vec2(-1.,1.)*px).rgb,se=texture2D(t,u+vec2(1.,1.)*px).rgb;
+ float lNW=lu(nw),lNE=lu(ne),lSW=lu(sw),lSE=lu(se),lM=lu(rgbM),mn=min(lM,min(min(lNW,lNE),min(lSW,lSE))),mx=max(lM,max(max(lNW,lNE),max(lSW,lSE)));
+ vec2 dir=vec2(-((lNW+lNE)-(lSW+lSE)),((lNW+lSW)-(lNE+lSE)));float rd=max((lNW+lNE+lSW+lSE)*0.03125,0.0078125);float rc=1./(min(abs(dir.x),abs(dir.y))+rd);dir=clamp(dir*rc,-8.,8.)*px;
+ vec3 A=0.5*(texture2D(t,u+dir*(-0.1667)).rgb+texture2D(t,u+dir*0.1667).rgb);vec3 B=A*0.5+0.25*(texture2D(t,u-dir*0.5).rgb+texture2D(t,u+dir*0.5).rgb);float lB=lu(B);return (lB<mn||lB>mx)?A:B;}
+void main(){vec2 u=vU;
+ if(haze>0.){float k=smoothstep(0.62,0.42,u.y)*smoothstep(0.25,0.45,u.y);u.x+=sin(u.y*180.+time*9.)*0.0012*haze*k;}
+ vec3 c;vec2 cc=u-0.5;
+ if(spd>0.01){c=vec3(0.);for(int i=0;i<6;i++){float f=float(i)/6.;c+=fx(u-cc*f*spd*0.06);}c/=6.;}else c=fx(u);
+ if(ca>0.){float a=0.0025*ca*length(cc)*2.;c.r=mix(c.r,texture2D(t,u+cc*a).r,0.85);c.b=mix(c.b,texture2D(t,u-cc*a).b,0.85);}
+ if(sharp>0.){vec3 s=texture2D(t,u+vec2(px.x,0.)).rgb+texture2D(t,u-vec2(px.x,0.)).rgb+texture2D(t,u+vec2(0.,px.y)).rgb+texture2D(t,u-vec2(0.,px.y)).rgb;c+=(c-s*0.25)*0.35*sharp;}
+ if(bloom>0.)c+=texture2D(b,u).rgb*0.55*bloom;
+ if(sun.z>0.){vec2 sp=sun.xy;float asp=px.y/px.x;vec2 d=(u-sp)*vec2(asp,1.);float r=length(d);
+  if(rays>0.){float vis=0.;vec2 st=(sp-u)/12.;vec2 q=u;for(int i=0;i<12;i++){q+=st;vis+=lu(texture2D(b,q).rgb);}c+=sunCol*vis/12.*0.35*rays*sun.z*exp(-r*2.5);c+=sunCol*0.08*sun.z*rays*exp(-r*6.);}
+  if(flare>0.){vec2 g=0.5-sp;for(int i=1;i<5;i++){vec2 gp=sp+g*float(i)*0.55;float dd=length((u-gp)*vec2(asp,1.));c+=sunCol*vec3(0.6,0.8,1.)*0.05*flare*sun.z*smoothstep(0.05+0.02*float(i),0.,dd);}}}
+ c*=expo;c=c*gain+lift;float l=lu(c);c=mix(vec3(l),c,sat);c=(c-0.5)*contrast+0.5;
+ if(vig>0.)c*=1.-dot(cc,cc)*0.55*vig;
+ if(grain>0.)c+=(h(u*vec2(1931.,1733.)+time)-0.5)*0.05*grain;
+ gl_FragColor=vec4(clamp(c,0.,1.),1.);}`});
+ const GRADES={neutral:[[0,0,0],[1,1,1],1,1],cinematic:[[0.01,0.012,0.02],[1.03,1,0.95],1.08,1.06],golden:[[0.02,0.01,0],[1.1,1.0,0.85],1.1,1.04],vintage:[[0.04,0.03,0.02],[1.02,0.97,0.85],0.78,0.94],cool:[[0,0.01,0.03],[0.93,1,1.08],1.0,1.05],vivid:[[0,0,0],[1,1,1],1.3,1.1]};
+ function ensure(){const v=renderer.getDrawingBufferSize(new THREE.Vector2());if(rtM&&v.x===W&&v.y===H)return;W=v.x;H=v.y;[rtM,rtA,rtB].forEach(r=>r&&r.dispose());
+  rtM=new THREE.WebGLRenderTarget(W,H,{samples:0});rtM.texture.encoding=renderer.outputEncoding;const q=tier()==='ultra'?2:4;rtA=new THREE.WebGLRenderTarget(Math.max(1,W/q|0),Math.max(1,H/q|0));rtB=rtA.clone()}
+ const pass=(m,tgt)=>{fsq.material=m;renderer.setRenderTarget(tgt);renderer.render(fsc,fcam)};
+ let want=false,expo=1,lastT=performance.now(),camOff=new THREE.Vector3(),baseFov=null;const sv=new THREE.Vector3();
+ const R0=renderer.render.bind(renderer);
+ renderer.render=function(sc,cam){if(!want||sc!==scene||cam!==camera||renderer.getRenderTarget()!==null)return R0(sc,cam);want=false;
+  try{ensure();const U=comp.uniforms;renderer.setRenderTarget(rtM);R0(sc,cam);
+   const doB=S.bloom||S.rays;if(doB){bright.uniforms.t.value=rtM.texture;bright.uniforms.th.value=S.rays&&!S.bloom?0.95:0.8;pass(bright,rtA);
+    blur.uniforms.t.value=rtA.texture;blur.uniforms.d.value.set(1/rtA.width,0);pass(blur,rtB);blur.uniforms.t.value=rtB.texture;blur.uniforms.d.value.set(0,1/rtA.height);pass(blur,rtA)}
+   const G=typeof game!=='undefined'?game:null,v=G&&G.ego?G.ego.v||0:0,now=performance.now(),dt=Math.min(0.1,(now-lastT)/1000);lastT=now;
+   U.t.value=rtM.texture;U.b.value=rtA.texture;U.px.value.set(1/W,1/H);U.time.value=now/1000%100;
+   U.fxaa.value=S.fxaa?1:0;U.bloom.value=S.bloom?1:0;U.flare.value=S.flare?1:0;U.rays.value=S.rays&&doB?1:0;U.vig.value=S.vignette?1:0;U.grain.value=S.grain?1:0;U.ca.value=S.ca?1:0;U.sharp.value=S.sharpen?1:0;
+   U.spd.value=S.speedblur?Math.max(0,Math.min(1,(v-35)/120)):0;
+   const hot=typeof WX!=='undefined'&&WX&&/clear|sun|hot/i.test(WX.key||'clear');U.haze.value=S.haze&&(hot||G&&G.spec&&(G.spec.aegis||G.spec.rocket))&&v>8?Math.min(1,v/40):0;
+   if(typeof sun!=='undefined'&&sun.intensity>0.05){sv.copy(sun.position).sub(sun.target.position).normalize().multiplyScalar(5000).add(cam.position).project(cam);
+    const on=sv.z<1&&Math.abs(sv.x)<1.3&&Math.abs(sv.y)<1.3;U.sun.value.set(sv.x*0.5+0.5,sv.y*0.5+0.5,on?Math.min(1,sun.intensity/1.6)*Math.max(0,1-Math.max(Math.abs(sv.x),Math.abs(sv.y))*0.6):0);U.sunCol.value.copy(sun.color)}else U.sun.value.z=0;
+   if(S.exposure){const inT=G&&G.inTunnel,tgt=inT?1.35:(typeof sun!=='undefined'&&sun.intensity<0.1?1.15:1);expo+=(tgt-expo)*Math.min(1,dt*(tgt>expo?0.8:2.5))}else expo=1;U.expo.value=expo;
+   const g=GRADES[S.grade]||GRADES.neutral;U.lift.value.set(...g[0]);U.gain.value.set(...g[1]);U.sat.value=g[2];U.contrast.value=g[3];
+   pass(comp,null)}catch(e){renderer.setRenderTarget(null);R0(sc,cam);GP.err=String(e)}};
+ /* frame-time graph */
+ const gc=document.createElement('canvas');gc.width=180;gc.height=48;gc.style.cssText='position:fixed;right:8px;top:196px;z-index:55;background:#000a;border-radius:6px;display:none;pointer-events:none';document.body.appendChild(gc);const gx=gc.getContext('2d');
+ function graph(){gc.style.display=S.graph?'block':'none';if(!S.graph)return;gx.clearRect(0,0,180,48);gx.strokeStyle='#335';gx.beginPath();gx.moveTo(0,48-16.7*1.4);gx.lineTo(180,48-16.7*1.4);gx.stroke();gx.fillStyle='#7fd';GP.ms.forEach((m,i)=>{const h=Math.min(48,m*1.4);gx.fillStyle=m>33?'#f66':m>18?'#fc6':'#7fd';gx.fillRect(i,48-h,1,h)});gx.fillStyle='#ccd';gx.font='10px ui-monospace,monospace';const a=GP.ms.reduce((x,y)=>x+y,0)/Math.max(1,GP.ms.length);gx.fillText(a.toFixed(1)+' ms',4,10)}
+ /* panel */
+ const ITEMS=[['on','Graphics+ effects'],['fxaa','Anti-aliasing (FXAA)'],['bloom','Bloom on lights'],['rays','Sun rays'],['flare','Lens flare'],['exposure','Auto exposure (tunnels/night)'],['sharpen','Sharpening'],['vignette','Vignette'],['grain','Film grain'],['ca','Chromatic aberration'],['speedblur','Speed motion blur'],['haze','Heat haze'],['shake','Speed / road camera shake'],['fov','Speed field-of-view stretch'],['graph','Frame-time graph'],['lowToo','Also on Low graphics']];
+ const btn=document.createElement('div');btn.textContent='✨ FX';btn.title='Graphics+ effects (B = before/after, P = photo, J = benchmark)';btn.style.cssText='position:fixed;right:8px;top:148px;z-index:56;font:11px system-ui;color:#dfe;background:#0009;padding:2px 7px;border-radius:6px;cursor:pointer;display:none';document.body.appendChild(btn);
+ const pan=document.createElement('div');pan.style.cssText='position:fixed;right:8px;top:172px;z-index:60;width:240px;max-height:70vh;overflow:auto;background:#0b1118ee;border:1px solid #2a3a4a;border-radius:10px;padding:10px;font:12px system-ui;color:#dde;display:none';document.body.appendChild(pan);
+ function draw(){pan.innerHTML='<b>Graphics+</b><div style="opacity:.7;margin:2px 0 6px">B before/after · P photo · J benchmark</div>'+ITEMS.map(([k,l])=>`<label style="display:block;margin:3px 0"><input type=checkbox data-k="${k}" ${S[k]?'checked':''}> ${l}</label>`).join('')+
+  '<div style="margin-top:6px">Colour style <select data-g style="background:#0e141d;color:#dde;border:1px solid #334">'+Object.keys(GRADES).map(g=>`<option ${S.grade===g?'selected':''}>${g}</option>`).join('')+'</select></div>'+
+  `<div style="margin-top:6px">${GP.bench?'Last benchmark: '+GP.bench:''}</div>`;
+  pan.querySelectorAll('input').forEach(i=>i.onchange=()=>{S[i.dataset.k]=i.checked?1:0;save()});pan.querySelector('select').onchange=e=>{S.grade=e.target.value;save()}}
+ btn.onclick=()=>{const o=pan.style.display==='none';pan.style.display=o?'block':'none';if(o)draw()};
+ /* photo mode: hide HUD, save a PNG through the full pipeline */
+ function photo(){const hid=[];document.querySelectorAll('body > *:not(canvas):not(script)').forEach(el=>{if(el.style.display!=='none'){hid.push([el,el.style.visibility]);el.style.visibility='hidden'}});
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{try{const a=document.createElement('a');a.href=renderer.domElement.toDataURL('image/png');a.download='autodrive-photo-'+Date.now()+'.png';document.body.appendChild(a);a.click();a.remove()}catch(e){}setTimeout(()=>hid.forEach(([el,v])=>el.style.visibility=v),400)}))}
+ function bench(){if(GP.benchRun)return;GP.benchRun={t0:performance.now(),n:0,worst:0};const G=typeof game!=='undefined'&&game;if(G)G.status='⏱ Graphics benchmark – 15 s'}
+ const preserve=renderer.getContext().getContextAttributes&&renderer.getContext().getContextAttributes().preserveDrawingBuffer;
+ addEventListener('keydown',e=>{if(e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;const k=e.key.toLowerCase();
+  if(k==='b'&&!e.metaKey&&!e.ctrlKey){GP.ab=!GP.ab;const G=typeof game!=='undefined'&&game;if(G)G.status=GP.ab?'Graphics+ off (before)':'Graphics+ on (after)'}
+  else if(k==='p'&&e.shiftKey)photo();else if(k==='j'&&e.shiftKey)bench()});
+ MODS.push({id:'gfxplus',
+  start(){btn.style.display='block'},
+  preRender(){const now=performance.now();if(GP._t)GP.ms.push(now-GP._t);GP._t=now;if(GP.ms.length>180)GP.ms.shift();graph();
+   const B=GP.benchRun;if(B){B.n++;B.worst=Math.max(B.worst,GP.ms[GP.ms.length-1]||0);if(now-B.t0>15000){const fps=B.n*1000/(now-B.t0);GP.bench=`${fps.toFixed(0)} fps avg · worst ${B.worst.toFixed(0)} ms · score ${Math.round(fps*100/Math.max(1,B.worst/16.7))}`;GP.benchRun=null;const G=typeof game!=='undefined'&&game;if(G)G.status='⏱ '+GP.bench;if(pan.style.display!=='none')draw()}}
+   const G=typeof game!=='undefined'?game:null;want=!!(G&&G.route)&&live();
+   if(!G||!G.ego)return;const v=G.ego.v||0;
+   if(S.fov&&!GP.ab){const f=Math.max(0,Math.min(14,(v-30)/12));if(f>0.01){camera.fov+=f;GP._fovAdd=f;camera.updateProjectionMatrix()}}
+   if(S.shake&&!GP.ab&&v>3){const t=now/1000,k=Math.min(1,v/90)*0.012+(Math.abs(G.ego.susP||0)+Math.abs(G.ego.susR||0))*0.08;camOff.set((Math.sin(t*37)+Math.sin(t*23.3))*k*0.5,(Math.sin(t*41.7)+Math.sin(t*29.1))*k*0.5,0);camera.position.add(camOff)}else camOff.set(0,0,0)},
+  postRender(){if(camOff.lengthSq())camera.position.sub(camOff);if(GP._fovAdd){camera.fov-=GP._fovAdd;camera.updateProjectionMatrix();GP._fovAdd=0}}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
