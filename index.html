@@ -4107,7 +4107,7 @@ $('go').onclick=async()=>{
   {const [fx,fy]=terrTileOf(addrA.lat,addrA.lon);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)loadTerr(Math.floor(fx)+i,Math.floor(fy)+j)}
   const k=tileKey(addrA.lat,addrA.lon);await Promise.race([fetchTile(k),sleep(20000)]);await waitFor(()=>tileTerrReady(k),8000);
   game=null;startGame(selCar,selColor,addrA,addrB,route2);buildTile(k);
-  if(window.__GPU&&game){$('loadTxt').textContent='Preparing graphics…';const wasP=game.paused;game.paused=true;await sleep(1200);if(game){game.paused=wasP;if(window.GPULOG)GPULOG.log('loadScreenHidden')}} /* WebGPU compiles shaders and uploads textures during the first second of a trip: let that happen behind the loading screen, with the car held still */
+  if(window.__GPU&&game){$('loadTxt').textContent='Preparing graphics…';const wasP=game.paused;game.paused=true;await sleep(300);if(window.gpuWarm)await gpuWarm();else await sleep(900);if(game){game.paused=wasP;if(window.GPULOG)GPULOG.log('loadScreenHidden')}} /* WebGPU compiles shaders and uploads textures during the first second of a trip: let that happen behind the loading screen, with the car held still */
   $('load').style.display='none'}
  catch(err){$('load').style.display='none';$('msg').textContent='Could not start: '+err.message}};
 renderCars();renderInfo();(document.readyState==='loading'?addEventListener('DOMContentLoaded',refreshShowcar):refreshShowcar());socPreview(); /* showroom car after the feature modules (bobblehead etc.) have loaded */
@@ -12333,7 +12333,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   if(BB.seen!==BB.fr){if(BB.ms>100&&BB.fl.length<200)BB.fl.push(BB.cur);BB.cur={t:Math.round(performance.now()),ms:0,b:[],sk:0,sub:0};BB.seen=BB.fr;BB.ms=0}
   const cx=this._currentRenderContext;let cm=null;try{cm=this._objects.getChainMap(passId)}catch(e){}
   let per=LASTOK.get(object);
-  if(BB.ms>8&&cm){const ro=cm.get([object,material,cx,lightsNode]);let ready=!!ro&&done.has(ro);
+  if(BB.ms>8&&cm&&!BB.warm){const ro=cm.get([object,material,cx,lightsNode]);let ready=!!ro&&done.has(ro);
    if(ready&&(ro.version!==material.version||ro.needsUpdate)){try{ready=ro.initialCacheKey===ro.getCacheKey()}catch(e){ready=false}}
    if(!ready){const prev=per&&per.get(cx);
     if(prev&&prev!==material){const rp=cm.get([object,prev,cx,lightsNode]);if(rp&&done.has(rp)){BB.subst++;BB.cur.sub++;BB.rs.subst=(BB.rs.subst||0)+1;return RD.call(this,object,prev,sc,cam,lightsNode,group,clip,passId)}} /* keep the old look until the new material is built */
@@ -12368,9 +12368,16 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
      scene render (sensor panels, all six reflection faces). Pass the game's one-per-frame request to each light instead. */
   const SM=renderer.shadowMap,want=!!(SM.autoUpdate||SM.needsUpdate);for(const l of lights)if(l.shadow){l.shadow.autoUpdate=false;l.shadow.needsUpdate=want}
   boosting=true;const keep=lights.map(l=>l.intensity);for(const l of lights)l.intensity*=Math.PI;try{return R1.call(this,sc,cam)}finally{lights.forEach((l,i)=>{l.intensity=keep[i]});boosting=false;if(want)SM.needsUpdate=false}};
+ /* start-of-trip warm-up (called while the loading screen is still up): every material around the start is compiled
+    now, with no per-frame budget, while the camera turns a quarter turn per frame so all four directions get drawn.
+    Finishes once no build has happened for 400 ms (at most 4 s). */
+ const UPW=new THREE.Vector3(0,1,0);let warmK=0;
+ window.gpuWarm=async function(){BB.warm=true;warmK=0;const t0=performance.now();let lastN=BB.nb,quiet=performance.now();
+  while(performance.now()-t0<4000){await new Promise(r=>requestAnimationFrame(r));if(BB.nb!==lastN){lastN=BB.nb;quiet=performance.now()}else if(performance.now()-quiet>400&&warmK>8)break}
+  BB.warm=false;window.GPULOG&&GPULOG.log('warmDone',Math.round(performance.now()-t0),BB.nb)};
  MODS.push({id:'webgpu',
   start(){scrub()},
-  preRender(){const now=performance.now();if(now-t>1000){t=now;scrub()}
+  preRender(){const now=performance.now();if(BB.warm&&typeof camera!=='undefined'){warmK++;camera.rotateOnWorldAxis(UPW,(warmK%4)*Math.PI/2);camera.updateMatrixWorld(true)}if(now-t>1000){t=now;scrub()}
    if(typeof skyMat!=='undefined'&&skyMat.uniforms&&skyMat.uniforms.hor){bg.copy(skyMat.uniforms.hor.value).lerp(skyMat.uniforms.top.value,0.45);scene.background=bg}}});
  const tag=document.createElement('div');tag.textContent='WebGPU · experimental';tag.style.cssText='position:fixed;left:8px;bottom:26px;z-index:55;font:11px system-ui;color:#9fd;background:#0008;padding:2px 6px;border-radius:6px';document.body.appendChild(tag);
 })();
