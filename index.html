@@ -12475,12 +12475,6 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
     driving into new areas). The tile is added when that finishes (or after 1.5 s at most). */
  BB.tileCompiles=0;window.addTileGroup=function(g){if(!renderer.compileAsync||typeof camera==='undefined'){scene.add(g);return}let done=false;const add=()=>{if(done)return;done=true;let live=false;for(const T of TILES.values())if(T.group===g){live=true;break}if(live&&!g.parent)scene.add(g)}; /* skip a tile unloaded meanwhile */
   try{g.updateMatrixWorld(true);renderer.compileAsync(g,camera,scene).then(()=>{BB.tileCompiles++;add()},()=>setTimeout(add,0))}catch(e){setTimeout(add,0)}setTimeout(add,1500)};
- /* new traffic: a spawned car is taken out of the scene until compileAsync has prepared its shaders and pipelines in
-    the background (it appears a moment later), instead of up to ~20 builds landing on one frame (a 390 ms freeze). */
- if(typeof window.newAgent==='function'){const NA=window.newAgent;BB.agentCompiles=0;window.newAgent=function(){const a=NA.apply(this,arguments);try{const m=a&&a.mesh,par=m&&m.parent;
-  if(m&&par&&renderer.compileAsync&&typeof camera!=='undefined'&&!(typeof game!=='undefined'&&game&&game.ego===a)){par.remove(m);let done=false;const back=()=>{if(done)return;done=true;if(!m.parent&&typeof game!=='undefined'&&game&&game.agents&&game.agents.includes(a))par.add(m)}; /* skip a car despawned meanwhile */
-   m.updateMatrixWorld(true);if(window.BAKE&&!m.userData._baked&&!/^(harley)$/.test(a.spec&&a.spec.style))try{BAKE(m)}catch(e){} /* merge first (02b would skip a car that is out of the scene), then compile the merged result */
-   renderer.compileAsync(m,camera,scene).then(()=>{BB.agentCompiles++;back()},()=>setTimeout(back,0));setTimeout(back,1200)}}catch(e){}return a}}
  /* Driver's View off the main frame: with the frame cap every other display refresh is idle, and the Driver's View
     (a second full-scene render) stacked on a main frame was most of the 70–110 ms GPU spikes. Its scene render is
     now done on the idle refresh into the same target; the small view shows that picture on the next main frame
