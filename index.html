@@ -5227,14 +5227,14 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
    screens, and any part seen moving or changing visibility while watched for the first few seconds of driving.
    localStorage egoBake='0' turns it off. */
 (function(){const on=(()=>{try{return localStorage.getItem('egoBake')!=='0'}catch(e){return true}})();if(!on)return;
- let cur=null,watch=null,t0=0;const M=new THREE.Matrix4();
+ let cur=null,watch=null,t0=0;const ST=window.EGOBAKE={state:'idle',kept:0};const M=new THREE.Matrix4();
  function snap(root){const m=new Map();root.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(root.matrixWorld).invert();root.traverse(o=>{if(o!==root)m.set(o,{e:M.multiplyMatrices(inv,o.matrixWorld).elements.slice(),v:o.visible})});return m}
  function moved(root,base,set){const inv=new THREE.Matrix4().copy(root.matrixWorld).invert();for(const [o,b] of base){if(set.has(o))continue;if(o.visible!==b.v){set.add(o);continue}const e=M.multiplyMatrices(inv,o.matrixWorld).elements;for(let i=0;i<16;i++)if(Math.abs(e[i]-b.e[i])>1e-4){set.add(o);break}}}
  MODS.push({id:'egobake',frame(){const G=window.game,m=G&&G.ego&&G.ego.mesh;if(!m||!window.BAKE||m.userData._baked)return;
-  if(m!==cur){cur=m;watch={base:snap(m),moved:new Set()};t0=performance.now();return}
+  if(m!==cur){cur=m;watch={base:snap(m),moved:new Set()};t0=performance.now();ST.state='watching';return}if(!watch)return;
   if(G.paused)return;moved(m,watch.base,watch.moved);if(performance.now()-t0<6000)return;
   const keep=[...watch.moved];if(typeof wheelMesh!=='undefined'&&wheelMesh)keep.push(wheelMesh);if(typeof SCREENS!=='undefined')for(const s of SCREENS)if(s.mesh)keep.push(s.mesh);
-  m.userData._keepX=keep;try{BAKE(m)}catch(e){console.warn('egobake',e)}watch=null}});
+  ST.kept=keep.length;m.userData._keepX=keep;try{BAKE(m);ST.state='baked'}catch(e){ST.state='error '+e;console.warn('egobake',e)}watch=null}});
 })();
 </script>
 <script>/* mods/02d-janitor.js */
