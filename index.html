@@ -5229,7 +5229,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
    change): everything the car's or any part's userData references (wheels, wipers, doors, driver, the rider's hidden head...), the steering wheel and touch
    screens, and any part seen moving or changing visibility while watched for the first few seconds of driving.
    localStorage egoBake='0' turns it off. */
-(function(){const on=(()=>{try{return localStorage.getItem('egoBake')!=='0'}catch(e){return true}})();if(!on)return;
+(function(){const on=(()=>{try{return localStorage.getItem('egoBake')!=='0'}catch(e){return true}})();if(!on||window.__GPU)return; /* WebGL only: under WebGPU the merge forces a pipeline rebuild (a visible stall) and saves nothing there */
  let cur=null,watch=null,t0=0;const ST=window.EGOBAKE={state:'idle',kept:0};const M=new THREE.Matrix4();
  function snap(root){const m=new Map();root.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(root.matrixWorld).invert();root.traverse(o=>{if(o!==root)m.set(o,{e:M.multiplyMatrices(inv,o.matrixWorld).elements.slice(),v:o.visible})});return m}
  function moved(root,base,set){const inv=new THREE.Matrix4().copy(root.matrixWorld).invert();for(const [o,b] of base){if(set.has(o))continue;if(o.visible!==b.v){set.add(o);continue}const e=M.multiplyMatrices(inv,o.matrixWorld).elements;for(let i=0;i<16;i++)if(Math.abs(e[i]-b.e[i])>1e-4){set.add(o);break}}}
