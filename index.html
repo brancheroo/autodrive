@@ -173,7 +173,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
  /* on localhost, outside requests go through the dev server's disk cache (../devserve.py, /__proxy) so test routes survive
     browser-storage wipes and map-server outages; a plain static server (no /__proxy) falls back to direct fetches */
  let PX=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?null:false;
- const viaProxy=async(input,opt,url)=>{if(PX!==false){try{const r=await raw('/__proxy?u='+encodeURIComponent(url),{method:opt.method||'GET',body:opt.body,headers:opt.headers,signal:opt.signal});if(r.status!==404&&r.status!==501){PX=true;return r}PX=false}catch(e){if(e&&e.name==='AbortError')throw e;if(PX===null)PX=false;else throw e}}return raw(input,opt)};
+ const viaProxy=async(input,opt,url)=>{if(PX!==false){try{const r=await raw('/__proxy?u='+encodeURIComponent(url),{method:opt.method||'GET',body:opt.body,headers:opt.headers,signal:opt.signal});if(r.headers.get('X-Proxy-Fail')){PX=true}else if(r.status!==404&&r.status!==501){PX=true;return r}else PX=false} /* proxy couldn't reach the service: try directly */catch(e){if(e&&e.name==='AbortError')throw e;if(PX===null)PX=false;else throw e}}return raw(input,opt)};
  window.NETCACHE={hits:0,misses:0,clear:()=>db().then(d=>d.transaction('r','readwrite').objectStore('r').clear())};
  window.fetch=async(input,opt={})=>{const url=typeof input==='string'?input:input.url;
   if(!/^https?:/.test(url)||/api\.open-meteo\.com\/v1\/forecast/.test(url)||(opt.method&&!/^(GET|POST)$/i.test(opt.method)))return raw(input,opt);
