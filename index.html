@@ -5184,6 +5184,29 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  MODS.push({id:'gc'});
 })();
 </script>
+<script>/* mods/02c-memtrim.js */
+/* Memory trim for streamed tiles. three.js keeps every vertex array in JS memory after uploading it to the GPU; for the
+   merged static tile meshes that was ~150 MB of heap. Meshes nothing raycasts (everything except roads, which the car
+   stands on, and buildings / walls, which the cameras and sight lines test) drop their CPU copy right after the main
+   camera has drawn them once (by then every attribute their material uses is on the GPU). Bounding volumes are computed
+   first so frustum culling still works. Unused UVs (material without any texture) are deleted before upload.
+   MEMTRIM.bytes counts what was freed; localStorage memTrim='0' turns it off. */
+(function(){
+ const M=window.MEMTRIM={bytes:0,meshes:0,on:(()=>{try{return localStorage.getItem('memTrim')!=='0'}catch(e){return true}})()};
+ const TEXK=['map','normalMap','roughnessMap','metalnessMap','emissiveMap','bumpMap','alphaMap','aoMap','lightMap','displacementMap'];
+ const keepSet=()=>{const s=new Set();try{for(const v of [MAT.road,MAT.road2,MAT.wall,...Object.values(SURF||{}),...Object.values(FACMAT||{}),...Object.values(ROOFMAT||{})])if(v&&v.isMaterial)s.add(v);else if(v)for(const w of Object.values(v))if(w&&w.isMaterial)s.add(w)}catch(e){}return s};
+ const EMPTY=new Float32Array(0);
+ function trim(o){const g=o.geometry;if(!g||g.userData.trimmed||g.userData.shared)return;g.userData.trimmed=true;let b=0;
+  for(const a of Object.values(g.attributes)){if(a.isInterleavedBufferAttribute||!a.array||!a.array.length)continue;b+=a.array.byteLength;a.array=a.array.constructor===Float32Array?EMPTY:new a.array.constructor(0)}
+  M.bytes+=b;M.meshes++}
+ function arm(o,keep){if(!o.isMesh||o.isInstancedMesh||o.isSkinnedMesh||!o.userData.merged||o.userData.trimArmed)return;const ms=Array.isArray(o.material)?o.material:[o.material];if(ms.some(m=>keep.has(m)))return;
+  const g=o.geometry;if(!g||g.userData.shared||g.morphAttributes&&Object.keys(g.morphAttributes).length)return;
+  if(!g.boundingSphere)g.computeBoundingSphere();if(!g.boundingBox)g.computeBoundingBox();
+  if(g.attributes.uv&&!ms.some(m=>TEXK.some(k=>m[k])))g.deleteAttribute('uv'); /* no texture: the UVs are never read */
+  o.userData.trimArmed=true;const prev=o.onAfterRender;o.onAfterRender=function(r,s,cam){if(prev&&prev!==THREE.Object3D.prototype.onAfterRender)prev.apply(this,arguments);if(cam===camera&&M.on){trim(this);this.onAfterRender=prev||THREE.Object3D.prototype.onAfterRender}}}
+ let t=0;MODS.push({id:'memtrim',frame(){if(!M.on||++t%30||typeof TILES==='undefined')return;const keep=keepSet();for(const T of TILES.values())if(T.group)for(const o of T.group.children)arm(o,keep)}});
+})();
+</script>
 <script>/* mods/02d-janitor.js */
 /* Memory janitor. Map data was never released: every tile the car passed kept its raw OSM data (RAW, RAWROADS,
    SFB), and every node kept its entries in NODEINFO / NODEH / CONTROLS / BRPROF; the Overpass extras (OSMX.feat)
