@@ -3304,8 +3304,11 @@ function modFail(where,e){const k=where+':'+String(e&&e.message);if(MODERR[k])re
 /* cosmetic per-frame systems: a failure disables just that system instead of freezing the loop */
 for(const n of ['renderPerception','drawScreen','updateGrass','updateSmoke','wdogUpdate','animateBobble','drawMini','damageSmoke','aifmTick','protestSoundUpdate','manageSat','updateHUD','drawBEV','riderView','slobber','updateWeather','updateLeash','animDog','techTick','updateHyperDrone','hyperOverlay','satIcon','updateEnergyHUD','sirenUpdate','flashBar','updateClock']){const f=window[n];if(typeof f!=='function')continue;let dead=false;window[n]=function(){if(dead)return;try{return f.apply(this,arguments)}catch(e){dead=true;modFail(n,e)}}}
 let lastT=performance.now(),uiT=0,scrT=0,tileT=0,spawnT=0;
+/* frame-rate cap: WebGPU defaults to 30 fps (it allocates more per frame than WebGL and ran at ~50 fps, which kept the heap
+   near 1 GB); WebGL defaults to uncapped. localStorage fpsCap = '30' | '60' | '0' (off) overrides. */
+const FPSCAP={last:0,hz:(()=>{let v=null;try{v=localStorage.getItem('fpsCap')}catch(e){}if(v!==null&&v!=='')return +v||0;return window.__GPU?30:0})()};
 function step(){
- requestAnimationFrame(step);modCall('frame');try{riderView()}catch(e){}
+ requestAnimationFrame(step);if(FPSCAP.hz){const t=performance.now();if(t-FPSCAP.last<1000/FPSCAP.hz-3)return;FPSCAP.last=t}modCall('frame');try{riderView()}catch(e){}
  const now=performance.now();const rawDt=Math.min(0.5,(now-lastT)/1000);let rdt=Math.min(0.1,rawDt);lastT=now;
  if(!game||!game.route){if(!game)showroom(rdt);renderer.render(scene,camera);return}
  const G=game,e=G.ego,spec=G.spec;
@@ -12349,7 +12352,9 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  /* renderer switch on the start screen too, under the game mode */
  {const add=()=>{if(document.getElementById('rmodeSel')||!window.UIX||!document.getElementById('start'))return false;const ok=!!navigator.gpu;
    const d=UIX.section('Renderer',`<select id="rmodeSel" style="width:100%;${UIX.sel||''}"><option value="webgl">WebGL (standard)</option><option value="webgpu"${ok?'':' disabled'}>WebGPU (experimental)${ok?'':' – not supported here'}</option></select><div style="font-size:11px;color:var(--dim);margin-top:3px">Switching reloads the page. WebGPU turns off Graphics+ effects and the sky dome.</div>`,/Choose a self-driving car/);
-   const sel=d.querySelector('select');sel.value=gpu?'webgpu':'webgl';sel.onchange=()=>setMode(sel.value);return true};
+   const sel=d.querySelector('select');sel.value=gpu?'webgpu':'webgl';sel.onchange=()=>setMode(sel.value);
+   const fc=document.createElement('select');fc.id='fpsCapSel';fc.style.cssText='width:100%;margin-top:6px;'+(UIX.sel||'');fc.innerHTML='<option value="">Frame rate: default (WebGPU 30, WebGL uncapped)</option><option value="30">Frame rate: 30 fps</option><option value="60">Frame rate: 60 fps</option><option value="0">Frame rate: uncapped</option>';
+   try{fc.value=localStorage.getItem('fpsCap')||''}catch(e){}fc.onchange=()=>{try{if(fc.value==='')localStorage.removeItem('fpsCap');else localStorage.setItem('fpsCap',fc.value)}catch(e){}if(typeof FPSCAP!=='undefined'){const v=fc.value;FPSCAP.hz=v===''?(window.__GPU?30:0):+v}};sel.after(fc);return true};
   if(!add()){const t=setInterval(()=>{if(add())clearInterval(t)},500);setTimeout(()=>clearInterval(t),20000)}}
  /* renderer switch inside the ✨ FX panel */
  setInterval(()=>{const pan=document.getElementById('gfxPanel');if(!pan||pan.style.display==='none'||pan.querySelector('[data-rmode]'))return;
