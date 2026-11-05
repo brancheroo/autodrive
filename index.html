@@ -3309,7 +3309,7 @@ let lastT=performance.now(),uiT=0,scrT=0,tileT=0,spawnT=0;
    near 1 GB); WebGL defaults to uncapped. localStorage fpsCap = '30' | '60' | '0' (off) overrides. */
 const FPSCAP={last:0,hz:(()=>{let v=null;try{v=localStorage.getItem('fpsCap')}catch(e){}if(v!==null&&v!=='')return +v||0;return window.__GPU?30:0})()};
 function step(){
- requestAnimationFrame(step);if(FPSCAP.hz){const t=performance.now();if(t-FPSCAP.last<1000/FPSCAP.hz-3)return;FPSCAP.last=t}modCall('frame');try{riderView()}catch(e){}
+ requestAnimationFrame(step);if(FPSCAP.hz){const t=performance.now();if(t-FPSCAP.last<1000/FPSCAP.hz-3){if(FPSCAP.idle)try{FPSCAP.idle()}catch(e){}return}FPSCAP.last=t}modCall('frame');try{riderView()}catch(e){}
  const now=performance.now();const rawDt=Math.min(0.5,(now-lastT)/1000);let rdt=Math.min(0.1,rawDt);lastT=now;
  if(!game||!game.route){if(!game)showroom(rdt);renderer.render(scene,camera);return}
  const G=game,e=G.ego,spec=G.spec;
@@ -12469,6 +12469,14 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
      scene render (sensor panels, all six reflection faces). Pass the game's one-per-frame request to each light instead. */
   const SM=renderer.shadowMap,want=!!(SM.autoUpdate||SM.needsUpdate);for(const l of lights)if(l.shadow){l.shadow.autoUpdate=false;l.shadow.needsUpdate=want}
   boosting=true;const keep=lights.map(l=>l.intensity);for(const l of lights)l.intensity*=Math.PI;try{return R1.call(this,sc,cam)}finally{lights.forEach((l,i)=>{l.intensity=keep[i]});boosting=false;if(want)SM.needsUpdate=false}};
+ /* Driver's View off the main frame: with the frame cap every other display refresh is idle, and the Driver's View
+    (a second full-scene render) stacked on a main frame was most of the 70–110 ms GPU spikes. Its scene render is
+    now done on the idle refresh into the same target; the small view shows that picture on the next main frame
+    (one frame later). Without a cap it renders inline as before. */
+ {const R2=renderer.render;let pend=null,idleRun=false;BB.cvDeferred=0;
+  renderer.render=function(sc,cam){if(!idleRun&&typeof FPSCAP!=='undefined'&&FPSCAP.hz&&typeof cvCam!=='undefined'&&cam===cvCam&&this.getRenderTarget()){pend={sc,cam,rt:this.getRenderTarget()};BB.cvDeferred++;return}return R2.apply(this,arguments)};
+  const idle=()=>{if(!pend)return;const p=pend;pend=null;const prev=renderer.getRenderTarget();renderer.setRenderTarget(p.rt);idleRun=true;try{R2.call(renderer,p.sc,p.cam)}finally{idleRun=false;renderer.setRenderTarget(prev)}};
+  const hook=()=>{if(typeof FPSCAP!=='undefined'){FPSCAP.idle=idle;return true}return false};if(!hook()){const iv=setInterval(()=>{if(hook())clearInterval(iv)},200)}}
  /* start-of-trip warm-up (called while the loading screen is still up): every material around the start is compiled
     now, with no per-frame budget, while the camera turns a quarter turn per frame so all four directions get drawn.
     Finishes once no build has happened for 400 ms (at most 2 s). */
