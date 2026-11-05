@@ -5197,7 +5197,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
    first so frustum culling still works. Unused UVs (material without any texture) are deleted before upload.
    MEMTRIM.bytes counts what was freed; localStorage memTrim='0' turns it off. */
 (function(){
- const M=window.MEMTRIM={bytes:0,meshes:0,on:(()=>{try{return localStorage.getItem('memTrim')!=='0'}catch(e){return true}})()};
+ const M=window.MEMTRIM={bytes:0,meshes:0,on:!window.__GPU&&(()=>{try{return localStorage.getItem('memTrim')!=='0'}catch(e){return true}})()}; /* WebGL only: WebGPU re-uploads geometry (new render objects, buffer re-creation) and an emptied array became a 0-byte vertex buffer that failed the frame */
  const TEXK=['map','normalMap','roughnessMap','metalnessMap','emissiveMap','bumpMap','alphaMap','aoMap','lightMap','displacementMap'];
  const keepSet=()=>{const s=new Set();try{for(const v of [MAT.road,MAT.road2,MAT.wall,...Object.values(SURF||{}),...Object.values(FACMAT||{}),...Object.values(ROOFMAT||{})])if(v&&v.isMaterial)s.add(v);else if(v)for(const w of Object.values(v))if(w&&w.isMaterial)s.add(w)}catch(e){}return s};
  const EMPTY=new Float32Array(0);
