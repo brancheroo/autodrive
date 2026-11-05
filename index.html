@@ -5226,7 +5226,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
 <script>/* mods/02d-egobake.js */
 /* Merge the player's own car like traffic cars are (02b bake): unmerged it was ~300 draw calls a frame in the main view
    plus ~180 in the shadow pass, and the renderer makes garbage per draw. Kept separate (so they can still move or
-   change): everything the car's userData references (wheels, wipers, doors, driver...), the steering wheel and touch
+   change): everything the car's or any part's userData references (wheels, wipers, doors, driver, the rider's hidden head...), the steering wheel and touch
    screens, and any part seen moving or changing visibility while watched for the first few seconds of driving.
    localStorage egoBake='0' turns it off. */
 (function(){const on=(()=>{try{return localStorage.getItem('egoBake')!=='0'}catch(e){return true}})();if(!on)return;
@@ -5236,7 +5236,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  MODS.push({id:'egobake',frame(){const G=typeof game!=='undefined'?game:null,m=G&&G.ego&&G.ego.mesh;if(!m||!window.BAKE||m.userData._baked)return;
   if(m!==cur){cur=m;watch={base:snap(m),moved:new Set()};t0=performance.now();ST.state='watching';return}if(!watch)return;
   if(G.paused)return;moved(m,watch.base,watch.moved);if(performance.now()-t0<6000)return;
-  const keep=[...watch.moved];if(typeof wheelMesh!=='undefined'&&wheelMesh)keep.push(wheelMesh);if(typeof SCREENS!=='undefined')for(const s of SCREENS)if(s.mesh)keep.push(s.mesh);
+  const keep=[...watch.moved];m.traverse(o=>{if(o===m)return;const scan=(v,d)=>{if(!v||d>2)return;if(v.isObject3D){keep.push(v);return}if(Array.isArray(v)){for(const x of v)scan(x,d+1);return}if(typeof v==='object'&&!v.isMaterial&&!v.isTexture)for(const k in v)scan(v[k],d+1)};scan(o.userData,0)}); /* parts referenced by any part (e.g. rider.userData.hideIn: the head hidden in the in-car view) */if(typeof wheelMesh!=='undefined'&&wheelMesh)keep.push(wheelMesh);if(typeof SCREENS!=='undefined')for(const s of SCREENS)if(s.mesh)keep.push(s.mesh);
   ST.kept=keep.length;m.userData._keepX=keep;try{BAKE(m);ST.state='baked'}catch(e){ST.state='error '+e;console.warn('egobake',e)}watch=null}});
 })();
 </script>
