@@ -12610,6 +12610,27 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  MODS.push({id:'lightguard',frame(){if(typeof scene==='undefined'||(this.k=(this.k||0)+1)%60)return; /* check about once a second */let n=0;scene.traverseVisible(o=>{if(o.isLight)n++});if(LG.last>=0&&n!==LG.last)LG.changes++;LG.last=n}});
 })();
 </script>
+<script>/* mods/zz-perfhud.js */
+/* Performance HUD (Shift+P). Off by default and free when off. When on:
+   - times every mod hook (modCall is swapped for a timed copy) and lists the costliest over the last second
+   - frame time, draw calls, triangles, geometries, textures and shader programs from the renderer
+   - JS heap (Chrome), long tasks (≥50 ms) with the hook that was running, scene object count and traffic count
+   PERF.snapshot() returns the same figures for tests. */
+(function(){
+ const P=window.PERF={on:false,t:{},n:{},long:[],cur:'',last:{}};const _mc=window.modCall;
+ function timed(h,a,b){for(const m of MODS){const f=m[h];if(!f||m.off)continue;const k=m.id+'.'+h,t0=performance.now();P.cur=k;try{f(a,b)}catch(e){modFail(m.id+'.'+h,e)}const d=performance.now()-t0;P.t[k]=(P.t[k]||0)+d;P.n[k]=(P.n[k]||0)+1}P.cur=''}
+ try{new PerformanceObserver(l=>{for(const e of l.getEntries())P.long.push({ms:Math.round(e.duration),at:Math.round(e.startTime/1000),hook:P.cur||'?'});if(P.long.length>30)P.long.splice(0,P.long.length-30)}).observe({type:'longtask',buffered:false})}catch(e){}
+ P.snapshot=()=>{const i=renderer.info||{},r=i.render||{},m=i.memory||{};let objs=0;scene.traverse(()=>objs++);
+  return {draws:r.calls??r.drawCalls??0,tris:r.triangles??0,geos:m.geometries??0,texs:m.textures??0,progs:(i.programs&&i.programs.length)||0,heapMB:performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576):null,objs,agents:(window.game&&game.agents)?game.agents.length:0,tiles:typeof TILES!=='undefined'?TILES.size:0}};
+ let box=null,fr=0,acc=0,lastT=performance.now(),tick=0;
+ function draw(){if(!box){box=document.createElement('pre');box.style.cssText='position:fixed;left:290px;top:120px;z-index:9;margin:0;padding:6px 8px;background:#0b0f16e8;color:#cfe;font:10px/1.35 ui-monospace,monospace;border-radius:8px;pointer-events:none;max-width:420px';document.body.appendChild(box)}
+  const s=P.snapshot(),top=Object.entries(P.last).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  box.textContent=`frame ${(acc/Math.max(1,fr)).toFixed(1)} ms · ${fr} fps\ndraws ${s.draws} · tris ${(s.tris/1000|0)}k · geo ${s.geos} · tex ${s.texs} · progs ${s.progs}\nheap ${s.heapMB??'?'} MB · objects ${s.objs} · traffic ${s.agents} · tiles ${s.tiles}\n— hooks, ms per second —\n`+top.map(([k,v])=>v.toFixed(1).padStart(6)+'  '+k).join('\n')+(P.long.length?'\n— long tasks —\n'+P.long.slice(-5).map(l=>`${l.ms} ms @${l.at}s in ${l.hook}`).join('\n'):'')}
+ addEventListener('keydown',ev=>{if((ev.key==='P'||ev.key==='p')&&ev.shiftKey&&!/INPUT|TEXTAREA|SELECT/.test((ev.target&&ev.target.tagName)||'')){P.on=!P.on;window.modCall=P.on?timed:_mc;if(box)box.style.display=P.on?'block':'none'}});
+ P.enable=on=>{P.on=on;window.modCall=on?timed:_mc};
+ MODS.push({id:'perfhud',frame(){if(!P.on)return;const now=performance.now();acc+=now-lastT;lastT=now;fr++;if(++tick>=60){P.last=P.t;P.t={};P.n={};draw();acc=0;fr=0;tick=0}}});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
