@@ -988,7 +988,7 @@ function bridgeStruct(t,pts,w,bufs){const L=[0];for(let i=1;i<pts.length;i++)L.p
 // ============================================================ BUILDINGS: facades, roofs, parts, storefront signs (OSM Simple 3D Buildings)
 // Facade textures = Poly Haven photo material + procedurally painted windows for the style; 1 texture tile = 2 bays (8 m) × 2 floors (6.6 m)
 const FAC={},FACMAT={},ROOFMAT={};
-const FS=1024; /* facade atlases: 12 × 2048² was ~270 MB of GPU memory */
+const FS=512; /* facade atlases: 12 × 2048² was ~270 MB of GPU memory; 1024 still 56 MB, 512 is 14 MB (2026-11-04) */
 function facadeCanvas(style,night){const c=document.createElement('canvas');c.width=c.height=FS;const x=c.getContext('2d'),R=rng(style.length*7+(night?3:1));x.scale(FS/512,FS/512);
  const bg={siding:'#e6e2da',brick:'#9b4a38',stucco:'#e9e1d2',concrete:'#b9b6ae',glass:'#2b3a48',metal:'#9aa1a6',store:'#3a3d42'}[style];x.fillStyle=night?'#000':bg;x.fillRect(0,0,512,512);
  const win=(X,Y,W,H,frame)=>{if(night){x.fillStyle=R()<0.42?(R()<0.5?'#ffd99a':'#cfe3ff'):'#000';x.fillRect(X,Y,W,H);return}x.fillStyle=frame||'#f2f2ee';x.fillRect(X-5,Y-5,W+10,H+10);const g=x.createLinearGradient(X,Y,X+W,Y+H);g.addColorStop(0,'#27313b');g.addColorStop(0.6,'#4f6275');g.addColorStop(1,'#1f272f');x.fillStyle=g;x.fillRect(X,Y,W,H);x.fillStyle=frame||'#f2f2ee';x.fillRect(X+W/2-2,Y,4,H);x.fillRect(X,Y+H*0.45,W,4)};
