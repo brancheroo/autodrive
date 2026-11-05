@@ -12445,10 +12445,10 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
     (despawned traffic, unloaded tiles) were never freed – the pole material alone held 802 for 15 live users, and the
     heap floor rose ~4 MB/s. Every 2 s, render objects whose object has been out of every scene for two sweeps are
     disposed (that removes the listener, bindings, node data and cache entry; re-adding the object just recreates one). */
- {const O=renderer._objects;if(O&&O.createRenderObject){const LIVE=new Set();const CRO=O.createRenderObject;BB.roFreed=0;
-  O.createRenderObject=function(){const r=CRO.apply(this,arguments);LIVE.add(r);const d=r.onDispose;r.onDispose=function(){LIVE.delete(r);return d.apply(this,arguments)};return r};
+ {const LIVE=new Set();let hooked=null;const hook=()=>{const O=renderer._objects;if(!O||!O.createRenderObject||hooked===O)return;hooked=O;const CRO=O.createRenderObject;BB.roFreed=BB.roFreed||0;
+  O.createRenderObject=function(){const r=CRO.apply(this,arguments);LIVE.add(r);const d=r.onDispose;r.onDispose=function(){LIVE.delete(r);return d.apply(this,arguments)};return r}};hook();
   const attached=o=>{for(let p=o;p;p=p.parent)if(p.isScene)return true;return false};
-  setInterval(()=>{for(const r of LIVE){const o=r.object;if(!o||!attached(o)){if(r.__gone){try{r.dispose()}catch(e){LIVE.delete(r)}BB.roFreed++}else r.__gone=1}else if(r.__gone)r.__gone=0}BB.roLive=LIVE.size},2000)}}
+  setInterval(()=>{hook();for(const r of LIVE){const o=r.object;if(!o||!attached(o)){if(r.__gone){try{r.dispose()}catch(e){LIVE.delete(r)}BB.roFreed++}else r.__gone=1}else if(r.__gone)r.__gone=0}BB.roLive=LIVE.size},2000)}
  /* newer three.js measures light in physical units: the same intensity numbers come out about π times dimmer than
     in WebGL (r149's legacy lighting), so every light is scaled up by π just for the main-scene render, then restored */
  const R1=renderer.render;let lights=[],lt=0,boosting=false;
