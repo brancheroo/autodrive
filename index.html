@@ -1164,7 +1164,8 @@ function adTex(i){if(ADTEX.has(i))return ADTEX.get(i);const [name,tag,fine,bg,ic
  g.textAlign='left';g.fillStyle=fg;let fs=150;g.font='900 '+fs+'px Impact, "Arial Black", sans-serif';while(g.measureText(name).width>1000&&fs>60){fs-=6;g.font='900 '+fs+'px Impact, "Arial Black", sans-serif'}
  g.fillText(name,60,170);g.font='italic 600 64px Georgia, serif';let t=tag;while(g.measureText(t).width>1020)t=t.slice(0,-2);g.fillText(t,64,320);
  g.globalAlpha=0.75;g.font='34px Helvetica, Arial, sans-serif';g.fillText('*'+fine,66,440);g.globalAlpha=1;g.strokeStyle=fg;g.lineWidth=10;g.strokeRect(18,18,1500,476);
- const tx=new THREE.CanvasTexture(c);tx.anisotropy=ANISO;tx.encoding=THREE.sRGBEncoding;ADTEX.set(i,tx);return tx}
+ const c2=document.createElement('canvas');c2.width=768;c2.height=256;c2.getContext('2d').drawImage(c,0,0,768,256); /* drawn at full size for crisp type, kept at half: a quarter of the memory per ad */
+ const tx=new THREE.CanvasTexture(c2);tx.anisotropy=ANISO;tx.encoding=THREE.sRGBEncoding;ADTEX.set(i,tx);return tx}
 function shade(hex,k){const n=parseInt(hex.slice(1),16),f=v=>Math.max(0,Math.min(255,Math.round(v*(1+k))));return '#'+[f(n>>16),f(n>>8&255),f(n&255)].map(v=>v.toString(16).padStart(2,'0')).join('')}
 const BBGEO={post:new THREE.CylinderGeometry(0.28,0.32,1,10),panel:new THREE.BoxGeometry(12.2,4.2,0.35),face:new THREE.PlaneGeometry(11.8,3.9),walk:new THREE.BoxGeometry(12,0.1,0.9),lamp:new THREE.BoxGeometry(0.5,0.2,0.4)};
 // 0–2 billboards per tile beside the larger roads, set back behind the kerb, facing oncoming traffic; never in a lane or a building
