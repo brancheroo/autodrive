@@ -530,7 +530,7 @@ const texLoader=new THREE.TextureLoader();texLoader.setCrossOrigin('anonymous');
 {const _ld=texLoader.load.bind(texLoader),C=new Map();texLoader.load=function(url,onLoad,onProg,onErr){if(!/polyhaven/.test(url))return _ld(url,onLoad,onProg,onErr); /* only the fixed material set – never per-tile imagery (would hold every image forever) */let e=C.get(url);if(!e){const t=_ld(url,tx=>{e.ok=true;for(const f of e.wait)try{f()}catch(x){}e.wait=[];if(onLoad)onLoad(tx)},onProg,er=>{C.delete(url);if(onErr)onErr(er)});e={t,ok:false,wait:[]};C.set(url,e);return t}
  const c=e.t.clone();const fire=()=>{c.needsUpdate=true;if(onLoad)onLoad(c)};if(e.ok)setTimeout(fire,0);else e.wait.push(fire);return c}}
 const ANISO=renderer.capabilities.getMaxAnisotropy();
-const TEXRES=HIGH?'2k':'1k';
+const TEXRES='1k'; /* 1k everywhere: the 2k surface sets were ~370 MB of GPU memory (+ mips) for no visible gain at road distances (2026-11-04) */
 function phTex(name,map,rep,srgb,res){const RS=res||TEXRES,t=texLoader.load(`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/${RS}/${name}/${name}_${map}_${RS}.jpg`,()=>{TEXSTAT.ok++},undefined,()=>{TEXSTAT.fail++});TEXSTAT.n++;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=ANISO;if(rep)t.repeat.set(rep,rep);if(srgb)t.encoding=THREE.sRGBEncoding;return t}
 const TEXSTAT={n:0,ok:0,fail:0};
 const PH={
@@ -1008,7 +1008,7 @@ function facadeTex(style,night){const k=style+(night?'N':'');if(FAC[k])return FA
    const w=facadeCanvas(style,false),wx=w.getContext('2d'),d=wx.getImageData(0,0,FS,FS),bgc=new THREE.Color({siding:'#e6e2da',brick:'#9b4a38',stucco:'#e9e1d2',concrete:'#b9b6ae',metal:'#9aa1a6'}[style]);
    // copy everything that is not background (windows, trims) on top of the photo
    const bgR=Math.round(bgc.r*255),bgG=Math.round(bgc.g*255),bgB=Math.round(bgc.b*255),o=x.getImageData(0,0,FS,FS);for(let i=0;i<d.data.length;i+=4){if(Math.abs(d.data[i]-bgR)+Math.abs(d.data[i+1]-bgG)+Math.abs(d.data[i+2]-bgB)>12){o.data[i]=d.data[i];o.data[i+1]=d.data[i+1];o.data[i+2]=d.data[i+2]}}
-   x.putImageData(o,0,0);t.image=c2;t.needsUpdate=true};img.src=`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/${HIGH?'2k':'1k'}/${photo}/${photo}_diff_${HIGH?'2k':'1k'}.jpg`}
+   x.putImageData(o,0,0);t.image=c2;t.needsUpdate=true};img.src=`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/${photo}/${photo}_diff_1k.jpg`}
  return t}
 /* ground-contact shading: facades darken toward the pavement over the first ~3.5 m (their v coordinate is height above the base / tile height) */
 function facadeAO(m){m.onBeforeCompile=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\n#ifdef USE_UV\n diffuseColor.rgb*=mix(0.52,1.0,smoothstep(0.0,0.55,vUv.y));\n#endif')}}
