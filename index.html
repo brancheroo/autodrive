@@ -2940,10 +2940,12 @@ function owDir(t){const o=String(t.oneway||'').toLowerCase();if(o==='-1'||o==='r
  const hw=t.highway||'';if(hw==='motorway'||t.junction==='roundabout'||t.junction==='circular'||hw.endsWith('_link')&&/motorway|trunk/.test(hw))return 1;return 0}
 /* is the route one-way (divided carriageway) at s? OSM node data when loaded, else the router's own steps (Interstates / motorway class) */
 function routeOnewayAt(s){const R=game.route,ni=NODEINFO.get(R.nodes[routeLLnh(clamp(s,0,R.total))[2]]);if(ni&&ni.oneway!==undefined)return !!ni.oneway;let st=null;for(const x of R.steps||[]){if(x.s>s)break;st=x}return !!(st&&st.mw)}
-function spawnWayCar(ways){const cand=ways.filter(w=>w.hw!=='service');if(!cand.length)return;const w=cand[Math.floor(Math.random()*cand.length)];
+function spawnWayCar(ways){const cand=ways.filter(w=>w.hw!=='service');if(!cand.length)return;
+ /* pick the spot first: ways span the whole loaded map (~2 km) and cars further than 450 m are removed on the next update,
+    so a random spot made ~2 cars a second that were built, merged and thrown away within 0.5 s (a stall each) */
+ let w=null,s0=0;for(let k=0;k<12&&!w;k++){const c=cand[Math.floor(Math.random()*cand.length)],s=Math.random()*c.total,p=wayPos(c,s,0),d=Math.hypot(p[0]-game.ego.x,p[1]-game.ego.z);if(d>=60&&d<=400){w=c;s0=s}}if(!w)return;
  const sp=pickSpec();const dir=w.oneway?(w.owDir||1):(Math.random()<0.5?1:-1); /* one-way roads: only in the legal direction */
- const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],Math.random()*w.total,w.spd*0.8,dir);a.kind='way';a.way=w;a.mesh.position.y=0;
- const p=wayPos(a.way,a.s,0);if(Math.hypot(p[0]-game.ego.x,p[1]-game.ego.z)<40){scene.remove(a.mesh);return}
+ const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],s0,w.spd*0.8,dir);a.kind='way';a.way=w;a.mesh.position.y=0;
  game.agents.push(a)}
 function updateWayCar(a,dt){if(a.loose)return true;
  const w=a.way,off=w.oneway?(w.lanes>1?w.w/2-1.9:0):Math.min(1.8,w.w/4)*a.dir;
