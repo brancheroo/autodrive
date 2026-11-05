@@ -5210,8 +5210,8 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
 })();
 /* Street-name blades are 1.25 m signs: past ~150 m they are a few pixels but still cost two draw calls each
    (a 15-tile area holds ~700). Hide them by distance, rechecked a few times a second. */
-(function(){let t=0;const R2=150*150;
- MODS.push({id:'bladecull',frame(){if(++t%15||typeof TILES==='undefined'||!camera)return;const cx=camera.position.x,cz=camera.position.z;
+(function(){let t=0;const R2=150*150,W=new THREE.Vector3();
+ MODS.push({id:'bladecull',frame(){if(++t%15||typeof TILES==='undefined'||!camera)return;camera.getWorldPosition(W);const cx=W.x,cz=W.z;
   for(const T of TILES.values())if(T.group)for(const o of T.group.children)if(o.userData.blade){const dx=o.position.x-cx,dz=o.position.z-cz;o.visible=dx*dx+dz*dz<R2}}});
 })();
 </script>
