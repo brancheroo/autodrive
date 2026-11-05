@@ -12476,7 +12476,8 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
     of all at once on the frame it first appears (up to 20 shader builds in one frame, 100–200 ms freezes while
     driving into new areas). The tile is added when that finishes (or after 1.5 s at most). */
  BB.tileCompiles=0;window.addTileGroup=function(g){if(!renderer.compileAsync||typeof camera==='undefined'){scene.add(g);return}let done=false;const add=()=>{if(done)return;done=true;let live=false;for(const T of TILES.values())if(T.group===g){live=true;break}if(live&&!g.parent)scene.add(g)}; /* skip a tile unloaded meanwhile */
-  try{g.updateMatrixWorld(true);renderer.compileAsync(g,camera,scene).then(()=>{BB.tileCompiles++;add()},()=>setTimeout(add,0))}catch(e){setTimeout(add,0)}setTimeout(add,1500)};
+  try{g.updateMatrixWorld(true);const ps=window.GPUFX&&GPUFX.post&&GPUFX.pass,rt=ps&&ps.renderTarget,prev=renderer.getRenderTarget();if(rt)renderer.setRenderTarget(rt); /* the main view is drawn into the effects pass's target: compile for that target, not the screen */
+  const pr=renderer.compileAsync(g,camera,scene);if(rt)renderer.setRenderTarget(prev);pr.then(()=>{BB.tileCompiles++;add()},()=>setTimeout(add,0))}catch(e){setTimeout(add,0)}setTimeout(add,1500)};
  /* dashboard / taxi screens are canvases redrawn several times a second. With mipmaps on, WebGPU regenerates the whole
     chain on the GPU (one pass per level) for every update – the 1723×560 and 1386×385 taxi screens did that ~7 times
     a second and lined up with the remaining GPU spikes. Screens are seen close up: no mipmaps needed. */
@@ -12639,7 +12640,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const GRADES={neutral:[[0,0,0],[1,1,1],1,1],cinematic:[[0.01,0.012,0.02],[1.03,1,0.95],1.08,1.06],golden:[[0.02,0.01,0],[1.1,1.0,0.85],1.1,1.04],vintage:[[0.04,0.03,0.02],[1.02,0.97,0.85],0.78,0.94],cool:[[0,0.01,0.03],[0.93,1,1.08],1.0,1.05],vivid:[[0,0,0],[1,1,1],1.3,1.1]};
  function build(k){
   if(!post)post=new THREE.PostProcessing(renderer);post.outputColorTransform=false;
-  sp=pass(scene,camera);const tex=sp.getTextureNode('output'),dep=sp.getTextureNode('depth');
+  sp=pass(scene,camera);GFXE.pass=sp; /* 99zz pre-compiles new tiles against this pass's target */const tex=sp.getTextureNode('output'),dep=sp.getTextureNode('depth');
   const t=u=>tex.sample(u).rgb,lz=u=>perspectiveDepthToViewZ(dep.sample(u).x,cameraNear,cameraFar).negate();
   const px=PU.px;
   let bloomN=null,bt=null;if((k.bloom||k.rays)&&GA.bloom){bloomN=GA.bloom(tex,0.22,0.3,k.rays&&!k.bloom?1.1:1.0) /* soft: only real highlights (sun, lamps, glints) glow */;bt=bloomN.getTextureNode?bloomN.getTextureNode():bloomN}
