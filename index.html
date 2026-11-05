@@ -5325,6 +5325,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
 /* Graphics quality setting (Low / High / Ultra) on the start screen and HUD, plus a small FPS readout. */
 (function(){
  const PRE={low:{maxPR:1,minPR:Math.min(devicePixelRatio,0.75),shadow:1024,shadows:true},high:{maxPR:Math.min(devicePixelRatio,2),minPR:Math.min(devicePixelRatio,1.25),shadow:2048,shadows:true},ultra:{maxPR:Math.min(devicePixelRatio*1.25,2.5),minPR:Math.min(devicePixelRatio,1.5),shadow:4096,shadows:true}};
+ if(window.__GPU)for(const P of Object.values(PRE)){P.maxPR=Math.min(P.maxPR,1);P.minPR=Math.min(P.minPR,0.75);P.shadow=Math.min(P.shadow,2048)} /* WebGPU: the same scene costs the GPU ~2x WebGL here (43–68 ms a frame at Ultra 1.5x, freezing on every spike); render at most 1:1 CSS pixels, let the scaler go down to 0.75x, 2048² sun shadows */
  let cur='high';try{cur=localStorage.getItem('gfx')||(HIGH?'ultra':'high')}catch(e){}
  function apply(k){cur=PRE[k]?k:'high';const P=PRE[cur];Q.maxPR=P.maxPR;Q.minPR=P.minPR;Q.pr=Math.min(Math.max(Q.pr,P.minPR),P.maxPR);renderer.setPixelRatio(Q.pr);try{resize()}catch(e){}
   if(typeof sun!=='undefined'&&sun.shadow&&sun.shadow.mapSize.x!==P.shadow){sun.shadow.mapSize.set(P.shadow,P.shadow);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}}
