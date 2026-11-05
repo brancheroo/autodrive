@@ -12288,6 +12288,11 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const gpu=!!window.__GPU;window.RENDERER_MODE=gpu?'webgpu':'webgl';
  function setMode(m){try{localStorage.setItem('renderer',m)}catch(e){}location.href=location.pathname+'?renderer='+m}
  window.setRendererMode=setMode;
+ /* renderer switch on the start screen too, under the game mode */
+ {const add=()=>{if(document.getElementById('rmodeSel')||!window.UIX||!document.getElementById('start'))return false;const ok=!!navigator.gpu;
+   const d=UIX.section('Renderer',`<select id="rmodeSel" style="width:100%;${UIX.sel||''}"><option value="webgl">WebGL (standard)</option><option value="webgpu"${ok?'':' disabled'}>WebGPU (experimental)${ok?'':' – not supported here'}</option></select><div style="font-size:11px;color:var(--dim);margin-top:3px">Switching reloads the page. WebGPU turns off Graphics+ effects and the sky dome.</div>`,/Choose a self-driving car/);
+   const sel=d.querySelector('select');sel.value=gpu?'webgpu':'webgl';sel.onchange=()=>setMode(sel.value);return true};
+  if(!add()){const t=setInterval(()=>{if(add())clearInterval(t)},500);setTimeout(()=>clearInterval(t),20000)}}
  /* renderer switch inside the ✨ FX panel */
  setInterval(()=>{const pan=document.getElementById('gfxPanel');if(!pan||pan.style.display==='none'||pan.querySelector('[data-rmode]'))return;
   const d=document.createElement('div');d.dataset.rmode=1;d.style.cssText='margin-top:8px;border-top:1px solid #2a3a4a;padding-top:6px';
