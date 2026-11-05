@@ -12472,7 +12472,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  /* new map tiles: their shaders and pipelines are prepared with compileAsync before the tile joins the scene, instead
     of all at once on the frame it first appears (up to 20 shader builds in one frame, 100–200 ms freezes while
     driving into new areas). The tile is added when that finishes (or after 1.5 s at most). */
- BB.tileCompiles=0;window.addTileGroup=function(g){if(!renderer.compileAsync||typeof camera==='undefined'){scene.add(g);return}let done=false;const add=()=>{if(done)return;done=true;if(!g.parent)scene.add(g)};
+ BB.tileCompiles=0;window.addTileGroup=function(g){if(!renderer.compileAsync||typeof camera==='undefined'){scene.add(g);return}let done=false;const add=()=>{if(done)return;done=true;let live=false;for(const T of TILES.values())if(T.group===g){live=true;break}if(live&&!g.parent)scene.add(g)}; /* skip a tile unloaded meanwhile */
   try{g.updateMatrixWorld(true);renderer.compileAsync(g,camera,scene).then(()=>{BB.tileCompiles++;add()},add)}catch(e){add()}setTimeout(add,1500)};
  /* Driver's View off the main frame: with the frame cap every other display refresh is idle, and the Driver's View
     (a second full-scene render) stacked on a main frame was most of the 70–110 ms GPU spikes. Its scene render is
