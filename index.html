@@ -5208,6 +5208,12 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
   o.userData.trimArmed=true;const prev=o.onAfterRender;o.onAfterRender=function(r,s,cam){if(prev&&prev!==THREE.Object3D.prototype.onAfterRender)prev.apply(this,arguments);if(cam===camera&&M.on){trim(this);this.onAfterRender=prev||THREE.Object3D.prototype.onAfterRender}}}
  let t=0;MODS.push({id:'memtrim',frame(){if(!M.on||++t%30||typeof TILES==='undefined')return;const keep=keepSet();for(const T of TILES.values())if(T.group)for(const o of T.group.children)arm(o,keep)}});
 })();
+/* Street-name blades are 1.25 m signs: past ~150 m they are a few pixels but still cost two draw calls each
+   (a 15-tile area holds ~700). Hide them by distance, rechecked a few times a second. */
+(function(){let t=0;const R2=150*150;
+ MODS.push({id:'bladecull',frame(){if(++t%15||typeof TILES==='undefined'||!camera)return;const cx=camera.position.x,cz=camera.position.z;
+  for(const T of TILES.values())if(T.group)for(const o of T.group.children)if(o.userData.blade){const dx=o.position.x-cx,dz=o.position.z-cz;o.visible=dx*dx+dz*dz<R2}}});
+})();
 </script>
 <script>/* mods/02d-janitor.js */
 /* Memory janitor. Map data was never released: every tile the car passed kept its raw OSM data (RAW, RAWROADS,
