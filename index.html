@@ -12440,6 +12440,16 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   if(cm&&BB.nb===nb){const ro=cm.get([object,material,cx,lightsNode]);if(ro){done.add(ro);if(!RK.has(ro)){try{RK.set(ro,{m:ro.getMaterialCacheKey(),g:ro.getGeometryCacheKey(),s:this._nodes.getCacheKey(sc,lightsNode),rs:object.receiveShadow,ik:ro.initialCacheKey})}catch(e){}}if(!per){per=new Map();LASTOK.set(object,per)}per.set(cx,material)}}
   return r};
  if(RD&&renderer._handleObjectFunction===RD)renderer._handleObjectFunction=renderer._renderObjectDirect; /* three.js keeps its own reference to the draw function */
+ /* destroyed-texture freeze: game code disposes textures that objects on screen still use (02b's car merge frees the
+    textures of merged parts, some shared with other cars of the same model, e.g. the player's tyre normal maps). WebGL
+    just re-uploads them; WebGPU destroys the GPU texture, every bind group still pointing at it fails, and one failing
+    draw rejects the whole frame – the main view froze on its last good frame for the rest of the drive. Under WebGPU a
+    texture still used by anything in the scene is not disposed; it is retried every 5 s until nothing uses it. */
+ if(window.__GPU&&THREE.Texture&&!THREE.Texture.prototype.__safeDispose){const P=THREE.Texture.prototype,D=P.dispose;P.__safeDispose=true;let used=null,ut=0;const pend=new Set();BB.texKept=0;
+  const inUse=()=>{const now=performance.now();if(used&&now-ut<250)return used;used=new Set();ut=now;const add=m=>{for(const k in m){const v=m[k];if(v&&v.isTexture)used.add(v)}if(m.uniforms)for(const k in m.uniforms){const v=m.uniforms[k]&&m.uniforms[k].value;if(v&&v.isTexture)used.add(v)}};
+   if(typeof scene!=='undefined')scene.traverse(o=>{if(o.material)for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m)add(m)});return used};
+  P.dispose=function(){if(typeof scene!=='undefined'&&inUse().has(this)){BB.texKept++;pend.add(this);return}return D.call(this)};
+  setInterval(()=>{if(!pend.size)return;used=null;const u=inUse();for(const t of pend)if(!u.has(t)){pend.delete(t);D.call(t)}},5000)}
  /* render-object leak: three.js (r175) gives every object a render object per view, and each one hangs a 'dispose'
     listener on its material. Shared materials live for the whole session, so render objects of removed objects
     (despawned traffic, unloaded tiles) were never freed – the pole material alone held 802 for 15 live users, and the
