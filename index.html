@@ -5215,11 +5215,11 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
   o.userData.trimArmed=true;const prev=o.onAfterRender;o.onAfterRender=function(r,s,cam){if(prev&&prev!==THREE.Object3D.prototype.onAfterRender)prev.apply(this,arguments);if(cam===camera&&M.on){trim(this);this.onAfterRender=prev||THREE.Object3D.prototype.onAfterRender}}}
  let t=0;MODS.push({id:'memtrim',frame(){if(!M.on||++t%30||typeof TILES==='undefined')return;const keep=keepSet();for(const T of TILES.values())if(T.group)for(const o of T.group.children)arm(o,keep)}});
 })();
-/* Street-name blades are 1.25 m signs: past ~150 m they are a few pixels but still cost two draw calls each
+/* Street-name blades are 1.25 m signs: past ~300 m they are a few pixels but still cost two draw calls each
    (a 15-tile area holds ~700). Hide them by distance, rechecked a few times a second. */
-(function(){let t=0;const R2=150*150,W=new THREE.Vector3();
+(function(){let t=0;const R2=320*320,R3=280*280,W=new THREE.Vector3();
  MODS.push({id:'bladecull',frame(){if(++t%15||typeof TILES==='undefined'||!camera)return;camera.getWorldPosition(W);const cx=W.x,cz=W.z;
-  for(const T of TILES.values())if(T.group)for(const o of T.group.children)if(o.userData.blade){const dx=o.position.x-cx,dz=o.position.z-cz;o.visible=dx*dx+dz*dz<R2}}});
+  for(const T of TILES.values())if(T.group)for(const o of T.group.children)if(o.userData.blade){const dx=o.position.x-cx,dz=o.position.z-cz;const d=dx*dx+dz*dz;if(o.visible?d>R2:d<R3)o.visible=!o.visible} /* 280/320 m hysteresis: hides only when a few pixels, no flicker at the edge */}});
 })();
 /* WebGL shadow cadence: the sun's shadow map was redrawn every frame (~450 draws). Every other frame is visually the
    same at driving speeds and halves that cost. WebGPU has its own cadence (99zz). localStorage shadowEvery='1' restores. */
@@ -12186,8 +12186,8 @@ float rwHt=0.;
  MODS.push({id:'streetprops',
   start(){if(!added){scene.add(grp);added=true}builtAt=-1e9;route=null},
   disable(){grp.visible=false},
-  frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego)return;const on=(!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab)&&!G.fast&&(G.ego.v||0)<70;grp.visible=on;if(!on)return;
-   if(route!==G.route||Math.abs(G.ego.s-builtAt)>150||performance.now()-(this._bt||0)>6000){this._bt=performance.now();try{build()}catch(err){}} /* also every 6 s, so spots fix themselves once road tiles finish loading */}});
+  frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego)return;const on=(!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab)&&!G.fast;grp.visible=on; /* no speed cutoff: switching the whole layer off above 70 m/s made every prop blink out and back */if(!on)return;
+   if(route!==G.route||Math.abs(G.ego.s-builtAt)>150||(this._nt!==TILES.size&&performance.now()-(this._bt||0)>6000)){this._bt=performance.now();this._nt=TILES.size;try{build()}catch(err){}} /* re-placed when the loaded tile set changed (at most every 6 s), not on a timer, so props don't jump around */}});
 })();
 </script>
 <script>/* mods/99za-rooftops.js */
