@@ -5376,6 +5376,19 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  MODS.push({id:'janitor'});
 })();
 </script>
+<script>/* mods/02e-cartbake.js */
+/* Street vendor carts: each was ~14 separate meshes (body, wheels, legs, umbrella, signs, vendor), about 1,000 draw calls
+   across a downtown's loaded tiles. Once a tile is built, its carts are moved into one container (transforms unchanged) and
+   baked together: parts that share a material across all the tile's carts become one mesh. The cart groups themselves stay
+   (position + name are read by the AI radio), as do parts with a material of their own (emoji, sign faces). */
+(function(){
+ if(typeof window.BAKE!=='function')return;
+ MODS.push({id:'cartbake',frame(){if(typeof TILES==='undefined')return;
+  for(const T of TILES.values()){if(T._cartBaked||!T.carts||!T.carts.length||!T.group||!T.group.parent)continue;T._cartBaked=1;
+   try{const C=new THREE.Group();C.userData.cartBake=1;T.group.add(C);for(const g of T.carts)if(g.parent===T.group)C.add(g);window.BAKE(C)}catch(e){console.warn('cartbake',e)}
+   return}}}); /* one tile per frame */
+})();
+</script>
 <script>/* mods/02e-prefetch.js */
 /* Route prefetch: while the downloader is idle, fetch the map tiles along the route up to 40 km ahead of the car, one at a
    time. Each fetched tile lands in the 30-day local cache (IndexedDB), so when the car gets there – even above 1,000 mph –
