@@ -13125,7 +13125,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    Box trucks, step vans and semis get a stand-in measured from their own body: a cab block and a cargo/trailer block
    in the materials of their largest front and rear parts. Bikes, dually pickups and the player's car are left alone. A pooled body that comes back near is restored on the next check. */
 (function(){
- const FAR=150,NEAR=130,GEO=new Map(),dark=new THREE.MeshStandardMaterial({color:0x0c0d10,roughness:0.6}),glass=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:0.15,metalness:0.4});
+ const FAR=150,NEAR=130,PFAR=45,PNEAR=40,GEO=new Map(),dark=new THREE.MeshStandardMaterial({color:0x0c0d10,roughness:0.6}),glass=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:0.15,metalness:0.4});
  const ST={far:0,swaps:0};window.CARLOD=ST;ST.truck=m=>proxyTruck(m);
  function geos(spec){const L=+(spec.L||4.5).toFixed(1),W=+(spec.W||1.85).toFixed(1),H=+(spec.H||1.45).toFixed(1),wr=+(spec.wr||0.33).toFixed(2),k=L+'|'+W+'|'+H+'|'+wr;let g=GEO.get(k);if(g)return g;
   const bodyH=Math.max(0.3,H*0.5-wr*0.4),body=new THREE.BoxGeometry(L*0.97,bodyH,W*0.96);body.translate(0,wr*0.75+bodyH/2,0);
@@ -13156,6 +13156,8 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   const ep=G.ego.mesh.position;let far=0;
   for(const a of G.agents){if(!eligible(a)||a.mesh===G.ego.mesh)continue;const m=a.mesh,ud=m.userData;ud.lodSpec=a.spec;
    const d=m.position.distanceTo(ep);
+   /* people inside cars: ~53 pieces each, a few pixels behind tinted glass past ~45 m */
+   const ppl=[ud.driver,...(ud.pax||[])].filter(p=>p&&p.parent===m);if(d>PFAR&&!ud.pplOff){for(const p of ppl){p.userData.lodVis=p.visible;p.visible=false}ud.pplOff=ppl}else if(d<PNEAR&&ud.pplOff){for(const p of ud.pplOff)if(p.parent===m)p.visible=p.userData.lodVis!==false;ud.pplOff=null}
    if(ud.lodFar){if(d<NEAR){goNear(m);ST.swaps++}else{for(const c of m.children)if(c!==ud.lodP&&!ud.lodSaved.has(c)){ud.lodSaved.set(c,c.visible);c.visible=false}far++}}
    else if(d>FAR&&!ud.crashed&&!ud.dmg&&!ud.lodNo&&goFar(m)){ST.swaps++;far++}}
   ST.far=far}});
@@ -13173,7 +13175,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const POOL=new Map(),MAXK=3,MAXT=30,live=new Set(),gone=new Map();let total=0;const ST={hit:0,miss:0,kept:0};window.CARPOOL=ST;
  const key=spec=>spec.id||spec.style+spec.L+'x'+spec.W+'x'+spec.H; /* model only: colours are random, so keying by colour too left almost nothing to reuse; the body is repainted instead */
  const _dv=window.damageVehicle;if(typeof _dv==='function')window.damageVehicle=function(obj){if(obj&&obj.userData)obj.userData.noRecycle=1;return _dv.apply(this,arguments)};
- function strip(m){const ud=m.userData;for(const p of [ud.driver,...(ud.pax||[])])if(p&&p.parent===m)m.remove(p);ud.driver=null;ud.pax=[];
+ function strip(m){const ud=m.userData;for(const p of [ud.driver,...(ud.pax||[])])if(p&&p.parent===m)m.remove(p);ud.driver=null;ud.pax=[];ud.pplOff=null;
   m.position.set(0,0,0);m.rotation.set(0,0,0);m.scale.set(1,1,1);m.visible=true}
  window.buildCar=function(spec,colorHex,opts){
   if(spec&&!(opts&&opts.interior)&&colorHex!=null){const k=key(spec),l=POOL.get(k);
