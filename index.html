@@ -453,7 +453,7 @@ function biome(lat,lon,date){
 
 // ============================================================ RENDERER / SCENE
 const canvas=$('view');
-const GPU_MODE=!!window.__GPU;const renderer=GPU_MODE?new __GPU.WebGPURenderer({canvas,antialias:true}):new THREE.WebGLRenderer({canvas,antialias:true,logarithmicDepthBuffer:true}); /* WebGPU mode: see the boot script at the top */
+const GPU_MODE=!!window.__GPU;const renderer=GPU_MODE?new __GPU.WebGPURenderer({canvas,antialias:false /* VRAM: MSAA is ~4× the colour+depth memory; FXAA (post) smooths edges */}):new THREE.WebGLRenderer({canvas,antialias:true,logarithmicDepthBuffer:true}); /* WebGPU mode: see the boot script at the top */
 if(GPU_MODE){renderer.getContext=()=>({getContextAttributes:()=>({}),getProgramParameter:()=>true,getAttachedShaders:()=>[]});renderer.capabilities=renderer.capabilities||{isWebGL2:true,maxTextureSize:8192,getMaxAnisotropy:()=>8};renderer.info=renderer.info||{};renderer.info.programs=renderer.info.programs||[];if(!renderer.readRenderTargetPixels)renderer.readRenderTargetPixels=()=>{};if(!renderer.compile)renderer.compile=()=>{};renderer.init().catch(e=>{window.GPUERR=String(e)})}
 // quality tier from device capability; dynamic resolution keeps frame rate ≥ ~50 fps
 const HIGH=(navigator.deviceMemory||8)>=8&&(navigator.hardwareConcurrency||8)>=8&&renderer.capabilities.maxTextureSize>=8192;
