@@ -3337,7 +3337,7 @@ for(const n of ['renderPerception','drawScreen','updateGrass','updateSmoke','wdo
 let lastT=performance.now(),uiT=0,scrT=0,tileT=0,spawnT=0;
 /* frame-rate cap: WebGPU defaults to 30 fps (it allocates more per frame than WebGL and ran at ~50 fps, which kept the heap
    near 1 GB); WebGL defaults to uncapped. localStorage fpsCap = '30' | '60' | '0' (off) overrides. */
-const FPSCAP={last:0,hz:(()=>{let v=null;try{v=localStorage.getItem('fpsCap')}catch(e){}if(v!==null&&v!=='')return +v||0;return window.__GPU?30:0})()};
+const FPSCAP={last:0,hz:(()=>{let v=null;try{v=localStorage.getItem('fpsCap')}catch(e){}if(v!==null&&v!=='')return +v||0;return window.__GPU?120:0})()};
 function step(){
  requestAnimationFrame(step);if(FPSCAP.hz){const t=performance.now();if(t-FPSCAP.last<1000/FPSCAP.hz-3){if(FPSCAP.idle)try{FPSCAP.idle()}catch(e){}return}FPSCAP.last=t}modCall('frame');try{riderView()}catch(e){}
  const now=performance.now();const rawDt=Math.min(0.5,(now-lastT)/1000);let rdt=Math.min(0.1,rawDt);lastT=now;
