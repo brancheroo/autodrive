@@ -2459,8 +2459,8 @@ function updateSmoke(dt){const G=game;if(!G)return;const W=new THREE.Vector3(Mat
  for(let i=SMOKE.live.length-1;i>=0;i--){const q=SMOKE.live[i];q.age+=dt;const u=q.age/q.life;if(u>=1){scene.remove(q.s);SMOKE.pool.push(q.s);SMOKE.live.splice(i,1);continue}
   q.v.y*=Math.pow(0.4,dt);q.s.position.addScaledVector(q.v,dt).addScaledVector(W,dt);q.s.scale.setScalar(0.35+u*2.8);q.s.material.opacity=0.75*(1-u)**1.4}}
 // rounded box (radius clamped to the thinnest side); used wherever real objects have soft edges
-function roundBox(w,h,d,r=0.02,seg=3){r=Math.min(r,w/2-1e-4,h/2-1e-4,d/2-1e-4);if(r<=0.0005)return new SharpBox(w,h,d);const g=new SharpBox(w,h,d,seg*2,seg*2,seg*2),p=g.attributes.position,v=new THREE.Vector3(),n=new THREE.Vector3(),hx=w/2-r,hy=h/2-r,hz=d/2-r;
- for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);const c=new THREE.Vector3(clamp(v.x,-hx,hx),clamp(v.y,-hy,hy),clamp(v.z,-hz,hz));n.subVectors(v,c);if(n.lengthSq()>1e-12){n.normalize().multiplyScalar(r);v.copy(c).add(n);p.setXYZ(i,v.x,v.y,v.z)}}g.computeVertexNormals();return g}
+function roundBox(w,h,d,r=0.02,seg=3){r=Math.min(r,w/2-1e-4,h/2-1e-4,d/2-1e-4);if(r<=0.0005)return new SharpBox(w,h,d);const g=new SharpBox(w,h,d,seg*2,seg*2,seg*2),p=g.attributes.position,v=new THREE.Vector3(),n=new THREE.Vector3(),c=new THREE.Vector3() /* one scratch vector: a new one per vertex was ~14k objects/s while traffic cars were built */,hx=w/2-r,hy=h/2-r,hz=d/2-r;
+ for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);c.set(clamp(v.x,-hx,hx),clamp(v.y,-hy,hy),clamp(v.z,-hz,hz));n.subVectors(v,c);if(n.lengthSq()>1e-12){n.normalize().multiplyScalar(r);v.copy(c).add(n);p.setXYZ(i,v.x,v.y,v.z)}}g.computeVertexNormals();return g}
 // ---- Harley-style cruiser + bearded, leather-clad rider (traffic agent; same interface as buildCar: +x forward, wheels, lights)
 const HARLEY_SPEC={style:'harley',L:2.45,W:0.95,H:1.75,wb:1.62,wr:0.34,top:85};
 const HCOLS=['#111111','#7a0f14','#0d2a52','#3b3b3b','#c77d12','#1f3d2b','#5a1a5e'];
