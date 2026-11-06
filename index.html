@@ -734,7 +734,7 @@ function pip(pt,poly){let ins=false;for(let i=0,j=poly.length-1;i<poly.length;j=
 // ============================================================ OSM TILE STREAMING
 const TS=0.006; // degrees per tile (~600 m)
 const RAW=new Map(),TILES=new Map(),PENDING=new Set();const SFB=new Map();let LOCAL_USED=0;
-const NODEINFO=new Map();const APPR=new Map();const NODEH=new Map(); // node id -> deck/bore height for bridges & tunnels // osm node id -> {speed(mph), hw, name}
+const NODEINFO=new Map();const APPR=new Map();const EMBK=[]; /* embankment footprints [ax,az,bx,bz,halfwidth]: grass skips them */const NODEH=new Map(); // node id -> deck/bore height for bridges & tunnels // osm node id -> {speed(mph), hw, name}
 const CONTROLS=new Map(); // osm node id -> {type,lat,lon,axisHead}
 const BUILTWAYS=new Set();
 const DRIVABLE=new Set(['motorway','trunk','primary','secondary','tertiary','unclassified','residential','motorway_link','trunk_link','primary_link','secondary_link','tertiary_link','living_street','service']);
@@ -1361,7 +1361,7 @@ function* buildTileGen(key){
      const Ld=[0];for(let i=1;i<D.length;i++)Ld.push(Ld[i-1]+Math.hypot(D[i][0]-D[i-1][0],D[i][1]-D[i-1][1]));const tl=Ld[Ld.length-1]||1,e0=APPR.get(N[0])||0,e1=APPR.get(N[N.length-1])||0,R0=Math.min(tl,e0/0.06),R1=Math.min(tl,e1/0.06),sm=u=>{u=clamp(u,0,1);return u*u*(3-2*u)};
      D.forEach((q,i)=>{const g=groundY(q[0],q[1]);q.push(g+Math.max(R0>0?e0*sm(1-Ld[i]/R0):0,R1>0?e1*sm(1-(tl-Ld[i])/R1):0))});
      {const ec=new THREE.Color(0x7d7a62);for(const sd of [1,-1]){let pT=null,pF=null;for(let i=0;i<D.length;i++){const a=D[Math.max(0,i-1)],b=D[Math.min(D.length-1,i+1)],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1,nx=-dz/l*sd,nz=dx/l*sd,hE=D[i][2]-groundY(D[i][0],D[i][1]),o0=w/2+0.3,o1=o0+Math.max(0.5,hE*1.8),fx=D[i][0]+nx*o1,fz=D[i][1]+nz*o1;
-      const T=[D[i][0]+nx*o0,D[i][2]+0.02,D[i][1]+nz*o0],F=[fx,groundY(fx,fz)-0.4,fz];if(pT&&(hE>0.15||pT[1]-pF[1]>0.55)){if(sd>0){bWall.tri(pT,pF,F,null,null,null,null,ec);bWall.tri(pT,F,T,null,null,null,null,ec)}else{bWall.tri(pT,F,pF,null,null,null,null,ec);bWall.tri(pT,T,F,null,null,null,null,ec)}}pT=T;pF=F}}} /* embankment: earth slopes (~1:1.8) from both road edges down to the ground, so raised approaches don't float */
+      const T=[D[i][0]+nx*o0,D[i][2]+0.02,D[i][1]+nz*o0],F=[fx,groundY(fx,fz)-0.4,fz];if(pT&&(hE>0.15||pT[1]-pF[1]>0.55)){if(sd>0){EMBK.push([D[i-1][0],D[i-1][1],D[i][0],D[i][1],o1+0.5]);if(EMBK.length>6000)EMBK.splice(0,1000)}if(sd>0){bWall.tri(pT,pF,F,null,null,null,null,ec);bWall.tri(pT,F,T,null,null,null,null,ec)}else{bWall.tri(pT,F,pF,null,null,null,null,ec);bWall.tri(pT,T,F,null,null,null,null,ec)}}pT=T;pF=F}}} /* embankment: earth slopes (~1:1.8) from both road edges down to the ground, so raised approaches don't float */
      apr=true;pts.length=0;pts.push(...D);N.forEach((nid,k)=>{if(!NODEH.has(nid)||APPR.has(nid))NODEH.set(nid,D[kI[k]][2])});
      for(let k=1;k<N.length;k++){const hs=[];for(let q=kI[k-1];q<=kI[k];q++)hs.push(D[q][2]);if(hs.length>=2){BRPROF.set(N[k-1]+'_'+N[k],hs);BRPROF.set(N[k]+'_'+N[k-1],hs.slice().reverse())}}}
     ribbon(hw==='service'&&sk==='asphalt'?bRoad2:sk==='asphalt'?bRoad:rb(sk),pts,w,y);
@@ -2423,10 +2423,11 @@ function* grassBuild(cx,cz,im){
  let n=0;const MAX=({ultra:60000,high:32000,low:12000})[window.GFX?GFX.get():'high']||32000,R1=25,R2=75; /* blade budget by graphics quality */
  /* route corridor near the camera: grass never grows on the carriageway even where only the route ribbon is drawn (rural, no OSM tile yet) */
  const segs=[];for(const c of routeRoads()){if(!c.bb||c.bb[1]<cx-R2-20||c.bb[0]>cx+R2+20||c.bb[3]<cz-R2-20||c.bb[2]>cz+R2+20)continue;for(let k=0;k<c.pts.length-1;k++){const a=c.pts[k],b=c.pts[k+1];if(Math.min(Math.hypot(a[0]-cx,a[1]-cz),Math.hypot(b[0]-cx,b[1]-cz))<R2+30)segs.push([a,b,(c.w/2)+0.9])}}
+ const emb=EMBK.filter(e=>Math.min(Math.hypot(e[0]-cx,e[1]-cz),Math.hypot(e[2]-cx,e[3]-cz))<R2+40);
  const onRoute=(x,z)=>{for(const [a,b,h] of segs){const dx=b[0]-a[0],dz=b[1]-a[1],L2=dx*dx+dz*dz||1,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/L2,0,1);if(Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t)<h)return true}return false};
  for(const [R0,Rr,step,big] of [[0,R1,0.34,1],[R1,R2,0.75,1.9]]){for(let gx=Math.floor((cx-Rr)/step);gx<=Math.ceil((cx+Rr)/step)&&n<MAX;gx++)for(let gz=Math.floor((cz-Rr)/step);gz<=Math.ceil((cz+Rr)/step)&&n<MAX;gz++){
    const x=gx*step+(rnd()-0.5)*step,z=gz*step+(rnd()-0.5)*step,d=Math.hypot(x-cx,z-cz);if(d<R0||d>Rr)continue;
-   const c=vegAt(toLat(z),toLon(x));if(!c)continue;const rq=roadQAt(x,z);if(rq&&rq.inside(x,z,0.6))continue;if(segs.length&&onRoute(x,z))continue;
+   const c=vegAt(toLat(z),toLon(x));if(!c)continue;const rq=roadQAt(x,z);if(rq&&rq.inside(x,z,0.6))continue;if(segs.length&&onRoute(x,z))continue;if(emb.length){let hit=false;for(const e of emb){const dx=e[2]-e[0],dz=e[3]-e[1],L2=dx*dx+dz*dz||1,t=clamp(((x-e[0])*dx+(z-e[1])*dz)/L2,0,1);if(Math.hypot(x-e[0]-dx*t,z-e[1]-dz*t)<e[4]){hit=true;break}}if(hit)continue}
    const fade=d>R2*0.8?1-(d-R2*0.8)/(R2*0.2):1,h=(hBase+rnd()*hVar)*fade*(snow?0.3:1);if(h<0.02)continue;
    q.setFromAxisAngle(UPV,rnd()*6.283);sc.set(big*(0.8+rnd()*0.5),h,big*(0.8+rnd()*0.5));p.set(x,groundY(x,z)-0.01,z);M.compose(p,q,sc);M.toArray(SM,n*16);
    col.setRGB(c[0]*0.9,c[1]*1.05,c[2]*0.8);if(snow)col.lerp(new THREE.Color(0xe8eef2),0.6);col.toArray(SC,n*3);n++;if((++yc&255)===0)yield}if((++yc&63)===0)yield}
