@@ -13205,6 +13205,17 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   ST.far=far}});
 })();
 </script>
+<script>/* mods/zzy-pedlod.js */
+/* Distance LOD for pedestrians, Segway tours and walked dogs: 4-40 pieces each, a pixel or two tall past ~120 m from the
+   camera. Beyond that they are not drawn (they keep walking); back within ~105 m they reappear. Only objects this module
+   hid are shown again, so other code that hides a pedestrian keeps control. */
+(function(){
+ const FAR=120,NEAR=105,_c=new THREE.Vector3();let tick=0;
+ const set=(o,d)=>{if(!o)return;const u=o.userData;if(d>FAR&&o.visible&&!u.pedLod){u.pedLod=1;o.visible=false}else if(d<NEAR&&u.pedLod){u.pedLod=0;o.visible=true}};
+ MODS.push({id:'pedlod',frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.peds||typeof camera==='undefined')return;if(++tick%8)return;camera.getWorldPosition(_c);
+  for(const p of G.peds){if(!p||!p.mesh)continue;const d=p.mesh.position.distanceTo(_c);set(p.mesh,d);if(p.dog){set(p.dog.mesh,d);set(p.dog.leash,d)}}}});
+})();
+</script>
 <script>/* mods/zzz-carpool.js */
 /* Traffic car recycling. At speed, traffic turns over constantly: every new car was built from scratch (~240 meshes, rounded
    boxes, then merged by the baker) and the old one thrown away, a large share of the garbage behind the 200-700 ms GC
