@@ -13038,8 +13038,8 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    arc.rotation.x=Math.PI/2;arc.position.set(x,wr,sd*(W/2-(rear?0.06:0.04)));arc.material=paint;arc.castShadow=true;A.add(arc);
    const lip=new THREE.Mesh(new THREE.TorusGeometry(r,0.018,6,28,2.5),carbon);lip.rotation.z=Math.PI/2-1.25+Math.PI/2;lip.position.set(x,wr,sd*(W/2+(rear?0.09:0.07)));A.add(lip)}
   /* hyperbolic flank blades: y = y0 + k/(x1 - x), flat at the front, flicking up over the rear haunch */
-  for(const sd of [1,-1]){const pts=[],x0=wb/2-wr-0.15,x1=-wb/2-wr*0.2,k=0.06;
-   for(let i=0;i<=24;i++){const t=i/24,x=x0+(x1-0.25-x0)*t,y=wr*0.85+k/Math.max(0.12,x-x1+0.3)-k/(x0-x1+0.3);pts.push(new THREE.Vector3(x,Math.min(H*0.92,y),sd*(W/2+0.05+0.05*t)))}
+  for(const sd of [1,-1]){const pts=[],x0=wb/2-wr-0.15,x1=-wb/2-wr*0.2,k=0.14;
+   for(let i=0;i<=24;i++){const t=i/24,x=x0+(x1-0.25-x0)*t,y=wr*1.05+k/Math.max(0.16,x-x1+0.3)-k/(x0-x1+0.3);pts.push(new THREE.Vector3(x,Math.min(H*0.92,y),sd*(W/2+0.05+0.05*t)))}
    const blade=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),48,0.028,6),carbon);blade.scale.set(1,1,1);A.add(blade);
    const glow=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p=>p.clone().add(new THREE.Vector3(0,0.035,sd*0.01)))),48,0.008,4),accent);A.add(glow)}
   /* front splitter and stacked canards */
