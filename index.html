@@ -1326,29 +1326,7 @@ function buildTile(key){btFinish();BT_DEADLINE=Infinity;const g=buildTileGen(key
 function btStart(key){if(BT.gen)return false;window.BTN=(window.BTN||0)+1;BT.gen=buildTileGen(key);BT.key=key;BT.ox=ORIGIN.lon;BT.oy=ORIGIN.lat;BT.T=null;return true}
 function btStep(ms){if(!BT.gen)return;if(ORIGIN.lon!==BT.ox||ORIGIN.lat!==BT.oy){btAbort();return}BT_DEADLINE=performance.now()+ms;let r;try{r=BT.gen.next()}catch(e){console.warn('tile build failed',e);r={done:true}}BT_DEADLINE=Infinity;if(r.done){const k=BT.key;BT.gen=null;BT.key=null;if(window.onTileBuilt)try{onTileBuilt(k)}catch(e){}}}
 
-function* buildTileGen(key){
- if(TILES.has(key)||!RAW.has(key)||TERR.ref===null||!tileTerrReady(key))return;
- const data=RAW.get(key),T={key,group:new THREE.Group(),ways:[],peds:[],ids:[],lamps:[],signals:[]};BT.T=T;
- const bRoad=new Buf(),bRoad2=new Buf(),bPath=new Buf(),bY=new Buf(),bW=new Buf(),bB=new Buf(),bR=new Buf(),bG=new Buf(),bWa=new Buf();MK.red=new Buf();MK.dec=new Buf();
- const trees=[];const bio=game.bio;const nodeWays=new Map();
- const BC={bio,walls:new Map(),roofs:new Map(),parapet:new Buf(),canopy:new Buf(),storeIds:new Set(),group:T.group},bRecs=[],partRings=[],pois=[];const SFBT=data.sfb||SFB.get(key)||null;const BROADS=tileRoads(key),RQ=roadIndex(BROADS);CUR_RQ=RQ;CUR_RQG=roadIndex(BROADS.filter(w=>!w.bridge)); /* ground-level roads only: piers must clear these */T.missing=neighbourKeys(key).filter(k=>!RAW.has(k));
- for(const el of data.elements){if(performance.now()>BT_DEADLINE)yield;const t=el.tags||{};if(el.type==='way'&&el.geometry&&t['building:part']&&t['building:part']!=='no')partRings.push(el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]));if(el.type==='node'&&t.name&&(t.shop||t.amenity||t.tourism))pois.push({x:toX(el.lon),z:toZ(el.lat),name:t.brand||t.name,shop:!!t.shop||/restaurant|cafe|fast_food|bank|pharmacy|bar|pub|ice_cream/.test(t.amenity||'')})}
- // mark buildings that contain a shop/restaurant POI (storefront ground floor)
- for(const el of data.elements){if(performance.now()>BT_DEADLINE)yield;if(el.type==='way'&&el.geometry&&(el.tags||{}).building){const ring=el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);if(pois.some(p=>p.shop&&pip([p.x,p.z],ring)))BC.storeIds.add(el.id)}}const roadBufs=new Map(),bWall=new Buf(),bPier=new Buf(),bCurb=new Buf();const rb=k=>{if(!roadBufs.has(k))roadBufs.set(k,new Buf());return roadBufs.get(k)};
- const P=g=>g.map(p=>[toX(p.lon),toZ(p.lat)]);
- for(const el of (data.elements||[]).slice().sort((a,b)=>{const f=e=>{const t=e.tags||{};return t.bridge&&t.bridge!=='no'?0:1};return f(a)-f(b)})){if(performance.now()>BT_DEADLINE)yield;
-  if(el.type!=='way'||!el.geometry)continue;const t=el.tags||{};
-  if(t.highway){ // register nodes for speed limit/names even when way already built
-   const spd=parseSpeed(t.maxspeed)||DEF_SPD[t.highway]||null;
-   if(el.nodes)el.nodes.forEach((nid,k)=>{if(DRIVABLE.has(t.highway)){if(!NODEINFO.has(nid)||t.maxspeed)NODEINFO.set(nid,{spd,hw:t.highway,name:t.name||t.ref||'',ref:t.ref||'',ms:!!t.maxspeed,tl:t['turn:lanes']||t['turn:lanes:forward']||'',lanes:+t.lanes||0,oneway:owDir(t)!==0,owDir:owDir(t)||1});
-    if(!nodeWays.has(nid))nodeWays.set(nid,[]);nodeWays.get(nid).push({el,k})}})}
-  if(BUILTWAYS.has(el.id))continue;BUILTWAYS.add(el.id);T.ids.push(el.id);
-  const pts=P(el.geometry);
-  if(t.highway){
-   const hw=t.highway;
-   if(t.area==='yes')continue;
-   const isBridge=t.bridge&&t.bridge!=='no',isTunnel=t.tunnel&&t.tunnel!=='no'&&t.tunnel!=='building_passage',layer=+t.layer||(isBridge?1:isTunnel?-1:0);
-   if((isBridge||isTunnel)&&DRIVABLE.has(hw)){
+function brProfile(el,pts,isBridge,isTunnel,layer,data){ /* height profile of one bridge / tunnel way (densified points get a 3rd coord); returns {pts,kIdx,L} */
     const kIdx=pts.map((_,k)=>k);if(isBridge){const D=[],M=[];for(let i=0;i<pts.length;i++){if(i){const a0=pts[i-1],b0=pts[i],l=Math.hypot(b0[0]-a0[0],b0[1]-a0[1]),n=isFinite(l)?Math.min(150,Math.floor(l/4)):0; /* bounded: bad or huge segments must never explode memory */for(let q=1;q<n;q++)D.push([lerp(a0[0],b0[0],q/n),lerp(a0[1],b0[1],q/n)])}M.push(D.length);D.push(pts[i])}pts.length=0;pts.push(...D);M.forEach((v,k)=>kIdx[k]=v)} /* OSM spans are often just two end nodes: densify so the deck can rise between them */ // deck / bore heights: straight between the ends, bridges keep clearance over what they cross
     const L=[0];for(let i=1;i<pts.length;i++)L.push(L[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const tot=L[L.length-1]||1,h0=groundY(pts[0][0],pts[0][1]),h1=groundY(pts[pts.length-1][0],pts[pts.length-1][1]);
     /* overpass over a road or railway: full vehicle clearance (deck underside ≥ ~5.2 m above the road below), reached quickly
@@ -1363,12 +1341,47 @@ function* buildTileGen(key){
      } /* full overpass clearance only where a road/rail is actually found crossing (all loaded tiles are searched now); creeks are never fetched, so 'no water found' used to raise every creek bridge 6 m */
     const clr0=layer>=1?(overRoad?Math.max(6.2,5.3*layer+0.9):Math.min(3,1.8*layer)):1.5,MAXG=0.07,rampLen=Math.max(4,Math.min(tot*0.48,clr0*1.5/MAXG)),clr=Math.min(clr0,rampLen*MAXG/1.5); /* ramps no steeper than ~7% (smoothstep peak slope = 1.5·h/len): long bridges get long gentle approaches, short ones sit lower instead of climbing a wall */
     pts.forEach((p,i)=>{const lin=lerp(h0,h1,L[i]/tot);if(isTunnel){p.push(lin)}else{const g=groundY(p[0],p[1]),ramp=clamp(Math.min(L[i],tot-L[i])/rampLen,0,1);let y=Math.max(lin,g+clr*ramp*ramp*(3-2*ramp));for(const X of XING){const dd=Math.hypot(p[0]-X[0],p[1]-X[1]);y=Math.max(y,X[2]+5.6-Math.max(0,dd-8)*0.07)} /* full clearance right over each road/rail it crosses, whatever the span shape */p.push(y)}});
-    if(isBridge&&pts.length>1){ /* no impossible decks: ends meet a neighbouring bridge span at its height, then every rise or drop is limited to ~7.5% by raising the low side
-       (an overpass crossing near the end of a short span used to jump 5.6 m in 4 m – 135% on the Rickenbacker Causeway); ends left in the air get an approach ramp below */
-     const G=0.075,n=pts.length-1,pin=new Set();if(el.nodes){const a0=BRNH.get(el.nodes[0]),a1=BRNH.get(el.nodes[el.nodes.length-1]);if(a0!=null&&isFinite(a0)){pts[0][2]=a0;pin.add(0)}if(a1!=null&&isFinite(a1)){pts[n][2]=a1;pin.add(n)}}
-     for(let i=1;i<=n;i++){const ds=L[i]-L[i-1];if(!pin.has(i))pts[i][2]=Math.max(pts[i][2],pts[i-1][2]-G*ds)}
-     for(let i=n-1;i>=0;i--){const ds=L[i+1]-L[i];if(!pin.has(i))pts[i][2]=Math.max(pts[i][2],pts[i+1][2]-G*ds)}
-     for(const pi of pin)for(let i=0;i<=n;i++)pts[i][2]=Math.min(pts[i][2],pts[pi][2]+0.1*Math.abs(L[i]-L[pi]))} /* a pinned end lower than this span wants: climb away from it at ≤10% instead of a wall (some clearance is lost right there) */
+    return {pts,kIdx,L}}
+function* buildTileGen(key){
+ if(TILES.has(key)||!RAW.has(key)||TERR.ref===null||!tileTerrReady(key))return;
+ const data=RAW.get(key),T={key,group:new THREE.Group(),ways:[],peds:[],ids:[],lamps:[],signals:[]};BT.T=T;
+ const bRoad=new Buf(),bRoad2=new Buf(),bPath=new Buf(),bY=new Buf(),bW=new Buf(),bB=new Buf(),bR=new Buf(),bG=new Buf(),bWa=new Buf();MK.red=new Buf();MK.dec=new Buf();
+ const trees=[];const bio=game.bio;const nodeWays=new Map();
+ const BC={bio,walls:new Map(),roofs:new Map(),parapet:new Buf(),canopy:new Buf(),storeIds:new Set(),group:T.group},bRecs=[],partRings=[],pois=[];const SFBT=data.sfb||SFB.get(key)||null;const BROADS=tileRoads(key),RQ=roadIndex(BROADS);CUR_RQ=RQ;CUR_RQG=roadIndex(BROADS.filter(w=>!w.bridge)); /* ground-level roads only: piers must clear these */T.missing=neighbourKeys(key).filter(k=>!RAW.has(k));
+ for(const el of data.elements){if(performance.now()>BT_DEADLINE)yield;const t=el.tags||{};if(el.type==='way'&&el.geometry&&t['building:part']&&t['building:part']!=='no')partRings.push(el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]));if(el.type==='node'&&t.name&&(t.shop||t.amenity||t.tourism))pois.push({x:toX(el.lon),z:toZ(el.lat),name:t.brand||t.name,shop:!!t.shop||/restaurant|cafe|fast_food|bank|pharmacy|bar|pub|ice_cream/.test(t.amenity||'')})}
+ // mark buildings that contain a shop/restaurant POI (storefront ground floor)
+ for(const el of data.elements){if(performance.now()>BT_DEADLINE)yield;if(el.type==='way'&&el.geometry&&(el.tags||{}).building){const ring=el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);if(pois.some(p=>p.shop&&pip([p.x,p.z],ring)))BC.storeIds.add(el.id)}}const roadBufs=new Map(),bWall=new Buf(),bPier=new Buf(),bCurb=new Buf();const rb=k=>{if(!roadBufs.has(k))roadBufs.set(k,new Buf());return roadBufs.get(k)};
+ const P=g=>g.map(p=>[toX(p.lon),toZ(p.lat)]);
+ /* bridge network pass: every bridge span in this tile gets its profile first, then the heights at the nodes spans share are solved
+    together (raised until no link along any span is steeper than G, mid-span overpass peaks included), so neighbouring spans and
+    ramp junctions always agree; spans already built in loaded tiles stay fixed. The decks are then built from the solved profiles. */
+ const PRE=new Map();{const G=0.075,H=new Map(),FIX=new Set(),adj=new Map();
+  for(const el of (data.elements||[])){if(el.type!=='way'||!el.geometry||!el.nodes||BUILTWAYS.has(el.id))continue;const t=el.tags||{};if(!t.highway||t.area==='yes'||!DRIVABLE.has(t.highway)||!(t.bridge&&t.bridge!=='no'))continue;
+   if(performance.now()>BT_DEADLINE)yield;
+   const R=brProfile(el,P(el.geometry),true,false,+t.layer||1,data);R.el=el;PRE.set(el.id,R);
+   el.nodes.forEach((nid,k)=>{if(BRNH.has(nid)){FIX.add(nid);H.set(nid,BRNH.get(nid));return}if(FIX.has(nid))return;let h=H.has(nid)?H.get(nid):-1e9;const Lk=R.L[R.kIdx[k]];
+    for(let i=0;i<R.pts.length;i++)h=Math.max(h,R.pts[i][2]-G*Math.abs(R.L[i]-Lk));H.set(nid,h)});
+   for(let k=1;k<el.nodes.length;k++){const a=el.nodes[k-1],b=el.nodes[k],d=R.L[R.kIdx[k]]-R.L[R.kIdx[k-1]];for(const [u,v] of [[a,b],[b,a]]){if(!adj.has(u))adj.set(u,[]);adj.get(u).push([v,d])}}}
+  for(let it=0,ch=true;ch&&it<200;it++){ch=false;for(const [u,E] of adj){if(FIX.has(u))continue;let h=H.get(u);for(const [v,d] of E){const need=H.get(v)-G*d;if(need>h+1e-4){h=need;ch=true}}H.set(u,h)}}
+  for(const R of PRE.values()){const el=R.el,pts=R.pts,L=R.L,n=pts.length-1,pin=new Set();
+   el.nodes.forEach((nid,k)=>{if(H.has(nid)){pts[R.kIdx[k]][2]=H.get(nid);pin.add(R.kIdx[k])}});
+   for(let i=1;i<=n;i++)if(!pin.has(i))pts[i][2]=Math.max(pts[i][2],pts[i-1][2]-G*(L[i]-L[i-1]));
+   for(let i=n-1;i>=0;i--)if(!pin.has(i))pts[i][2]=Math.max(pts[i][2],pts[i+1][2]-G*(L[i+1]-L[i]));
+   el.nodes.forEach((nid,k)=>{if(!FIX.has(nid))return;const pi=R.kIdx[k];for(let i=0;i<=n;i++)if(i!==pi)pts[i][2]=Math.min(pts[i][2],pts[pi][2]+0.1*Math.abs(L[i]-L[pi]))})}} /* a lower neighbour already built in another tile: climb away from it at ≤10% */
+ for(const el of (data.elements||[]).slice().sort((a,b)=>{const f=e=>{const t=e.tags||{};return t.bridge&&t.bridge!=='no'?0:1};return f(a)-f(b)})){if(performance.now()>BT_DEADLINE)yield;
+  if(el.type!=='way'||!el.geometry)continue;const t=el.tags||{};
+  if(t.highway){ // register nodes for speed limit/names even when way already built
+   const spd=parseSpeed(t.maxspeed)||DEF_SPD[t.highway]||null;
+   if(el.nodes)el.nodes.forEach((nid,k)=>{if(DRIVABLE.has(t.highway)){if(!NODEINFO.has(nid)||t.maxspeed)NODEINFO.set(nid,{spd,hw:t.highway,name:t.name||t.ref||'',ref:t.ref||'',ms:!!t.maxspeed,tl:t['turn:lanes']||t['turn:lanes:forward']||'',lanes:+t.lanes||0,oneway:owDir(t)!==0,owDir:owDir(t)||1});
+    if(!nodeWays.has(nid))nodeWays.set(nid,[]);nodeWays.get(nid).push({el,k})}})}
+  if(BUILTWAYS.has(el.id))continue;BUILTWAYS.add(el.id);T.ids.push(el.id);
+  const pts=P(el.geometry);
+  if(t.highway){
+   const hw=t.highway;
+   if(t.area==='yes')continue;
+   const isBridge=t.bridge&&t.bridge!=='no',isTunnel=t.tunnel&&t.tunnel!=='no'&&t.tunnel!=='building_passage',layer=+t.layer||(isBridge?1:isTunnel?-1:0);
+   if((isBridge||isTunnel)&&DRIVABLE.has(hw)){
+    const PR=PRE.get(el.id)||brProfile(el,pts,isBridge,isTunnel,layer,data);if(PR.pts!==pts){pts.length=0;pts.push(...PR.pts)}const kIdx=PR.kIdx;
     if(el.nodes){el.nodes.forEach((nid,k)=>{NODEH.set(nid,pts[kIdx[k]][2]);if(isBridge)BRNH.set(nid,pts[kIdx[k]][2])});if(isBridge)for(const [k,pi] of [[0,0],[el.nodes.length-1,pts.length-1]]){const ex=pts[pi][2]-groundY(pts[pi][0],pts[pi][1]);if(ex>0.6)APPR.set(el.nodes[k],Math.max(ex,APPR.get(el.nodes[k])||0))} /* overpass end still high: the joining (untagged) approach way ramps down from it */if(isBridge)for(let k=1;k<el.nodes.length;k++){const hs=[];for(let q=kIdx[k-1];q<=kIdx[k];q++)hs.push(pts[q][2]);if(hs.length>2){BRPROF.set(el.nodes[k-1]+'_'+el.nodes[k],hs);BRPROF.set(el.nodes[k]+'_'+el.nodes[k-1],hs.slice().reverse())}}}}
    if(isTunnel&&DRIVABLE.has(hw)){const len=[0];for(let i=1;i<pts.length;i++)len.push(len[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const lanes=+t.lanes||0;
     T.ways.push({pts,len,total:len[len.length-1],oneway:owDir(t)!==0,owDir:owDir(t)||1,hw,lanes,w:lanes?lanes*3.6:(DEF_W[hw]||7),spd:(parseSpeed(t.maxspeed)||DEF_SPD[hw]||25)/MPH,nodes:el.nodes||[],hts:true,tunnel:true});continue}
