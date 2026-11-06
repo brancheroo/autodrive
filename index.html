@@ -1462,17 +1462,21 @@ const UPV=new THREE.Vector3(0,1,0);
 /* WebGPU three.js compiles a separate shader for every InstancedMesh (its uuid is part of the material key), which made
    each streamed tile's trees cost seconds of compiling. In WebGPU mode the static tree instances are baked into one
    plain mesh per species, which shares a single compiled material with every other tile. */
-function bakeInst(im){const g0=im.geometry.index?im.geometry.toNonIndexed():im.geometry,n=g0.attributes.position.count,N=im.count,
-  P=new Float32Array(n*N*3),Nr=new Float32Array(n*N*3),hasUv=!!g0.attributes.uv,U=hasUv?new Float32Array(n*N*2):null,C=new Float32Array(n*N*3),
-  sp=g0.attributes.position,sn=g0.attributes.normal,su=g0.attributes.uv,sc=g0.attributes.color,m=new THREE.Matrix4(),nm=new THREE.Matrix3(),v=new THREE.Vector3(),ic=new THREE.Color(1,1,1);
- for(let k=0;k<N;k++){im.getMatrixAt(k,m);nm.getNormalMatrix(m);if(im.instanceColor)im.getColorAt(k,ic);const o=k*n;
+function bakeInst(im){const g0=im.geometry,n=g0.attributes.position.count,I0=g0.index,ni=I0?I0.count:n,m=new THREE.Matrix4(),nm=new THREE.Matrix3(),v=new THREE.Vector3(),ic=new THREE.Color(1,1,1);
+ /* VRAM: the base geometry's index is kept and repeated per instance (it was expanded to triangle soup first: ~4–6× the
+    vertices, ~100 MB across the loaded tiles); instances scaled to zero (cleared off the road) are left out */
+ const keep=[];for(let k=0;k<im.count;k++){im.getMatrixAt(k,m);if(m.elements[0]===0&&m.elements[5]===0&&m.elements[10]===0)continue;keep.push(k)}const N=keep.length;
+ const P=new Float32Array(n*N*3),Nr=new Float32Array(n*N*3),U=g0.attributes.uv?new Float32Array(n*N*2):null,C=new Float32Array(n*N*3),IX=(n*N>65535?new Uint32Array(ni*N):new Uint16Array(ni*N));
+ const sp=g0.attributes.position,sn=g0.attributes.normal,su=g0.attributes.uv,sc=g0.attributes.color;
+ keep.forEach((k,q)=>{im.getMatrixAt(k,m);nm.getNormalMatrix(m);if(im.instanceColor)im.getColorAt(k,ic);const o=q*n;
   for(let i=0;i<n;i++){const j=(o+i)*3;v.fromBufferAttribute(sp,i).applyMatrix4(m);P[j]=v.x;P[j+1]=v.y;P[j+2]=v.z;
    if(sn){v.fromBufferAttribute(sn,i).applyMatrix3(nm).normalize();Nr[j]=v.x;Nr[j+1]=v.y;Nr[j+2]=v.z}
    C[j]=(sc?sc.getX(i):1)*ic.r;C[j+1]=(sc?sc.getY(i):1)*ic.g;C[j+2]=(sc?sc.getZ(i):1)*ic.b;
-   if(U){U[(o+i)*2]=su.getX(i);U[(o+i)*2+1]=su.getY(i)}}}
- const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(P,3));g.setAttribute('normal',new THREE.BufferAttribute(Nr,3));if(U)g.setAttribute('uv',new THREE.BufferAttribute(U,2));g.setAttribute('color',new THREE.BufferAttribute(C,3));g.computeBoundingSphere();
- if(g0!==im.geometry)g0.dispose();const mesh=new THREE.Mesh(g,im.material);mesh.castShadow=im.castShadow;mesh.receiveShadow=im.receiveShadow;mesh.userData.merged=true;mesh.userData.bakedTrees=true;im.dispose&&im.dispose();return mesh}
-// ---- realistic trees: three species built once (broadleaf, conifer, palm), each = wood mesh + foliage mesh, drawn instanced per tile
+   if(U){U[(o+i)*2]=su.getX(i);U[(o+i)*2+1]=su.getY(i)}}
+  const b=q*ni;for(let t=0;t<ni;t++)IX[b+t]=o+(I0?I0.getX(t):t)});
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(P,3));g.setAttribute('normal',new THREE.BufferAttribute(Nr,3));if(U)g.setAttribute('uv',new THREE.BufferAttribute(U,2));g.setAttribute('color',new THREE.BufferAttribute(C,3));g.setIndex(new THREE.BufferAttribute(IX,1));g.computeBoundingSphere();
+ const mesh=new THREE.Mesh(g,im.material);mesh.castShadow=im.castShadow;mesh.receiveShadow=im.receiveShadow;mesh.userData.merged=true;mesh.userData.bakedTrees=true;im.dispose&&im.dispose();return mesh}
+/* ---- realistic trees: three species built once (broadleaf, conifer, palm), each = wood mesh + foliage mesh, drawn instanced per tile
 function mergeG(list){let n=0;for(const g of list)n+=g.index?g.index.count:g.attributes.position.count;const P=new Float32Array(n*3),N=new Float32Array(n*3),U=new Float32Array(n*2),C=new Float32Array(n*3);let o=0;
  for(let g of list){if(g.index)g=g.toNonIndexed();const p=g.attributes.position,nm=g.attributes.normal,uv=g.attributes.uv,c=g.attributes.color;for(let i=0;i<p.count;i++,o++){P.set([p.getX(i),p.getY(i),p.getZ(i)],o*3);N.set([nm.getX(i),nm.getY(i),nm.getZ(i)],o*3);U.set(uv?[uv.getX(i),uv.getY(i)]:[0,0],o*2);C.set(c?[c.getX(i),c.getY(i),c.getZ(i)]:[1,1,1],o*3)}}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(P,3));g.setAttribute('normal',new THREE.BufferAttribute(N,3));g.setAttribute('uv',new THREE.BufferAttribute(U,2));g.setAttribute('color',new THREE.BufferAttribute(C,3));return g}
