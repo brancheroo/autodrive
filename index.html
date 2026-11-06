@@ -11863,7 +11863,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   L.forEach((t,i)=>x.fillText(t,8,128+i*10.5));x.restore()}
  let gustX=0,applied=null;
  MODS.push({id:'realism',
-  start(){Object.assign(R,{tT:(WX.temp??18),bT:40,wear:0,gear:1,shiftT:0,spin:0,slide:0,lock:0,aqua:0,alpha:0,util:0});lastP.clear();for(const q of SK)if(q)q.visible=false},
+  start(){Object.assign(R,{tT:(WX.temp??18),bT:40,wear:0,gear:1,shiftT:0,spin:0,slide:0,lock:0,aqua:0,alpha:0,util:0});lastP.clear();if(skIM){for(let i=0;i<SKN;i++)skIM.setMatrixAt(i,_skZ);skIM.instanceMatrix.needsUpdate=true}},
   preRender(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh||!G.spec||!R.on){squeal(0);return}const e=G.ego,m=e.mesh,sp=G.spec;if(special(sp)){squeal(0);return}
    const lvl=G.paused?0:clamp(Math.max(R.spin,R.slide*1.5,R.lock,(R.util-0.85)*2),0,1);squeal(lvl);lights();telemetry();
    /* slip you can see: the body yaws into the slide (RWD tail out, FWD nose wide), plus crosswind gusts nudging it sideways */
