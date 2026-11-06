@@ -2952,7 +2952,7 @@ function routeOnewayAt(s){const R=game.route,ni=NODEINFO.get(R.nodes[routeLLnh(c
 function spawnWayCar(ways){const cand=ways.filter(w=>w.hw!=='service');if(!cand.length)return;
  /* pick the spot first: ways span the whole loaded map (~2 km) and cars further than 450 m are removed on the next update,
     so a random spot made ~2 cars a second that were built, merged and thrown away within 0.5 s (a stall each) */
- let w=null,s0=0;for(let k=0;k<12&&!w;k++){const c=cand[Math.floor(Math.random()*cand.length)],s=Math.random()*c.total,p=wayPos(c,s,0),d=Math.hypot(p[0]-game.ego.x,p[1]-game.ego.z);if(d>=60&&d<=400){w=c;s0=s}}if(!w)return;
+ let w=null,s0=0;for(let k=0;k<12&&!w;k++){const c=cand[Math.floor(Math.random()*cand.length)],s=Math.random()*c.total,p=wayPos(c,s,0),d=Math.hypot(p[0]-game.ego.x,p[1]-game.ego.z);if(d>=60&&d<=400&&(d>350||!camSees(p[0],p[1]))){w=c;s0=s} /* never pop in on screen */}if(!w)return;
  const sp=pickSpec();const dir=w.oneway?(w.owDir||1):(Math.random()<0.5?1:-1); /* one-way roads: only in the legal direction */
  const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],s0,w.spd*0.8,dir);a.kind='way';a.way=w;a.mesh.position.y=0;
  game.agents.push(a)}
@@ -3492,16 +3492,19 @@ function manageTiles(){
  // route road ribbon (guarantees a road even before/without OSM tiles, e.g. at 100x on interstates)
  if(!G.rr||Math.abs(G.rr.s-e.s)>300||G.rr.ox!==ORIGIN.lon||G.rr.tv!==TERR.ver&&Math.abs(G.rr.s-e.s)>40){if(G.rr)scene.remove(G.rr.mesh);const b=new Buf(),pts=[];for(let s=Math.max(0,e.s-400);s<Math.min(G.route.total,e.s+Math.max(1200,e.v*12));s+=4){const p=routeXZ(s,0); /* fallback road reaches ~12 s ahead at speed */pts.push([p[0],p[1],routeY(s,0)+0.05])}ribbon(b,pts,7.6,0.03,1.9);const g=b.geo();const m=new THREE.Mesh(g,MAT.road2);m.receiveShadow=true;scene.add(m);G.rr={s:e.s,mesh:m,ox:ORIGIN.lon,tv:TERR.ver}}
 }
+/* is a world point on screen? spawns and despawns avoid it, so traffic doesn't appear or vanish in view */
+const _CSF=new THREE.Frustum(),_CSM=new THREE.Matrix4(),_CSV=new THREE.Vector3();let _csT=-1;
+function camSees(x,z){const n=performance.now();if(n-_csT>100){_csT=n;camera.updateMatrixWorld();_CSM.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);_CSF.setFromProjectionMatrix(_CSM)}_CSV.set(x,groundY(x,z)+1,z);return _CSF.containsPoint(_CSV)}
 function manageTraffic(){if(game.fast){for(const a of game.agents)scene.remove(a.mesh);game.agents=[];for(const p of game.peds)remPed(p);game.peds=[];return}
  const G=game,e=G.ego,f=trafficFactor(),hw=(NODEINFO.get(G.route.nodes[routeLLnh(e.s)[2]])||{}).hw||'';
  const big=/motorway|trunk|primary/.test(hw);
- // cleanup far
- for(let i=G.agents.length-1;i>=0;i--){const a=G.agents[i];const far=a.kind==='way'?Math.hypot(a.x-e.x,a.z-e.z)>450:Math.abs(a.s-e.s)>(a.kind==='oncoming'?350:600);if(far||a.s<-5||(a.kind!=='way'&&a.s>G.route.total)){scene.remove(a.mesh);G.agents.splice(i,1)}}
+ /* cleanup far */
+ for(let i=G.agents.length-1;i>=0;i--){const a=G.agents[i];const lim=a.kind==='way'?450:(a.kind==='oncoming'?600:600),dd=a.kind==='way'?Math.hypot(a.x-e.x,a.z-e.z):Math.abs(a.s-e.s);let far=dd>lim;if(far&&dd<lim*1.6&&a.mesh&&camSees(a.mesh.position.x,a.mesh.position.z))far=false; /* still on screen: keep it until it leaves view */if(far||a.s<-5||(a.kind!=='way'&&a.s>G.route.total)){scene.remove(a.mesh);G.agents.splice(i,1)}}
  const nRoute=G.agents.filter(a=>a.kind==='route').length,nOn=G.agents.filter(a=>a.kind==='oncoming').length,nWay=G.agents.filter(a=>a.kind==='way').length;
  const lead=G.agents.filter(a=>a.kind==='route'&&a.s>e.s).sort((a,b)=>a.s-b.s);
- if(nRoute<Math.round((big?5:3)*f+0.4)&&Math.random()<0.5){const s0=e.s+180+Math.random()*250;const between=lead.length&&lead[0].s<s0;if(!between&&s0<G.route.total-100){const sp=pickSpec();const idx=routeLLnh(s0)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],s0,speedLimitAt(idx)/MPH*0.85,1);a.off=laneOffsetAt(idx);G.agents.push(a)}}
+ if(nRoute<Math.round((big?5:3)*f+0.4)&&Math.random()<0.5){const s0=e.s+350+Math.random()*150; /* far enough to be a few pixels when it appears */const between=lead.length&&lead[0].s<s0;if(!between&&s0<G.route.total-100){const sp=pickSpec();const idx=routeLLnh(s0)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],s0,speedLimitAt(idx)/MPH*0.85,1);a.off=laneOffsetAt(idx);G.agents.push(a)}}
  const oneway=(NODEINFO.get(G.route.nodes[routeLLnh(e.s)[2]])||{}).oneway;
- if(!oneway&&nOn<Math.round(4*f+0.3)&&Math.random()<0.5&&!routeOnewayAt(e.s)&&!routeOnewayAt(e.s+290)){const sp=pickSpec(); /* never spawn oncoming onto a one-way carriageway */const idx=routeLLnh(e.s+300)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],e.s+250+Math.random()*80,speedLimitAt(idx)/MPH*0.9,-1);a.kind='oncoming';G.agents.push(a)}
+ if(!oneway&&nOn<Math.round(4*f+0.3)&&Math.random()<0.5&&!routeOnewayAt(e.s)&&!routeOnewayAt(e.s+440)){const sp=pickSpec(); /* never spawn oncoming onto a one-way carriageway */const idx=routeLLnh(e.s+450)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],e.s+250+Math.random()*80,speedLimitAt(idx)/MPH*0.9,-1);a.kind='oncoming';G.agents.push(a)}
  const ways=allWays();if(nWay<Math.round(26*f)&&ways.length)spawnWayCar(ways);
  // pedestrians: more in daytime & dense areas
  const pedTarget=Math.round((G.dark?6:22)*Math.min(1,f+0.3));
