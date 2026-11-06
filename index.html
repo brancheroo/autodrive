@@ -12621,8 +12621,8 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  if(!window.__GPU)return;const _bc=window.buildCar;if(typeof _bc!=='function')return;
  const OUT=new WeakMap(),IN=new WeakMap(); /* every car builds its own glass material: weak, so dropped cars don't pile up */
  const isGlass=m=>m&&m.isMeshPhysicalMaterial&&m.transparent&&m.side===THREE.DoubleSide&&m.color&&m.color.getHex()===0x1a2128;
- /* a plain Standard material: the cloned Physical glass (clearcoat, high ior) drew nothing under WebGPU */
- const outOf=m=>{let o=OUT.get(m);if(!o){o=new THREE.MeshStandardMaterial({color:0x0b1118,metalness:0.2,roughness:0.05,envMapIntensity:1.6,transparent:true,opacity:0.93,depthWrite:false,side:THREE.FrontSide});OUT.set(m,o)}return o};
+ /* a plain Standard material: the cloned Physical glass (clearcoat, high ior) drew nothing under WebGPU; blue-grey, because near-black glass read as an open cabin against dark backdrops */
+ const outOf=m=>{let o=OUT.get(m);if(!o){o=new THREE.MeshStandardMaterial({color:0x3a4a5c,metalness:0.5,roughness:0.1,envMapIntensity:1.2,transparent:true,opacity:0.9,depthWrite:false,side:THREE.FrontSide});OUT.set(m,o)}return o};
  const inOf=m=>{let o=IN.get(m);if(!o){o=m.clone();o.side=THREE.BackSide;IN.set(m,o)}return o};
  const NONE=new THREE.MeshBasicMaterial({visible:false}); /* other slots of a multi-material mesh: not drawn by the outside copy */
  function split(g){const list=[];g.traverse(o=>{if(!o.isMesh||o.userData.glassSplit)return;const m=o.material;if(Array.isArray(m)?m.some(isGlass):isGlass(m))list.push(o)});
