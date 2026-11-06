@@ -5179,7 +5179,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  /* ---------- 3. shadow map cadence ---------- */
  let sf=0;
  /* new tiles: reveal their meshes a few per frame so GPU uploads are spread out instead of one long hitch */
- const RQ=[];const hideNew=k=>{try{const T=TILES.get(k);if(T&&T.group){for(const m of T.group.children)if(m.visible){m.visible=false;RQ.push(m)}}}catch(e){}};window.onTileBuilt=hideNew;const _bt=window.buildTile;if(_bt)window.buildTile=function(k){const r=_bt.apply(this,arguments);hideNew(k);return r};
+ const RQ=[];const hideNew=k=>{if(window.__GPU)return; /* WebGPU: tiles arrive precompiled (99zz); staggered reveal made pieces pop in */try{const T=TILES.get(k);if(T&&T.group){for(const m of T.group.children)if(m.visible){m.visible=false;RQ.push(m)}}}catch(e){}};window.onTileBuilt=hideNew;const _bt=window.buildTile;if(_bt)window.buildTile=function(k){const r=_bt.apply(this,arguments);hideNew(k);return r};
  function reveal(){let n=0,t0=performance.now();const lim=typeof game!=='undefined'&&game&&game.ego&&game.ego.v>40?14:6; /* reveal faster at speed */while(RQ.length&&n<lim){const m=RQ.shift();if(m.parent)m.visible=true;n++}}
  MODS.push({id:'perf',
   preRender(){if(typeof btStep==='function'){const v=typeof game!=='undefined'&&game&&game.ego?game.ego.v:0;btStep(Math.min(10,(window.GFX&&GFX.get()==='ultra'?7:5)+(v>40?3:0)+(v>150&&window.PREFETCH&&PREFETCH.ready===game.route?2:0)))} /* ≤10 ms/frame: steady 60 fps beats faster tile arrival */ /* preloaded route at hypercar speed: extra build time so the side tiles keep up too */ /* a few ms of tile building per frame, more at speed so the road ahead keeps up */reveal();const lit=typeof sun!=='undefined'&&sun.intensity>0.03;if(typeof sun!=='undefined'&&sun.castShadow!==lit)sun.castShadow=lit;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=lit} /* night: the sun casts nothing – skip the whole shadow pass */}); /* shadows refresh every frame (skipping frames made moving shadows lag); only the perception pass reuses the main shadow map */
@@ -12422,7 +12422,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    if(ready&&(ro.version!==material.version||ro.needsUpdate)){try{ready=ro.initialCacheKey===ro.getCacheKey()}catch(e){ready=false}}
    if(!ready){const prev=per&&per.get(cx);
     if(prev&&prev!==material){const rp=cm.get([object,prev,cx,lightsNode]);if(rp&&done.has(rp)){BB.subst++;BB.cur.sub++;BB.rs.subst=(BB.rs.subst||0)+1;return RD.call(this,object,prev,sc,cam,lightsNode,group,clip,passId)}} /* keep the old look until the new material is built */
-    if(!prev){BB.skipped++;BB.cur.sk++;const w='new|ctx'+(cx&&cx.id)+'|'+material.type;BB.rs[w]=(BB.rs[w]||0)+1;return} /* first time in this view: appear a frame later */
+    if(!prev){const w='new|ctx'+(cx&&cx.id)+'|'+material.type;BB.rs[w]=(BB.rs[w]||0)+1} /* first time in this view: drawn anyway (skipping it made objects flicker); tiles are precompiled so this is rare */
     BB.rs.rebuildAllowed=(BB.rs.rebuildAllowed||0)+1}}
   if(!BB.lsort&&lightsNode&&lightsNode.setLights){BB.lsort=true;const P=Object.getPrototypeOf(lightsNode),SL=P.setLights;
    /* the light list is hashed in scene order: when a group holding lights was re-added to the scene, the same lights in a
