@@ -5867,9 +5867,13 @@ function riderAttach(){const G=game;if(!G||!G.ego)return;const car=G.ego.mesh,sp
  d.userData.hideIn=hideIn;car.add(d);car.userData.rider=d}
 function riderView(){const car=game&&game.ego&&game.ego.mesh,r=car&&car.userData.rider;if(!r||!r.userData.hideIn)return;const v=game.cam!=='in';
  /* in the cabin view also hide every rider mesh near the camera: later mods merge the head parts into one BufferGeometry, which the type-based list above misses */
- if(!v&&typeof camera!=='undefined'){car.updateMatrixWorld();const inv=car.matrixWorld.clone().invert(),cp=camera.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv),k=cp.toArray().map(x=>Math.round(x*20)).join();
+ riderNearHide(car,r,v);
+ for(const o of r.userData.hideIn)o.visible=v&&!o.userData.keepHidden;if(r.userData.near)for(const o of r.userData.near)if(!v)o.visible=false}
+function riderNearHide(car,r,v){if(!v&&typeof camera!=='undefined'){car.updateMatrixWorld();const inv=car.matrixWorld.clone().invert(),cp=camera.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv),k=cp.toArray().map(x=>Math.round(x*20)).join();
   if(r.userData.nearKey!==k){r.userData.nearKey=k;const L=[],c=new THREE.Vector3();r.traverse(o=>{if(!o.isMesh)return;const b=new THREE.Box3().setFromObject(o).applyMatrix4(inv);b.getCenter(c);if(b.distanceToPoint(cp)<0.12||(c.y>cp.y-0.3&&c.distanceTo(cp)<0.38))L.push(o)});r.userData.near=L}}
- for(const o of r.userData.hideIn)o.visible=v&&!o.userData.keepHidden;if(r.userData.near)for(const o of r.userData.near)o.visible=(v||!r.userData.near.includes(o))&&!o.userData.keepHidden}
+
+ if(r.userData.near)for(const o of r.userData.near)o.visible=v&&!o.userData.keepHidden}
+window.riderNearHide=riderNearHide;
 </script>
 <script>/* mods/21-rider-anim.js */
 /* Rider animation: looks toward whatever the car is reacting to, arms fly up under hard acceleration,
@@ -10790,7 +10794,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    if(!m.userData.cabbie){const d=buildDriver(G.spec,'drive','driver');m.add(d);m.userData.driver=d;m.userData.cabbie=d}}}catch(err){console.warn('taxi crew',err)}return r};
  /* first person: you are in the back seat, so hide only your own head (not the cabbie); every other camera shows you */
  const _rv=window.riderView;
- if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.taxi){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r){r.visible=true;if(r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=G.cam!=='in'&&!o.userData.keepHidden}return}return _rv.apply(this,arguments)};
+ if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.taxi){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r){r.visible=true;if(r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=G.cam!=='in'&&!o.userData.keepHidden;if(window.riderNearHide)riderNearHide(G.ego.mesh,r,G.cam!=='in')}return}return _rv.apply(this,arguments)};
  let fare=3,lastS=null,lastT=0;
  MODS.push({id:'taxi',start(){fare=3;lastS=null},frame(){const G=typeof game!=='undefined'?game:null;const m=G&&G.ego&&G.ego.mesh;const U=m&&m.userData;if(!U||!U.taxiSign)return;
   /* roof sign: lit while on the road, brighter at night; goes dark once you have arrived (hired → done) */
@@ -10871,7 +10875,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    if(R)R.position.set(e.x-(G.spec.backSeat||BACK),e.y-0.05,-e.z);if(!m.userData.chauffeur){const d=buildDriver(G.spec,'drive','driver');suit(d);m.add(d);m.userData.driver=d;m.userData.chauffeur=d}}}catch(err){console.warn('century crew',err)}return r};
  /* first person: you sit in the back, so hide only your own head in the cabin view (like the taxi); every other camera shows you */
  const _rv=window.riderView;
- if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.chauffeur){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r){r.visible=true;if(r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=G.cam!=='in'&&!o.userData.keepHidden}return}return _rv.apply(this,arguments)};
+ if(typeof _rv==='function')window.riderView=function(){const G=typeof game!=='undefined'?game:null;if(G&&G.spec&&G.spec.chauffeur){const r=G.ego&&G.ego.mesh&&G.ego.mesh.userData.rider;if(r){r.visible=true;if(r.userData.hideIn)for(const o of r.userData.hideIn)o.visible=G.cam!=='in'&&!o.userData.keepHidden;if(window.riderNearHide)riderNearHide(G.ego.mesh,r,G.cam!=='in')}return}return _rv.apply(this,arguments)};
  MODS.push({id:'century'});
 })();
 </script>
