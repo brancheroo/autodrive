@@ -12858,6 +12858,33 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  MODS.push({id:'perfhud',frame(){if(!P.on)return;const now=performance.now();acc+=now-lastT;lastT=now;fr++;if(++tick>=60){P.last=P.t;P.t={};P.n={};draw();acc=0;fr=0;tick=0}}});
 })();
 </script>
+<script>/* mods/zzz-carpool.js */
+/* Traffic car recycling. At speed, traffic turns over constantly: every new car was built from scratch (~240 meshes, rounded
+   boxes, then merged by the baker) and the old one thrown away, a large share of the garbage behind the 200-700 ms GC
+   stalls at Cannonball speeds. A traffic car that has left the game (not in game.agents, not in the scene) for 3 s is kept,
+   and the next traffic car of the same model and colour reuses its body: drivers and passengers are stripped (newAgent adds
+   fresh ones), transforms reset. Damaged cars are never reused. Loaded last so no other buildCar wrapper runs twice on a
+   recycled body. */
+(function(){
+ const _bc=window.buildCar;if(typeof _bc!=='function')return;
+ const POOL=new Map(),MAXK=2,MAXT=24,live=new Set(),gone=new Map();let total=0;const ST={hit:0,miss:0,kept:0};window.CARPOOL=ST;
+ const key=(spec,c)=>(spec.id||spec.style+spec.L+'x'+spec.W+'x'+spec.H)+'|'+c;
+ const _dv=window.damageVehicle;if(typeof _dv==='function')window.damageVehicle=function(obj){if(obj&&obj.userData)obj.userData.noRecycle=1;return _dv.apply(this,arguments)};
+ function strip(m){const ud=m.userData;for(const p of [ud.driver,...(ud.pax||[])])if(p&&p.parent===m)m.remove(p);ud.driver=null;ud.pax=[];
+  m.position.set(0,0,0);m.rotation.set(0,0,0);m.scale.set(1,1,1);m.visible=true}
+ window.buildCar=function(spec,colorHex,opts){
+  if(spec&&!(opts&&opts.interior)&&colorHex!=null){const k=key(spec,colorHex),l=POOL.get(k);
+   if(l&&l.length){const m=l.pop();total--;strip(m);ST.hit++;return m}
+   const m=_bc.apply(this,arguments);if(m&&m.userData)m.userData.poolKey=k;ST.miss++;return m}
+  return _bc.apply(this,arguments)};
+ MODS.push({id:'carpool',frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.agents)return;const now=performance.now(),cur=new Set();
+  for(const a of G.agents)if(a&&a.mesh&&a.mesh.userData&&a.mesh.userData.poolKey)cur.add(a.mesh);
+  for(const m of live)if(!cur.has(m)&&!gone.has(m))gone.set(m,now);
+  for(const m of cur){live.add(m);gone.delete(m)}
+  for(const [m,t] of gone){if(cur.has(m)){gone.delete(m);continue}if(now-t<3000)continue;gone.delete(m);live.delete(m);
+   if(m.parent||m.userData.noRecycle||total>=MAXT)continue;const k=m.userData.poolKey;let l=POOL.get(k);if(!l)POOL.set(k,l=[]);if(l.length<MAXK){l.push(m);total++;ST.kept++}}}});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
