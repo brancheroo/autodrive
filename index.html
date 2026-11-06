@@ -13122,7 +13122,8 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    paint material) and two dark wheel bars. The stand-in geometry is shared per size, so it costs almost no memory.
    The root object never changes, so every system holding agent.mesh keeps working; parts added while far away
    (drivers, lights) are hidden too and restored with their own visibility when the car comes back within ~130 m.
-   Trucks, bikes and the player's car are left alone. A pooled body that comes back near is restored on the next check. */
+   Box trucks, step vans and semis get a stand-in measured from their own body: a cab block and a cargo/trailer block
+   in the materials of their largest front and rear parts. Bikes, dually pickups and the player's car are left alone. A pooled body that comes back near is restored on the next check. */
 (function(){
  const FAR=150,NEAR=130,GEO=new Map(),dark=new THREE.MeshStandardMaterial({color:0x0c0d10,roughness:0.6}),glass=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:0.15,metalness:0.4});
  const ST={far:0,swaps:0};window.CARLOD=ST;
@@ -13134,9 +13135,20 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  function proxy(m,spec){const g=geos(spec),P=new THREE.Group(),paint=m.userData.paint||dark;
   for(const [geo,mat] of [[g.body,paint],[g.cab,glass],[g.wh,dark],[g.w2,dark]]){const x=new THREE.Mesh(geo,mat);x.castShadow=false;x.receiveShadow=false;x.matrixAutoUpdate=false;x.updateMatrix();P.add(x)}
   P.userData.lodProxy=1;P.userData.noDent=1;P.visible=false;return P}
- const eligible=a=>a&&a.mesh&&a.spec&&!a.isEgo&&!/^(harley|dualie|box|step|semi)$/.test(a.spec.style||'')&&(a.spec.L||4.5)<7&&a.mesh.userData.paint&&a.mesh.userData._baked; /* only after baking: the baker would otherwise merge the stand-in into the body */
- function goFar(m){const ud=m.userData;if(!ud.lodP){ud.lodP=proxy(m,ud.lodSpec);m.add(ud.lodP)}const sv=ud.lodSaved||(ud.lodSaved=new Map());
-  for(const c of m.children){if(c===ud.lodP||sv.has(c))continue;sv.set(c,c.visible);c.visible=false}ud.lodP.visible=true;ud.lodFar=true}
+ const TRK=/^(box|step|semi)$/,isTruck=a=>TRK.test(a.spec.style||'');
+ const eligible=a=>a&&a.mesh&&a.spec&&!a.isEgo&&a.mesh.userData._baked&&(isTruck(a)||(!/^(harley|dualie)$/.test(a.spec.style||'')&&(a.spec.L||4.5)<7&&a.mesh.userData.paint));
+ const BOXG=new Map(),boxG=(x0,x1,y0,y1,z)=>{const k=[x0,x1,y0,y1,z].map(v=>v.toFixed(1)).join();let g=BOXG.get(k);if(!g){g=new THREE.BoxGeometry(Math.max(0.1,x1-x0),Math.max(0.1,y1-y0),z*2);g.translate((x0+x1)/2,(y0+y1)/2,0);g.userData.shared=true;BOXG.set(k,g)}return g};
+ function proxyTruck(m){m.updateMatrixWorld(true);const inv=m.matrixWorld.clone().invert(),ud=m.userData,B=new THREE.Box3(),parts=[];
+  m.traverse(o=>{if(!o.isMesh||o.name==='cshadow'||!o.userData.bakedFrom)return;for(let p=o.parent;p&&p!==m;p=p.parent)if(p===ud.driver||p.userData.head)return;const b=new THREE.Box3().setFromObject(o).applyMatrix4(inv);if(b.isEmpty())return;B.union(b);const sz=b.getSize(new THREE.Vector3());parts.push({b,v:sz.x*sz.y*sz.z,m:o.material})});
+  if(B.isEmpty()||!parts.length)return null;const L=B.max.x-B.min.x,cabX=B.max.x-Math.min(L*0.3,5.2),z=Math.min(B.max.z,-B.min.z),wr=0.5;
+  const pick=front=>{let best=null;for(const q of parts){const cx=(q.b.min.x+q.b.max.x)/2;if((cx>cabX)===front&&(!best||q.v>best.v)&&!q.m.transparent)best=q}return best?best.m:dark};
+  const P=new THREE.Group(),add=(g,mt)=>{const x=new THREE.Mesh(g,mt);x.castShadow=false;x.matrixAutoUpdate=false;x.updateMatrix();P.add(x)};
+  add(boxG(cabX,B.max.x,wr*0.8,B.min.y+(B.max.y-B.min.y)*0.82,z*0.95),pick(true));
+  add(boxG(B.min.x,cabX-0.25,wr*1.6,B.max.y,z),pick(false));
+  add(boxG(B.min.x+0.4,B.max.x-0.4,0.02,wr*1.6,z*0.9),dark);
+  P.userData.lodProxy=1;P.userData.noDent=1;P.visible=false;return P} /* only after baking: the baker would otherwise merge the stand-in into the body */
+ function goFar(m){const ud=m.userData;if(!ud.lodP){ud.lodP=TRK.test(ud.lodSpec.style||'')?proxyTruck(m):proxy(m,ud.lodSpec);if(!ud.lodP){ud.lodNo=1;return false}m.add(ud.lodP)}const sv=ud.lodSaved||(ud.lodSaved=new Map());
+  for(const c of m.children){if(c===ud.lodP||sv.has(c))continue;sv.set(c,c.visible);c.visible=false}ud.lodP.visible=true;ud.lodFar=true;return true}
  function goNear(m){const ud=m.userData;if(ud.lodSaved){for(const [c,v] of ud.lodSaved)if(c.parent===m)c.visible=v;ud.lodSaved.clear()}if(ud.lodP)ud.lodP.visible=false;ud.lodFar=false}
  window.carLodReset=goNear;
  let tick=0;
@@ -13145,7 +13157,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   for(const a of G.agents){if(!eligible(a)||a.mesh===G.ego.mesh)continue;const m=a.mesh,ud=m.userData;ud.lodSpec=a.spec;
    const d=m.position.distanceTo(ep);
    if(ud.lodFar){if(d<NEAR){goNear(m);ST.swaps++}else{for(const c of m.children)if(c!==ud.lodP&&!ud.lodSaved.has(c)){ud.lodSaved.set(c,c.visible);c.visible=false}far++}}
-   else if(d>FAR&&!ud.crashed&&!ud.dmg){goFar(m);ST.swaps++;far++}}
+   else if(d>FAR&&!ud.crashed&&!ud.dmg&&!ud.lodNo&&goFar(m)){ST.swaps++;far++}}
   ST.far=far}});
 })();
 </script>
