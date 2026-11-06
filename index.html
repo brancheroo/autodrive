@@ -12619,7 +12619,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    opaque glass (as real car glass looks from the street) and its inside faces with the original light tint. */
 (function(){
  if(!window.__GPU)return;const _bc=window.buildCar;if(typeof _bc!=='function')return;
- const OUT=new Map(),IN=new Map();
+ const OUT=new WeakMap(),IN=new WeakMap(); /* every car builds its own glass material: weak, so dropped cars don't pile up */
  const isGlass=m=>m&&m.isMeshPhysicalMaterial&&m.transparent&&m.side===THREE.DoubleSide&&m.color&&m.color.getHex()===0x1a2128;
  const outOf=m=>{let o=OUT.get(m);if(!o){o=m.clone();o.side=THREE.FrontSide;o.color.setHex(0x0b1118);o.opacity=0.93;o.envMapIntensity=1.6;o.reflectivity=0.8;o.clearcoat=1;o.depthWrite=false;OUT.set(m,o)}return o};
  const inOf=m=>{let o=IN.get(m);if(!o){o=m.clone();o.side=THREE.BackSide;IN.set(m,o)}return o};
