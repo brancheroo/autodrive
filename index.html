@@ -1362,6 +1362,9 @@ function* buildTileGen(key){
    el.nodes.forEach((nid,k)=>{if(BRNH.has(nid)){FIX.add(nid);H.set(nid,BRNH.get(nid));return}if(FIX.has(nid))return;let h=H.has(nid)?H.get(nid):-1e9;const Lk=R.L[R.kIdx[k]];
     for(let i=0;i<R.pts.length;i++)h=Math.max(h,R.pts[i][2]-G*Math.abs(R.L[i]-Lk));H.set(nid,h)});
    for(let k=1;k<el.nodes.length;k++){const a=el.nodes[k-1],b=el.nodes[k],d=R.L[R.kIdx[k]]-R.L[R.kIdx[k-1]];for(const [u,v] of [[a,b],[b,a]]){if(!adj.has(u))adj.set(u,[]);adj.get(u).push([v,d])}}}
+  for(const el of (data.elements||[])){if(el.type!=='way'||!el.geometry||!el.nodes||el.nodes.length<2)continue;const t=el.tags||{};if(!t.highway||!DRIVABLE.has(t.highway)||(t.bridge&&t.bridge!=='no')||(t.tunnel&&t.tunnel!=='no'))continue;
+   const a=el.nodes[0],b=el.nodes[el.nodes.length-1];if(!H.has(a)||!H.has(b))continue;const q=P(el.geometry);let d=0;for(let i=1;i<q.length;i++)d+=Math.hypot(q[i][0]-q[i-1][0],q[i][1]-q[i-1][1]);
+   for(const [u,v] of [[a,b],[b,a]]){if(!adj.has(u))adj.set(u,[]);adj.get(u).push([v,d])}} /* short untagged road pieces between two bridge spans (elevated motorway joints) are part of the network too */
   for(let it=0,ch=true;ch&&it<200;it++){ch=false;for(const [u,E] of adj){if(FIX.has(u))continue;let h=H.get(u);for(const [v,d] of E){const need=H.get(v)-G*d;if(need>h+1e-4){h=need;ch=true}}H.set(u,h)}}
   for(const R of PRE.values()){const el=R.el,pts=R.pts,L=R.L,n=pts.length-1,pin=new Set();
    el.nodes.forEach((nid,k)=>{if(H.has(nid)){pts[R.kIdx[k]][2]=H.get(nid);pin.add(R.kIdx[k])}});
@@ -1396,7 +1399,8 @@ function* buildTileGen(key){
      {const l0=e0*sm(1-tl/(R0||1)),l1=e1*sm(1-tl/(R1||1)),nl=N[N.length-1];if(R0>tl&&l0>0.3&&!APPR.has(nl))APPR.set(nl,l0);if(R1>tl&&l1>0.3&&!APPR.has(N[0]))APPR.set(N[0],l1)}
      D.forEach((q,i)=>{const g=groundY(q[0],q[1]);q.push(g+Math.max(R0>0?e0*sm(1-Ld[i]/R0):0,R1>0?e1*sm(1-(tl-Ld[i])/R1):0))});
      {const n=D.length-1,pin=new Set(),G=0.075;for(const [k,i] of [[0,0],[N.length-1,n]]){const h=BRNH.get(N[k]);if(h!=null&&isFinite(h)){D[i][2]=h;pin.add(i)}}
-      for(let i=1;i<=n;i++)if(!pin.has(i))D[i][2]=Math.max(D[i][2],D[i-1][2]-G*(Ld[i]-Ld[i-1]));for(let i=n-1;i>=0;i--)if(!pin.has(i))D[i][2]=Math.max(D[i][2],D[i+1][2]-G*(Ld[i+1]-Ld[i]))} /* ends exactly on the bridge decks they join; no dip between two raised ends, no step steeper than G */
+      for(let i=1;i<=n;i++)if(!pin.has(i))D[i][2]=Math.max(D[i][2],D[i-1][2]-G*(Ld[i]-Ld[i-1]));for(let i=n-1;i>=0;i--)if(!pin.has(i))D[i][2]=Math.max(D[i][2],D[i+1][2]-G*(Ld[i+1]-Ld[i]))
+      for(const pi of pin)for(let i=0;i<=n;i++)if(!pin.has(i))D[i][2]=Math.min(D[i][2],D[pi][2]+0.1*Math.abs(Ld[i]-Ld[pi]))} /* ends exactly on the bridge decks they join; no dip between two raised ends, no step steeper than G */
      {const ec=new THREE.Color(0x7d7a62);for(const sd of [1,-1]){let pT=null,pF=null;for(let i=0;i<D.length;i++){const a=D[Math.max(0,i-1)],b=D[Math.min(D.length-1,i+1)],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1,nx=-dz/l*sd,nz=dx/l*sd,hE=D[i][2]-groundY(D[i][0],D[i][1]),o0=w/2+0.3,o1=o0+Math.max(0.5,hE*1.8),fx=D[i][0]+nx*o1,fz=D[i][1]+nz*o1;
       const T=[D[i][0]+nx*o0,D[i][2]+0.02,D[i][1]+nz*o0],F=[fx,groundY(fx,fz)-0.4,fz];if(pT&&(hE>0.15||pT[1]-pF[1]>0.55)){if(sd>0){EMBK.push([D[i-1][0],D[i-1][1],D[i][0],D[i][1],o1+0.5]);if(EMBK.length>6000)EMBK.splice(0,1000)}if(sd>0){bWall.tri(pT,pF,F,null,null,null,null,ec);bWall.tri(pT,F,T,null,null,null,null,ec)}else{bWall.tri(pT,F,pF,null,null,null,null,ec);bWall.tri(pT,T,F,null,null,null,null,ec)}}pT=T;pF=F}}} /* embankment: earth slopes (~1:1.8) from both road edges down to the ground, so raised approaches don't float */
      apr=true;pts.length=0;pts.push(...D);N.forEach((nid,k)=>{if(!NODEH.has(nid)||APPR.has(nid))NODEH.set(nid,D[kI[k]][2])});
