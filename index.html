@@ -12603,7 +12603,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    const wall=new THREE.Mesh(new THREE.BoxGeometry(dx,top-bot,0.02),mat);wall.position.set(p.x,(top+bot)/2,zIn);wall.userData.wheelTub=1;I.add(wall);
    const roof=new THREE.Mesh(new THREE.BoxGeometry(dx,0.02,Math.abs(zOut-zIn)),mat);roof.position.set(p.x,top,(zIn+zOut)/2);roof.userData.wheelTub=1;I.add(roof);
    for(const ex of [-1,1]){const end=new THREE.Mesh(new THREE.BoxGeometry(0.02,top-bot,Math.abs(zOut-zIn)*0.5),mat);end.position.set(p.x+ex*dx/2,(top+bot)/2,zIn+sd*Math.abs(zOut-zIn)*0.25);end.userData.wheelTub=1;I.add(end)}}}
- window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(opts&&opts.interior&&spec&&spec.style!=='pod')tubs(g,spec)}catch(e){console.warn('wheeltubs',e)}return g};
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(opts&&opts.interior&&spec&&spec.style!=='pod'&&spec.id!=='cybercab' /* its sculpted shell's hood sits below the tyre tops: tubs poked through */)tubs(g,spec)}catch(e){console.warn('wheeltubs',e)}return g};
  MODS.push({id:'wheeltubs'});
 })();
 </script>
