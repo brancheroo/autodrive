@@ -609,8 +609,12 @@ function nameTex0(txt){const c=document.createElement('canvas');c.width=256;c.he
 // ============================================================ GEOMETRY BUILDER
 /* geometry builder: growable typed arrays written in place (the old version grew plain JS arrays with spread pushes
    and then copied them – several times the memory per tile, all of it garbage right after) */
+/* scratch Float32Arrays reused across Bufs by exact length: every tile builds hundreds of Bufs, each regrowing from 64 tris and
+   discarding the smaller arrays, plus geo()'s full-size temporaries: ~10 MB/s of garbage at speed and GC stalls of 200-700 ms */
+const F32POOL={m:new Map(),bytes:0,max:96e6,get(n){const l=this.m.get(n);if(l&&l.length){const a=l.pop();this.bytes-=a.byteLength;return a}return new Float32Array(n)},
+ put(a){if(!a||this.bytes+a.byteLength>this.max)return;let l=this.m.get(a.length);if(!l)this.m.set(a.length,l=[]);if(l.length<16){l.push(a);this.bytes+=a.byteLength}}};
 class Buf{constructor(){this.np=0;this.p=null;this.n=null;this.uv=null;this.c=null}
- grow(v){const cap=this.p?this.p.length/9:0;if(this.np+1<=cap)return;const nc=Math.max(64,cap*2);const g=(a,k)=>{const b=new Float32Array(nc*k);if(a)b.set(a);return b};this.p=g(this.p,9);this.n=g(this.n,9);this.uv=g(this.uv,6);if(this.c||v)this.c=g(this.c,9)}
+ grow(v){const cap=this.p?this.p.length/9:0;if(this.np+1<=cap)return;const nc=Math.max(64,cap*2);const g=(a,k)=>{const b=F32POOL.get(nc*k);if(a){b.set(a);F32POOL.put(a)}else b.fill(0);return b};this.p=g(this.p,9);this.n=g(this.n,9);this.uv=g(this.uv,6);if(this.c||v)this.c=g(this.c,9)}
  tri(a,b,c,nd,uva,uvb,uvc,col){
   const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
   let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
@@ -625,7 +629,7 @@ class Buf{constructor(){this.np=0;this.p=null;this.n=null;this.uv=null;this.c=nu
  /* indexed output: quads and strips repeat vertices across neighbouring triangles. Each vertex is matched against the last
     W unique ones (O(1) per vertex), which folds quads and ribbons; vertex memory drops by roughly a third to a half. */
  geo(){if(!this.np)return null;const n=this.np*3,P=this.p,N=this.n,U=this.uv,C=this.c,W=8;
-  const op=new Float32Array(n*3),on=new Float32Array(n*3),ou=new Float32Array(n*2),oc=C?new Float32Array(n*3):null,ix=n>65535?new Uint32Array(n):new Uint16Array(n);
+  const op=F32POOL.get(this.p.length),on=F32POOL.get(this.p.length),ou=F32POOL.get(this.uv.length),oc=C?F32POOL.get(this.c.length):null,ix=n>65535?new Uint32Array(n):new Uint16Array(n);
   const ring=new Int32Array(W).fill(-1);let rh=0,m=0;
   for(let v=0;v<n;v++){const a=v*3,u=v*2;let hit=-1;
    for(let r=0;r<W;r++){const q=ring[r];if(q<0)continue;const b=q*3,c=q*2;
@@ -634,7 +638,7 @@ class Buf{constructor(){this.np=0;this.p=null;this.n=null;this.uv=null;this.c=nu
    ix[v]=hit}
   if(m>65535&&ix instanceof Uint16Array)return null; /* unreachable: n>65535 chose Uint32 */
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(op.slice(0,m*3),3));g.setAttribute('normal',new THREE.BufferAttribute(on.slice(0,m*3),3));g.setAttribute('uv',new THREE.BufferAttribute(ou.slice(0,m*2),2));if(C)g.setAttribute('color',new THREE.BufferAttribute(oc.slice(0,m*3),3));
-  g.setIndex(new THREE.BufferAttribute(m<65536&&!(ix instanceof Uint16Array)?Uint16Array.from(ix):ix,1));g.computeBoundingSphere();BUFSTAT.v+=n;BUFSTAT.u+=m;return g}}
+  g.setIndex(new THREE.BufferAttribute(m<65536&&!(ix instanceof Uint16Array)?Uint16Array.from(ix):ix,1));g.computeBoundingSphere();BUFSTAT.v+=n;BUFSTAT.u+=m;for(const t of [op,on,ou,oc,P,N,U,C])F32POOL.put(t);this.p=this.n=this.uv=this.c=null;this.np=0;return g}}
 const BUFSTAT={v:0,u:0}; /* vertices in vs unique out, for checking the saving */
 const UP=[0,1,0];
 // ============================================================ TERRAIN ELEVATION (AWS Terrain Tiles · Terrarium encoding · ~10 m)
