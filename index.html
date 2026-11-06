@@ -13021,6 +13021,38 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   return g};
 })();
 </script>
+<script>/* mods/99zzd-morrows-hyper.js */
+/* Morrows Predictacar and Aegis-X: hyperbolic styling. Over the lofted body: swollen wheel-arch haunches in body
+   colour, carbon blades sweeping along each flank on a hyperbola (low and flat at the front wheel, flicking up
+   steeply over the rear haunch), a wide front splitter with stacked canards, rear diffuser strakes, and on the
+   roadster a dorsal fin behind the seats. Exterior only; nothing here enters the cabin. */
+(function(){
+ const _bc=window.buildCar;if(typeof _bc!=='function')return;
+ const carbon=new THREE.MeshStandardMaterial({color:0x101114,metalness:0.4,roughness:0.35});
+ const accent=new THREE.MeshBasicMaterial({color:0xff2a2a});
+ function kit(g,spec){const ud=g.userData,{L,W,H,wr,wb}=spec,paint=ud.paint||carbon,aeg=spec.id==='aegis';
+  const A=new THREE.Group();A.userData.hyperKit=1;g.add(A);
+  /* haunches: a body-colour arch shell over each wheel, wider at the back */
+  for(const [x,rear] of [[wb/2,false],[-wb/2,true]])for(const sd of [1,-1]){
+   const r=wr+0.13,arc=new THREE.Mesh(new THREE.CylinderGeometry(r,r,rear?0.3:0.22,28,1,true,-Math.PI/2-1.25,2.5),paint);
+   arc.rotation.x=Math.PI/2;arc.position.set(x,wr,sd*(W/2-(rear?0.06:0.04)));arc.material=paint;arc.castShadow=true;A.add(arc);
+   const lip=new THREE.Mesh(new THREE.TorusGeometry(r,0.018,6,28,2.5),carbon);lip.rotation.z=Math.PI/2-1.25+Math.PI/2;lip.position.set(x,wr,sd*(W/2+(rear?0.09:0.07)));A.add(lip)}
+  /* hyperbolic flank blades: y = y0 + k/(x1 - x), flat at the front, flicking up over the rear haunch */
+  for(const sd of [1,-1]){const pts=[],x0=wb/2-wr-0.15,x1=-wb/2-wr*0.2,k=0.06;
+   for(let i=0;i<=24;i++){const t=i/24,x=x0+(x1-0.25-x0)*t,y=wr*0.85+k/Math.max(0.12,x-x1+0.3)-k/(x0-x1+0.3);pts.push(new THREE.Vector3(x,Math.min(H*0.92,y),sd*(W/2+0.05+0.05*t)))}
+   const blade=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),48,0.028,6),carbon);blade.scale.set(1,1,1);A.add(blade);
+   const glow=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p=>p.clone().add(new THREE.Vector3(0,0.035,sd*0.01)))),48,0.008,4),accent);A.add(glow)}
+  /* front splitter and stacked canards */
+  const sp=new THREE.Mesh(new THREE.BoxGeometry(0.32,0.025,W+0.12),carbon);sp.position.set(L/2-0.05,0.09,0);A.add(sp);
+  for(const sd of [1,-1])for(let k=0;k<(aeg?3:2);k++){const c=new THREE.Mesh(new THREE.BoxGeometry(0.28-k*0.05,0.012,0.16),carbon);c.position.set(L/2-0.2-k*0.06,wr*0.7+k*0.09,sd*(W/2+0.02));c.rotation.x=sd*0.25;c.rotation.z=-0.18;A.add(c)}
+  /* rear diffuser strakes */
+  for(let k=-3;k<=3;k++){const f=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.16,0.012),carbon);f.position.set(-L/2+0.18,0.13,k*W*0.12);f.rotation.z=0.18;A.add(f)}
+  /* roadster: dorsal fin behind the seats */
+  if(!aeg){const s=new THREE.Shape([new THREE.Vector2(0,0),new THREE.Vector2(1.1,0),new THREE.Vector2(0.1,0.32)]);const fin=new THREE.Mesh(new THREE.ExtrudeGeometry(s,{depth:0.02,bevelEnabled:false}),paint);fin.rotation.y=Math.PI;fin.position.set(-0.25,H*0.78,0.01);A.add(fin)}
+  else{const s=new THREE.Shape([new THREE.Vector2(0,0),new THREE.Vector2(1.4,0),new THREE.Vector2(0.15,0.28)]);const fin=new THREE.Mesh(new THREE.ExtrudeGeometry(s,{depth:0.02,bevelEnabled:false}),carbon);fin.rotation.y=Math.PI;fin.position.set(-0.4,H-0.01,0.01);A.add(fin)}}
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&(spec.id==='hyper'||spec.id==='aegis')&&g&&!g.userData.hyperKit){g.userData.hyperKit=1;kit(g,spec)}}catch(e){console.warn('morrows kit',e)}return g};
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
