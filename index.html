@@ -3484,6 +3484,10 @@ function updateClock(){const G=game,d=new Date(G.simTime*1000),tz=G.tz||approxIA
 function localTimeOld(d,lon){const off=approxTZ(toLat(game.ego.z),lon,d);const t=new Date(d.getTime()+off*3600000);let h=t.getUTCHours(),m=t.getUTCMinutes();const ap=h>=12?'PM':'AM';h=h%12||12;return `${h}:${String(m).padStart(2,'0')} ${ap}`}
 function approxTZ(lat,lon,d){const mo=d.getUTCMonth();const dst=mo>=2&&mo<=9;let z=lon<-114.5?-8:lon<-102||(lon<-101&&lat>37)?-7:lon<-87.5?-6:-5;if(lon<-109&&lon>-114.8&&lat<37)return -7; /* Arizona: no DST */return z+(dst?1:0)}
 function fastTravel(){const G=game,rate=G.scale*Math.max(G.ego.v,1);if(G.charging||G.tow)return G.fast=false;G.fast=G.scale>1&&(G.fast?rate>250:rate>400);return G.fast} /* scenery is only dropped when game time is sped up – a fast car at normal time keeps its world, even above 1,000 mph */
+const _TB=new THREE.Box3();
+function tileOffscreen(k,i,j){const T=TILES.get(k);if(!T)return false;const x0=toX(j*TS),x1=toX((j+1)*TS),z0=toZ(i*TS),z1=toZ((i+1)*TS);
+ _TB.min.set(Math.min(x0,x1),-50,Math.min(z0,z1));_TB.max.set(Math.max(x0,x1),250,Math.max(z0,z1));camSees(0,0); /* refreshes the frustum */
+ const now=performance.now();if(_CSF.intersectsBox(_TB)){T.seenT=now;return false}if(!T.seenT)T.seenT=now;return now-T.seenT>3000}
 function manageTiles(){
  const G=game,e=G.ego;
  if(Math.hypot(e.x,e.z)>(e.v>40?30000:16000)){rebase()} /* rebase rarely: each one unloads and reloads every tile (the ground vanishes, jumps and stalls); float32 is still ~2 mm-accurate at 30 km */
@@ -3497,7 +3501,7 @@ function manageTiles(){
  const pre=!!(window.PREFETCH&&PREFETCH.ready===G.route),rad=e.v>100&&!pre?0:1; /* above ~225 mph only the tile underneath plus the route ahead: side tiles would never arrive in time – unless the route environment was preloaded (all in the local cache) */for(let i=-rad;i<=rad;i++)for(let j=-rad;j<=rad;j++)want.add((ci+i)+'_'+(cj+j));
  /* tiles ahead along the route: look-ahead scales with speed (about 9 s of travel, 1–4.5 km), each remembered with how far ahead it is */
  const ahead=new Map(),reach=Math.max(0,Math.min(G.route.total-e.s,Math.max(HIGH?2000:1000,Math.min(8000,e.v*12))));for(let d=0;d<=reach;d+=250){const p=routeLLnh(Math.min(G.route.total,e.s+d)),k=tileKey(p[1],p[0]);if(!ahead.has(k)){ahead.set(k,d);want.add(k)}}
- for(const k of [...TILES.keys()])if(!want.has(k)){const [i,j]=k.split('_').map(Number);if(Math.abs(i-ci)>2||Math.abs(j-cj)>2)unloadTile(k)}
+ for(const k of [...TILES.keys()])if(!want.has(k)){const [i,j]=k.split('_').map(Number);if(Math.abs(i-ci)>2||Math.abs(j-cj)>2)unloadTile(k);else if(tileOffscreen(k,i,j))unloadTile(k)} /* VRAM: the outer ring goes once it has been off screen for 3 s */
  // order by distance
  const pri=k=>{if(ahead.has(k))return ahead.get(k);const [i,j]=k.split('_').map(Number);return (Math.abs(i-ci)+Math.abs(j-cj))*700}; /* build in the order the car will reach them: route tiles by distance ahead, side tiles after */
  const order=[...want].sort((a,b)=>pri(a)-pri(b));
