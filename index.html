@@ -5865,7 +5865,11 @@ function riderAttach(){const G=game;if(!G||!G.ego)return;const car=G.ego.mesh,sp
  if(RIDER.hat!=='none'){const h=riderHat(RIDER.hat,RIDER.col);h.position.y=0.03;h.scale.set(1,1/1.12,1/0.95);d.userData.head.add(h);if(RIDER.hat==='helmet'||RIDER.hat==='beanie'||RIDER.hat==='tophat'||RIDER.hat==='cowboy'){}}
  d.updateMatrixWorld(true);{const inv=d.matrixWorld.clone().invert(),hp=d.userData.head.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv),c=new THREE.Vector3();d.traverse(o=>{if(!o.isMesh||hideIn.includes(o))return;for(let p=o.parent;p&&p!==d;p=p.parent)if(hideIn.includes(p))return;new THREE.Box3().setFromObject(o).applyMatrix4(inv).getCenter(c);if(c.y>hp.y-0.24&&c.distanceTo(hp)<0.32)hideIn.push(o)})} /* neck, collar, glasses etc. right under the camera showed as a face in the bottom of the view */
  d.userData.hideIn=hideIn;car.add(d);car.userData.rider=d}
-function riderView(){const r=game&&game.ego&&game.ego.mesh&&game.ego.mesh.userData.rider;if(!r||!r.userData.hideIn)return;const v=game.cam!=='in';for(const o of r.userData.hideIn)o.visible=v&&!o.userData.keepHidden}
+function riderView(){const car=game&&game.ego&&game.ego.mesh,r=car&&car.userData.rider;if(!r||!r.userData.hideIn)return;const v=game.cam!=='in';
+ /* in the cabin view also hide every rider mesh near the camera: later mods merge the head parts into one BufferGeometry, which the type-based list above misses */
+ if(!v&&typeof camera!=='undefined'){car.updateMatrixWorld();const inv=car.matrixWorld.clone().invert(),cp=camera.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv),k=cp.toArray().map(x=>Math.round(x*20)).join();
+  if(r.userData.nearKey!==k){r.userData.nearKey=k;const L=[],c=new THREE.Vector3();r.traverse(o=>{if(!o.isMesh)return;const b=new THREE.Box3().setFromObject(o).applyMatrix4(inv);b.getCenter(c);if(b.distanceToPoint(cp)<0.12||(c.y>cp.y-0.3&&c.distanceTo(cp)<0.38))L.push(o)});r.userData.near=L}}
+ for(const o of r.userData.hideIn)o.visible=v&&!o.userData.keepHidden;if(r.userData.near)for(const o of r.userData.near)o.visible=(v||!r.userData.near.includes(o))&&!o.userData.keepHidden}
 </script>
 <script>/* mods/21-rider-anim.js */
 /* Rider animation: looks toward whatever the car is reacting to, arms fly up under hard acceleration,
