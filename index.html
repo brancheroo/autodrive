@@ -12466,12 +12466,16 @@ float rwHt=0.;
  /* push a sidewalk spot outward until it is off the drawn road surface (lane data can under-report the width) */
  function curb(s,off){const sg=Math.sign(off)||1;let o=off;for(let k=0;k<8;k++){const p=routeXZ(s,o);if(!onRoad(p))return p;o+=sg*1.2}return null}
  /* staged: a rebuild runs over several frames (its road raycasts cost 200-340 ms in one go, a stall every 150 m at speed) and is swapped in at the end */
- let STG=null;const stage=(m,i,M,col)=>{const k=m.userData.k,a=STG[k]||(STG[k]=[]);a[i]=M.toArray(new Array(16));if(col){const c=STG[k+'C']||(STG[k+'C']=[]);c[i]=col}};
+ let STG=null,SLOT=null;const stage=(m,i,M,col)=>{SLOT.push([m.userData.k,M.toArray(new Array(16)),col||null])};
+ /* placements are deterministic per route distance: each 15 m slot is computed once per route + loaded-tile set and reused by later rebuilds (a rebuild every 150 m used to redo ~1 km of road raycasts) */
+ const CACHE=new Map();let cacheKey='';
  function put(m,i,x,y,z,yaw){Q.setFromAxisAngle(Yx,yaw);M.compose(V.set(x,y,z),Q,S1);stage(m,i,M)}
- function* build(){const G=game,e=G.ego,R=G.route,eS=e.s;const C={};for(const k in P)C[k]=0;STG={};let tY=performance.now();
-  roads=[];scene.traverse(o=>{if(o.isMesh&&o.visible&&(o.material===MAT.road||o.material===MAT.road2))roads.push(o)});
+ function* build(){const G=game,e=G.ego,R=G.route,eS=e.s;const C0={};let C=C0;for(const k in P)C[k]=0;STG={};let tY=performance.now();
+  const ck=(R.id||R.total)+'|'+[...TILES.keys()].sort().join(',');if(ck!==cacheKey){cacheKey=ck;CACHE.clear()}let haveRoads=false;
   const s0=Math.max(0,Math.ceil((e.s-BACK)/STEP)*STEP);
-  for(let s=s0;s<Math.min(R.total-2,eS+AHEAD);s+=STEP){if(performance.now()-tY>3){yield;tY=performance.now()}if(!town(s))continue;const hw=half(s),r=h(s*0.731+R.total);
+  for(let s=s0;s<Math.min(R.total-2,eS+AHEAD);s+=STEP){if(performance.now()-tY>3){yield;tY=performance.now()}let slot=CACHE.get(s);
+   if(!slot){slot=[];SLOT=slot;CACHE.set(s,slot);if(!haveRoads){haveRoads=true;roads=[];scene.traverse(o=>{if(o.isMesh&&o.visible&&(o.material===MAT.road||o.material===MAT.road2))roads.push(o)})}C={};for(const k in P)C[k]=0;
+   do{if(!town(s))break;const hw=half(s),r=h(s*0.731+R.total);
    const p0=routeXZ(s,0),p1=routeXZ(s+2,0),yaw=Math.atan2(-(p1[1]-p0[1]),p1[0]-p0[0]);
    if(s%45===0)for(const side of [-1,1]){if(C.drain>=MAX*2)break;const p=routeXZ(s+side*3,side*(hw-0.35));put(P.drain,C.drain++,p[0],groundY(p[0],p[1]),p[1],yaw)}
    /* verges: shrubs, flower clumps and the odd rock; never on the road or inside a building */
@@ -12483,7 +12487,8 @@ float rwHt=0.;
    const side=-1,off=side*(hw+2.2);
    if(r<0.13&&C.seat<MAX){const p=curb(s,off-0.6*side);if(p){const y=groundY(p[0],p[1]);const by=yaw+(side<0?Math.PI:0);for(const k of ['seat','back','legs'])put(P[k],C[k]++,p[0],y,p[1],by)}}
    else if(r<0.3&&C.bin<MAX){const p=curb(s,off);if(p){const y=groundY(p[0],p[1]);put(P.bin,C.bin++,p[0],y,p[1],0);put(P.binLid,C.binLid++,p[0],y,p[1],0)}}
-   if(h(s*1.37)<0.12&&C.hyd<MAX){const sd=h(s*2.1)<0.5?-1:1,p=curb(s+4,sd*(hw+1.3));if(p){const y=groundY(p[0],p[1]);put(P.hyd,C.hyd++,p[0],y,p[1],yaw);put(P.hydCap,C.hydCap++,p[0],y,p[1],yaw);put(P.hydNoz,C.hydNoz++,p[0],y,p[1],yaw)}}}
+   if(h(s*1.37)<0.12&&C.hyd<MAX){const sd=h(s*2.1)<0.5?-1:1,p=curb(s+4,sd*(hw+1.3));if(p){const y=groundY(p[0],p[1]);put(P.hyd,C.hyd++,p[0],y,p[1],yaw);put(P.hydCap,C.hydCap++,p[0],y,p[1],yaw);put(P.hydNoz,C.hydNoz++,p[0],y,p[1],yaw)}}}while(0);C=C0}
+   for(const [k,arr,col] of slot){if(C[k]>=P[k].instanceMatrix.count)continue;const a=STG[k]||(STG[k]=[]);a[C[k]]=arr;if(col){const c=STG[k+'C']||(STG[k+'C']=[]);c[C[k]]=col}C[k]++}}
   if(G.route!==R)return;const T=new THREE.Matrix4();for(const k in P){const m=P[k],a=STG[k]||[],c=STG[k+'C'];for(let i=0;i<C[k];i++){if(a[i]){T.fromArray(a[i]);m.setMatrixAt(i,T)}if(c&&c[i])m.setColorAt(i,c[i])}m.count=C[k];m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true}STG=null;builtAt=eS;route=R}
  MODS.push({id:'streetprops',
   start(){if(!added){scene.add(grp);added=true}builtAt=-1e9;route=null},
