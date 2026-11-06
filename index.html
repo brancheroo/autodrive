@@ -5346,7 +5346,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
   const K=keepKeys(G),RN=new Set(routeNodes(G)),gone=new Set();for(const [k,d] of RAW)if(K.has(k))for(const el of (d&&d.elements)||[])if(el.nodes)for(const n of el.nodes)RN.add(n); /* nodes still referenced by a kept tile stay */
   for(const [k,d] of RAW){if(K.has(k))continue;for(const el of (d&&d.elements)||[])if(el.nodes)for(const n of el.nodes)if(!RN.has(n))gone.add(n);
    RAW.delete(k);if(typeof RAWROADS!=='undefined')RAWROADS.delete(k);if(typeof SFB!=='undefined')SFB.delete(k);J.raw++}
-  if(gone.size){for(const n of gone){NODEINFO.delete(n);NODEH.delete(n);CONTROLS.delete(n)}J.nodes+=gone.size;
+  if(gone.size){for(const n of gone){NODEINFO.delete(n);NODEH.delete(n);if(typeof BRNH!=="undefined")BRNH.delete(n);CONTROLS.delete(n)}J.nodes+=gone.size;
    if(typeof BRPROF!=='undefined')for(const key of BRPROF.keys()){const u=key.indexOf('_'),a=+key.slice(0,u),b=+key.slice(u+1);if(gone.has(a)||gone.has(b))BRPROF.delete(key)}}
   /* Overpass extras: keep features within ~6 km of the car (and their dedupe ids / cells, so they can come back) */
   if(window.OSMX&&OSMX.feat&&OSMX.feat.length>200){const la=toLat(G.ego.z),lo=toLon(G.ego.x),k=Math.cos(la*Math.PI/180),keep=[];
