@@ -734,7 +734,7 @@ function pip(pt,poly){let ins=false;for(let i=0,j=poly.length-1;i<poly.length;j=
 // ============================================================ OSM TILE STREAMING
 const TS=0.006; // degrees per tile (~600 m)
 const RAW=new Map(),TILES=new Map(),PENDING=new Set();const SFB=new Map();let LOCAL_USED=0;
-const NODEINFO=new Map();const NODEH=new Map(); // node id -> deck/bore height for bridges & tunnels // osm node id -> {speed(mph), hw, name}
+const NODEINFO=new Map();const APPR=new Map();const NODEH=new Map(); // node id -> deck/bore height for bridges & tunnels // osm node id -> {speed(mph), hw, name}
 const CONTROLS=new Map(); // osm node id -> {type,lat,lon,axisHead}
 const BUILTWAYS=new Set();
 const DRIVABLE=new Set(['motorway','trunk','primary','secondary','tertiary','unclassified','residential','motorway_link','trunk_link','primary_link','secondary_link','tertiary_link','living_street','service']);
@@ -1321,7 +1321,7 @@ function* buildTileGen(key){
  // mark buildings that contain a shop/restaurant POI (storefront ground floor)
  for(const el of data.elements){if(performance.now()>BT_DEADLINE)yield;if(el.type==='way'&&el.geometry&&(el.tags||{}).building){const ring=el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);if(pois.some(p=>p.shop&&pip([p.x,p.z],ring)))BC.storeIds.add(el.id)}}const roadBufs=new Map(),bWall=new Buf(),bPier=new Buf(),bCurb=new Buf();const rb=k=>{if(!roadBufs.has(k))roadBufs.set(k,new Buf());return roadBufs.get(k)};
  const P=g=>g.map(p=>[toX(p.lon),toZ(p.lat)]);
- for(const el of data.elements){if(performance.now()>BT_DEADLINE)yield;
+ for(const el of (data.elements||[]).slice().sort((a,b)=>{const f=e=>{const t=e.tags||{};return t.bridge&&t.bridge!=='no'?0:1};return f(a)-f(b)})){if(performance.now()>BT_DEADLINE)yield;
   if(el.type!=='way'||!el.geometry)continue;const t=el.tags||{};
   if(t.highway){ // register nodes for speed limit/names even when way already built
    const spd=parseSpeed(t.maxspeed)||DEF_SPD[t.highway]||null;
@@ -1347,8 +1347,8 @@ function* buildTileGen(key){
       for(let i=1;i<pts.length&&!wet;i++)for(let j=1;j<q.length;j++){const a0=pts[i-1],b0=pts[i],c0=q[j-1],d0=q[j];const o=(u,v,w)=>(v[0]-u[0])*(w[1]-u[1])-(v[1]-u[1])*(w[0]-u[0]);if(o(a0,b0,c0)*o(a0,b0,d0)<0&&o(c0,d0,a0)*o(c0,d0,b0)<0){wet=true;break}}}
      } /* full overpass clearance only where a road/rail is actually found crossing (all loaded tiles are searched now); creeks are never fetched, so 'no water found' used to raise every creek bridge 6 m */
     const clr0=layer>=1?(overRoad?Math.max(6.2,5.3*layer+0.9):Math.min(3,1.8*layer)):1.5,MAXG=0.07,rampLen=Math.max(4,Math.min(tot*0.48,clr0*1.5/MAXG)),clr=Math.min(clr0,rampLen*MAXG/1.5); /* ramps no steeper than ~7% (smoothstep peak slope = 1.5·h/len): long bridges get long gentle approaches, short ones sit lower instead of climbing a wall */
-    pts.forEach((p,i)=>{const lin=lerp(h0,h1,L[i]/tot);if(isTunnel){p.push(lin)}else{const g=groundY(p[0],p[1]),ramp=clamp(Math.min(L[i],tot-L[i])/rampLen,0,1);let y=Math.max(lin,g+clr*ramp*ramp*(3-2*ramp));for(const X of XING){const dd=Math.hypot(p[0]-X[0],p[1]-X[1]);y=Math.max(y,X[2]+5.6-Math.max(0,dd-6)/5)} /* full clearance right over each road/rail it crosses, whatever the span shape */p.push(y)}});
-    if(el.nodes){el.nodes.forEach((nid,k)=>NODEH.set(nid,pts[kIdx[k]][2]));if(isBridge)for(let k=1;k<el.nodes.length;k++){const hs=[];for(let q=kIdx[k-1];q<=kIdx[k];q++)hs.push(pts[q][2]);if(hs.length>2){BRPROF.set(el.nodes[k-1]+'_'+el.nodes[k],hs);BRPROF.set(el.nodes[k]+'_'+el.nodes[k-1],hs.slice().reverse())}}}}
+    pts.forEach((p,i)=>{const lin=lerp(h0,h1,L[i]/tot);if(isTunnel){p.push(lin)}else{const g=groundY(p[0],p[1]),ramp=clamp(Math.min(L[i],tot-L[i])/rampLen,0,1);let y=Math.max(lin,g+clr*ramp*ramp*(3-2*ramp));for(const X of XING){const dd=Math.hypot(p[0]-X[0],p[1]-X[1]);y=Math.max(y,X[2]+5.6-Math.max(0,dd-8)*0.07)} /* full clearance right over each road/rail it crosses, whatever the span shape */p.push(y)}});
+    if(el.nodes){el.nodes.forEach((nid,k)=>NODEH.set(nid,pts[kIdx[k]][2]));if(isBridge&&XING.length)for(const [k,pi] of [[0,0],[el.nodes.length-1,pts.length-1]]){const ex=pts[pi][2]-groundY(pts[pi][0],pts[pi][1]);if(ex>0.6)APPR.set(el.nodes[k],Math.max(ex,APPR.get(el.nodes[k])||0))} /* overpass end still high: the joining (untagged) approach way ramps down from it */if(isBridge)for(let k=1;k<el.nodes.length;k++){const hs=[];for(let q=kIdx[k-1];q<=kIdx[k];q++)hs.push(pts[q][2]);if(hs.length>2){BRPROF.set(el.nodes[k-1]+'_'+el.nodes[k],hs);BRPROF.set(el.nodes[k]+'_'+el.nodes[k-1],hs.slice().reverse())}}}}
    if(isTunnel&&DRIVABLE.has(hw)){const len=[0];for(let i=1;i<pts.length;i++)len.push(len[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const lanes=+t.lanes||0;
     T.ways.push({pts,len,total:len[len.length-1],oneway:owDir(t)!==0,owDir:owDir(t)||1,hw,lanes,w:lanes?lanes*3.6:(DEF_W[hw]||7),spd:(parseSpeed(t.maxspeed)||DEF_SPD[hw]||25)/MPH,nodes:el.nodes||[],hts:true,tunnel:true});continue}
    if(DRIVABLE.has(hw)){
@@ -1356,6 +1356,12 @@ function* buildTileGen(key){
     const w=lanes?lanes*3.6+(oneway?1.2:0.6):(DEF_W[hw]||7);
     const y=hw==='service'?0.07:0.08+(['motorway','trunk','primary'].includes(hw)?0.01:0);
     const sk=surfKey(t),paved=sk==='asphalt'||sk==='concrete';
+    if(!isBridge&&el.nodes&&el.nodes.length>1&&(APPR.has(el.nodes[0])||APPR.has(el.nodes[el.nodes.length-1]))){ /* overpass approach embankment: OSM tags only the span as a bridge, so the joining way climbs to the deck end at <=6% instead of the deck being a 20% hump */
+     const N=el.nodes,kI=[],D=[];for(let i=0;i<pts.length;i++){if(i){const a0=pts[i-1],b0=pts[i],l=Math.hypot(b0[0]-a0[0],b0[1]-a0[1]),n=isFinite(l)?Math.min(150,Math.floor(l/4)):0;for(let q=1;q<n;q++)D.push([lerp(a0[0],b0[0],q/n),lerp(a0[1],b0[1],q/n)])}kI.push(D.length);D.push([pts[i][0],pts[i][1]])}
+     const Ld=[0];for(let i=1;i<D.length;i++)Ld.push(Ld[i-1]+Math.hypot(D[i][0]-D[i-1][0],D[i][1]-D[i-1][1]));const tl=Ld[Ld.length-1]||1,e0=APPR.get(N[0])||0,e1=APPR.get(N[N.length-1])||0,R0=Math.min(tl,e0/0.06),R1=Math.min(tl,e1/0.06),sm=u=>{u=clamp(u,0,1);return u*u*(3-2*u)};
+     D.forEach((q,i)=>{const g=groundY(q[0],q[1]);q.push(g+Math.max(R0>0?e0*sm(1-Ld[i]/R0):0,R1>0?e1*sm(1-(tl-Ld[i])/R1):0))});
+     pts.length=0;pts.push(...D);N.forEach((nid,k)=>{if(!NODEH.has(nid)||APPR.has(nid))NODEH.set(nid,D[kI[k]][2])});
+     for(let k=1;k<N.length;k++){const hs=[];for(let q=kI[k-1];q<=kI[k];q++)hs.push(D[q][2]);if(hs.length>=2){BRPROF.set(N[k-1]+'_'+N[k],hs);BRPROF.set(N[k]+'_'+N[k-1],hs.slice().reverse())}}}
     ribbon(hw==='service'&&sk==='asphalt'?bRoad2:sk==='asphalt'?bRoad:rb(sk),pts,w,y);
     if(isBridge){const stt=bridgeStruct(t,pts,w,{wallB:bWall,pierB:bPier,cableB:bWall});const concrete=/truss|suspension|cable|arch/.test(stt)?new THREE.Color(/golden gate/i.test(t.name||'')?'#c0362c':'#7d8388'):new THREE.Color(0xa8a59d);wall(bWall,pts,w/2+0.25,1.05,/truss|suspension|cable|arch/.test(stt)?0.1:0.4,concrete,1.3);wall(bWall,pts,-w/2-0.25,1.05,/truss|suspension|cable|arch/.test(stt)?0.1:0.4,concrete,1.3);if(!/suspension|cable|arch/.test(stt)){
      {const Lb=[0];for(let i=1;i<pts.length;i++)Lb.push(Lb[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));for(let d0=12;d0<Lb[Lb.length-1]-8;d0+=28){let d=d0;const clr=dd=>{let i=0;while(i<Lb.length-2&&Lb[i+1]<dd)i++;const tt=(dd-Lb[i])/((Lb[i+1]-Lb[i])||1),x=lerp(pts[i][0],pts[i+1][0],tt),z=lerp(pts[i][1],pts[i+1][1],tt);return !CUR_RQG||!CUR_RQG.inside(x,z,w*0.28+1.3)};if(!clr(d)){let ok=false;for(let s2=2;s2<14&&!ok;s2+=2)for(const sg of [1,-1]){const dd=d0+sg*s2;if(dd>4&&dd<Lb[Lb.length-1]-4&&clr(dd)){d=dd;ok=true;break}}if(!ok)continue} /* never stand a pier in a road below */let i=0;while(i<Lb.length-2&&Lb[i+1]<d)i++;const tt=(d-Lb[i])/((Lb[i+1]-Lb[i])||1),px=lerp(pts[i][0],pts[i+1][0],tt),pz=lerp(pts[i][1],pts[i+1][1],tt),dy=lerp(pts[i][2],pts[i+1][2],tt),g=groundY(px,pz);if(dy-g<2.5)continue;
