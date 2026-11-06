@@ -749,7 +749,7 @@ function pip(pt,poly){let ins=false;for(let i=0,j=poly.length-1;i<poly.length;j=
 // ============================================================ OSM TILE STREAMING
 const TS=0.006; // degrees per tile (~600 m)
 const RAW=new Map(),TILES=new Map(),PENDING=new Set();const SFB=new Map();let LOCAL_USED=0;
-const NODEINFO=new Map();const APPR=new Map();const EMBK=[]; /* embankment footprints [ax,az,bx,bz,halfwidth]: grass skips them */const NODEH=new Map(); // node id -> deck/bore height for bridges & tunnels // osm node id -> {speed(mph), hw, name}
+const NODEINFO=new Map();const APPR=new Map();const EMBK=[]; /* embankment footprints [ax,az,bx,bz,halfwidth]: grass skips them */const NODEH=new Map(),BRNH=new Map(); /* BRNH: node heights set by bridge spans only (neighbouring spans join at these) */ // node id -> deck/bore height for bridges & tunnels // osm node id -> {speed(mph), hw, name}
 const CONTROLS=new Map(); // osm node id -> {type,lat,lon,axisHead}
 const BUILTWAYS=new Set();
 const DRIVABLE=new Set(['motorway','trunk','primary','secondary','tertiary','unclassified','residential','motorway_link','trunk_link','primary_link','secondary_link','tertiary_link','living_street','service']);
@@ -1365,10 +1365,11 @@ function* buildTileGen(key){
     pts.forEach((p,i)=>{const lin=lerp(h0,h1,L[i]/tot);if(isTunnel){p.push(lin)}else{const g=groundY(p[0],p[1]),ramp=clamp(Math.min(L[i],tot-L[i])/rampLen,0,1);let y=Math.max(lin,g+clr*ramp*ramp*(3-2*ramp));for(const X of XING){const dd=Math.hypot(p[0]-X[0],p[1]-X[1]);y=Math.max(y,X[2]+5.6-Math.max(0,dd-8)*0.07)} /* full clearance right over each road/rail it crosses, whatever the span shape */p.push(y)}});
     if(isBridge&&pts.length>1){ /* no impossible decks: ends meet a neighbouring bridge span at its height, then every rise or drop is limited to ~7.5% by raising the low side
        (an overpass crossing near the end of a short span used to jump 5.6 m in 4 m – 135% on the Rickenbacker Causeway); ends left in the air get an approach ramp below */
-     const G=0.075,n=pts.length-1,pin=new Set();if(el.nodes){const a0=NODEH.get(el.nodes[0]),a1=NODEH.get(el.nodes[el.nodes.length-1]);if(a0!=null&&isFinite(a0)){pts[0][2]=a0;pin.add(0)}if(a1!=null&&isFinite(a1)){pts[n][2]=a1;pin.add(n)}}
+     const G=0.075,n=pts.length-1,pin=new Set();if(el.nodes){const a0=BRNH.get(el.nodes[0]),a1=BRNH.get(el.nodes[el.nodes.length-1]);if(a0!=null&&isFinite(a0)){pts[0][2]=a0;pin.add(0)}if(a1!=null&&isFinite(a1)){pts[n][2]=a1;pin.add(n)}}
      for(let i=1;i<=n;i++){const ds=L[i]-L[i-1];if(!pin.has(i))pts[i][2]=Math.max(pts[i][2],pts[i-1][2]-G*ds)}
-     for(let i=n-1;i>=0;i--){const ds=L[i+1]-L[i];if(!pin.has(i))pts[i][2]=Math.max(pts[i][2],pts[i+1][2]-G*ds)}}
-    if(el.nodes){el.nodes.forEach((nid,k)=>NODEH.set(nid,pts[kIdx[k]][2]));if(isBridge)for(const [k,pi] of [[0,0],[el.nodes.length-1,pts.length-1]]){const ex=pts[pi][2]-groundY(pts[pi][0],pts[pi][1]);if(ex>0.6)APPR.set(el.nodes[k],Math.max(ex,APPR.get(el.nodes[k])||0))} /* overpass end still high: the joining (untagged) approach way ramps down from it */if(isBridge)for(let k=1;k<el.nodes.length;k++){const hs=[];for(let q=kIdx[k-1];q<=kIdx[k];q++)hs.push(pts[q][2]);if(hs.length>2){BRPROF.set(el.nodes[k-1]+'_'+el.nodes[k],hs);BRPROF.set(el.nodes[k]+'_'+el.nodes[k-1],hs.slice().reverse())}}}}
+     for(let i=n-1;i>=0;i--){const ds=L[i+1]-L[i];if(!pin.has(i))pts[i][2]=Math.max(pts[i][2],pts[i+1][2]-G*ds)}
+     for(const pi of pin)for(let i=0;i<=n;i++)pts[i][2]=Math.min(pts[i][2],pts[pi][2]+0.1*Math.abs(L[i]-L[pi]))} /* a pinned end lower than this span wants: climb away from it at ≤10% instead of a wall (some clearance is lost right there) */
+    if(el.nodes){el.nodes.forEach((nid,k)=>{NODEH.set(nid,pts[kIdx[k]][2]);if(isBridge)BRNH.set(nid,pts[kIdx[k]][2])});if(isBridge)for(const [k,pi] of [[0,0],[el.nodes.length-1,pts.length-1]]){const ex=pts[pi][2]-groundY(pts[pi][0],pts[pi][1]);if(ex>0.6)APPR.set(el.nodes[k],Math.max(ex,APPR.get(el.nodes[k])||0))} /* overpass end still high: the joining (untagged) approach way ramps down from it */if(isBridge)for(let k=1;k<el.nodes.length;k++){const hs=[];for(let q=kIdx[k-1];q<=kIdx[k];q++)hs.push(pts[q][2]);if(hs.length>2){BRPROF.set(el.nodes[k-1]+'_'+el.nodes[k],hs);BRPROF.set(el.nodes[k]+'_'+el.nodes[k-1],hs.slice().reverse())}}}}
    if(isTunnel&&DRIVABLE.has(hw)){const len=[0];for(let i=1;i<pts.length;i++)len.push(len[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const lanes=+t.lanes||0;
     T.ways.push({pts,len,total:len[len.length-1],oneway:owDir(t)!==0,owDir:owDir(t)||1,hw,lanes,w:lanes?lanes*3.6:(DEF_W[hw]||7),spd:(parseSpeed(t.maxspeed)||DEF_SPD[hw]||25)/MPH,nodes:el.nodes||[],hts:true,tunnel:true});continue}
    if(DRIVABLE.has(hw)){
