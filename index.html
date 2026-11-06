@@ -12468,13 +12468,14 @@ float rwHt=0.;
  /* staged: a rebuild runs over several frames (its road raycasts cost 200-340 ms in one go, a stall every 150 m at speed) and is swapped in at the end */
  let STG=null,SLOT=null;const stage=(m,i,M,col)=>{SLOT.push([m.userData.k,M.toArray(new Array(16)),col||null])};
  /* placements are deterministic per route distance: each 15 m slot is computed once per route + loaded-tile set and reused by later rebuilds (a rebuild every 150 m used to redo ~1 km of road raycasts) */
- const CACHE=new Map();let cacheKey='';
+ const CACHE=new Map();let cacheKey=null;
+ const tileLoaded=s=>{try{const p=routeXZ(s,0),lat=ORIGIN.lat-p[1]/110574,lon=ORIGIN.lon+p[0]/(111320*ORIGIN.k),T=TILES.get(tileKey(lat,lon));return !!(T&&T.group&&T.group.parent)}catch(e){return false}}; /* a slot is only kept once the map tile under it is built, so props never stay where a later-loaded road runs */
  function put(m,i,x,y,z,yaw){Q.setFromAxisAngle(Yx,yaw);M.compose(V.set(x,y,z),Q,S1);stage(m,i,M)}
  function* build(){const G=game,e=G.ego,R=G.route,eS=e.s;const C0={};let C=C0;for(const k in P)C[k]=0;STG={};let tY=performance.now();
-  const ck=(R.id||R.total)+'|'+[...TILES.keys()].sort().join(',');if(ck!==cacheKey){cacheKey=ck;CACHE.clear()}let haveRoads=false;
+  if(R!==cacheKey){cacheKey=R;CACHE.clear()}let haveRoads=false;
   const s0=Math.max(0,Math.ceil((e.s-BACK)/STEP)*STEP);
   for(let s=s0;s<Math.min(R.total-2,eS+AHEAD);s+=STEP){if(performance.now()-tY>3){yield;tY=performance.now()}let slot=CACHE.get(s);
-   if(!slot){slot=[];SLOT=slot;CACHE.set(s,slot);if(!haveRoads){haveRoads=true;roads=[];scene.traverse(o=>{if(o.isMesh&&o.visible&&(o.material===MAT.road||o.material===MAT.road2))roads.push(o)})}C={};for(const k in P)C[k]=0;
+   if(!slot){slot=[];SLOT=slot;if(tileLoaded(s))CACHE.set(s,slot);if(!haveRoads){haveRoads=true;roads=[];scene.traverse(o=>{if(o.isMesh&&o.visible&&(o.material===MAT.road||o.material===MAT.road2))roads.push(o)})}C={};for(const k in P)C[k]=0;
    do{if(!town(s))break;const hw=half(s),r=h(s*0.731+R.total);
    const p0=routeXZ(s,0),p1=routeXZ(s+2,0),yaw=Math.atan2(-(p1[1]-p0[1]),p1[0]-p0[0]);
    if(s%45===0)for(const side of [-1,1]){if(C.drain>=MAX*2)break;const p=routeXZ(s+side*3,side*(hw-0.35));put(P.drain,C.drain++,p[0],groundY(p[0],p[1]),p[1],yaw)}
