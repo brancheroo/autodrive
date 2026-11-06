@@ -12478,9 +12478,14 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  /* new map tiles: their shaders and pipelines are prepared with compileAsync before the tile joins the scene, instead
     of all at once on the frame it first appears (up to 20 shader builds in one frame, 100–200 ms freezes while
     driving into new areas). The tile is added when that finishes (or after 1.5 s at most). */
- BB.tileCompiles=0;window.addTileGroup=function(g){if(!renderer.compileAsync||typeof camera==='undefined'){scene.add(g);return}let done=false;const add=()=>{if(done)return;done=true;let live=false;for(const T of TILES.values())if(T.group===g){live=true;break}if(live&&!g.parent)scene.add(g)}; /* skip a tile unloaded meanwhile */
-  try{g.updateMatrixWorld(true);const ps=window.GPUFX&&GPUFX.post&&GPUFX.pass,rt=ps&&ps.renderTarget,prev=renderer.getRenderTarget();if(rt)renderer.setRenderTarget(rt); /* the main view is drawn into the effects pass's target: compile for that target, not the screen */
-  const pr=renderer.compileAsync(g,camera,scene);if(rt)renderer.setRenderTarget(prev);pr.then(()=>{BB.tileCompiles++;add()},()=>setTimeout(add,0))}catch(e){setTimeout(add,0)}setTimeout(add,1500)};
+ /* compileAsync only makes the GPU pipeline async: the node builds (~12 ms per new material) still run synchronously, so a
+    whole tile at once was a 100–190 ms freeze. Tiles queue here and their meshes compile one at a time, ≤6 ms a frame. */
+ BB.tileCompiles=0;const TQ=[];window.addTileGroup=function(g){if(!renderer.compileAsync||typeof camera==='undefined'){scene.add(g);return}
+  let done=false;const add=()=>{if(done)return;done=true;let live=false;for(const T of TILES.values())if(T.group===g){live=true;break}if(live&&!g.parent)scene.add(g)}; /* skip a tile unloaded meanwhile */
+  try{g.updateMatrixWorld(true)}catch(e){}const items=[];const mats=new Set();g.traverse(o=>{if(!(o.isMesh||o.isSprite||o.isPoints||o.isLine))return;const ms=Array.isArray(o.material)?o.material:[o.material];const k=ms.map(m=>m&&m.uuid).join()+'|'+(o.isInstancedMesh?'i':'')+(o.geometry&&o.geometry.attributes.color?'c':'')+(o.geometry&&o.geometry.attributes.uv?'u':'');if(mats.has(k))return;mats.add(k);items.push(o)});
+  TQ.push({g,items,i:0,add,t:performance.now()});setTimeout(add,2500)};
+ MODS.push({id:'tilecompile',preRender(){if(!TQ.length)return;const t0=performance.now();const ps=window.GPUFX&&GPUFX.post&&GPUFX.pass,rt=ps&&ps.renderTarget,prev=renderer.getRenderTarget();if(rt)renderer.setRenderTarget(rt); /* the main view is drawn into the effects pass's target */
+  try{while(TQ.length&&performance.now()-t0<6){const q=TQ[0];if(q.i>=q.items.length){TQ.shift();BB.tileCompiles++;const a=q.add;Promise.resolve().then(a);continue}const o=q.items[q.i++];try{renderer.compileAsync(o,camera,scene).catch(()=>{})}catch(e){}}}finally{if(rt)renderer.setRenderTarget(prev)}}});
  /* dashboard / taxi screens are canvases redrawn several times a second. With mipmaps on, WebGPU regenerates the whole
     chain on the GPU (one pass per level) for every update – the 1723×560 and 1386×385 taxi screens did that ~7 times
     a second and lined up with the remaining GPU spikes. Screens are seen close up: no mipmaps needed. */
