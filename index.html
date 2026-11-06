@@ -12618,7 +12618,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const outOf=m=>{let o=OUT.get(m);if(!o){o=new THREE.MeshStandardMaterial({color:0x3a4a5c,metalness:0.5,roughness:0.1,envMapIntensity:1.2,transparent:true,opacity:0.9,depthWrite:false,side:THREE.FrontSide});OUT.set(m,o)}return o};
  const inOf=m=>{let o=IN.get(m);if(!o){o=m.clone();o.side=THREE.BackSide;IN.set(m,o)}return o};
  const NONE=new THREE.MeshBasicMaterial({visible:false}); /* other slots of a multi-material mesh: not drawn by the outside copy */
- function split(g,inside){const oo=m=>inside?outOf(m):out2; /* glasshouse winding is mixed: outside the driver's own car the outer glass is double-sided */
+ function split(g,inside){const oo=m=>inside?ownOut(g):out2; /* glasshouse winding is mixed: outside the driver's own car the outer glass is double-sided */
  const list=[];g.traverse(o=>{if(!o.isMesh||o.userData.glassSplit)return;const m=o.material;if(Array.isArray(m)?m.some(isGlass):isGlass(m))list.push(o)});
   for(const o of list){const src=o.material,arr=Array.isArray(src);o.material=arr?src.map(m=>isGlass(m)?inOf(m):m):inOf(src);o.userData.glassSplit=1; /* the cabin greenhouse is one mesh: [paint, glass, gloss] */
    const out=new THREE.Mesh(o.geometry,arr?src.map(m=>isGlass(m)?oo(m):NONE):oo(src));out.position.copy(o.position);out.quaternion.copy(o.quaternion);out.scale.copy(o.scale);out.renderOrder=o.renderOrder;out.userData.glassSplit=1;out.userData.glassOut=1;o.parent.add(out)}}
@@ -12626,10 +12626,13 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const isDark=m=>m&&m.isMeshPhysicalMaterial&&m.transparent&&m.side===THREE.FrontSide&&m.opacity>=0.8&&!m.transmission;
  /* their glass winding is mixed, so outside the driver's own car the swapped glass is double-sided (one-sided lost the near windows) */
  const out2=new THREE.MeshStandardMaterial({color:0x3a4a5c,metalness:0.5,roughness:0.1,envMapIntensity:1.2,transparent:true,opacity:0.9,depthWrite:false,side:THREE.DoubleSide});
- function swap(g,inside){const f=x=>inside?outOf(x):out2;g.traverse(o=>{if(!o.isMesh||o.userData.glassOut)return;const m=o.material;
+ function swap(g,inside){const f=x=>inside?ownOut(g):out2;g.traverse(o=>{if(!o.isMesh||o.userData.glassOut)return;const m=o.material;
   if(Array.isArray(m)){if(m.some(isDark))o.material=m.map(x=>isDark(x)?f(x):x)}else if(isDark(m))o.material=f(m)})}
+ /* cars built with a cabin (yours, the showroom car): their own double-sided outer glass, turned one-sided only while you sit inside, so you can see out */
+ const ownOut=g=>g.userData.ownGlass||(g.userData.ownGlass=out2.clone());
  window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{const ins=!!(opts&&opts.interior);split(g,ins);swap(g,ins)}catch(e){console.warn('carglass',e)}return g};
- MODS.push({id:'carglass'});
+ MODS.push({id:'carglass',frame(){const G=typeof game!=='undefined'?game:null,m=G&&G.ego&&G.ego.mesh,gm=m&&m.userData.ownGlass;if(!gm)return;
+  const side=G.cam==='in'?THREE.FrontSide:THREE.DoubleSide;if(gm.side!==side){gm.side=side;gm.needsUpdate=true}}});
 })();
 </script>
 <script>/* mods/99zzb-webgpu-fx.js */
