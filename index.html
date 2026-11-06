@@ -12867,14 +12867,14 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    recycled body. */
 (function(){
  const _bc=window.buildCar;if(typeof _bc!=='function')return;
- const POOL=new Map(),MAXK=2,MAXT=24,live=new Set(),gone=new Map();let total=0;const ST={hit:0,miss:0,kept:0};window.CARPOOL=ST;
- const key=(spec,c)=>(spec.id||spec.style+spec.L+'x'+spec.W+'x'+spec.H)+'|'+c;
+ const POOL=new Map(),MAXK=3,MAXT=30,live=new Set(),gone=new Map();let total=0;const ST={hit:0,miss:0,kept:0};window.CARPOOL=ST;
+ const key=spec=>spec.id||spec.style+spec.L+'x'+spec.W+'x'+spec.H; /* model only: colours are random, so keying by colour too left almost nothing to reuse; the body is repainted instead */
  const _dv=window.damageVehicle;if(typeof _dv==='function')window.damageVehicle=function(obj){if(obj&&obj.userData)obj.userData.noRecycle=1;return _dv.apply(this,arguments)};
  function strip(m){const ud=m.userData;for(const p of [ud.driver,...(ud.pax||[])])if(p&&p.parent===m)m.remove(p);ud.driver=null;ud.pax=[];
   m.position.set(0,0,0);m.rotation.set(0,0,0);m.scale.set(1,1,1);m.visible=true}
  window.buildCar=function(spec,colorHex,opts){
-  if(spec&&!(opts&&opts.interior)&&colorHex!=null){const k=key(spec,colorHex),l=POOL.get(k);
-   if(l&&l.length){const m=l.pop();total--;strip(m);ST.hit++;return m}
+  if(spec&&!(opts&&opts.interior)&&colorHex!=null){const k=key(spec),l=POOL.get(k);
+   if(l&&l.length){const m=l.pop();total--;strip(m);const pm=m.userData.paint;if(pm&&pm.color)try{pm.color.set(colorHex)}catch(e){}ST.hit++;return m}
    const m=_bc.apply(this,arguments);if(m&&m.userData)m.userData.poolKey=k;ST.miss++;return m}
   return _bc.apply(this,arguments)};
  MODS.push({id:'carpool',frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.agents)return;const now=performance.now(),cur=new Set();
