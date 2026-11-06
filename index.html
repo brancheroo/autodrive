@@ -12654,7 +12654,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   sp=pass(scene,camera);GFXE.pass=sp; /* 99zz pre-compiles new tiles against this pass's target */const tex=sp.getTextureNode('output'),dep=sp.getTextureNode('depth');
   const t=u=>tex.sample(u).rgb,lz=u=>perspectiveDepthToViewZ(dep.sample(u).x,cameraNear,cameraFar).negate();
   const px=PU.px;
-  let bloomN=null,bt=null;if((k.bloom||k.rays)&&GA.bloom){bloomN=GA.bloom(tex,0.22,0.3,k.rays&&!k.bloom?1.1:1.0) /* soft: only real highlights (sun, lamps, glints) glow */;bt=bloomN.getTextureNode?bloomN.getTextureNode():bloomN}
+  let bloomN=null,bt=null;if((k.bloom||k.rays)&&GA.bloom){bloomN=GA.bloom(tex,0.1,0.25,k.rays&&!k.bloom?1.6:1.5) /* faint, and only real highlights (sun, lamps, glints) glow: 0.22 / threshold 1.0 washed whole sunlit walls */;bt=bloomN.getTextureNode?bloomN.getTextureNode():bloomN}
   /* the multi-tap effects use real shader loops (Loop): unrolled JS loops made a node graph of thousands of nodes that took
      three.js 2–3 s to build, freezing the game at every trip start and every effects-setting change */
   const body=Fn(()=>{let u=uv();
@@ -12677,7 +12677,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    if(k.flare){const gv=vec2(0.5,0.5).sub(sp2);Loop(4,({i})=>{const fi=float(i).add(1),gp=sp2.add(gv.mul(fi.mul(0.55))),dd=length(u.sub(gp).mul(vec2(asp,1)));c.addAssign(PU.sunCol.mul(vec3(0.6,0.8,1)).mul(PU.sun.z.mul(0.05).mul(smoothstep(fi.mul(0.02).add(0.05),0,dd))))})}}
   return max(c,vec3(0,0,0))});
   const c=body();const u=uv(),cc=u.sub(0.5);
-  let o=renderOutput(vec4(c,1)).rgb;
+  let o=renderOutput(vec4(c.mul(1.25),1)).rgb; /* +25% before tone mapping: the WebGPU frame came out darker than WebGL's */
   o=o.mul(PU.expo).mul(PU.gain).add(PU.lift);o=mix(vec3(lum(o)),o,PU.sat);o=o.sub(0.5).mul(PU.contrast).add(0.5);
   if(k.vignette)o=o.mul(float(1).sub(dot(cc,cc).mul(0.55)));
   if(k.grain)o=o.add(hsh(u.mul(vec2(1931,1733)).add(time),12.9898,78.233,43758.5453).sub(0.5).mul(0.05));
