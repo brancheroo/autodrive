@@ -11016,6 +11016,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   decal(g,spec,once('hkdoor',512,160,(x,w,h)=>{x.fillStyle='#fff';x.font='800 60px Arial';x.textAlign='center';x.fillText('TAXI  的士',w/2,70);x.font='700 44px Arial';x.fillText('HK 8273',w/2,132)}),L*0.08,wr+0.38,0.62,0.2);
   for(const z of [W/2-0.05,-W/2+0.05]){const b=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.1,0.25),chr);b.position.set(L/2,wr+0.15,z*0.6);g.add(b)}}
  function tokyo(g,spec){const{L,W,H,wr}=spec,ud=g.userData;
+  {const sh=(MODEL[spec.id]||{}).shape||{},x0=((sh.roofR??0.315)-0.5)*L+0.05,x1=((sh.roofF??0.585)-0.5)*L-0.05;const rf=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,0.03,W*(sh.tum??0.6)-0.04),ud.paint||blk);rf.position.set((x0+x1)/2,H-0.012,0);g.add(rf)} /* painted steel roof */
   const at=once('tkandon',256,128,(x,w,h)=>{x.fillStyle='#fffaf0';x.fillRect(0,0,w,h);x.fillStyle='#0a3a8a';x.font='900 58px "Hiragino Sans","Yu Gothic",sans-serif';x.textAlign='center';x.fillText('タクシー',w/2,84)});
   const litM=new THREE.MeshStandardMaterial({map:at,emissive:0xffffff,emissiveMap:at,emissiveIntensity:0.6,roughness:0.4});
   const S=new THREE.Group();S.position.set(-L*0.02,H+0.005,0);g.add(S);S.add(new THREE.Mesh(new THREE.BoxGeometry(0.34,0.03,0.16),blk));
