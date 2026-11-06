@@ -2018,7 +2018,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  else{for(const s of [1,-1])onEnd(true,s*W*0.35,ny,drl==='mb'?0.42:0.36,drl==='jaguar'?0.09:0.08,head)}
  // grille / intakes
  const gr=md.grille||'none';
- if(gr==='jaguar'){onEnd(true,0,ny-0.2,W*0.44,0.3,gloss,0.04)}
+ if(gr==='jaguar'){const jg=new THREE.MeshStandardMaterial({color:0x08090b,roughness:0.35,metalness:0.3});onEnd(true,0,ny-0.19,W*0.5,0.32,jg,0.04);for(let k=0;k<5;k++)onEnd(true,0,ny-0.32+k*0.065,W*0.48,0.006,matte,0.05)} /* I-Pace: big gloss-black mesh grille right under the lamps */
  else if(gr==='mb'){onEnd(true,0,ny-0.15,0.8,0.4,chrome,0.05);onEnd(true,0,ny-0.15,0.74,0.34,gloss,0.06);for(let k=0;k<4;k++)onEnd(true,0,ny-0.28+k*0.085,0.72,0.018,chrome,0.07);const x=surfX(P,true,0,ny-0.14);const star=new THREE.Mesh(new THREE.TorusGeometry(0.085,0.01,6,24),chrome);star.rotation.y=Math.PI/2;star.position.set(x+0.035,ny-0.12,0);g.add(star)}
  else if(gr==='bmw'){for(const s of [1,-1]){onEnd(true,s*0.22,ny-0.21,0.4,0.44,chrome,0.05);onEnd(true,s*0.22,ny-0.21,0.35,0.4,gloss,0.06)}}
  else if(gr==='cadillac'){onEnd(true,0,ny-0.12,W*0.62,0.3,gloss,0.05)}
@@ -2050,7 +2050,7 @@ function buildCar(spec,colorHex,opts={}){if(spec.gargantua)return buildGargantua
  // turn signals: real-size front & rear lamps, fender side repeaters, and an additive glow halo on each that flashes with the blinker
  const glowM=[0,1].map(()=>new THREE.SpriteMaterial({map:glowTex(),color:0xffa326,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));
  /* modern LED cars hide the indicators inside the lamp units: dark when off (front photos); Teslas carry them inside the head/tail lamps */
- const hidSig=/^(tesla|teslaJ|lucid|porsche|pixel|volvo|bar|rivian|cadillac|bmw|vwbar)$/.test(drl),inLamp=drl==='tesla'||drl==='teslaJ',sigOff=hidSig?0x141518:0x4a2a00;if(hidSig){sigL.color.setHex(sigOff);sigR.color.setHex(sigOff)}
+ const hidSig=/^(tesla|teslaJ|lucid|porsche|pixel|volvo|bar|rivian|cadillac|bmw|vwbar|jaguar)$/.test(drl),inLamp=drl==='tesla'||drl==='teslaJ',sigOff=hidSig?0x141518:0x4a2a00;if(hidSig){sigL.color.setHex(sigOff);sigR.color.setHex(sigOff)}
  for(const s of [1,-1]){const m=s<0?sigL:sigR,gm=s<0?glowM[0]:glowM[1],spots=[];spots.push(drl==='bar'?[onEnd(true,s*W*0.4,ny,0.12,0.03,m,0.04),1]:inLamp?[onEnd(true,s*W*(drl==='tesla'?0.43:0.42),drl==='tesla'?ny+0.01:ny-0.1,0.1,0.045,m,0.035),1]:[onEnd(true,s*W*0.40,ny-0.06,0.2,0.07,m,0.04),1],inLamp?[onEnd(false,s*W*0.44,ty+0.005,0.1,0.04,m,0.035),-1]:[onEnd(false,s*W*0.38,ty-0.1,0.24,0.09,m,0.04),-1]);
   const uF=0.8,rx=P.xOf(uF),ry=Math.min(P.belt(uF)-0.16,sh.hood*H-0.1),rz=s*((P.halfAt?P.halfAt(uF,ry):P.half(uF))+0.004),rep_=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.035,0.012),m); /* on the real (rounded) fender surface */rep_.position.set(rx,ry,rz);g.add(rep_);
   for(const [mesh,sg] of spots){if(!mesh)continue;mesh.geometry.computeBoundingBox();const c=new THREE.Vector3();mesh.geometry.boundingBox.getCenter(c);const sp=new THREE.Sprite(gm);sp.position.set(c.x+sg*0.06,c.y,c.z);sp.scale.setScalar(0.55);g.add(sp)}
