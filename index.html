@@ -315,6 +315,9 @@ const CARS=[
 {id:'tuktuk',name:'Bajaj-ish Tuk-Tuk',sub:'Bangkok auto-rickshaw · three wheels · driver up front',style:'coupe',L:2.75,W:1.35,H:1.75,wb:1.95,wr:0.25,hp:12,z60:25,top:45,range:'~120 mi (LPG)',weight:'~770 lb',drive:'Single-cylinder LPG · 4-speed · RWD',level:'Human driver (tuk-tuk)',
  tech:'The Thai tuk-tuk: one front wheel under the driver, a bench seat for passengers behind, a canopy roof with fringe, chrome everywhere and loud paint. Open sides, so you feel the city. You ride on the back bench.',
  colors:[['Bangkok Blue','#1f56c8'],['Fuchsia','#e0208a'],['Green','#22a24a'],['Yellow','#f2c300']],dash:'classic',wheel:'round',sensors:'none',sound:'i4',driver:true,rideshare:true,taxi:true,tuktuk:true},
+{id:'jeepney',name:'Sarao-ish Pinoy Jeepney',sub:'Manila jeepney · chrome horses & rainbow paint · driver up front',style:'van',L:6.5,W:1.9,H:2.15,wb:3.9,wr:0.38,hp:95,z60:24,top:60,range:'~400 mi (diesel)',weight:'~5,500 lb',drive:'4.0L surplus diesel · 4-speed manual · RWD',level:'Human driver (jeepney)',
+ tech:'The King of the Road: a stretched, hand-built stainless jeepney with a long bonnet, a herd of chrome horses, a tall grille, rainbow stripes, the route painted down the sides, "God Bless Our Trip" over the windows and a roof bristling with horns and antennas. Two long facing benches in the back, open windows, rear step entrance. Someone else drives; you ride on the bench.',
+ colors:[['Fiesta Red','#e0102a'],['Royal Blue','#1438c8'],['Sunburst Yellow','#ffc400'],['Jungle Green','#0f9a3a'],['Chrome Silver','#c9ccd0']],dash:'classic',wheel:'round',sensors:'none',sound:'v8',driver:true,rideshare:true,taxi:true,jeepney:true},
 {id:'keitruck',name:'Kei-Volt Mini',sub:'Electric micro kei pickup truck',style:'van',L:3.395,W:1.475,H:1.8,wb:1.9,wr:0.26,hp:40,z60:14,top:62,range:'~95 mi (est.) · 20 kWh',weight:'~1,900 lb',drive:'Single motor RWD EV',level:'SAE Level 2 · supervised',
  tech:'A tiny Japanese-style kei pickup, rebuilt as an EV. Cab-over layout with a flat front, two seats, and a flat bed with fold-down side and tail gates. Only 2.75 m long and 1.2 m wide, smaller than a regular kei truck, so it fits down any lane or alley.',
  colors:[['Farm White','#f1f1ec'],['Kei Silver','#b9bdc1'],['Tractor Green','#3f7a3a'],['Pickup Red','#c4252a'],['Sky Blue','#7fb6dd']],dash:'classic',wheel:'round',sensors:'gm',sound:'ev',driver:true,keitruck:true},
@@ -2678,6 +2681,7 @@ const ENERGY={
  'thaitaxi':{epa:420,ice:true,tankL:50,kg:1350,cda:0.62,crr:0.009,bte:0.30,idleKW:2,cityMul:0.9},
  'hktaxi':{epa:380,ice:true,tankL:60,kg:1450,cda:0.7,crr:0.010,bte:0.32,idleKW:1.5,cityMul:0.7},
  'tokyocab':{epa:380,ice:true,tankL:60,kg:1450,cda:0.7,crr:0.010,bte:0.32,idleKW:1.5,cityMul:0.7},
+ 'jeepney':{epa:400,ice:true,tankL:70,kg:2500,cda:1.1,crr:0.012,bte:0.30,idleKW:2,cityMul:0.8},
  'tuktuk':{epa:120,ice:true,tankL:8,kg:350,cda:0.6,crr:0.014,bte:0.25,idleKW:0.6,cityMul:0.8},
  'jpntaxi':{epa:500,ice:true,tankL:52,kg:1400,cda:0.85,crr:0.010,bte:0.38,idleKW:0.8,cityMul:0.55},
  'nyccab':{epa:360,ice:true,tankL:55,kg:1590,cda:0.9,crr:0.010,bte:0.30,idleKW:2,cityMul:0.8},
@@ -9785,6 +9789,109 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
      puff(p,new THREE.Vector3(back.x+(Math.random()-0.5)*0.8,2.2+thr*3+Math.random(),back.z+(Math.random()-0.5)*0.8),thr>0.2||Math.random()<0.6)}}}}});
 })();
 </script>
+<script>/* mods/61zt-tuktuk.js */
+/* Scratch-built ride vehicles driven by someone else (spec.taxi: 88-taxi.js adds the driver and moves you to the back):
+   - Thai tuk-tuk (spec.tuktuk): one front wheel, cowl and handlebars for the driver, a bench for passengers behind,
+     open sides under a canopy with fringe, chrome tubes and loud paint.
+   - Pinoy jeepney (spec.jeepney): long chrome-laden bonnet with horse ornaments, open-sided passenger body with two
+     facing side benches, rainbow stripes, painted names and slogans, and a roof rack of chrome horns and antennas. */
+(function(){
+ const tex=(w,h,draw)=>{const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t};
+ const TX={};const once=(k,w,h,f)=>TX[k]||(TX[k]=tex(w,h,f));
+ const chrome=new THREE.MeshStandardMaterial({color:0xe8eaee,metalness:1,roughness:0.12}),dark=new THREE.MeshStandardMaterial({color:0x1b1c20,roughness:0.8}),
+  tyreM=new THREE.MeshStandardMaterial({color:0x151515,roughness:0.9}),seatR=new THREE.MeshStandardMaterial({color:0x9a1a1a,roughness:0.6}),
+  glass=new THREE.MeshPhysicalMaterial({color:0x2a3a48,roughness:0.04,transparent:true,opacity:0.3,depthWrite:false,side:THREE.DoubleSide});
+ const B=(par,w,h,d,m,x,y,z)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;par.add(o);return o};
+ const tube=(par,a,b,r,m)=>{const A=new THREE.Vector3(...a),Bv=new THREE.Vector3(...b),L=A.distanceTo(Bv),o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,L,8),m);o.position.copy(A).add(Bv).multiplyScalar(0.5);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),Bv.clone().sub(A).normalize());par.add(o);return o};
+ function wheel(g,wheels,x,z,wr,front,sd,w=0.14){const piv=new THREE.Group();piv.position.set(x,wr,z);const spin=new THREE.Group();
+  spin.add(new THREE.Mesh(new THREE.CylinderGeometry(wr,wr,w,20).rotateX(Math.PI/2),tyreM));spin.add(new THREE.Mesh(new THREE.CylinderGeometry(wr*0.6,wr*0.6,w+0.01,16).rotateX(Math.PI/2),chrome));
+  const h=new THREE.Group();h.add(spin);piv.add(h);g.add(piv);wheels.push({piv,spin,front,sign:sd})}
+ function lamps(g,ud,pos,tails,sigs){const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);
+  for(const p of pos){const l=new THREE.Mesh(new THREE.CircleGeometry(p[3]||0.08,18),head);l.rotation.y=Math.PI/2;l.position.set(p[0],p[1],p[2]);g.add(l);const rim=new THREE.Mesh(new THREE.TorusGeometry((p[3]||0.08)+0.01,0.012,6,20),chrome);rim.rotation.y=Math.PI/2;rim.position.copy(l.position);g.add(rim)}
+  for(const p of tails){const t=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.08,0.12),tail);t.position.set(p[0],p[1],p[2]);g.add(t)}
+  for(const [x,y,z] of sigs){const s=new THREE.Mesh(new THREE.SphereGeometry(0.035,8,6),z<0?sigL:sigR);s.position.set(x,y,z);g.add(s)}
+  ud.lights={head,tail,sigL,sigR}}
+ /* ---------------- tuk-tuk ---------------- */
+ window.buildTukTuk=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{L,W,H,wr,wb}=spec;
+  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.4,roughness:0.25,clearcoat:1,clearcoatRoughness:0.08});ud.paint=paint;
+  const fy=wr+0.12; /* platform top */
+  ud.body=B(g,L-0.35,0.08,W*0.9,dark,-0.1,fy,0); /* floor platform */
+  /* front cowl round the driver: narrows to the nose, headlight on top of the mudguard */
+  const cowl=B(g,0.55,0.75,0.72,paint,L/2-0.42,fy+0.4,0);
+  B(g,0.12,0.5,0.5,paint,L/2-0.1,fy+0.3,0);B(g,0.2,0.04,0.36,chrome,L/2-0.05,fy+0.58,0); /* nose + chrome lip */
+  const ws=new THREE.Mesh(new THREE.PlaneGeometry(0.8,0.5),glass);ws.rotation.y=Math.PI/2;ws.rotation.z=0.12;ws.position.set(L/2-0.55,fy+1.05,0);g.add(ws);
+  /* driver seat + handlebars */
+  B(g,0.4,0.1,0.55,seatR,0.4,fy+0.42,0);B(g,0.08,0.4,0.55,seatR,0.18,fy+0.65,0);
+  const hb=tube(g,[L/2-0.72,fy+0.95,-0.32],[L/2-0.72,fy+0.95,0.32],0.016,chrome);tube(g,[L/2-0.66,fy+0.6,0],[L/2-0.72,fy+0.95,0],0.02,chrome);ud.handlebar=hb;
+  /* passenger tub: low painted sides and back, bench seat */
+  const x0=-L/2+0.1,x1=-0.05;B(g,x1-x0,0.55,0.04,paint,(x0+x1)/2,fy+0.3,W/2-0.02);B(g,x1-x0,0.55,0.04,paint,(x0+x1)/2,fy+0.3,-W/2+0.02);B(g,0.05,0.85,W,paint,x0,fy+0.45,0);
+  B(g,0.5,0.14,W*0.86,seatR,-0.75,fy+0.38,0);B(g,0.1,0.55,W*0.86,seatR,-1.0,fy+0.72,0);
+  for(const sd of [1,-1])B(g,x1-x0,0.06,0.05,chrome,(x0+x1)/2,fy+0.6,sd*(W/2));
+  /* canopy roof on chrome posts, with a fringe and a lit sign */
+  const ry=H-0.04;B(g,L-0.3,0.06,W+0.06,paint,-0.08,ry,0);B(g,L-0.3,0.04,W+0.1,chrome,-0.08,ry-0.05,0);
+  for(const [x,z] of [[L/2-0.5,0.38],[L/2-0.5,-0.38],[x0+0.02,W/2-0.03],[x0+0.02,-W/2+0.03],[0.05,W/2-0.03],[0.05,-W/2+0.03]])tube(g,[x,fy+0.1,z],[x,ry,z],0.02,chrome);
+  const fr=once('fringe',256,32,(x,w,h)=>{for(let i=0;i<w;i+=8){x.fillStyle=['#ffd21a','#ff2a6a','#2ad0ff','#7cff4a'][(i/8)%4];x.fillRect(i,0,6,h-(i%16?4:0))}});
+  for(const sd of [1,-1]){const f=new THREE.Mesh(new THREE.PlaneGeometry(L-0.35,0.1),new THREE.MeshStandardMaterial({map:fr,transparent:true,side:THREE.DoubleSide}));f.position.set(-0.08,ry-0.12,sd*(W/2+0.05));g.add(f)}
+  const sg=once('tuksign',256,64,(x,w,h)=>{x.fillStyle='#111';x.fillRect(0,0,w,h);x.fillStyle='#ffe000';x.font='900 40px Arial Black, Arial';x.textAlign='center';x.fillText('TUK-TUK',w/2,46)});
+  const litM=new THREE.MeshStandardMaterial({map:sg,emissive:0xffffff,emissiveMap:sg,emissiveIntensity:0.6});const sgn=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.15),litM);sgn.rotation.y=Math.PI/2;sgn.position.set(L/2-0.14,ry+0.02,0);g.add(sgn);
+  const pl=new THREE.PointLight(0xffe08a,0,4,2);pl.position.set(L/2-0.3,ry-0.1,0);g.add(pl);ud.taxiSign={mat:litM,light:pl};
+  lamps(g,ud,[[L/2+0.01,fy+0.62,0,0.09]],[[x0-0.03,fy+0.35,W/2-0.12],[x0-0.03,fy+0.35,-W/2+0.12]],[[L/2-0.1,fy+0.62,0.2],[L/2-0.1,fy+0.62,-0.2]]);
+  const I=new THREE.Group();g.add(I);ud.interior=I;ud.seats=[new THREE.Vector3(-0.75,fy+0.5,0.3),new THREE.Vector3(-0.75,fy+0.5,-0.3)];ud.hood=new THREE.Group();g.add(ud.hood);
+  const wheels=[];wheel(g,wheels,wb/2,0,wr,true,1,0.12);for(const sd of [1,-1])wheel(g,wheels,-wb/2,sd*(W/2-0.12),wr,false,sd);
+  B(g,0.3,0.06,0.2,paint,wb/2,wr*2+0.05,0); /* front mudguard */
+  ud.wheels=wheels;ud.tuktuk=true;ud.taxi=true; /* own body and seating: 88-taxi.js adds no partition or yellow-cab livery */
+  ud.cabLivery=true;return g};
+ /* ---------------- jeepney ---------------- */
+ window.buildJeepney=function(spec,colorHex,opts){const g=new THREE.Group(),ud=g.userData,{L,W,H,wr,wb}=spec;
+  const paint=new THREE.MeshPhysicalMaterial({color:colorHex,metalness:0.4,roughness:0.25,clearcoat:1,clearcoatRoughness:0.06});ud.paint=paint;
+  const steel=new THREE.MeshStandardMaterial({color:0xc9ccd0,metalness:0.9,roughness:0.25}); /* the stainless body panels */
+  const fy=wr+0.35,hx=L/2-1.45; /* floor top; bonnet starts here */
+  ud.body=B(g,L-0.2,0.1,W-0.06,dark,0,fy-0.05,0);
+  /* bonnet and nose: long chrome-trimmed hood, tall grille, bumper, a herd of chrome horses */
+  B(g,L/2-hx,0.62,W*0.82,paint,(hx+L/2)/2,fy+0.28,0);B(g,0.06,0.62,W*0.7,chrome,L/2,fy+0.28,0);
+  for(let k=-5;k<=5;k++)B(g,0.02,0.5,0.02,dark,L/2+0.04,fy+0.28,k*0.11);
+  B(g,0.14,0.14,W+0.1,chrome,L/2+0.08,fy-0.12,0);
+  for(let k=-2;k<=2;k++){const h=new THREE.Group();h.position.set(L/2-0.35-Math.abs(k)*0.15,fy+0.62,k*0.17);g.add(h);B(h,0.2,0.08,0.05,chrome,0,0.12,0);B(h,0.07,0.14,0.05,chrome,0.09,0.2,0);tube(h,[-0.07,0,0],[-0.07,0.1,0],0.012,chrome);tube(h,[0.07,0,0],[0.07,0.1,0],0.012,chrome)}
+  /* cab: windscreen, roof visor over the driver */
+  const ws=new THREE.Mesh(new THREE.PlaneGeometry(W*0.92,0.62),glass);ws.rotation.y=Math.PI/2;ws.position.set(hx,fy+0.95,0);g.add(ws);
+  B(g,0.05,0.65,0.05,steel,hx,fy+0.95,W/2-0.05);B(g,0.05,0.65,0.05,steel,hx,fy+0.95,-W/2+0.05);
+  /* passenger body: steel lower sides with rainbow stripes, open window band, painted roof sides with slogans */
+  const x0=-L/2+0.05,x1=hx;
+  const art=once('jeepart',1024,160,(x,w,h)=>{const C=['#ff1e56','#ffac00','#ffe100','#00d26a','#00a8ff','#9b30ff'];for(let i=0;i<6;i++){x.fillStyle=C[i];x.fillRect(0,i*h/6,w,h/6)}x.fillStyle='#fff';x.strokeStyle='#111';x.lineWidth=6;x.font='900 74px Arial Black, Arial';x.textAlign='center';x.strokeText('BAGUIO - CUBAO',w/2,108);x.fillText('BAGUIO - CUBAO',w/2,108)});
+  const top=once('jeeptop',1024,128,(x,w,h)=>{x.fillStyle='#ffe100';x.fillRect(0,0,w,h);x.fillStyle='#d0003a';x.font='italic 900 70px Georgia, serif';x.textAlign='center';x.fillText('God Bless Our Trip',w/2,88)});
+  for(const sd of [1,-1]){B(g,x1-x0,0.55,0.04,steel,(x0+x1)/2,fy+0.3,sd*(W/2-0.02));
+   const a=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0-0.1,0.3),new THREE.MeshStandardMaterial({map:art,roughness:0.5}));a.position.set((x0+x1)/2,fy+0.32,sd*(W/2+0.002));if(sd<0)a.rotation.y=Math.PI;g.add(a);
+   const t=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0-0.1,0.22),new THREE.MeshStandardMaterial({map:top,roughness:0.5}));t.position.set((x0+x1)/2,H-0.2,sd*(W/2+0.002));if(sd<0)t.rotation.y=Math.PI;g.add(t);
+   B(g,x1-x0,0.24,0.03,paint,(x0+x1)/2,H-0.2,sd*(W/2-0.015));
+   for(let x=x0+0.1;x<x1;x+=0.55)B(g,0.05,H-0.32-(fy+0.58),0.05,steel,x,(fy+0.58+H-0.32)/2,sd*(W/2-0.03)); /* window posts */
+   B(g,x1-x0,0.05,0.06,chrome,(x0+x1)/2,fy+0.58,sd*(W/2));
+   const fg=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.3,0.04),chrome);fg.position.set(hx-0.15,wr+0.15,sd*(W/2-0.02));g.add(fg)}
+  /* roof with a chrome rail, horns, antennas and a plastic-flower row; rear entrance with a grab rail */
+  B(g,L-0.2-(L/2-hx)+0.35,0.06,W,paint,(x0+hx+0.35)/2,H-0.05,0);
+  for(const sd of [1,-1])tube(g,[x0+0.1,H+0.08,sd*(W/2-0.05)],[hx+0.2,H+0.08,sd*(W/2-0.05)],0.018,chrome);
+  for(let k=0;k<4;k++){const hr=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.3,12,1,true),chrome);hr.rotation.z=-Math.PI/2;hr.position.set(hx-0.2-k*0.35,H+0.08,(k%2?1:-1)*0.3);g.add(hr)}
+  for(const z of [0.55,-0.55])tube(g,[hx+0.1,H,z],[hx-0.3,H+0.9,z],0.008,chrome);
+  B(g,0.05,0.5,W,steel,x0,H-0.3,0);tube(g,[x0-0.04,fy+0.1,0.35],[x0-0.04,H-0.5,0.35],0.02,chrome);tube(g,[x0-0.04,fy+0.1,-0.35],[x0-0.04,H-0.5,-0.35],0.02,chrome);
+  B(g,0.3,0.06,0.9,chrome,x0-0.1,fy-0.15,0); /* rear step */
+  /* inside: driver and front passenger bench, two long facing side benches behind */
+  B(g,0.45,0.12,W*0.85,seatR,hx-0.8,fy+0.4,0);B(g,0.08,0.55,W*0.85,seatR,hx-1.05,fy+0.7,0);
+  for(const sd of [1,-1]){B(g,x1-x0-1.3,0.1,0.4,seatR,(x0+x1-1.3)/2,fy+0.42,sd*(W/2-0.25));B(g,x1-x0-1.3,0.4,0.06,seatR,(x0+x1-1.3)/2,fy+0.75,sd*(W/2-0.05))}
+  B(g,0.06,0.08,0.4,dark,hx-0.15,fy+0.75,-0.45);
+  const sw=new THREE.Mesh(new THREE.TorusGeometry(0.19,0.02,8,24),dark);sw.position.set(hx-0.35,fy+0.82,-0.45);sw.rotation.y=Math.PI/2;sw.rotation.x=0.5;g.add(sw);
+  lamps(g,ud,[[L/2+0.03,fy+0.42,0.6,0.1],[L/2+0.03,fy+0.42,-0.6,0.1],[L/2+0.03,fy+0.66,0.45,0.06],[L/2+0.03,fy+0.66,-0.45,0.06]],[[x0-0.03,fy+0.15,W/2-0.15],[x0-0.03,fy+0.15,-W/2+0.15]],[[L/2,fy+0.15,W/2-0.12],[L/2,fy+0.15,-W/2+0.12]]);
+  const sg=once('jeepsign',256,64,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.fillStyle='#0033a0';x.font='900 36px Arial Black, Arial';x.textAlign='center';x.fillText('CUBAO',w/2,46)});
+  const litM=new THREE.MeshStandardMaterial({map:sg,emissive:0xffffff,emissiveMap:sg,emissiveIntensity:0.6});const sgn=new THREE.Mesh(new THREE.PlaneGeometry(0.8,0.2),litM);sgn.rotation.y=Math.PI/2;sgn.position.set(hx+0.02,H-0.18,0);g.add(sgn);
+  const pl=new THREE.PointLight(0xffffff,0,4,2);pl.position.set(hx-0.3,H-0.3,0);g.add(pl);ud.taxiSign={mat:litM,light:pl};
+  const I=new THREE.Group();g.add(I);ud.interior=I;ud.seats=[new THREE.Vector3(-1.2,fy+0.5,0.5),new THREE.Vector3(-0.4,fy+0.5,-0.5)];ud.hood=new THREE.Group();g.add(ud.hood);
+  const wheels=[];for(const sd of [1,-1]){wheel(g,wheels,wb/2,sd*(W/2-0.18),wr,true,sd,0.2);wheel(g,wheels,-wb/2,sd*(W/2-0.18),wr,false,sd,0.2)}
+  ud.wheels=wheels;ud.jeepney=true;ud.taxi=true;ud.cabLivery=true;return g};
+ const _bc=window.buildCar;
+ if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){if(spec&&spec.tuktuk)return buildTukTuk(spec,colorHex,opts||{});if(spec&&spec.jeepney)return buildJeepney(spec,colorHex,opts||{});return _bc.apply(this,arguments)};
+ const _eye=window.eyePos;
+ if(typeof _eye==='function')window.eyePos=function(spec){if(spec&&spec.tuktuk)return new THREE.Vector3(0.4,spec.wr+1.25,0);if(spec&&spec.jeepney)return new THREE.Vector3(spec.L/2-1.45-0.75,spec.wr+1.55,-0.45);return _eye.apply(this,arguments)};
+ MODS.push({id:'tuktuk'});
+})();
+</script>
 <script>/* mods/62-trams.js */
 /* (44) Trams & cable cars on the real OSM tram / light-rail lines near your route. Modern two-section light-rail
    vehicles (pantograph, white with a coloured band); inside San Francisco they're classic cable cars (wood-and-red
@@ -10815,7 +10922,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   for(const sd of [1,-1]){const f=new THREE.Mesh(new THREE.PlaneGeometry(0.46,0.16),litM);f.position.set(0,0.11,sd*0.06);f.rotation.x=sd*-0.35;if(sd<0)f.rotation.y=Math.PI;S.add(f)}
   const pl=new THREE.PointLight(0xfff2a0,0,5,2);pl.position.y=0.3;S.add(pl);ud.taxiSign={mat:litM,light:pl}}
  const _bc=window.buildCar;
- window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.cabStyle&&g&&!g.userData.cabLivery){g.userData.cabLivery=true;({london,jpn,nyc}[spec.cabStyle]||jpn)(g,spec)}}catch(e){console.warn('cabs',e)}return g};
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.cabStyle&&({london,jpn,nyc})[spec.cabStyle]&&g&&!g.userData.cabLivery){g.userData.cabLivery=true;({london,jpn,nyc}[spec.cabStyle]||jpn)(g,spec)}}catch(e){console.warn('cabs',e)}return g};
 })();
 </script>
 <script>/* mods/88c-pullman.js */
@@ -10883,6 +10990,44 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  if(typeof _bc==='function')window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&spec.pullman&&g&&!g.userData.pullmanKit){kit(g,spec);if(opts&&opts.interior)cabin(g,spec)}}catch(err){console.warn('pullman kit',err)}return g};
  MODS.push({id:'pullman',frame(){const G=typeof game!=='undefined'?game:null,gl=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.pullmanGlass;if(!gl)return;
   const t=performance.now()/1000,ph=(t%40)/40,f=ph<0.4?0:ph<0.5?(ph-0.4)/0.1:ph<0.9?1:1-(ph-0.9)/0.1;gl.opacity=0.12+f*0.73;gl.roughness=0.05+f*0.6}}); /* partition: clear → frosted → clear every 40 s */
+})();
+</script>
+<script>/* mods/88d-asiacabs.js */
+/* Liveries for the Bangkok Taxi-Meter (cabStyle 'thai'), the Hong Kong urban taxi ('hk') and the classic Tokyo Crown
+   Comfort ('tokyo'). The cabbie, back-seat rider, partition and meter come from 88-taxi.js. Each sets userData.taxiSign
+   so its roof sign lights like the others. */
+(function(){
+ const tex=(w,h,draw)=>{const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t};
+ const TX={};const once=(k,w,h,f)=>TX[k]||(TX[k]=tex(w,h,f));
+ const blk=new THREE.MeshStandardMaterial({color:0x111214,roughness:0.5}),chr=new THREE.MeshStandardMaterial({color:0xd0d4d8,metalness:1,roughness:0.2});
+ const decal=(g,spec,t,x,y,w,h)=>{for(const sd of [1,-1]){const d=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map:t,transparent:true,roughness:0.6}));d.position.set(x,y,sd*(spec.W/2+0.014));if(sd<0)d.rotation.y=Math.PI;g.add(d)}};
+ function sign(g,spec,t,x,w,h,col){const ud=g.userData,litM=new THREE.MeshStandardMaterial({map:t,emissive:0xffffff,emissiveMap:t,emissiveIntensity:0.6,roughness:0.4});
+  const S=new THREE.Group();S.position.set(x,spec.H+0.005,0);g.add(S);S.add(new THREE.Mesh(new THREE.BoxGeometry(w+0.04,0.03,0.2),blk));
+  const b=new THREE.Mesh(new THREE.BoxGeometry(0.16,h,w),[litM,litM,blk,blk,litM,litM]);b.rotation.y=Math.PI/2;b.position.y=h/2+0.02;S.add(b);
+  const pl=new THREE.PointLight(col,0,5,2);pl.position.y=0.3;S.add(pl);ud.taxiSign={mat:litM,light:pl}}
+ function thai(g,spec){const{L,wr}=spec;
+  sign(g,spec,once('thsign',256,80,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.fillStyle='#d0003a';x.font='900 40px Arial Black, Arial';x.textAlign='center';x.fillText('TAXI-METER',w/2,52)}),-L*0.05,0.6,0.16,0xffffff);
+  decal(g,spec,once('thdoor',512,200,(x,w,h)=>{x.fillStyle='#111';x.font='800 64px Arial';x.textAlign='center';x.fillText('ทก 4721',w/2,80);x.font='700 40px Arial';x.fillText('TAXI-METER',w/2,150)}),L*0.1,wr+0.35,0.6,0.24);
+  const red=new THREE.Mesh(new THREE.SphereGeometry(0.035,10,8),new THREE.MeshBasicMaterial({color:0xff2020}));red.position.set(L*0.2,spec.H*0.82,-spec.W*0.3);g.add(red)} /* the red "vacant" lamp behind the windscreen */
+ function hk(g,spec){const{L,W,H,wr}=spec;
+  const sh=(MODEL[spec.id]||{}).shape||{},x0=((sh.roofR??0.315)-0.5)*L+0.05,x1=((sh.roofF??0.585)-0.5)*L-0.05;
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,0.03,W*(sh.tum??0.6)-0.04),new THREE.MeshStandardMaterial({color:0xc4c8cc,metalness:0.6,roughness:0.3}));roof.position.set((x0+x1)/2,H-0.012,0);g.add(roof); /* silver roof */
+  sign(g,spec,once('hksign',256,80,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.fillStyle='#c00';x.font='900 52px Arial Black, Arial';x.textAlign='center';x.fillText('TAXI',w/2,48);x.font='700 20px Arial';x.fillStyle='#111';x.fillText('的士',w/2,74)}),-L*0.02,0.5,0.15,0xffffff);
+  decal(g,spec,once('hkdoor',512,160,(x,w,h)=>{x.fillStyle='#fff';x.font='800 60px Arial';x.textAlign='center';x.fillText('TAXI  的士',w/2,70);x.font='700 44px Arial';x.fillText('HK 8273',w/2,132)}),L*0.08,wr+0.38,0.62,0.2);
+  for(const z of [W/2-0.05,-W/2+0.05]){const b=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.1,0.25),chr);b.position.set(L/2,wr+0.15,z*0.6);g.add(b)}}
+ function tokyo(g,spec){const{L,W,H,wr}=spec,ud=g.userData;
+  const at=once('tkandon',256,128,(x,w,h)=>{x.fillStyle='#fffaf0';x.fillRect(0,0,w,h);x.fillStyle='#0a3a8a';x.font='900 58px "Hiragino Sans","Yu Gothic",sans-serif';x.textAlign='center';x.fillText('タクシー',w/2,84)});
+  const litM=new THREE.MeshStandardMaterial({map:at,emissive:0xffffff,emissiveMap:at,emissiveIntensity:0.6,roughness:0.4});
+  const S=new THREE.Group();S.position.set(-L*0.02,H+0.005,0);g.add(S);S.add(new THREE.Mesh(new THREE.BoxGeometry(0.34,0.03,0.16),blk));
+  const lamp=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.17,0.36),litM);lamp.position.y=0.11;S.add(lamp);
+  const pl=new THREE.PointLight(0xfff0d0,0,5,2);pl.position.y=0.3;S.add(pl);ud.taxiSign={mat:litM,light:pl};
+  const gold=new THREE.MeshStandardMaterial({color:0xc9a227,metalness:0.6,roughness:0.35});
+  for(const sd of [1,-1]){const st=new THREE.Mesh(new THREE.BoxGeometry(L*0.8,0.03,0.004),gold);st.position.set(0,H*0.5,sd*(W/2+0.01));g.add(st)}
+  decal(g,spec,once('tkdoor',512,160,(x,w,h)=>{x.fillStyle='#e8c860';x.font='900 80px "Hiragino Sans","Yu Gothic",sans-serif';x.textAlign='center';x.fillText('東京無線',w/2,110)}),L*0.1,wr+0.33,0.55,0.17);
+  for(let k=-3;k<=3;k++){const b=new THREE.Mesh(new THREE.BoxGeometry(0.01,0.14,0.012),chr);b.position.set(L/2+0.004,wr+0.25,k*0.07);g.add(b)}}
+ const S={thai,hk,tokyo};
+ const _bc=window.buildCar;
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&S[spec.cabStyle]&&g&&!g.userData.cabLivery){g.userData.cabLivery=true;S[spec.cabStyle](g,spec)}}catch(e){console.warn('asia cabs',e)}return g};
 })();
 </script>
 <script>/* mods/89-trafficlevel.js */
