@@ -12595,9 +12595,12 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   g.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(g.matrixWorld).invert(),p=new THREE.Vector3(),b=new THREE.Box3();
   for(const w of ud.wheels){const o=w&&(w.piv||w);if(!o||!o.isObject3D)continue;b.setFromObject(o);if(b.isEmpty())continue;b.applyMatrix4(inv);
    o.getWorldPosition(p);p.applyMatrix4(inv);const sd=Math.sign(p.z)||1,r=Math.max(b.max.y-b.min.y,b.max.x-b.min.x)/2,inner=sd>0?b.min.z:b.max.z;
-   const zIn=inner-sd*0.04,zOut=sd*(spec.W/2-0.02),dx=r*2+0.12,top=b.max.y+0.05,bot=Math.max(b.min.y+0.15,0.12);
+   const zIn=inner-sd*(w.front?0.17:0.05) /* front wheels steer: room for the tyre corner to swing inward */,zOut=sd*(spec.W/2-0.02),dx=r*2+0.16,top=b.max.y+0.05,bot=Math.max(b.min.y+0.15,0.12);
    if(sd*(zOut-zIn)<=0.02)continue;
-   const t=new THREE.Mesh(new THREE.BoxGeometry(dx,top-bot,Math.abs(zOut-zIn)),mat);t.position.set(p.x,(top+bot)/2,(zIn+zOut)/2);t.userData.wheelTub=1;I.add(t)}}
+   /* a shell, not a solid: inner wall + roof, so the tyre stays visible from outside through the arch */
+   const wall=new THREE.Mesh(new THREE.BoxGeometry(dx,top-bot,0.02),mat);wall.position.set(p.x,(top+bot)/2,zIn);wall.userData.wheelTub=1;I.add(wall);
+   const roof=new THREE.Mesh(new THREE.BoxGeometry(dx,0.02,Math.abs(zOut-zIn)),mat);roof.position.set(p.x,top,(zIn+zOut)/2);roof.userData.wheelTub=1;I.add(roof);
+   for(const ex of [-1,1]){const end=new THREE.Mesh(new THREE.BoxGeometry(0.02,top-bot,Math.abs(zOut-zIn)*0.5),mat);end.position.set(p.x+ex*dx/2,(top+bot)/2,zIn+sd*Math.abs(zOut-zIn)*0.25);end.userData.wheelTub=1;I.add(end)}}}
  window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(opts&&opts.interior&&spec&&spec.style!=='pod')tubs(g,spec)}catch(e){console.warn('wheeltubs',e)}return g};
  MODS.push({id:'wheeltubs'});
 })();
