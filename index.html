@@ -5955,6 +5955,24 @@ window.riderNearHide=riderNearHide;
  MODS.push({id:'riderhq'});
 })();
 </script>
+<script>/* mods/21c-driver-geocache.js */
+/* Shared geometry for people. Every driver, passenger and pedestrian built its own head, limb and hat shapes
+   (40x30 spheres, capsules, lathes): ~0.4 MB of unique geometry per person, so each traffic car carried more
+   person than car. While buildDriver runs, the primitive geometry constructors return one cached instance per
+   parameter set, flagged userData.shared so the baker and tile cleanup never dispose it. Nothing edits these
+   shapes in place (crash dents clone before deforming). */
+(function(){
+ const _bd=window.buildDriver;if(typeof _bd!=='function')return;
+ const CACHE=new Map(),KINDS=['SphereGeometry','CapsuleGeometry','CylinderGeometry','ConeGeometry','TorusGeometry','BoxGeometry','LatheGeometry','PlaneGeometry','CircleGeometry'];
+ const ORIG={};for(const k of KINDS)if(THREE[k])ORIG[k]=THREE[k];
+ const key=(k,a)=>{try{return k+JSON.stringify(a,(n,v)=>v&&v.isVector2?[+v.x.toFixed(4),+v.y.toFixed(4)]:(typeof v==='number'?+v.toFixed(5):v))}catch(e){return null}};
+ const SW={};for(const k in ORIG){const C=ORIG[k];SW[k]=new Proxy(C,{construct(T,args){const kk=key(k,args);if(kk){const g=CACHE.get(kk);if(g)return g}const g=new C(...args);if(kk&&CACHE.size<4000){g.userData.shared=true;CACHE.set(kk,g)}return g}})}
+ let depth=0;
+ window.buildDriver=function(){if(depth++===0)for(const k in SW)THREE[k]=SW[k];
+  try{return _bd.apply(this,arguments)}finally{if(--depth===0)for(const k in ORIG)THREE[k]=ORIG[k]}};
+ window.PEOPLEGEO=CACHE;
+})();
+</script>
 <script>/* mods/22-rider-style.js */
 /* More rider customisation (glasses, hair style & colour, beard) + photo mode (📸 / F): hides the HUD, frames the
    rider through the windscreen, orbit with the mouse, "Save photo" downloads a PNG. */
