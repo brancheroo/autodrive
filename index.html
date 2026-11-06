@@ -1422,10 +1422,13 @@ placeTrafficSign(T.group,x,z,t,el.id,nodeWays.get(el.id),RQ)}
   if(lamps.length){const im=new THREE.InstancedMesh(SIGGEO.lamp,new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false}),lamps.length);const c=new THREE.Color(0x222222);
    lamps.forEach((m,i)=>{im.setMatrixAt(i,m.matrixWorld);im.setColorAt(i,c);m.parent.remove(m)});im.userData.merged=true;im.frustumCulled=false;T.group.add(im);T.sigInst=im}}
  {const byMat=new Map();T.group.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||o.userData.merged)return;if(o.material.map&&!(o.material===STOPMAT||Object.values(limitMats).includes(o.material)))return;const k=o.material.uuid;if(!byMat.has(k))byMat.set(k,[]);byMat.get(k).push(o)});
-  for(const [k,list] of byMat){if(list.length<3)continue;const pos=[],nor=[],uv=[];for(const o of list){const g=(o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone()).applyMatrix4(o.matrixWorld);pos.push(...g.attributes.position.array);nor.push(...g.attributes.normal.array);if(g.attributes.uv)uv.push(...g.attributes.uv.array);else for(let q=0;q<g.attributes.position.count*2;q++)uv.push(0);o.parent.remove(o)}
-   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.computeBoundingSphere();
+  for(const [k,list] of byMat){if(list.length<3)continue;if(performance.now()>BT_DEADLINE)yield; /* one material per step; typed arrays, no spread pushes (those took 100–360 ms and hundreds of MB of garbage per tile) */
+   const gs=list.map(o=>(o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone()).applyMatrix4(o.matrixWorld));let n=0;for(const q of gs)n+=q.attributes.position.count;
+   const pos=new Float32Array(n*3),nor=new Float32Array(n*3),uv=new Float32Array(n*2);let at=0;
+   gs.forEach((q,i)=>{const c=q.attributes.position.count;pos.set(q.attributes.position.array,at*3);if(q.attributes.normal)nor.set(q.attributes.normal.array,at*3);if(q.attributes.uv)uv.set(q.attributes.uv.array,at*2);at+=c;q.dispose();list[i].parent.remove(list[i])});
+   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('normal',new THREE.BufferAttribute(nor,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.computeBoundingSphere();
    const m=new THREE.Mesh(g,list[0].material);m.userData.merged=true;m.castShadow=true;T.group.add(m);if(list[0].material===MAT.lampOff||list[0].material===MAT.lampOn)T.lamps=[m]}
-  // drop now-empty helper groups
+  /* drop now-empty helper groups */
   for(const o of [...T.group.children])if(o.isGroup&&!o.children.length)T.group.remove(o)}
  const add=(b,m,sh)=>{const g=b.geo();if(g){const mesh=new THREE.Mesh(g,m);mesh.userData.merged=true;mesh.receiveShadow=true;if(sh)mesh.castShadow=true;T.group.add(mesh)}};
  if(performance.now()>BT_DEADLINE)yield;for(const [k,b] of roadBufs)add(b,surfMat(k));for(const [k,b] of BC.walls)add(b,facadeMat(k),true);for(const [k,b] of BC.roofs)add(b,roofMat(k),true);add(BC.parapet,MAT.wall,true);add(BC.canopy,MAT.wall,true);add(bWall,MAT.wall,true);add(bPier,MAT.pier,true);add(bCurb,MAT.path);
