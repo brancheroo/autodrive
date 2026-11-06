@@ -13115,6 +13115,40 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  MODS.push({id:'perfhud',frame(){if(!P.on)return;const now=performance.now();acc+=now-lastT;lastT=now;fr++;if(++tick>=60){P.last=P.t;P.t={};P.n={};draw();acc=0;fr=0;tick=0}}});
 })();
 </script>
+<script>/* mods/zzy-carlod.js */
+/* Distance LOD for traffic. Beyond ~150 m a traffic car is a few pixels tall, yet it still drew its full baked body
+   (10-15 draw calls, thousands of triangles, shadow casting) plus driver and passengers. Past that range its parts are
+   hidden and a stand-in of four shared low-poly pieces is shown instead: a body slab and a glasshouse (in the car's own
+   paint material) and two dark wheel bars. The stand-in geometry is shared per size, so it costs almost no memory.
+   The root object never changes, so every system holding agent.mesh keeps working; parts added while far away
+   (drivers, lights) are hidden too and restored with their own visibility when the car comes back within ~130 m.
+   Trucks, bikes and the player's car are left alone. A pooled body that comes back near is restored on the next check. */
+(function(){
+ const FAR=150,NEAR=130,GEO=new Map(),dark=new THREE.MeshStandardMaterial({color:0x0c0d10,roughness:0.6}),glass=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:0.15,metalness:0.4});
+ const ST={far:0,swaps:0};window.CARLOD=ST;
+ function geos(spec){const L=+(spec.L||4.5).toFixed(1),W=+(spec.W||1.85).toFixed(1),H=+(spec.H||1.45).toFixed(1),wr=+(spec.wr||0.33).toFixed(2),k=L+'|'+W+'|'+H+'|'+wr;let g=GEO.get(k);if(g)return g;
+  const bodyH=Math.max(0.3,H*0.5-wr*0.4),body=new THREE.BoxGeometry(L*0.97,bodyH,W*0.96);body.translate(0,wr*0.75+bodyH/2,0);
+  const cabH=Math.max(0.2,H-(wr*0.75+bodyH)),cab=new THREE.BoxGeometry(L*0.5,cabH,W*0.84);cab.translate(-L*0.04,wr*0.75+bodyH+cabH/2,0);
+  const wb=spec.wb||L*0.6,wh=new THREE.BoxGeometry(wr*1.8,wr*1.8,W*0.98);const w2=wh.clone();wh.translate(wb/2,wr,0);w2.translate(-wb/2,wr,0);
+  g={body,cab,wh,w2};for(const x of Object.values(g))x.userData.shared=true;GEO.set(k,g);return g}
+ function proxy(m,spec){const g=geos(spec),P=new THREE.Group(),paint=m.userData.paint||dark;
+  for(const [geo,mat] of [[g.body,paint],[g.cab,glass],[g.wh,dark],[g.w2,dark]]){const x=new THREE.Mesh(geo,mat);x.castShadow=false;x.receiveShadow=false;x.matrixAutoUpdate=false;x.updateMatrix();P.add(x)}
+  P.userData.lodProxy=1;P.userData.noDent=1;P.visible=false;return P}
+ const eligible=a=>a&&a.mesh&&a.spec&&!a.isEgo&&!/^(harley|dualie|box|step|semi)$/.test(a.spec.style||'')&&(a.spec.L||4.5)<7&&a.mesh.userData.paint&&a.mesh.userData._baked; /* only after baking: the baker would otherwise merge the stand-in into the body */
+ function goFar(m){const ud=m.userData;if(!ud.lodP){ud.lodP=proxy(m,ud.lodSpec);m.add(ud.lodP)}const sv=ud.lodSaved||(ud.lodSaved=new Map());
+  for(const c of m.children){if(c===ud.lodP||sv.has(c))continue;sv.set(c,c.visible);c.visible=false}ud.lodP.visible=true;ud.lodFar=true}
+ function goNear(m){const ud=m.userData;if(ud.lodSaved){for(const [c,v] of ud.lodSaved)if(c.parent===m)c.visible=v;ud.lodSaved.clear()}if(ud.lodP)ud.lodP.visible=false;ud.lodFar=false}
+ window.carLodReset=goNear;
+ let tick=0;
+ MODS.push({id:'carlod',frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.agents||!G.ego||!G.ego.mesh)return;if(++tick%6)return;
+  const ep=G.ego.mesh.position;let far=0;
+  for(const a of G.agents){if(!eligible(a)||a.mesh===G.ego.mesh)continue;const m=a.mesh,ud=m.userData;ud.lodSpec=a.spec;
+   const d=m.position.distanceTo(ep);
+   if(ud.lodFar){if(d<NEAR){goNear(m);ST.swaps++}else{for(const c of m.children)if(c!==ud.lodP&&!ud.lodSaved.has(c)){ud.lodSaved.set(c,c.visible);c.visible=false}far++}}
+   else if(d>FAR&&!ud.crashed&&!ud.dmg){goFar(m);ST.swaps++;far++}}
+  ST.far=far}});
+})();
+</script>
 <script>/* mods/zzz-carpool.js */
 /* Traffic car recycling. At speed, traffic turns over constantly: every new car was built from scratch (~240 meshes, rounded
    boxes, then merged by the baker) and the old one thrown away, a large share of the garbage behind the 200-700 ms GC
