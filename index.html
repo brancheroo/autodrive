@@ -614,7 +614,7 @@ function nameTex0(txt){const c=document.createElement('canvas');c.width=256;c.he
 const F32POOL={m:new Map(),bytes:0,max:96e6,get(n){const l=this.m.get(n);if(l&&l.length){const a=l.pop();this.bytes-=a.byteLength;return a}return new Float32Array(n)},
  put(a){if(!a||this.bytes+a.byteLength>this.max)return;let l=this.m.get(a.length);if(!l)this.m.set(a.length,l=[]);if(l.length<16){l.push(a);this.bytes+=a.byteLength}}};
 class Buf{constructor(){this.np=0;this.p=null;this.n=null;this.uv=null;this.c=null}
- grow(v){const cap=this.p?this.p.length/9:0;if(this.np+1<=cap)return;const nc=Math.max(64,cap*2);const g=(a,k)=>{const b=F32POOL.get(nc*k);if(a){b.set(a);F32POOL.put(a)}else b.fill(0);return b};this.p=g(this.p,9);this.n=g(this.n,9);this.uv=g(this.uv,6);if(this.c||v)this.c=g(this.c,9)}
+ grow(v){const cap=this.p?this.p.length/9:0;if(this.np+1<=cap)return;const nc=Math.max(64,cap*2);const g=(a,k)=>{const b=F32POOL.get(nc*k);if(a){b.set(a);b.fill(0,a.length);F32POOL.put(a)}else b.fill(0);return b} /* pooled arrays hold old data: zero the tail (tri() leaves UVs unset when none are given) */;this.p=g(this.p,9);this.n=g(this.n,9);this.uv=g(this.uv,6);if(this.c||v)this.c=g(this.c,9)}
  tri(a,b,c,nd,uva,uvb,uvc,col){
   const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
   let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
