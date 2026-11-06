@@ -12612,6 +12612,23 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  MODS.push({id:'wheeltubs'});
 })();
 </script>
+<script>/* mods/99zzb-carglass.js */
+/* WebGPU car glass, two-faced. The shared glass was one double-sided 72%-opacity material, light enough to see out of
+   from the driver's seat; under WebGPU's dimmer reflections it read as almost clear from outside, so cars looked like
+   convertibles with the cabin on show. Each glass mesh now draws its outside faces with dark, reflective, nearly
+   opaque glass (as real car glass looks from the street) and its inside faces with the original light tint. */
+(function(){
+ if(!window.__GPU)return;const _bc=window.buildCar;if(typeof _bc!=='function')return;
+ const OUT=new Map(),IN=new Map();
+ const isGlass=m=>m&&m.isMeshPhysicalMaterial&&m.transparent&&m.side===THREE.DoubleSide&&m.color&&m.color.getHex()===0x1a2128;
+ const outOf=m=>{let o=OUT.get(m);if(!o){o=m.clone();o.side=THREE.FrontSide;o.color.setHex(0x0b1118);o.opacity=0.93;o.envMapIntensity=1.6;o.reflectivity=0.8;o.clearcoat=1;o.depthWrite=false;OUT.set(m,o)}return o};
+ const inOf=m=>{let o=IN.get(m);if(!o){o=m.clone();o.side=THREE.BackSide;IN.set(m,o)}return o};
+ function split(g){const list=[];g.traverse(o=>{if(o.isMesh&&!o.userData.glassSplit&&isGlass(o.material))list.push(o)});
+  for(const o of list){const src=o.material;o.material=inOf(src);o.userData.glassSplit=1;const out=new THREE.Mesh(o.geometry,outOf(src));out.position.copy(o.position);out.quaternion.copy(o.quaternion);out.scale.copy(o.scale);out.renderOrder=o.renderOrder;out.userData.glassSplit=1;out.userData.glassOut=1;o.parent.add(out)}}
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{split(g)}catch(e){console.warn('carglass',e)}return g};
+ MODS.push({id:'carglass'});
+})();
+</script>
 <script>/* mods/99zzb-webgpu-fx.js */
 /* Graphics+ on WebGPU: the WebGL-only Graphics+ effects rebuilt as three.js node shaders (TSL), used only when the
    experimental WebGPU renderer is on. Covers the post pipeline (FXAA, bloom, sun rays, lens flare, colour grades,
