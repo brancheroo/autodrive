@@ -12623,8 +12623,10 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const isGlass=m=>m&&m.isMeshPhysicalMaterial&&m.transparent&&m.side===THREE.DoubleSide&&m.color&&m.color.getHex()===0x1a2128;
  const outOf=m=>{let o=OUT.get(m);if(!o){o=m.clone();o.side=THREE.FrontSide;o.color.setHex(0x0b1118);o.opacity=0.93;o.envMapIntensity=1.6;o.reflectivity=0.8;o.clearcoat=1;o.depthWrite=false;OUT.set(m,o)}return o};
  const inOf=m=>{let o=IN.get(m);if(!o){o=m.clone();o.side=THREE.BackSide;IN.set(m,o)}return o};
- function split(g){const list=[];g.traverse(o=>{if(o.isMesh&&!o.userData.glassSplit&&isGlass(o.material))list.push(o)});
-  for(const o of list){const src=o.material;o.material=inOf(src);o.userData.glassSplit=1;const out=new THREE.Mesh(o.geometry,outOf(src));out.position.copy(o.position);out.quaternion.copy(o.quaternion);out.scale.copy(o.scale);out.renderOrder=o.renderOrder;out.userData.glassSplit=1;out.userData.glassOut=1;o.parent.add(out)}}
+ const NONE=new THREE.MeshBasicMaterial({visible:false}); /* other slots of a multi-material mesh: not drawn by the outside copy */
+ function split(g){const list=[];g.traverse(o=>{if(!o.isMesh||o.userData.glassSplit)return;const m=o.material;if(Array.isArray(m)?m.some(isGlass):isGlass(m))list.push(o)});
+  for(const o of list){const src=o.material,arr=Array.isArray(src);o.material=arr?src.map(m=>isGlass(m)?inOf(m):m):inOf(src);o.userData.glassSplit=1; /* the cabin greenhouse is one mesh: [paint, glass, gloss] */
+   const out=new THREE.Mesh(o.geometry,arr?src.map(m=>isGlass(m)?outOf(m):NONE):outOf(src));out.position.copy(o.position);out.quaternion.copy(o.quaternion);out.scale.copy(o.scale);out.renderOrder=o.renderOrder;out.userData.glassSplit=1;out.userData.glassOut=1;o.parent.add(out)}}
  window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{split(g)}catch(e){console.warn('carglass',e)}return g};
  MODS.push({id:'carglass'});
 })();
