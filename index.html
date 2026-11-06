@@ -11840,10 +11840,13 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  let ac=null,sq=null,sqG=null;function squeal(level){try{if(!ac){ac=new (window.AudioContext||window.webkitAudioContext)();const n=ac.createBuffer(1,ac.sampleRate,ac.sampleRate),d=n.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
    const src=ac.createBufferSource();src.buffer=n;src.loop=true;sq=ac.createBiquadFilter();sq.type='bandpass';sq.frequency.value=1400;sq.Q.value=9;sqG=ac.createGain();sqG.gain.value=0;src.connect(sq);sq.connect(sqG);sqG.connect(ac.destination);src.start()}
   if(ac.state==='suspended'&&level>0)ac.resume();const t=ac.currentTime;sqG.gain.setTargetAtTime(Math.min(0.12,level*0.1)*(game&&game.paused?0:1),t,0.05);sq.frequency.setTargetAtTime(1100+level*500+Math.sin(t*9)*80,t,0.05)}catch(e){}}
- const SK=[],SKN=500;let skI=0,skM=null,skG=null;const lastP=new Map();
- function mark(p,prev,w){if(!skM){skM=new THREE.MeshBasicMaterial({color:0x0b0b0b,transparent:true,opacity:0.55,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});skG=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2)}
-  let q=SK[skI];if(!q){q=new THREE.Mesh(skG,skM);q.renderOrder=2;scene.add(q);SK[skI]=q}skI=(skI+1)%SKN;const dx=p.x-prev.x,dz=p.z-prev.z,l=Math.hypot(dx,dz);if(l<0.05||l>3){q.visible=false;return}
-  q.visible=true;q.position.set((p.x+prev.x)/2,(p.y+prev.y)/2+0.015,(p.z+prev.z)/2);q.rotation.set(0,-Math.atan2(dz,dx),0);q.scale.set(l,1,w)}
+ const SKN=500;let skI=0,skIM=null;const lastP=new Map(),_skO=new THREE.Object3D(),_skZ=new THREE.Matrix4().makeScale(0,0,0);
+ /* skid marks: one instanced mesh (one draw call) instead of up to 500 separate meshes; a hidden slot is a zero-scale matrix */
+ function mark(p,prev,w){if(!skIM){const m=new THREE.MeshBasicMaterial({color:0x0b0b0b,transparent:true,opacity:0.55,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+   skIM=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2),m,SKN);skIM.renderOrder=2;skIM.frustumCulled=false;skIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);for(let i=0;i<SKN;i++)skIM.setMatrixAt(i,_skZ);skIM.count=SKN;scene.add(skIM)}
+  const i=skI;skI=(skI+1)%SKN;const dx=p.x-prev.x,dz=p.z-prev.z,l=Math.hypot(dx,dz);
+  if(l<0.05||l>3)skIM.setMatrixAt(i,_skZ);else{_skO.position.set((p.x+prev.x)/2,(p.y+prev.y)/2+0.015,(p.z+prev.z)/2);_skO.rotation.set(0,-Math.atan2(dz,dx),0);_skO.scale.set(l,1,w);_skO.updateMatrix();skIM.setMatrixAt(i,_skO.matrix)}
+  skIM.instanceMatrix.needsUpdate=true}
  const SM=[];let smT=null;function puff(p){if(!smT){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,2,32,32,32);g.addColorStop(0,'rgba(235,235,235,0.7)');g.addColorStop(1,'rgba(235,235,235,0)');x.fillStyle=g;x.fillRect(0,0,64,64);smT=new THREE.CanvasTexture(c)}
   let s=SM.find(o=>!o.visible);if(!s){if(SM.length>60)return;s=new THREE.Sprite(new THREE.SpriteMaterial({map:smT,transparent:true,depthWrite:false}));scene.add(s);SM.push(s)}s.visible=true;s.position.copy(p);s.position.y+=0.2;s.userData.t=0;s.scale.setScalar(0.6)}
  function lights(){let el=document.getElementById('realLights');if(!el){el=document.createElement('div');el.id='realLights';el.style.cssText='position:fixed;left:10px;top:150px;display:flex;gap:4px;z-index:5;pointer-events:none;font:800 10px system-ui';document.body.appendChild(el)}
