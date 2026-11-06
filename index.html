@@ -13126,7 +13126,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    in the materials of their largest front and rear parts. Bikes, dually pickups and the player's car are left alone. A pooled body that comes back near is restored on the next check. */
 (function(){
  const FAR=150,NEAR=130,GEO=new Map(),dark=new THREE.MeshStandardMaterial({color:0x0c0d10,roughness:0.6}),glass=new THREE.MeshStandardMaterial({color:0x1a2230,roughness:0.15,metalness:0.4});
- const ST={far:0,swaps:0};window.CARLOD=ST;
+ const ST={far:0,swaps:0};window.CARLOD=ST;ST.truck=m=>proxyTruck(m);
  function geos(spec){const L=+(spec.L||4.5).toFixed(1),W=+(spec.W||1.85).toFixed(1),H=+(spec.H||1.45).toFixed(1),wr=+(spec.wr||0.33).toFixed(2),k=L+'|'+W+'|'+H+'|'+wr;let g=GEO.get(k);if(g)return g;
   const bodyH=Math.max(0.3,H*0.5-wr*0.4),body=new THREE.BoxGeometry(L*0.97,bodyH,W*0.96);body.translate(0,wr*0.75+bodyH/2,0);
   const cabH=Math.max(0.2,H-(wr*0.75+bodyH)),cab=new THREE.BoxGeometry(L*0.5,cabH,W*0.84);cab.translate(-L*0.04,wr*0.75+bodyH+cabH/2,0);
