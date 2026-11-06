@@ -12621,7 +12621,11 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  function split(g){const list=[];g.traverse(o=>{if(!o.isMesh||o.userData.glassSplit)return;const m=o.material;if(Array.isArray(m)?m.some(isGlass):isGlass(m))list.push(o)});
   for(const o of list){const src=o.material,arr=Array.isArray(src);o.material=arr?src.map(m=>isGlass(m)?inOf(m):m):inOf(src);o.userData.glassSplit=1; /* the cabin greenhouse is one mesh: [paint, glass, gloss] */
    const out=new THREE.Mesh(o.geometry,arr?src.map(m=>isGlass(m)?outOf(m):NONE):outOf(src));out.position.copy(o.position);out.quaternion.copy(o.quaternion);out.scale.copy(o.scale);out.renderOrder=o.renderOrder;out.userData.glassSplit=1;out.userData.glassOut=1;o.parent.add(out)}}
- window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{split(g)}catch(e){console.warn('carglass',e)}return g};
+ /* the scratch-built cars (BYD, XPeng, Zeekr, Model Why) and the Luce use dark one-sided Physical outer glass: same swap */
+ const isDark=m=>m&&m.isMeshPhysicalMaterial&&m.transparent&&m.side===THREE.FrontSide&&m.opacity>=0.8&&!m.transmission;
+ function swap(g){g.traverse(o=>{if(!o.isMesh||o.userData.glassOut)return;const m=o.material;
+  if(Array.isArray(m)){if(m.some(isDark))o.material=m.map(x=>isDark(x)?outOf(x):x)}else if(isDark(m))o.material=outOf(m)})}
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{split(g);swap(g)}catch(e){console.warn('carglass',e)}return g};
  MODS.push({id:'carglass'});
 })();
 </script>
