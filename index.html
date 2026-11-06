@@ -9476,6 +9476,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   const roof=new THREE.Mesh(loft(rxs,x=>{const c=gsec(x);return {w:c.wt*1.0,wt:c.wt*0.7,yb:c.yt-0.14,yt:c.yt+0.008}},2.6,28,false),roofM);body.add(roof);
   for(const sd of [1,-1])for(const px of [X((d.cowl+d.roofEnd)/2+0.04),X(d.tail-0.05)]){const c=gsec(px),p=new THREE.Mesh(new THREE.BoxGeometry(0.07,(c.yt-c.yb)*0.8,0.02),d.roofBlack?blk:paint);p.position.set(px,c.yb+(c.yt-c.yb)*0.4,sd*(c.w*0.9));body.add(p)} /* A/B/C pillars */
   /* lights */
+  const nLamp0=body.children.length;
   const mk=c=>new THREE.MeshBasicMaterial({color:c}),head=mk(0x777777),tail=mk(0x4a0808),sigL=mk(0x4a2a00),sigR=mk(0x4a2a00);ud.lights={head,tail,sigL,sigR};
   const add=(geo,m,x,y,z,p=body)=>{const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);p.add(o);return o};
   const fy=yN*0.95,fx=hl-0.04;
@@ -9495,6 +9496,10 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
   /* brand badge */
   {const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');x.fillStyle='#e8eaee';x.font='800 40px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(spec.badge||'',128,34);
    const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;const bm=new THREE.MeshStandardMaterial({map:t,transparent:true,metalness:0.6,roughness:0.3});for(const [x,ry,y] of [[hl+0.003,Math.PI/2,yN*0.75],[-hl-0.003,-Math.PI/2,ty-0.11]]){const b=new THREE.Mesh(new THREE.PlaneGeometry(0.32,0.08),bm);b.position.set(x,y,0);b.rotation.y=ry;body.add(b)}}
+  /* lamps and badges were placed at the bumper tip; on rounded noses/tails (Seal, Sealion) that buried them inside the shell. Snap each onto the real surface */
+  {body.updateMatrixWorld(true);const shells=body.children.slice(0,nLamp0).filter(o=>o.isMesh),rc=new THREE.Raycaster(),o0=new THREE.Vector3(),dir=new THREE.Vector3();
+   for(const o of body.children.slice(nLamp0)){if(!o.isMesh||Math.abs(o.position.x)<hl*0.6)continue;const f=o.position.x>0;o0.set(f?hl+1:-hl-1,o.position.y,o.position.z).applyMatrix4(body.matrixWorld);dir.set(f?-1:1,0,0).transformDirection(body.matrixWorld);rc.set(o0,dir);
+    const h=rc.intersectObjects(shells,false)[0];if(h){const q=body.worldToLocal(h.point.clone());o.position.x=q.x+(f?0.012:-0.012)}}}
   /* door handles + mirrors */
   for(const sd of [1,-1]){for(const x of [X(d.cowl+0.12),X(d.cowl+0.32)]){const h2=add(new THREE.BoxGeometry(0.16,0.02,0.006),blk,x,yB*0.9,sd*(shW(x)*W/2*0.93+0.01))}
    const mp=X(d.cowl+0.02),mr=add(new THREE.BoxGeometry(0.16,0.08,0.18),d.roofBlack?blk:paint,mp,yB+0.05,sd*(shW(mp)*W/2+0.08))}
