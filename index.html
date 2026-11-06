@@ -646,7 +646,8 @@ function loadTerr(tx,ty){const k=tx+'_'+ty;let t=TERR.tiles.get(k);if(t){t.used=
  const remote=`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${TERR.z}/${tx}/${ty}.png`,n2=2**TERR.z,tlon=(tx+0.5)/n2*360-180,tlat=180/Math.PI*Math.atan(Math.sinh(Math.PI-2*Math.PI*(ty+0.5)/n2)),reg=regionAt(tlat,tlon,0.02),local=reg&&reg.m.terrain_zoom===TERR.z?`${reg.path}terrain/${TERR.z}/${tx}/${ty}.png`:null;
  img.onerror=()=>{if(local&&img.src.indexOf(local)>=0){img.src=remote}else{t.ready=true;t.h=null}};img.src=local||remote;return t}
 function terrReadyLL(lat,lon){const [fx,fy]=terrTileOf(lat,lon);return loadTerr(Math.floor(fx),Math.floor(fy)).ready}
-function elevLL(lat,lon){const [fx,fy]=terrTileOf(lat,lon),tx=Math.floor(fx),ty=Math.floor(fy),t=TERR.tiles.get(tx+'_'+ty);if(!t||!t.ready||!t.h){if(!t)loadTerr(tx,ty);return null}
+let TERR_NOW=0;(function tick(){TERR_NOW=performance.now();requestAnimationFrame(tick)})();
+function elevLL(lat,lon){const [fx,fy]=terrTileOf(lat,lon),tx=Math.floor(fx),ty=Math.floor(fy),t=TERR.tiles.get(tx+'_'+ty);if(!t||!t.ready||!t.h){if(!t)loadTerr(tx,ty);return null}t.used=TERR_NOW; /* in use: the LRU eviction never saw lookups, so tiles under the car were dropped and the ground jumped while they reloaded */
  const px=clamp((fx-tx)*256-0.5,0,254.999),py=clamp((fy-ty)*256-0.5,0,254.999),x0=px|0,y0=py|0,ax=px-x0,ay=py-y0,h=t.h,i=y0*256+x0;
  return (h[i]*(1-ax)+h[i+1]*ax)*(1-ay)+(h[i+256]*(1-ax)+h[i+257]*ax)*ay}
 let lastGY=0;
@@ -11890,7 +11891,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    Only the main scene render is intercepted; sensor panels and mirrors render normally. */
 (function(){
  const DEF={ao:1,dof:1,fxaa:0,bloom:0,flare:1,rays:1,grade:'cinematic',vignette:1,grain:0,ca:0,sharpen:1,speedblur:1,haze:1,exposure:1,shake:1,fov:1,graph:0,on:1};
- let S={...DEF};try{S={...DEF,...JSON.parse(localStorage.getItem('gfxplus')||'{}')}}catch(e){}S.bloom=0;S.fxaa=0; /* antialiasing off for good too (user request) */ /* bloom is off for good (user request): a saved 'on' is ignored */
+ let S={...DEF};try{S={...DEF,...JSON.parse(localStorage.getItem('gfxplus')||'{}')}}catch(e){}S.bloom=0;S.fxaa=0;S.speedblur=0;S.dof=0;S.haze=0; /* no blur of any kind (user request) */ /* antialiasing off for good too (user request) */ /* bloom is off for good (user request): a saved 'on' is ignored */
  const save=()=>{try{localStorage.setItem('gfxplus',JSON.stringify(S))}catch(e){}};
  const GP={S,ab:false,ms:[],bench:null};window.GFXPLUS=GP;
  const tier=()=>window.GFX?GFX.get():'high';
@@ -11956,7 +11957,7 @@ void main(){vec2 u=vU;
  const gc=document.createElement('canvas');gc.width=180;gc.height=48;gc.style.cssText='position:fixed;right:8px;top:196px;z-index:55;background:#000a;border-radius:6px;display:none;pointer-events:none';document.body.appendChild(gc);const gx=gc.getContext('2d');
  function graph(){gc.style.display=S.graph?'block':'none';if(!S.graph)return;gx.clearRect(0,0,180,48);gx.strokeStyle='#335';gx.beginPath();gx.moveTo(0,48-16.7*1.4);gx.lineTo(180,48-16.7*1.4);gx.stroke();gx.fillStyle='#7fd';GP.ms.forEach((m,i)=>{const h=Math.min(48,m*1.4);gx.fillStyle=m>33?'#f66':m>18?'#fc6':'#7fd';gx.fillRect(i,48-h,1,h)});gx.fillStyle='#ccd';gx.font='10px ui-monospace,monospace';const a=GP.ms.reduce((x,y)=>x+y,0)/Math.max(1,GP.ms.length);gx.fillText(a.toFixed(1)+' ms',4,10)}
  /* panel */
- const ITEMS=[['on','Graphics+ effects'],['ao','Ambient occlusion (contact shadows)'],['dof','Depth of field when paused / photo'],['rays','Sun rays'],['flare','Lens flare'],['exposure','Auto exposure (tunnels/night)'],['sharpen','Sharpening'],['vignette','Vignette'],['grain','Film grain'],['ca','Chromatic aberration'],['speedblur','Speed motion blur'],['haze','Heat haze'],['shake','Speed / road camera shake'],['fov','Speed field-of-view stretch'],['graph','Frame-time graph'],['lowToo','Also on Low graphics']];
+ const ITEMS=[['on','Graphics+ effects'],['ao','Ambient occlusion (contact shadows)'],['rays','Sun rays'],['flare','Lens flare'],['exposure','Auto exposure (tunnels/night)'],['sharpen','Sharpening'],['vignette','Vignette'],['grain','Film grain'],['ca','Chromatic aberration'],['shake','Speed / road camera shake'],['fov','Speed field-of-view stretch'],['graph','Frame-time graph'],['lowToo','Also on Low graphics']];
  const btn=document.createElement('div');btn.textContent='✨ FX';btn.title='Graphics+ effects (B = before/after, P = photo, J = benchmark)';btn.style.cssText='position:fixed;right:8px;top:148px;z-index:56;font:11px system-ui;color:#dfe;background:#0009;padding:2px 7px;border-radius:6px;cursor:pointer;display:none';document.body.appendChild(btn);
  const pan=document.createElement('div');pan.id='gfxPanel';pan.style.cssText='position:fixed;right:8px;top:172px;z-index:60;width:240px;max-height:70vh;overflow:auto;background:#0b1118ee;border:1px solid #2a3a4a;border-radius:10px;padding:10px;font:12px system-ui;color:#dde;display:none';document.body.appendChild(pan);
  function draw(){pan.innerHTML='<b>Graphics+</b><div style="opacity:.7;margin:2px 0 6px">B before/after · P photo · J benchmark</div>'+ITEMS.map(([k,l])=>`<label style="display:block;margin:3px 0"><input type=checkbox data-k="${k}" ${S[k]?'checked':''}> ${l}</label>`).join('')+
