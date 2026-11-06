@@ -3504,7 +3504,7 @@ function manageTraffic(){if(game.fast){for(const a of game.agents)scene.remove(a
  const lead=G.agents.filter(a=>a.kind==='route'&&a.s>e.s).sort((a,b)=>a.s-b.s);
  if(nRoute<Math.round((big?5:3)*f+0.4)&&Math.random()<0.5){const s0=e.s+350+Math.random()*150; /* far enough to be a few pixels when it appears */const between=lead.length&&lead[0].s<s0;if(!between&&s0<G.route.total-100){const sp=pickSpec();const idx=routeLLnh(s0)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],s0,speedLimitAt(idx)/MPH*0.85,1);a.off=laneOffsetAt(idx);G.agents.push(a)}}
  const oneway=(NODEINFO.get(G.route.nodes[routeLLnh(e.s)[2]])||{}).oneway;
- if(!oneway&&nOn<Math.round(4*f+0.3)&&Math.random()<0.5&&!routeOnewayAt(e.s)&&!routeOnewayAt(e.s+440)){const sp=pickSpec(); /* never spawn oncoming onto a one-way carriageway */const idx=routeLLnh(e.s+450)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],e.s+250+Math.random()*80,speedLimitAt(idx)/MPH*0.9,-1);a.kind='oncoming';G.agents.push(a)}
+ if(!oneway&&nOn<Math.round(4*f+0.3)&&Math.random()<0.5&&!routeOnewayAt(e.s)&&!routeOnewayAt(e.s+440)){const sp=pickSpec(); /* never spawn oncoming onto a one-way carriageway */const idx=routeLLnh(e.s+450)[2];const a=newAgent(sp,TCOLS[Math.floor(Math.random()*TCOLS.length)],e.s+400+Math.random()*100,speedLimitAt(idx)/MPH*0.9,-1);a.kind='oncoming';G.agents.push(a)}
  const ways=allWays();if(nWay<Math.round(26*f)&&ways.length)spawnWayCar(ways);
  // pedestrians: more in daytime & dense areas
  const pedTarget=Math.round((G.dark?6:22)*Math.min(1,f+0.3));
