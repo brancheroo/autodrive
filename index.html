@@ -3506,6 +3506,7 @@ function manageTiles(){
  const pre=!!(window.PREFETCH&&PREFETCH.ready===G.route),rad=e.v>100&&!pre?0:1; /* above ~225 mph only the tile underneath plus the route ahead: side tiles would never arrive in time – unless the route environment was preloaded (all in the local cache) */for(let i=-rad;i<=rad;i++)for(let j=-rad;j<=rad;j++)want.add((ci+i)+'_'+(cj+j));
  /* tiles ahead along the route: look-ahead scales with speed (about 9 s of travel, 1–4.5 km), each remembered with how far ahead it is */
  const ahead=new Map(),reach=Math.max(0,Math.min(G.route.total-e.s,Math.max(HIGH?2000:1000,Math.min(8000,e.v*12))));for(let d=0;d<=reach;d+=250){const p=routeLLnh(Math.min(G.route.total,e.s+d)),k=tileKey(p[1],p[0]);if(!ahead.has(k)){ahead.set(k,d);want.add(k)}}
+ {const far=Math.min(G.route.total-e.s,reach+2000);for(let d=0;d<=far;d+=300){const p=routeLLnh(e.s+d);terrReadyLL(p[1],p[0])}} /* elevation along the route ahead is fetched before anything there is placed: distant road/ground was placed on a guessed height and jumped when the real one arrived */
  for(const k of [...TILES.keys()])if(!want.has(k)){const [i,j]=k.split('_').map(Number);if(Math.abs(i-ci)>2||Math.abs(j-cj)>2)unloadTile(k);else if(tileOffscreen(k,i,j))unloadTile(k)} /* VRAM: the outer ring goes once it has been off screen for 3 s */
  // order by distance
  const pri=k=>{if(ahead.has(k))return ahead.get(k);const [i,j]=k.split('_').map(Number);return (Math.abs(i-ci)+Math.abs(j-cj))*700}; /* build in the order the car will reach them: route tiles by distance ahead, side tiles after */
