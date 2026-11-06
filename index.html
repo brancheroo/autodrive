@@ -12841,7 +12841,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 /* Cabin floor safety net for every car built with an interior (the player's car). Some bodies (Hyperlift, eSetta,
    J1776, drone wagon, solar car) had open footwells, and every floor pan used to sit ~5 cm above the wheels'
    contact plane, so the road (riding a few cm high, plus body pitch) showed through below the driver.
-   A dark double-sided pan at 0.2 m spans the whole cabin footprint. Open vehicles (bikes, mopeds, Formula E)
+   A dark double-sided pan at 0.2 m spans the whole body length (hidden under the bonnet and boot). Open vehicles (bikes, mopeds, Formula E)
    are skipped: seeing the road there is real. */
 (function(){
  const _bc=window.buildCar;if(typeof _bc!=='function')return;
@@ -12850,7 +12850,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  window.buildCar=function(spec,colorHex,opts){
   const g=_bc.apply(this,arguments);
   try{if(g&&spec&&opts&&opts.interior&&!OPEN.test((spec.id||'')+' '+(spec.name||''))&&typeof eyePos==='function'){
-   const eye=eyePos(spec),L=spec.L||4.5,W=spec.W||1.9,x0=Math.min(L/2-0.15,eye.x+1.9),x1=Math.max(-L/2+0.15,eye.x-2.2);
+   const eye=eyePos(spec),L=spec.L||4.5,W=spec.W||1.9,x0=L/2-0.15,x1=-L/2+0.15;
    if(x0>x1){const fp=new THREE.Mesh(new THREE.BoxGeometry(x0-x1,0.02,W*0.92),mat);fp.position.set((x0+x1)/2,0.2,0);fp.userData.floorPan=1;fp.userData.cabinNet=1;
     const I=(g.userData&&g.userData.interior)||g;I.add(fp)}}}catch(e){}
   return g};
