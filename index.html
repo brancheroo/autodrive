@@ -12584,6 +12584,24 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   const go=++S.f%S.every===0;for(const l of ls){l.shadow.autoUpdate=false;if(go)l.shadow.needsUpdate=true}}});
 })();
 </script>
+<script>/* mods/99zza-wheeltubs.js */
+/* Wheel-arch tubs for the car you drive. The tyres sit partly inboard of the cabin's side walls, and from inside the body
+   shell is see-through (its back faces are culled), so the spinning tyre showed beside the footwell from the driver's
+   seat. Each wheel gets a closed, double-sided box around its inner half, the way a real wheel tub encloses it. */
+(function(){
+ const _bc=window.buildCar;if(typeof _bc!=='function')return;
+ const mat=new THREE.MeshStandardMaterial({color:0x151516,roughness:0.95,side:THREE.DoubleSide});
+ function tubs(g,spec){const ud=g.userData,I=ud.interior;if(!I||!Array.isArray(ud.wheels)||ud.wheelTubs)return;ud.wheelTubs=1;
+  g.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(g.matrixWorld).invert(),p=new THREE.Vector3(),b=new THREE.Box3();
+  for(const w of ud.wheels){const o=w&&(w.piv||w);if(!o||!o.isObject3D)continue;b.setFromObject(o);if(b.isEmpty())continue;b.applyMatrix4(inv);
+   o.getWorldPosition(p);p.applyMatrix4(inv);const sd=Math.sign(p.z)||1,r=Math.max(b.max.y-b.min.y,b.max.x-b.min.x)/2,inner=sd>0?b.min.z:b.max.z;
+   const zIn=inner-sd*0.04,zOut=sd*(spec.W/2-0.02),dx=r*2+0.12,top=b.max.y+0.05,bot=Math.max(b.min.y+0.15,0.12);
+   if(sd*(zOut-zIn)<=0.02)continue;
+   const t=new THREE.Mesh(new THREE.BoxGeometry(dx,top-bot,Math.abs(zOut-zIn)),mat);t.position.set(p.x,(top+bot)/2,(zIn+zOut)/2);t.userData.wheelTub=1;I.add(t)}}
+ window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(opts&&opts.interior&&spec&&spec.style!=='pod')tubs(g,spec)}catch(e){console.warn('wheeltubs',e)}return g};
+ MODS.push({id:'wheeltubs'});
+})();
+</script>
 <script>/* mods/99zzb-webgpu-fx.js */
 /* Graphics+ on WebGPU: the WebGL-only Graphics+ effects rebuilt as three.js node shaders (TSL), used only when the
    experimental WebGPU renderer is on. Covers the post pipeline (FXAA, bloom, sun rays, lens flare, colour grades,
