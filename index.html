@@ -5431,17 +5431,21 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
 <script>/* mods/02f-cpufree.js */
 /* Free the JS-side copies of tile geometry the GPU already has. Every road, wall, roof and facade mesh kept its normals,
    UVs and vertex colours in JS memory after upload, though only the GPU reads them (ray tests for the camera, occlusion and
-   ground height use positions only). A few frames after a tile is in the scene, those three arrays are swapped for empty
-   ones; positions and indices stay, so ray casts and bounding volumes keep working. Nothing rewrites tile normals, UVs
-   or colours after building, so nothing is re-uploaded from the emptied arrays. ~60% of each tile mesh's JS memory. */
+   ground height use positions only). Only geometry the tile builder made for that one tile (userData.tileOwn) is touched:
+   shared shapes are reused by later tiles. Buffers are uploaded the first time a mesh is actually drawn, so each mesh is
+   freed only on the frame after its first draw (onBeforeRender); a mesh never drawn keeps its data. Positions and
+   indices always stay, so ray casts and bounding volumes keep working. Nothing rewrites tile normals, UVs or colours
+   after building, so nothing is ever re-uploaded from the emptied arrays. */
 (function(){
- const EMPTY=new Float32Array(0),KEYS=['normal','uv','color'],ST={tiles:0,freedMB:0};window.CPUFREE=ST;
- function free(T){let b=0;T.group.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||!o.geometry)return;const g=o.geometry;if(!g.userData.tileOwn||g.userData.cpuFreed||o.userData.keepCPU)return; /* only geometry the tile builder made for this tile: shared shapes (carts, signs, people) are reused by later tiles */
-   g.userData.cpuFreed=1;for(const k of KEYS){const a=g.attributes[k];if(!a||!a.array||a.array.length<300||a.isInterleavedBufferAttribute)continue;b+=a.array.byteLength;a.array=EMPTY}});
-  ST.tiles++;ST.freedMB=+(ST.freedMB+b/1e6).toFixed(1)}
+ const EMPTY=new Float32Array(0),KEYS=['normal','uv','color'],ST={tiles:0,meshes:0,freedMB:0},Q=[];window.CPUFREE=ST;
+ function drawn(){const g=this.geometry;if(g&&!g.userData.cpuQ){g.userData.cpuQ=1;Q.push(g)}this.onBeforeRender=_nop}
+ const _nop=function(){};
+ function arm(T){T.group.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||!o.geometry)return;const g=o.geometry;if(!g.userData.tileOwn||g.userData.cpuQ||o.userData.keepCPU)return;
+   if(o.onBeforeRender&&o.onBeforeRender!==THREE.Object3D.prototype.onBeforeRender&&o.onBeforeRender!==_nop)return; /* someone else's hook: leave it */o.onBeforeRender=drawn});ST.tiles++}
  MODS.push({id:'cpufree',frame(){if(typeof TILES==='undefined')return;
-  for(const T of TILES.values()){if(T._cpuFreed||!T.group||!T.group.parent)continue;T._seen=(T._seen||0)+1;if(T._seen<4)continue; /* rendered (uploaded) a few times first */
-   T._cpuFreed=1;try{free(T)}catch(e){console.warn('cpufree',e)}return}}}); /* one tile per frame */
+  while(Q.length){const g=Q.pop();let b=0;for(const k of KEYS){const a=g.attributes[k];if(!a||!a.array||a.array.length<300||a.isInterleavedBufferAttribute)continue;b+=a.array.byteLength;a.array=EMPTY}ST.meshes++;ST.freedMB=+(ST.freedMB+b/1e6).toFixed(1)}
+  for(const T of TILES.values()){if(T._cpuArm||!T.group||!T.group.parent)continue;T._seen=(T._seen||0)+1;if(T._seen<30)continue; /* let the tile finish building first */
+   T._cpuArm=1;try{arm(T)}catch(e){console.warn('cpufree',e)}return}}});
 })();
 </script>
 <script>/* mods/02f-warmup.js */
