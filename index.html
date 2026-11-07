@@ -5908,7 +5908,8 @@ function riderView(){const car=game&&game.ego&&game.ego.mesh,r=car&&car.userData
  /* in the cabin view also hide every rider mesh near the camera: later mods merge the head parts into one BufferGeometry, which the type-based list above misses */
  riderNearHide(car,r,v);
  for(const o of r.userData.hideIn)o.visible=v&&!o.userData.keepHidden;if(r.userData.near)for(const o of r.userData.near)if(!v)o.visible=false}
-function riderNearHide(car,r,v){if(!v&&typeof camera!=='undefined'){car.updateMatrixWorld();const inv=car.matrixWorld.clone().invert(),cp=camera.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv),k=cp.toArray().map(x=>Math.round(x*20)).join();
+const _rnI=new THREE.Matrix4(),_rnP=new THREE.Vector3();
+function riderNearHide(car,r,v){if(!v&&typeof camera!=='undefined'){car.updateMatrixWorld();const inv=_rnI.copy(car.matrixWorld).invert(),cp=camera.getWorldPosition(_rnP).applyMatrix4(inv),k=Math.round(cp.x*20)*1e6+Math.round(cp.y*20)*1e3+Math.round(cp.z*20); /* no per-frame garbage */
   if(r.userData.nearKey!==k){r.userData.nearKey=k;const L=[],c=new THREE.Vector3();r.traverse(o=>{if(!o.isMesh)return;const b=new THREE.Box3().setFromObject(o).applyMatrix4(inv);b.getCenter(c);if(b.distanceToPoint(cp)<0.12||(c.y>cp.y-0.3&&c.distanceTo(cp)<0.38))L.push(o)});r.userData.near=L}}
 
  if(r.userData.near)for(const o of r.userData.near)o.visible=v&&!o.userData.keepHidden}
