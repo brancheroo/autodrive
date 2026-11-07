@@ -653,7 +653,7 @@ class Buf{constructor(){this.np=0;this.p=null;this.n=null;this.uv=null;this.c=nu
    ix[v]=hit}
   if(m>65535&&ix instanceof Uint16Array)return null; /* unreachable: n>65535 chose Uint32 */
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(op.slice(0,m*3),3));g.setAttribute('normal',new THREE.BufferAttribute(on.slice(0,m*3),3));g.setAttribute('uv',new THREE.BufferAttribute(ou.slice(0,m*2),2));if(C)g.setAttribute('color',new THREE.BufferAttribute(oc.slice(0,m*3),3));
-  g.setIndex(new THREE.BufferAttribute(m<65536&&!(ix instanceof Uint16Array)?Uint16Array.from(ix):ix,1));g.computeBoundingSphere();BUFSTAT.v+=n;BUFSTAT.u+=m;for(const t of [op,on,ou,oc,P,N,U,C])F32POOL.put(t);this.p=this.n=this.uv=this.c=null;this.np=0;return g}}
+  g.setIndex(new THREE.BufferAttribute(m<65536&&!(ix instanceof Uint16Array)?Uint16Array.from(ix):ix,1));g.computeBoundingSphere();g.userData.tileOwn=1; /* built for one tile only: its GPU-only arrays may be freed after upload (mods/02f-cpufree.js) */BUFSTAT.v+=n;BUFSTAT.u+=m;for(const t of [op,on,ou,oc,P,N,U,C])F32POOL.put(t);this.p=this.n=this.uv=this.c=null;this.np=0;return g}}
 const BUFSTAT={v:0,u:0}; /* vertices in vs unique out, for checking the saving */
 const UP=[0,1,0];
 // ============================================================ TERRAIN ELEVATION (AWS Terrain Tiles · Terrarium encoding · ~10 m)
@@ -5426,6 +5426,22 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
   const cb=document.getElementById('preStart');cb.checked=UIX.load('preStart',false)===true;cb.onchange=()=>UIX.save('preStart',cb.checked)}catch(err){}
  MODS.push({id:'prefetch',start(){P.route=null;P.done=0;const b=UIX.btn('preBtn','⬇ Preload route','Preload route – downloads the map for the whole route into the cache before you drive (needed for clean scenery at very high speed)',null)||document.getElementById('preBtn');if(b)b.onclick=()=>{b.textContent='⬇ Preloading…';preload(b)};
   const cb=document.getElementById('preStart');if(cb&&cb.checked){const go=()=>{const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego)return setTimeout(go,200);if(b)b.textContent='⬇ Preloading…';preload(b)};setTimeout(go,0)}}});
+})();
+</script>
+<script>/* mods/02f-cpufree.js */
+/* Free the JS-side copies of tile geometry the GPU already has. Every road, wall, roof and facade mesh kept its normals,
+   UVs and vertex colours in JS memory after upload, though only the GPU reads them (ray tests for the camera, occlusion and
+   ground height use positions only). A few frames after a tile is in the scene, those three arrays are swapped for empty
+   ones; positions and indices stay, so ray casts and bounding volumes keep working. Nothing rewrites tile normals, UVs
+   or colours after building, so nothing is re-uploaded from the emptied arrays. ~60% of each tile mesh's JS memory. */
+(function(){
+ const EMPTY=new Float32Array(0),KEYS=['normal','uv','color'],ST={tiles:0,freedMB:0};window.CPUFREE=ST;
+ function free(T){let b=0;T.group.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||!o.geometry)return;const g=o.geometry;if(!g.userData.tileOwn||g.userData.cpuFreed||o.userData.keepCPU)return; /* only geometry the tile builder made for this tile: shared shapes (carts, signs, people) are reused by later tiles */
+   g.userData.cpuFreed=1;for(const k of KEYS){const a=g.attributes[k];if(!a||!a.array||a.array.length<300||a.isInterleavedBufferAttribute)continue;b+=a.array.byteLength;a.array=EMPTY}});
+  ST.tiles++;ST.freedMB=+(ST.freedMB+b/1e6).toFixed(1)}
+ MODS.push({id:'cpufree',frame(){if(typeof TILES==='undefined')return;
+  for(const T of TILES.values()){if(T._cpuFreed||!T.group||!T.group.parent)continue;T._seen=(T._seen||0)+1;if(T._seen<4)continue; /* rendered (uploaded) a few times first */
+   T._cpuFreed=1;try{free(T)}catch(e){console.warn('cpufree',e)}return}}}); /* one tile per frame */
 })();
 </script>
 <script>/* mods/02f-warmup.js */
