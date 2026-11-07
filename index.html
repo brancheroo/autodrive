@@ -12495,7 +12495,7 @@ float rwHt=0.;
   start(){if(!added){scene.add(grp);added=true}builtAt=-1e9;route=null},
   disable(){grp.visible=false},
   frame(){const G=typeof game!=='undefined'?game:null;if(!G||!G.route||!G.ego)return;const on=(!window.GFXPLUS||GFXPLUS.S.on&&!GFXPLUS.ab)&&!G.fast;grp.visible=on; /* no speed cutoff: switching the whole layer off above 70 m/s made every prop blink out and back */if(!on)return;
-   if(job){try{if(job.next().done)job=null}catch(err){job=null}if(job&&this._jr===G.route)return} /* a rebuild in progress: one ~3 ms slice per frame */
+   if(job){try{if(job.next().done)job=null}catch(err){console.warn("streetprops",err);job=null}if(job&&this._jr===G.route)return} /* a rebuild in progress: one ~3 ms slice per frame */
    if(route!==G.route||Math.abs(G.ego.s-builtAt)>150||(this._nt!==TILES.size&&performance.now()-(this._bt||0)>6000)){this._bt=performance.now();this._nt=TILES.size;this._jr=G.route;job=build();try{if(job.next().done)job=null}catch(err){job=null}} /* re-placed when the loaded tile set changed (at most every 6 s), not on a timer, so props don't jump around */}});
 })();
 </script>
