@@ -502,6 +502,12 @@ skyMat.depthTest=false;const sky=new THREE.Mesh(new THREE.SphereGeometry(5000,32
 
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(9000,9000),new THREE.MeshLambertMaterial({color:0x6a8443}));
 ground.rotation.x=-Math.PI/2;ground.position.y=-0.3;ground.receiveShadow=true;scene.add(ground);
+/* terrain-shaped ground: without satellite imagery the only ground was the flat plane above, so hills/valleys showed as a flat pale sheet and trees placed at real elevation floated. This 3 km grid follows groundY around the car and shares the ground material */
+const groundT=new THREE.Mesh(new THREE.PlaneGeometry(1,1,72,72).rotateX(-Math.PI/2),ground.material);groundT.receiveShadow=true;groundT.frustumCulled=false;groundT.visible=false;scene.add(groundT);const GT={x:1e12,z:1e12,t:0,min:0};
+function updGroundT(e){if(TERR.ref===null||!ground.visible){groundT.visible=false;return false}const now=performance.now(),cx=Math.round(e.x/50)*50,cz=Math.round(e.z/50)*50;
+ if(Math.hypot(cx-GT.x,cz-GT.z)<150&&now-GT.t<4000)return groundT.visible;GT.x=cx;GT.z=cz;GT.t=now;const S=3000,pa=groundT.geometry.attributes.position;let mn=1e9;
+ for(let i=0;i<pa.count;i++){const x=cx+(pa.getX(i)>0?0.5:pa.getX(i)<0?-0.5:0)*0+0,u=(i%73)/72-0.5,v=Math.floor(i/73)/72-0.5,wx=cx+u*S,wz=cz+v*S,y=groundY(wx,wz)-0.6;if(y<mn)mn=y;pa.setXYZ(i,wx,y,wz)}
+ pa.needsUpdate=true;groundT.geometry.computeVertexNormals();groundT.geometry.computeBoundingSphere();GT.min=mn;groundT.visible=true;return true}
 
 // horizon ring (terrain silhouette from real elevation)
 const horizon=new THREE.Group();scene.add(horizon);
@@ -3509,7 +3515,7 @@ function step(){
  hemi.intensity=0.05+0.32*day;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.82; /* darker, richer daylight — no washed-out whites */ /* less flat fill, more sun contrast = readable shading */weatherLighting(hz,top);G.lightsOn=G.lightsOn||WX.key!=='clear';
  MAT.bld.emissiveIntensity=G.dark?0.9:0;if(POOLM)POOLM.opacity=G.dark?0.55:0;for(const k in FACMAT)FACMAT[k].emissiveIntensity=G.dark?(k==='store'?1.1:0.85):0;for(const m of ENVMATS)m.envMapIntensity=0.05+0.95*day;
  horizon.position.set(camera.position.x,0,camera.position.z);horizon.children.forEach(m=>m.material.color.copy(m.userData.base).lerp(hz,0.35).multiplyScalar(0.25+0.75*day));
- ground.position.set(e.x,e.mesh.position.y-3-(window.FLY&&G.spec.vtol?FLY.alt:0),e.z); /* flying car: the ground stays on the ground, not 3 m under the aircraft */horizon.position.y=TERR.ref===null?0:(elev0-TERR.ref);
+ ground.position.set(e.x,e.mesh.position.y-3-(window.FLY&&G.spec.vtol?FLY.alt:0),e.z);if(updGroundT(e))ground.position.y=Math.min(ground.position.y,GT.min-4); /* flying car: the ground stays on the ground, not 3 m under the aircraft */horizon.position.y=TERR.ref===null?0:(elev0-TERR.ref);
  // car lights
  const braking=(e.acc||0)<-0.3||e.v<0.1;
  {const hz=G.sig===2&&Math.floor(G.simTime*1.5)%2===0;setLights(e.mesh,{head:true,brake:braking,sigL:hz||G.sig===-1&&G.blinkOn,sigR:hz||G.sig===1&&G.blinkOn,dark:G.dark})}
