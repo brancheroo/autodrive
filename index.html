@@ -3797,7 +3797,7 @@ function applyWeatherMaterials(){const road=[MAT.road,MAT.road2,...Object.values
  if(!WXBASE.has(ground.material))WXBASE.set(ground.material,{c:ground.material.color.clone()});ground.material.color.copy(WXBASE.get(ground.material).c);if(WX.snowCover)ground.material.color.lerp(new THREE.Color(0xeef2f5),0.85);
  for(const m of [MAT.crown,MAT.roof]){if(!WXBASE.has(m))WXBASE.set(m,{c:m.color.clone()});m.color.copy(WXBASE.get(m).c);if(WX.snowCover)m.color.lerp(new THREE.Color(0xf2f5f7),0.6)}
  for(const k in ROOFMAT){const m=ROOFMAT[k];if(!WXBASE.has(m))WXBASE.set(m,{c:m.color.clone()});m.color.copy(WXBASE.get(m).c);if(WX.snowCover)m.color.lerp(new THREE.Color(0xffffff),0.8)}}
-function wxSat(m){m.emissive=m.emissive||new THREE.Color();m.emissive.setScalar(WX.snowCover?0.55:0);m.color.setScalar(WX.snowCover?0.55:WX.wet?0.64:0.8);addDetail(m,2.2,0.28)}
+function wxSat(m){m.emissive=m.emissive||new THREE.Color();m.emissive.setScalar(WX.snowCover?0.55:0);m.color.setScalar((WX.snowCover?0.55:WX.wet?0.64:0.8)*(window.__GPU?0.45:1)) /* WebGPU lights the pre-lit photo far hotter (physical light units): at 0.8 the satellite ground read as washed-out white */;addDetail(m,2.2,0.28)}
 function updateWeather(rdt,sdt){const G=game;if(!G)return;const t=performance.now()/1000,cam=camera.position,W=WX;
  W.gust=lerp(W.gust,(Math.sin(t*0.7)*0.5+Math.sin(t*2.3+1)*0.3)*W.wind*0.3,0.05);const wv=W.wind+W.gust,wx=Math.cos(W.windDir)*wv,wz=-Math.sin(W.windDir)*wv;
  RAIN.visible=W.rain>0;SNOW.visible=W.snow>0;DEBRIS.visible=W.debris>0;
