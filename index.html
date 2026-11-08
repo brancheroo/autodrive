@@ -13426,6 +13426,122 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  window.buildCar=function(spec,colorHex,opts){const g=_bc.apply(this,arguments);try{if(spec&&(spec.id==='hyper'||spec.id==='aegis')&&g&&!g.userData.hyperKit){g.userData.hyperKit=1;kit(g,spec)}}catch(e){console.warn('morrows kit',e)}return g};
 })();
 </script>
+<script>/* mods/99zze-gfx100a.js */
+/* Graphics 100, batch A (plain meshes and DOM only, so it works on WebGL and WebGPU alike):
+   26 Milky Way band on dark nights · 28 meteors · 30 airliner contrails that spread out
+   31 skid marks that stay on the road · 32 oil stains down lane centres · 43 manhole covers and drain grates
+   40 raised reflective lane markers that light up at night · 45 autumn leaves blowing across the road
+   83 letterbox bars in replay · 84 photo orbit camera ([) · 85 drone camera (]) · 88 rear-view picture-in-picture (U)
+   90 windscreen head-up display (;) · 100 double-resolution screenshot (') */
+(function(){
+ const G=()=>typeof game!=='undefined'&&game&&game.route&&game.ego?game:null;
+ const V={orbit:false,drone:false,pip:false,hud:true,shot:false,oa:0};window.GFX100A=V;
+ const dark=g=>!!g.dark;
+ const root=new THREE.Group();root.name='gfx100a';
+ let added=false;const ensure=()=>{if(!added&&typeof scene!=='undefined'){scene.add(root);added=true}};
+
+ /* canvas texture helper */
+ function ctex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+
+ /* 26 Milky Way: a band of stars and dust on the inside of a big tilted ring that follows the camera */
+ const mwTex=ctex(1024,128,(c,w,h)=>{const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(0.5,'rgba(200,205,230,0.55)');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.fillRect(0,0,w,h);
+  for(let i=0;i<5000;i++){const y=h/2+(Math.random()+Math.random()+Math.random()-1.5)*h*0.45;c.fillStyle=`rgba(255,255,255,${Math.random()*0.9})`;c.fillRect(Math.random()*w,y,Math.random()<0.1?2:1,1)}
+  c.globalCompositeOperation='destination-out';for(let i=0;i<60;i++){c.fillStyle='rgba(0,0,0,0.35)';c.beginPath();c.ellipse(Math.random()*w,h/2+(Math.random()-0.5)*h*0.2,20+Math.random()*60,3+Math.random()*8,0,0,7);c.fill()}});
+ const mw=new THREE.Mesh(new THREE.CylinderGeometry(3000,3000,700,64,1,true),new THREE.MeshBasicMaterial({map:mwTex,transparent:true,side:THREE.BackSide,depthWrite:false,fog:false,blending:THREE.AdditiveBlending,opacity:0}));
+ mw.rotation.set(1.1,0,0.5);mw.renderOrder=-5;mw.frustumCulled=false;root.add(mw);
+
+ /* 28 meteors */
+ const metMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,fog:false,depthWrite:false,blending:THREE.AdditiveBlending});
+ const met=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),metMat);met.frustumCulled=false;root.add(met);let metT=0,metNext=8;
+
+ /* 30 contrails: thin streaks high up that widen and fade */
+ const trails=[];const trMat=()=>new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.55,fog:false,depthWrite:false});
+ function newTrail(cx,cz){const m=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),trMat());const a=Math.random()*Math.PI*2;m.rotation.y=a;m.position.set(cx+(Math.random()-0.5)*2500,1400+Math.random()*400,cz+(Math.random()-0.5)*2500);m.userData={len:0,w:2,a,age:0,v:220};m.frustumCulled=false;root.add(m);trails.push(m)}
+
+ /* instanced road dressing along the route: 32 oil, 43 manholes and grates, 40 lane markers */
+ const N=400;
+ const oilTex=ctex(128,128,(c,w,h)=>{const g=c.createRadialGradient(64,64,4,64,64,62);g.addColorStop(0,'rgba(8,8,10,0.55)');g.addColorStop(1,'rgba(8,8,10,0)');c.fillStyle=g;c.fillRect(0,0,w,h)});
+ const holeTex=ctex(128,128,(c,w,h)=>{c.fillStyle='#2a2a2c';c.beginPath();c.arc(64,64,62,0,7);c.fill();c.strokeStyle='#4a4a4c';c.lineWidth=4;for(let r=12;r<60;r+=12){c.beginPath();c.arc(64,64,r,0,7);c.stroke()}for(let i=0;i<8;i++){c.beginPath();c.moveTo(64,64);c.lineTo(64+60*Math.cos(i*0.785),64+60*Math.sin(i*0.785));c.stroke()}});
+ const grateTex=ctex(128,64,(c,w,h)=>{c.fillStyle='#1c1c1e';c.fillRect(0,0,w,h);c.fillStyle='#55575a';for(let x=0;x<w;x+=12)c.fillRect(x,0,5,h);c.strokeStyle='#666';c.lineWidth=6;c.strokeRect(0,0,w,h)});
+ const flat=(sx,sz)=>{const g=new THREE.PlaneGeometry(sx,sz);g.rotateX(-Math.PI/2);return g};
+ const mkI=(geo,mat)=>{const m=new THREE.InstancedMesh(geo,mat,N);m.count=0;m.frustumCulled=false;m.renderOrder=1;root.add(m);return m};
+ const decal=(map)=>new THREE.MeshLambertMaterial({map,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+ const oil=mkI(flat(1.1,2.6),decal(oilTex)),hole=mkI(flat(0.8,0.8),decal(holeTex)),grate=mkI(flat(0.9,0.45),decal(grateTex));
+ const markMat=new THREE.MeshLambertMaterial({color:0xd8c060,emissive:0x000000});const mark=mkI(new THREE.BoxGeometry(0.1,0.025,0.1),markMat);
+ const skidMat=new THREE.MeshBasicMaterial({color:0x101010,transparent:true,opacity:0.6,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+ const skid=new THREE.InstancedMesh(flat(0.24,1),skidMat,1200);skid.count=0;skid.frustumCulled=false;skid.renderOrder=1;root.add(skid);let skidI=0,skidN=0;const lastW=[];
+ const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(),P=new THREE.Vector3(),UP=new THREE.Vector3(0,1,0);
+ const rnd=s=>{const x=Math.sin(s*127.1)*43758.5453;return x-Math.floor(x)};
+ let lastS=-1e9;
+ function rebuild(g){const e=g.ego,s0=Math.floor(e.s/10)*10;let no=0,nh=0,ng=0,nm=0;
+  for(let s=s0-200;s<s0+700;s+=10){if(s<0||s>g.route.total)continue;let lo=0,n=1;try{lo=laneOffsetAt(routeLLnh(s)[2]);n=window.LANES?LANES.count(s):1}catch(x){}
+   const y=(()=>{try{return routeY(s)}catch(x){return 0}})()+0.03;
+   for(let l=0;l<n;l++){const off=lo-l*3.6;const r=rnd(s*7+l);
+    if(r<0.35&&no<N){const [x,z,dx,dz]=routeXZ(s+r*8,off);Q.setFromAxisAngle(UP,Math.atan2(dx,dz));S.set(0.7+r,1,0.6+r*1.5);M.compose(P.set(x,y,z),Q,S);oil.setMatrixAt(no++,M)}
+    if(r>0.97&&nh<N){const [x,z]=routeXZ(s,off+0.6);M.compose(P.set(x,y+0.005,z),Q.identity(),S.set(1,1,1));hole.setMatrixAt(nh++,M)}
+    if(l<n-1&&g.limitMph>=40&&nm<N){const [x,z,dx,dz]=routeXZ(s,off-1.8);Q.setFromAxisAngle(UP,Math.atan2(dx,dz));M.compose(P.set(x,y,z),Q,S.set(1,1,1));mark.setMatrixAt(nm++,M)}}
+   if(rnd(s*3.3)<0.18&&ng<N){const [x,z,dx,dz]=routeXZ(s,lo+1.75);Q.setFromAxisAngle(UP,Math.atan2(dx,dz));M.compose(P.set(x,y+0.004,z),Q,S.set(1,1,1));grate.setMatrixAt(ng++,M)}}
+  for(const [m,c] of [[oil,no],[hole,nh],[grate,ng],[mark,nm]]){m.count=c;m.instanceMatrix.needsUpdate=true}}
+
+ /* 45 autumn leaves */
+ const leafMat=new THREE.MeshLambertMaterial({color:0xc06a20,side:THREE.DoubleSide});const LN=150;const leaves=new THREE.InstancedMesh(new THREE.PlaneGeometry(0.09,0.06),leafMat,LN);leaves.frustumCulled=false;leaves.count=0;root.add(leaves);
+ const LF=[];for(let i=0;i<LN;i++)LF.push({x:0,y:0,z:0,vx:0,vz:0,r:Math.random()*6,live:false});
+ const autumn=()=>{const m=new Date().getMonth();return window.SEASON?/autumn|fall/i.test(String(SEASON.name||SEASON)):m>=8&&m<=10};
+ const leafCols=[0xc06a20,0xa83a18,0xd8a028,0x8a5a20];
+
+ /* 83 letterbox */
+ const lb=document.createElement('div');lb.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:30;display:none;box-shadow:inset 0 11vh 0 #000,inset 0 -11vh 0 #000';document.body.appendChild(lb);
+ /* 90 HUD */
+ const hud=document.createElement('div');hud.style.cssText='position:fixed;left:50%;top:58%;transform:translateX(-50%);z-index:25;pointer-events:none;color:#7ff6e0;font:600 30px ui-monospace,monospace;text-shadow:0 0 6px #0a6;opacity:0.75;display:none;text-align:center';document.body.appendChild(hud);
+ /* 88 PIP frame */
+ const pipF=document.createElement('div');pipF.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);width:320px;height:110px;border:2px solid #222;border-radius:10px;z-index:24;pointer-events:none;display:none';document.body.appendChild(pipF);
+ const rearCam=new THREE.PerspectiveCamera(50,320/110,0.5,1500);
+
+ addEventListener('keydown',ev=>{if(ev.target&&/INPUT|TEXTAREA|SELECT/.test(ev.target.tagName))return;const k=ev.key.toLowerCase();
+  if(ev.ctrlKey||ev.metaKey||ev.altKey)return;if(k==='['){V.orbit=!V.orbit;V.drone=false}else if(k===']'){V.drone=!V.drone;V.orbit=false}else if(k==='u'){V.pip=!V.pip}else if(k===';'){V.hud=!V.hud}else if(k==='\''){V.shot=true}});
+
+ MODS.push({id:'gfx100a',
+  start(){ensure();lastS=-1e9;skidN=skidI=0;skid.count=0;for(const t of trails)root.remove(t);trails.length=0;for(const L of LF)L.live=false},
+  sim(dt){const g=G();if(!g||g.paused||dt<=0)return;ensure();const e=g.ego,R=window.REAL||{};
+   if(Math.abs(e.s-lastS)>150){lastS=e.s;try{rebuild(g)}catch(x){}}
+   /* 31 skid marks from the ego's wheels while sliding, spinning or braking hard */
+   const hard=R.slide||R.spin||((e.acc||0)<-7&&e.v>8);const ws=e.mesh.userData.wheels||[];
+   if(hard&&e.v>2){ws.forEach((w,i)=>{const o=w.piv||w;if(!o.getWorldPosition)return;o.getWorldPosition(P);const y=(()=>{try{return routeY(e.s)}catch(x){return P.y-0.3}})()+0.035;const L=lastW[i];
+     if(L){const dx=P.x-L.x,dz=P.z-L.z,d=Math.hypot(dx,dz);if(d>0.25){Q.setFromAxisAngle(UP,Math.atan2(dx,dz));M.compose(new THREE.Vector3((P.x+L.x)/2,y,(P.z+L.z)/2),Q,S.set(1,1,d));skid.setMatrixAt(skidI,M);skidI=(skidI+1)%1200;skidN=Math.min(1200,skidN+1);skid.count=skidN;skid.instanceMatrix.needsUpdate=true;lastW[i]={x:P.x,z:P.z}}}
+     else lastW[i]={x:P.x,z:P.z}})}else lastW.length=0;
+   /* 45 leaves */
+   if(autumn()&&!(g.limitMph>=55)){let n=0;for(const L of LF){if(!L.live&&Math.random()<0.02){const a=Math.random()*6.28,r=8+Math.random()*30;L.x=e.x+Math.cos(a)*r;L.z=e.z+Math.sin(a)*r;L.y=(()=>{try{return routeY(e.s)}catch(x){return e.mesh.position.y}})()+0.02;L.vx=1+Math.random()*2;L.vz=(Math.random()-0.5);L.live=true;L.c=leafCols[(Math.random()*4)|0]}
+     if(L.live){const dx=L.x-e.x,dz=L.z-e.z,d2=dx*dx+dz*dz;if(d2<9&&e.v>4){L.vx+=dx*0.6;L.vz+=dz*0.6}L.x+=L.vx*dt;L.z+=L.vz*dt;L.vx*=0.995;L.r+=dt*(1+Math.hypot(L.vx,L.vz));if(d2>60*60)L.live=false;
+      Q.setFromEuler(new THREE.Euler(-Math.PI/2+Math.sin(L.r)*0.3,L.r,0));M.compose(P.set(L.x,L.y+Math.abs(Math.sin(L.r*2))*0.05,L.z),Q,S.set(1,1,1));leaves.setMatrixAt(n,M);leaves.setColorAt(n,new THREE.Color(L.c));n++}}
+    leaves.count=n;leaves.instanceMatrix.needsUpdate=true;if(leaves.instanceColor)leaves.instanceColor.needsUpdate=true}else leaves.count=0;
+   /* 30 contrails */
+   if(!dark(g)&&trails.length<3&&Math.random()<dt/40)newTrail(e.x,e.z);
+   for(let i=trails.length-1;i>=0;i--){const t=trails[i],u=t.userData;u.age+=dt;u.len=Math.min(9000,u.len+u.v*dt);u.w=2+u.age*0.6;t.scale.set(u.w,u.w*0.4,u.len);t.position.x+=Math.sin(u.a)*u.v*dt*0.5;t.position.z+=Math.cos(u.a)*u.v*dt*0.5;t.material.opacity=Math.max(0,0.55-u.age/240);if(u.age>240){root.remove(t);t.geometry.dispose();t.material.dispose();trails.splice(i,1)}}
+   /* 28 meteors */
+   if(dark(g)){metT-=dt;if(metT<-1.2){metNext-=dt;if(metNext<0){metNext=6+Math.random()*25;metT=1.0;const a=Math.random()*6.28;met.position.set(e.x+Math.cos(a)*1500,700+Math.random()*500,e.z+Math.sin(a)*1500);met.rotation.set(0.4+Math.random()*0.4,Math.random()*6.28,0);met.userData.v=new THREE.Vector3(Math.random()-0.5,-0.4,Math.random()-0.5).normalize().multiplyScalar(900)}}}
+   if(metT>0){met.position.addScaledVector(met.userData.v,dt);met.scale.set(2,2,120);met.lookAt(P.copy(met.position).add(met.userData.v));metMat.opacity=Math.sin(metT*Math.PI)*0.9}else metMat.opacity=0;
+   /* 40 markers light up in the dark */
+   markMat.emissive.setHex(dark(g)?0x8a7a30:0x000000)},
+  preRender(){const g=G();if(!g)return;const e=g.ego,m=e.mesh.position;
+   mw.position.copy(camera.position);mw.material.opacity=dark(g)&&!(window.WX&&(WX.cloud>0.6||WX.key==='rain'))?0.85:0;mw.visible=mw.material.opacity>0;
+   /* 84 orbit, 85 drone */
+   if(V.orbit){V.oa+=0.004;camera.position.set(m.x+Math.cos(V.oa)*9,m.y+2.2,m.z+Math.sin(V.oa)*9);camera.lookAt(m.x,m.y+0.8,m.z)}
+   else if(V.drone){const fx=Math.cos(e.head),fz=-Math.sin(e.head);camera.position.set(m.x-fx*35,m.y+45,m.z-fz*35);camera.lookAt(m.x+fx*25,m.y,m.z+fz*25)}
+   /* 83 letterbox in replays and photo views */
+   lb.style.display=(window.PHYS7&&PHYS7.scrub)||V.orbit||(window.REPLAY&&REPLAY.on)?'block':'none';
+   /* 90 HUD */
+   const showH=V.hud&&g.cam==='in'&&!V.orbit&&!V.drone;hud.style.display=showH?'block':'none';if(showH)hud.innerHTML=`${Math.round(e.v*2.237)}<span style="font-size:13px"> mph</span>${g.limitMph?`<div style="font-size:12px">limit ${g.limitMph}</div>`:''}`;
+   if(V.shot&&!V.shotPR){V.shotPR=renderer.getPixelRatio();renderer.setPixelRatio(Math.min(4,V.shotPR*2))}},
+  postRender(){const g=G();if(!g)return;const e=g.ego,m=e.mesh.position;
+   /* 88 PIP rear view: small second render into a scissored corner */
+   pipF.style.display=V.pip?'block':'none';
+   if(V.pip&&renderer.setScissor){try{const W=innerWidth,w=320,h=110,x=(W-w)/2,y=innerHeight-8-h;const fx=Math.cos(e.head),fz=-Math.sin(e.head);rearCam.position.set(m.x-fx*1.0,m.y+1.35,m.z-fz*1.0);rearCam.lookAt(m.x-fx*30,m.y+1,m.z-fz*30);
+    const ac=renderer.autoClear;renderer.autoClear=false;renderer.setScissorTest(true);renderer.setScissor(x,innerHeight-y-h,w,h);renderer.setViewport(x,innerHeight-y-h,w,h);const vis=e.mesh.visible;e.mesh.visible=false;
+    if(renderer.clearDepth)renderer.clearDepth();renderer.render(scene,rearCam);e.mesh.visible=vis;renderer.setScissorTest(false);renderer.setViewport(0,0,innerWidth,innerHeight);renderer.autoClear=ac}catch(x){V.pip=false;console.warn('pip',x)}}
+   /* 100 screenshot */
+   if(V.shot&&V.shotPR){V.shot=false;const pr=V.shotPR;V.shotPR=0;try{renderer.domElement.toBlob(b=>{if(b){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='autodrive-'+Date.now()+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}},'image/png')}catch(x){}renderer.setPixelRatio(pr)}}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
