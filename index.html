@@ -12846,7 +12846,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
     a second and lined up with the remaining GPU spikes. Screens are seen close up: no mipmaps needed. */
  {let hooked=false;const hook=()=>{const BE=renderer.backend;if(hooked||!BE||!BE.updateTexture)return;hooked=true;const UT=BE.updateTexture;BB.mipOff=0;
   BE.updateTexture=function(tex){try{const im=tex&&tex.image;if(im&&im.tagName==='IMG'&&/polyhaven/.test(im.src)&&im.width>=1024&&im.complete&&!tex.source.__half){const c=document.createElement('canvas');c.width=im.width>>1;c.height=im.height>>1;c.getContext('2d').drawImage(im,0,0,c.width,c.height);tex.source.data=c;tex.source.__half=true;BB.texHalf=(BB.texHalf||0)+1}}catch(e){} /* VRAM: road/facade/interior PBR maps at 512² (a quarter of the memory); the 1k sets were ~128 MB with mips */
-  if(tex&&tex.isCanvasTexture&&tex.generateMipmaps&&tex.version>3){tex.generateMipmaps=false;tex.minFilter=THREE.LinearFilter;BB.mipOff++} /* a canvas updated repeatedly is a live screen */return UT.apply(this,arguments)}};
+  /* (removed) switching mipmaps off on a live canvas after its first upload made WebGPU make a new GPU texture while the material kept drawing the old one: dash gauges froze at 0 */return UT.apply(this,arguments)}};
   hook();const iv=setInterval(()=>{hook();if(hooked)clearInterval(iv)},300)}
  /* Driver's View off the main frame: with the frame cap every other display refresh is idle, and the Driver's View
     (a second full-scene render) stacked on a main frame was most of the 70–110 ms GPU spikes. Its scene render is
