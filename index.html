@@ -12384,7 +12384,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    - Replay with forces (#60): F6 pauses and opens a scrub bar over the last 30 s. The car is put back where it was, and
      arrows show the acceleration (yellow) and cornering (red) forces at that moment. F6 again resumes. */
 (function(){
- const P={rails:new Map(),poles:[],fall:[],hist:[],scrub:false,arrows:null};window.PHYS7=P;
+ const P={loose:[],rails:new Map(),poles:[],fall:[],hist:[],scrub:false,arrows:null};window.PHYS7=P;
  const G=()=>typeof game!=='undefined'?game:null;
 
  /* poles: keep each lamp's pole and head as they are built */
@@ -12394,8 +12394,14 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  function railsAt(x,z){const key=Math.floor(toLat(z)/TS)+'_'+Math.floor(toLon(x)/TS);if(P.rails.has(key))return P.rails.get(key);const d=RAW.get(key);if(!d)return [];const segs=[];
   for(const el of d.elements||[]){const t=el.tags||{};if(el.type!=='way'||!el.geometry||!/guard_rail|jersey_barrier|wall|retaining_wall/.test(t.barrier||''))continue;const q=el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);for(let i=1;i<q.length;i++)segs.push([q[i-1][0],q[i-1][1],q[i][0],q[i][1]])}
   P.rails.set(key,segs);return segs}
- const _reb=window.rebase;if(_reb)window.rebase=function(){P.rails.clear();P.poles.length=0;P.hist.length=0;return _reb.apply(this,arguments)}; /* world origin moved: cached coordinates are stale */
+ const _reb=window.rebase;if(_reb)window.rebase=function(){P.rails.clear();P.poles.length=0;for(const o of P.loose)scene.remove(o);P.loose.length=0;P.fall.length=0;P.hist.length=0;return _reb.apply(this,arguments)}; /* world origin moved: cached coordinates are stale */
 
+ /* the tile builder merges all poles of a tile into one mesh, so the hit pole is flattened out of that mesh and a loose copy falls in its place */
+ function snap(p){const gy=groundY(p.x,p.z),v=new THREE.Vector3();
+  p.T.group.traverse(o=>{if(!o.isMesh||(o.material!==MAT.pole&&o.material!==MAT.lampOff&&o.material!==MAT.lampOn)||o.geometry===LAMPGEO.pole||o.geometry===LAMPGEO.head)return;const A=o.geometry.attributes.position;let hit=false;o.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(o.matrixWorld).invert(),r=o.material===MAT.pole?0.2:0.5;
+   for(let i=0;i<A.count;i++){v.fromBufferAttribute(A,i).applyMatrix4(o.matrixWorld);if(Math.abs(v.x-p.x)<r&&Math.abs(v.z-p.z)<r&&v.y>gy-1&&v.y<gy+9){v.set(p.x,gy-0.5,p.z).applyMatrix4(inv);A.setXYZ(i,v.x,v.y,v.z);hit=true}}if(hit)A.needsUpdate=true});
+  if(p.head&&p.head.parent)p.head.visible=false;
+  const pole=new THREE.Mesh(LAMPGEO.pole,MAT.pole),head=new THREE.Mesh(LAMPGEO.head,MAT.lampOff);pole.position.set(p.x,gy+4,p.z);head.position.set(p.x,gy+8,p.z);pole.userData.by=gy;scene.add(pole,head);p.pole=pole;p.head=head;P.loose.push(pole,head);while(P.loose.length>40)scene.remove(P.loose.shift())}
  function looseBodies(g){const out=[];if(g.ego&&g.ego.loose)out.push(g.ego);for(const a of g.agents)if(a.loose)out.push(a);return out}
 
  MODS.push({id:'physics7',
@@ -12408,10 +12414,11 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
       const nx=ox/d,nz=oz/d,vn=L.vx*nx+L.vz*nz;if(vn>=0)continue;L.vx-=1.2*vn*nx;L.vz-=1.2*vn*nz;L.vx*=0.85;L.vz*=0.85;L.w*=0.5;L.x=px+nx*1.1;L.z=pz+nz*1.1;
       if(c===e&&!/guardrail/i.test(g.status||''))g.status=`🛡 Guardrail redirected the car (${Math.round(-vn*2.237)} mph into it)`;break}
      for(const p of P.poles){if(p.down)continue;const dx=L.x-p.x,dz=L.z-p.z;if(dx*dx+dz*dz>1.3*1.3)continue;p.down=true;L.vx*=0.7;L.vz*=0.7;
-      const dir=Math.atan2(L.vz,L.vx);P.fall.push({p,t:0,dir});if(c===e)g.status='💥 Snapped a lamp post';if(c.mesh&&c.mesh.userData)c.mesh.userData.dmg=Math.min(1,(c.mesh.userData.dmg||0)+0.08)}}
+      const dir=Math.atan2(L.vz,L.vx);snap(p);P.fall.push({p,t:0,dir});if(c===e)g.status='💥 Snapped a lamp post';if(c.mesh&&c.mesh.userData)c.mesh.userData.dmg=Math.min(1,(c.mesh.userData.dmg||0)+0.08)}}
+    if(P.poles.length>600){const live=new Set(TILES.values());P.poles=P.poles.filter(p=>live.has(p.T))} /* drop poles of unloaded tiles */
     /* falling poles: tip over about the base in ~1 s */
     for(let i=P.fall.length-1;i>=0;i--){const F=P.fall[i];F.t=Math.min(1,F.t+dt*1.2);const a=Math.PI/2*0.92*F.t*F.t,{pole,head,x,z}=F.p;if(!pole.parent){P.fall.splice(i,1);continue}
-     const ux=Math.cos(F.dir),uz=Math.sin(F.dir);const base=pole.userData.by??(pole.userData.by=pole.position.y-4);pole.position.set(x+ux*4*Math.sin(a),base+4*Math.cos(a),z+uz*4*Math.sin(a));pole.rotation.set(0,0,0);pole.rotateOnWorldAxis(new THREE.Vector3(-uz,0,ux),a);
+     const ux=Math.cos(F.dir),uz=Math.sin(F.dir);const base=pole.userData.by;pole.position.set(x+ux*4*Math.sin(a),base+4*Math.cos(a),z+uz*4*Math.sin(a));pole.rotation.set(0,0,0);pole.rotateOnWorldAxis(new THREE.Vector3(-uz,0,ux),a);
      if(head){head.position.set(x+ux*8*Math.sin(a),base+8*Math.cos(a),z+uz*8*Math.sin(a))}if(F.t>=1)P.fall.splice(i,1)}
     /* crawler lane */
     for(const a of g.agents){if(a.kind!=='route'||!a.spec||a.spec.L<8||a.loose)continue;let gr=0;try{gr=(routeY(a.s+20)-routeY(a.s-20))/40}catch(x){}if(gr>0.04){try{const lo=laneOffsetAt(routeLLnh(a.s)[2]);if(a.off!=null)a.off+=(lo-a.off)*Math.min(1,dt*0.3)}catch(x){}if(a.v>11.2)a.v=Math.max(11.2,a.v-1.5*dt);a.crawl=true}else a.crawl=false}
