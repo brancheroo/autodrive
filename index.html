@@ -12233,7 +12233,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    if(e.v<0.5)P.still+=dt;else{if(P.still>0.8&&(e.acc||0)>3&&launchCar(g.spec))P.launch=2.5;P.still=0}
    if(P.launch>0){P.launch-=dt;if(e.v<27&&!/crash|brake/i.test(g.status||''))g.status='🚀 Launch control'}
    /* debris punctures */
-   if(window.ACT&&ACT.list&&X)for(const o of ACT.list){if(o._p5||o.s==null||!/wreck|cone/.test(o.kind))continue;if(Math.abs(o.s-e.s)<1.6&&Math.abs((o.lat||0)-(e.off||0))<0.9){o._p5=1;if(X.blown<0&&Math.random()<(o.kind==='wreck'?0.35:0.04)){X.blown=Math.floor(Math.random()*4);g.status='💥 Puncture from road debris'}}}
+   if(window.ACT&&ACT.list&&X)for(const o of ACT.list){if(o._p5||o.s==null||!/wreck|cone/.test(o.kind))continue;if(Math.abs(o.s-e.s)<1.6&&Math.abs((o.lat||0)-(e.off||0))<0.9){o._p5=1;if(X.blown<0&&Math.random()<(o.kind==='wreck'?0.35:0.04)){if(window.PHYS6&&Math.random()<0.6){PHYS6.slow=1;g.status='⚠️ Slow puncture from road debris'}else{X.blown=Math.floor(Math.random()*4);g.status='💥 Puncture from road debris'}}}}
    /* rumble strips: fast roads, a tyre over the outer edge line */
    P.shake=0;if(g.limitMph>=50&&e.v>12&&typeof laneOffsetAt==='function'&&!e.loose){const lo=laneOffsetAt(routeLLnh(e.s)[2]),n=window.LANES?LANES.count(e.s):1,hw=((g.spec&&g.spec.W)||1.9)/2,off=e.off!=null?e.off:lo;
     if(off+hw>lo+1.7||off-hw<lo-(n-1)*3.6-1.7){P.shake=0.006;if(!/rumble/i.test(g.status||''))g.status='〰️ Rumble strip'}}
@@ -12252,6 +12252,124 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
    if(g.cam==='in'){const s=P.shake?(Math.random()-0.5)*P.shake*2:0,j=P.joint>0?-0.012*Math.sin((0.08-P.joint)/0.08*Math.PI):0;if(s||j){camera.position.y+=s+j;P.camDy=s+j}else P.camDy=0}
    if(P.dbg)draw()},
   postRender(){for(let i=P.undo.length-1;i>=0;i--){const [o,k,v]=P.undo[i];if(k==='x'){o.rotateX(-v);o.updateMatrixWorld(true)}else if(k==='ty')o.rotation.y-=v}P.undo.length=0;if(P.camDy){camera.position.y-=P.camDy;P.camDy=0}}});
+})();
+</script>
+<script>/* mods/99s2-physics6.js */
+/* Physics, batch 6: sixty smaller effects on top of 99d / 99o–99r / 99s. Ego car unless noted. Each effect is its own small
+   block (one failing never stops the rest). Grip changes go through muAt (the planner and the tyre model both read it),
+   power and speed caps through REAL.acc, and the visual parts (camera, body, traffic) are applied before drawing and undone
+   after, like 99d's body roll. Keys: F7 force plot (last 30 s), F9 roof box, F10 tow a caravan. */
+(function(){
+ const P={grip:1,pow:1,vcap:Infinity,drag:1,cam:new THREE.Vector3(),undo:[],flags:new Set(),rec:[],t:0,status:'',crashN:0,
+  imbalance:Math.random()<0.3,slow:-1,clutch:0,clutchWear:0,soak:0,idle:0,kick:0,hop:0,pack:0,chains:false,fade:0,bead:false,
+  geom:0,lastDmg:0,trans:0,precond:0,airbag:0,cracks:[],wheelOff:false,fire:0,roofBox:false,tow:null,plot:false,lastAcc:0,lastYr:0};
+ window.PHYS6=P;
+ const G=()=>typeof game!=='undefined'?game:null,R=()=>window.REAL||{},X=()=>(window.REAL&&REAL.x)||{};
+ const T=()=>typeof WX!=='undefined'&&WX.temp!=null?WX.temp:15,wet=()=>typeof WX!=='undefined'&&(WX.wet||WX.key==='rain'||(WX.rain||0)>0.2);
+ const snow=()=>typeof WX!=='undefined'&&(WX.snowCover||(WX.snow||0)>0.3);
+ const hw=()=>{const g=G();try{return (NODEINFO.get(g.route.nodes[routeLLnh(g.ego.s)[2]])||{}).hw||''}catch(e){return ''}};
+ const grade=()=>{const g=G();try{return (routeY(g.ego.s+15)-routeY(g.ego.s-15))/30}catch(e){return 0}};
+ const hash=n=>{const x=Math.sin(n*127.1)*43758.5453;return x-Math.floor(x)};
+ const ice=()=>{try{return !!(ES()||{}).ice}catch(e){return false}};
+ const isFWD=s=>/front|FWD/i.test(s&&s.dash||'')||/hatch|compact/.test(s&&s.style||'');
+ const old=s=>/classic|vintage|retro|70|80|90/.test((s&&(s.style||''))+(s&&s.id||''));
+ const manual=s=>/manual|stick/i.test(s&&s.dash||'')||old(s);
+ const solid=s=>/truck|pickup|van|classic/.test(s&&s.style||'');
+ const run=(k,f)=>{try{f()}catch(e){if(!P.flags.has('err:'+k)){P.flags.add('err:'+k);console.warn('physics6',k,e)}}};
+ const say=t=>{const g=G();if(g&&!/crash|brake|stop/i.test(g.status||''))g.status=t};
+ const ctx=()=>{try{return audio&&audio.ctx||window.AUDIOCTX||null}catch(e){return null}};
+
+ /* grip and power hooks */
+ const _mu=window.muAt;if(_mu)window.muAt=function(a){const m=_mu.apply(this,arguments);const g=G();return g&&a===g.ego?m*P.grip:m};
+ const RE=window.REAL;if(RE&&RE.acc){const _acc=RE.acc;RE.acc=function(a,acc,target,isEgo,chase,dt){let r=_acc.apply(this,arguments);if(!isEgo)return r;
+  if(r>0)r*=P.pow;const v=a.v||0;if(v>P.vcap)r=Math.min(r,(P.vcap-v)*0.8);if(P.drag>1&&v>15)r-=(P.drag-1)*0.0004*v*v;return r}}
+
+ /* overlays: windscreen cracks + force plot */
+ const crack=document.createElement('canvas');crack.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;display:none';document.body.appendChild(crack);
+ function drawCracks(){const c=crack;c.width=innerWidth;c.height=innerHeight;const x=c.getContext('2d');x.strokeStyle='rgba(235,240,245,0.55)';x.lineWidth=1;
+  for(const k of P.cracks){const cx=k.x*c.width,cy=k.y*c.height;for(let i=0;i<k.n;i++){let a=i/k.n*6.28+k.r,px=cx,py=cy;x.beginPath();x.moveTo(px,py);for(let j=0;j<6;j++){a+=(hash(k.r*100+i*7+j)-0.5)*0.6;const l=k.s*(0.4+hash(i+j*3+k.r));px+=Math.cos(a)*l;py+=Math.sin(a)*l;x.lineTo(px,py)}x.stroke()}}}
+ const plot=document.createElement('canvas');plot.width=300;plot.height=120;plot.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:40;background:#000b;border-radius:8px;display:none;pointer-events:none';document.body.appendChild(plot);
+ function drawPlot(){const x=plot.getContext('2d');x.clearRect(0,0,300,120);const L=P.rec,n=L.length;if(n<2)return;const ser=[['v',k=>k.v/70,'#9cf'],['ax',k=>0.5+k.ax/20,'#fc6'],['ay',k=>0.5+k.ay/20,'#f88'],['grip',k=>k.u,'#8e8']];
+  for(const [,f,col] of ser){x.strokeStyle=col;x.beginPath();L.forEach((k,i)=>{const px=i/(n-1)*296+2,py=118-clamp(f(k),0,1)*112;i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()}
+  x.fillStyle='#cde';x.font='10px ui-monospace,monospace';x.fillText('last 30 s · speed  ax  ay  grip used   (F7)',6,12)}
+ /* roof box and caravan */
+ function roofBox(on){const g=G();if(!g||!g.ego)return;const m=g.ego.mesh;if(on&&!P.rb){const s=g.spec;const b=new THREE.Mesh(new THREE.BoxGeometry(s.L*0.42,0.38,s.W*0.55),new THREE.MeshStandardMaterial({color:0x1a1c20,roughness:0.5}));b.position.set(-0.1,s.H+0.24,0);m.add(b);P.rb=b}else if(!on&&P.rb){m.remove(P.rb);P.rb=null}}
+ function caravan(on){const g=G();if(!g||!g.ego)return;if(on&&!P.tow){const grp=new THREE.Group();const body=new THREE.Mesh(new THREE.BoxGeometry(5,2.3,2.2),new THREE.MeshStandardMaterial({color:0xeeeae0,roughness:0.6}));body.position.set(-3.2,1.55,0);grp.add(body);
+   const bar=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.08,0.08),new THREE.MeshStandardMaterial({color:0x222222}));bar.position.set(-0.3,0.45,0);grp.add(bar);for(const z of [1.05,-1.05]){const w=new THREE.Mesh(new THREE.CylinderGeometry(0.33,0.33,0.2,16),new THREE.MeshStandardMaterial({color:0x111111}));w.rotation.x=Math.PI/2;w.position.set(-3.2,0.33,z);grp.add(w)}
+   scene.add(grp);P.tow={g:grp,yaw:g.ego.head,sw:0,swv:0}}else if(!on&&P.tow){scene.remove(P.tow.g);P.tow=null}}
+ addEventListener('keydown',ev=>{if(ev.key==='F7'){P.plot=!P.plot;plot.style.display=P.plot?'block':'none'}if(ev.key==='F9'){P.roofBox=!P.roofBox;roofBox(P.roofBox)}if(ev.key==='F10'){caravan(!P.tow)}});
+
+ MODS.push({id:'physics6',
+  start(){P.cracks=[];crack.style.display='none';P.wheelOff=false;P.fire=0;P.slow=-1;P.bead=false;P.geom=0;P.chains=false;P.pack=0;P.rec=[];P.crashN=(typeof CRASH!=='undefined'&&CRASH.log)?CRASH.log.length:0;P.precond=T()<5?1:0;P.imbalance=Math.random()<0.3;if(P.rb)P.rb=null;if(P.tow)caravan(false);if(P.roofBox)setTimeout(()=>roofBox(true),500)},
+  sim(dt){const g=G();if(!g||!g.route||!g.ego||g.paused||dt<=0)return;const e=g.ego,sp=g.spec||{},v=e.v,Rr=R(),Xx=X(),h=hw(),gr=grade();P.t+=dt;
+   let grip=1,pow=1,vcap=Infinity,drag=1;const msgs=[];
+   const yr=(()=>{let d=e.head-(P.lh==null?e.head:P.lh);P.lh=e.head;d=Math.atan2(Math.sin(d),Math.cos(d));return d/dt})(),lat=v*yr,acc=e.acc||0;
+   /* 1 carcass flex: very quick steering changes overshoot the tyre's build-up */ run(1,()=>{const ya=Math.abs(yr-P.lastYr)/dt;P.lastYr=yr;if(ya>1.5&&v>15)grip*=0.95});
+   /* 2 rubbered-in lanes on busy highways */ run(2,()=>{if(/motorway|trunk/.test(h)&&!wet())grip*=1.02});
+   /* 3 wet paint and manhole covers */ run(3,()=>{if(!wet())return;try{const lo=laneOffsetAt(routeLLnh(e.s)[2]),d=Math.abs(((e.off??lo)-lo)%3.6);if(d>1.4&&d<2.2)grip*=0.85}catch(x){}if(!/motorway|trunk/.test(h)&&hash(Math.floor(e.s/45))<0.25&&(e.s%45)<1.2)grip*=0.75});
+   /* 6 bead loss after a hard kerb strike */ run(6,()=>{const d=Xx.dmg||0;if(d-P.lastDmg>0.08&&v>12){P.bead=true;msgs.push('Tyre bead unseated · 40 mph')}P.lastDmg=d;if(P.bead){grip*=0.8;vcap=Math.min(vcap,17.9)}});
+   /* 7 run-flat tyres */ run(7,()=>{if(Xx.blown>=0&&/bmv|bmw|mercedes|merc|lexus|cadill/i.test(sp.id||'')){vcap=Math.min(vcap,22.3);P.flags.add('runflat')}});
+   /* 8 slow puncture: pressure leaks over ~a minute, then the tyre is flat */ run(8,()=>{if(P.slow>=0){P.slow=Math.max(0,P.slow-dt/60);grip*=0.8+0.2*P.slow;if(P.slow===0&&Xx.blown<0){Xx.blown=Math.floor(Math.random()*4);P.slow=-1;msgs.push('Tyre now flat')}else if(P.slow<0.6)msgs.push(`⚠️ Tyre pressure low ${Math.round(P.slow*100)}%`)}});
+   /* 9 snow packed in the wheel arches limits steering */ run(9,()=>{if(snow())P.pack=Math.min(1,P.pack+dt/600);else if(T()>3)P.pack=Math.max(0,P.pack-dt/60);grip*=1-0.1*P.pack});
+   /* 10 snow chains: fitted when stopped in deep snow; big grip, 30 mph */ run(10,()=>{if(snow()&&v<0.5){P.idle+=dt;if(P.idle>6&&!P.chains){P.chains=true;msgs.push('⛓ Snow chains fitted · 30 mph max')}}if(!snow()&&P.chains&&v<0.5){P.chains=false}if(P.chains){grip*=snow()?1.6:0.85;vcap=Math.min(vcap,13.4)}});
+   /* 11 passengers and luggage weigh the car down */ run(11,()=>{const n=(window.PASS&&PASS.length)||0;pow*=1-0.015*n});
+   /* 12 damper fade on long rough roads */ run(12,()=>{const rough=g.surface&&g.surface!=='asphalt';P.fade=clamp(P.fade+(rough&&v>8?dt/240:-dt/120),0,1)});
+   /* 14 bent suspension after big impacts: pulls and wears tyres */ run(14,()=>{const d=Xx.dmg||0;P.geom=d>0.3?Math.min(1,(d-0.3)*2):0;if(P.geom){grip*=1-0.05*P.geom;if(Rr.wear!=null)Rr.wear=Math.min(1,Rr.wear+dt*0.0004*P.geom)}});
+   /* 18 roof box: drag and a higher centre of gravity */ run(18,()=>{if(P.roofBox){drag*=1.25;grip*=0.98}});
+   /* 19 towing a caravan: less power, sway at speed */ run(19,()=>{if(!P.tow)return;pow*=0.75;drag*=1.4;vcap=Math.min(vcap,29);const T6=P.tow;const wind=(typeof WX!=='undefined'&&WX.wind)||0;const k=v>24?(v-24)*0.03:0;T6.swv+=(-T6.sw*6-T6.swv*(1.6-k*3)+(Math.random()-0.5)*(0.4+wind*0.02)*v*0.02)*dt;T6.sw=clamp(T6.sw+T6.swv*dt,-0.35,0.35);if(Math.abs(T6.sw)>0.12)msgs.push('⚠️ Caravan sway')});
+   /* 20 load shifting in a pickup bed under hard braking */ run(20,()=>{if(/pickup|truck/.test(sp.style||'')&&acc<-6&&!P.shift){P.shift=1;P.jolt=0.03;msgs.push('Load shifted in the bed')}if(acc>-2)P.shift=0});
+   /* 21 clutch slip starting on steep hills */ run(21,()=>{if(!manual(sp)||!ice())return;if(v<3&&acc>1&&gr>0.08){P.clutch+=dt;pow*=0.7;if(P.clutch>3){P.clutchWear=Math.min(0.15,P.clutchWear+dt*0.01);msgs.push('Clutch slipping (burning smell)')}}else P.clutch=0;pow*=1-P.clutchWear});
+   /* 22 transmission heat when towing uphill */ run(22,()=>{P.trans=clamp(P.trans+((P.tow||P.roofBox)&&gr>0.05&&v>8?dt/60:-dt/120),0,1.5);if(P.trans>1){pow*=0.85;msgs.push('Transmission hot · power reduced')}});
+   /* 23 turbo engines keep their power at altitude (99p takes it from every engine) */ run(23,()=>{const rho=Xx.rho||1;if(rho<0.98&&/turbo/i.test(sp.dash||''))pow*=Math.min(1.12,1/Math.max(0.75,rho)*0.85+0.15)});
+   /* 24 intake heat soak after idling in the heat */ run(24,()=>{if(!ice())return;if(v<1&&T()>25)P.soak=Math.min(1,P.soak+dt/60);else if(v>15)P.soak=Math.max(0,P.soak-dt/60);pow*=1-0.07*P.soak});
+   /* 25 wheel hop on solid axles at hard launches */ run(25,()=>{if(solid(sp)&&v<8&&acc>3.5&&!P.hop)P.hop=0.6;if(P.hop>0){P.hop-=dt;pow*=0.85}});
+   /* 26 torque steer on powerful front drivers */ run(26,()=>{P.ts=isFWD(sp)&&(sp.top||0)>140&&acc>3?Math.min(1,(acc-3)/3):0});
+   /* 27 cold EV battery warming up */ run(27,()=>{if(ice()||P.precond<=0)return;P.precond=Math.max(0,P.precond-dt/300);pow*=1-0.2*P.precond;if(P.precond>0.5&&acc>2)msgs.push('❄️ Battery warming · reduced power')});
+   /* 28 fuel starvation in long hard corners on a near-empty tank */ run(28,()=>{if(ice()&&(g.soc??1)<0.08&&Math.abs(lat)>6&&hash(Math.floor(P.t*4))<0.5){pow*=0.3;msgs.push('Engine sputtering · fuel low')}});
+   /* 29 limp mode after heavy damage */ run(29,()=>{if((Xx.dmg||0)>0.6||P.trans>1.4){vcap=Math.min(vcap,20);msgs.push('Limp mode · 45 mph')}});
+   /* 30 kickdown delay on older automatics */ run(30,()=>{if(old(sp)&&!manual(sp)&&acc-P.lastAcc>2&&v>8)P.kick=0.7;P.lastAcc=acc;if(P.kick>0){P.kick-=dt;pow*=0.4}});
+   /* 31 / 32 truck wake when passing, bow wave from oncoming trucks */ run(31,()=>{P.buffet=0;for(const a of g.agents){if(!a.mesh||!a.spec||a.spec.L<8)continue;const dx=a.mesh.position.x-e.x,dz=a.mesh.position.z-e.z,d=Math.hypot(dx,dz);if(d>12)continue;const sideX=-Math.sin(e.head),sideZ=-Math.cos(e.head),lat2=dx*sideX+dz*sideZ;const rel=Math.abs(v-(a.v||0)*((a.dir||1)<0||a.kind==='way'&&Math.cos((a.head||0)-e.head)<0?-1:1));P.buffet+=Math.sign(lat2)*Math.min(1,rel/30)*(1-d/12);grip*=1-0.02*(1-d/12)}});
+   /* 33 tunnel pressure pulse */ run(33,()=>{const tin=!!g.inTunnel;if(tin!==P.tun&&v>20)P.pulse=0.25;P.tun=tin;if(P.pulse>0)P.pulse-=dt});
+   /* 34 wind shadow behind buildings, gusts in the gaps */ run(34,()=>{if(typeof WX==='undefined'||!WX.wind)return;if(P.baseWind==null||Math.abs(WX.wind-(P.setWind||0))>0.01)P.baseWind=WX.wind;const sheltered=hash(Math.floor(e.s/60))<0.5&&/residential|primary|secondary|tertiary/.test(h);P.setWind=P.baseWind*(sheltered?0.35:1.15);WX.wind=P.setWind});
+   /* 36 hail */ run(36,()=>{if(typeof WX!=='undefined'&&(WX.hail||/hail/.test(WX.key||''))){grip*=0.8;if(Xx.dmg!=null&&Math.random()<dt*0.2)Xx.dmg=Math.min(1,Xx.dmg+0.002)}});
+   /* 37 bridges freeze first */ run(37,()=>{if(Xx.bridge&&T()<3&&T()>-8&&(wet()||snow())){grip*=0.5;msgs.push('🧊 Bridge deck icy')}});
+   /* 38 black ice in shaded stretches */ run(38,()=>{if(T()<1&&(wet()||snow())&&hash(Math.floor(e.s/300)+7)<0.15&&(e.s%300)<40){grip*=0.35;msgs.push('🧊 Black ice')}});
+   /* 39 wet leaves in autumn */ run(39,()=>{const mo=new Date().getMonth();if(mo>=8&&mo<=10&&wet()&&/residential|tertiary|unclassified/.test(h))grip*=0.85});
+   /* 40 sand drifts on desert roads */ run(40,()=>{const b=(g.bio&&g.bio.n)||'';if(/desert|southwest|mountain west/i.test(b)&&hash(Math.floor(e.s/220)+3)<0.2&&(e.s%220)<25){grip*=0.75;msgs.push('Sand on the road')}});
+   /* 41 flooded dips in heavy rain */ run(41,()=>{if(typeof WX==='undefined'||(WX.rain||0)<0.7)return;const y0=routeY(e.s),dip=Math.min(routeY(e.s-40),routeY(e.s+40))-y0;if(dip>1){vcap=Math.min(vcap,9);grip*=0.6;msgs.push('🌊 Flooded dip')}});
+   /* 42 road salt residue */ run(42,()=>{if(T()<2&&!snow()&&!wet())grip*=0.97});
+   /* 43 bent bumpers spoil the aero */ run(43,()=>{const d=Xx.dmg||0;if(d>0.2)drag*=1+d*0.3});
+   /* 44 / 45 / 47 / 48 crash consequences: airbags, cracked glass, a wheel off, fire */ run(44,()=>{if(typeof CRASH==='undefined'||!CRASH.log)return;for(let i=P.crashN;i<CRASH.log.length;i++){const c=CRASH.log[i];if(c.a!=='ego'&&c.b!=='ego')continue;const mph=c.mph||0;if(mph>25)P.airbag=1.6;if(mph>12){P.cracks.push({x:0.3+Math.random()*0.4,y:0.25+Math.random()*0.25,n:6+Math.floor(mph/8),s:20+mph,r:Math.random()*6});drawCracks();crack.style.display=g.cam==='in'?'block':'none'}if(mph>45&&!P.wheelOff){P.wheelOff=true;if(Xx.blown<0)Xx.blown=Math.floor(Math.random()*4)}if(mph>60)P.fire=30}P.crashN=CRASH.log.length;if(P.airbag>0)P.airbag-=dt;if(P.wheelOff)vcap=Math.min(vcap,4);if(P.fire>0){P.fire-=dt;msgs.push('🔥 Smoke from the engine bay')}crack.style.display=P.cracks.length&&g.cam==='in'?'block':'none'});
+   /* 46 stone chips behind trucks */ run(46,()=>{for(const a of g.agents){if(a.kind!=='route'||!a.spec||a.spec.L<8)continue;const ds=a.s-e.s;if(ds>5&&ds<35&&Math.abs((a.off||0)-(e.off||0))<1.5&&v>20&&Math.random()<dt*0.02){P.cracks.push({x:0.35+Math.random()*0.3,y:0.2+Math.random()*0.2,n:5,s:6,r:Math.random()*6});drawCracks();msgs.push('Stone chip on the windscreen')}}});
+   /* 52 small animals */ run(52,()=>{if(!window.ACT||!ACT.list)return;for(const o of ACT.list){if(o.kind!=='animal'||o._p6||o.s==null)continue;if(Math.abs(o.s-e.s)<1.4&&Math.abs((o.lat||0)-(e.off||0))<1){o._p6=1;P.jolt=0.04;if(Xx.dmg!=null)Xx.dmg=Math.min(1,Xx.dmg+0.03);msgs.push('Hit a small animal')}}});
+   /* 59 steel plates and gravel at roadworks */ run(59,()=>{if(!window.ACT||!ACT.list)return;if(ACT.list.some(o=>o.kind==='cone'&&o.s!=null&&Math.abs(o.s-e.s)<50)){grip*=0.85;P.plates=true}else P.plates=false});
+   /* 5 tyre noise: road roar by surface and speed, squeal with slip */ run(5,()=>{const ac=ctx();if(!ac)return;if(!P.tn){const b=ac.createBuffer(1,ac.sampleRate*2,ac.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const src=ac.createBufferSource();src.buffer=b;src.loop=true;const f=ac.createBiquadFilter();f.type='bandpass';f.Q.value=0.8;const gn=ac.createGain();gn.gain.value=0;src.connect(f);f.connect(gn);gn.connect(ac.destination);src.start();P.tn={f,gn}}
+    const rough={asphalt:1,concrete:1.3,gravel:2,dirt:1.6,sett:2.4,brick:2}[g.surface||'asphalt']||1,slip=Math.max(0,(Rr.util||0)-0.85)*4;P.tn.gn.gain.setTargetAtTime(g.cam==='in'?Math.min(0.12,v/70*0.05*rough+slip*0.05):0,ac.currentTime,0.1);P.tn.f.frequency.setTargetAtTime(300+v*12+slip*1500,ac.currentTime,0.1)});
+   /* 35 heat haze shortens the view on hot sunny roads */ run(35,()=>{if(!scene.fog||scene.fog.far==null)return;if(P.fogBase==null||Math.abs(scene.fog.far-(P.fogSet||0))>1)P.fogBase=scene.fog.far;const hot=T()>30&&!wet()&&!g.dark;P.fogSet=hot?P.fogBase*0.85:P.fogBase;scene.fog.far=P.fogSet});
+   /* 15 / 13 cabin vibration sources (applied to the camera in preRender) */ P.vib=(P.imbalance&&v>24&&v<29.5?0.0025:0)+(v>60?0.0015*(v-60)/20:0)+(P.chains?0.004:0)+(P.plates?0.003:0)+(P.wheelOff?0.01:0)+(P.fade*0.002*(v>10?1:0));
+   P.grip=clamp(grip,0.1,2);P.pow=clamp(pow,0.1,1.3);P.vcap=vcap;P.drag=drag;if(msgs.length)say(msgs[0]);
+   /* traffic: 55 corner speed by radius, 53 trucks crawl on grades */ run(55,()=>{for(const a of g.agents){if(a.loose||!a.mesh)continue;const hd=a.head||0;let d=hd-(a._h6??hd);a._h6=hd;d=Math.atan2(Math.sin(d),Math.cos(d));const la=Math.abs(a.v*d/dt);a._lat6=la;if(la>4.5&&a.v>5)a.v=Math.max(5,a.v-(la-4.5)*dt*1.5)}});
+   /* 60 recorder */ run(60,()=>{P.rt=(P.rt||0)+dt;if(P.rt>0.1){P.rt=0;P.rec.push({v,ax:Rr.ax||acc,ay:Rr.ay||lat,u:Rr.util||0});if(P.rec.length>300)P.rec.shift()}})},
+  preRender(){const g=G();P.undo.length=0;if(!g||!g.route||!g.ego)return;const e=g.ego,now=performance.now()/1000;
+   run('cam',()=>{if(g.cam!=='in')return;const fx=Math.cos(e.head),fz=-Math.sin(e.head),sx=-fz,sz=fx;let dx=0,dy=0,dz=0;const r=()=>(Math.random()-0.5)*2;
+    if(P.vib){dy+=r()*P.vib;dx+=r()*P.vib*0.5}if(P.hop>0)dy+=Math.sin(now*60)*0.01;if(P.jolt){dy-=P.jolt;P.jolt*=0.6;if(P.jolt<0.002)P.jolt=0}
+    if(P.buffet){dx+=sx*P.buffet*0.03;dz+=sz*P.buffet*0.03}if(P.pulse>0)dy+=Math.sin(P.pulse*40)*0.006;if(P.ts){dx+=sx*Math.sin(now*9)*0.006*P.ts;dz+=sz*Math.sin(now*9)*0.006*P.ts}
+    /* 16 occupant inertia: the head lags acceleration a little */ const ax=(e.acc||0);dx-=fx*clamp(ax,-9,9)*0.004;dz-=fz*clamp(ax,-9,9)*0.004;
+    /* 4 rut wander on worn highways */ if(/motorway|trunk/.test(hw())){const w=Math.sin(now*0.7)*0.01;dx+=sx*w;dz+=sz*w}
+    P.cam.set(dx,dy,dz);camera.position.add(P.cam)});
+   /* 44 airbag in front of the camera */ run(44,()=>{if(P.airbag>0&&g.cam==='in'){if(!P.bag){P.bag=new THREE.Mesh(new THREE.SphereGeometry(0.28,20,14),new THREE.MeshStandardMaterial({color:0xf2f2ee,roughness:0.9}));scene.add(P.bag)}const dir=new THREE.Vector3();camera.getWorldDirection(dir);P.bag.position.copy(camera.position).addScaledVector(dir,0.42);P.bag.scale.setScalar(Math.min(1,P.airbag/0.6)*Math.min(1,(1.6-P.airbag)*8+0.2));P.bag.visible=true}else if(P.bag)P.bag.visible=false});
+   /* 48 smoke from the engine bay */ run(48,()=>{if(P.fire>0){if(!P.smoke){P.smoke=[];for(let i=0;i<14;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.35,8,6),new THREE.MeshBasicMaterial({color:0x444444,transparent:true,opacity:0.35,depthWrite:false}));scene.add(s);P.smoke.push(s)}}const m=e.mesh,L=(g.spec&&g.spec.L)||4.5;P.smoke.forEach((s,i)=>{const t=(now*0.6+i/14)%1;const p=new THREE.Vector3(L*0.38,1+t*3,(hash(i)-0.5)*0.6).applyMatrix4(m.matrixWorld);s.position.copy(p);s.scale.setScalar(0.6+t*2);s.material.opacity=0.35*(1-t);s.visible=true})}else if(P.smoke)P.smoke.forEach(s=>s.visible=false)});
+   /* 49 sparks when dragging on a missing wheel */ run(49,()=>{if(P.wheelOff&&e.v>1){if(!P.spk){P.spk=new THREE.Points(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(60*3),3)),new THREE.PointsMaterial({color:0xffc060,size:0.08}));scene.add(P.spk)}const a=P.spk.geometry.attributes.position;for(let i=0;i<60;i++){const p=new THREE.Vector3(-1+Math.random()*-1.5,0.05+Math.random()*0.4,(Math.random()-0.5)*1.6).applyMatrix4(e.mesh.matrixWorld);a.setXYZ(i,p.x,p.y,p.z)}a.needsUpdate=true;P.spk.visible=true}else if(P.spk)P.spk.visible=false});
+   /* 19 caravan follows the hitch with its sway */ run(19,()=>{if(!P.tow)return;const T6=P.tow;let d=e.head-T6.yaw;d=Math.atan2(Math.sin(d),Math.cos(d));T6.yaw+=d*0.08;const m=T6.g;m.position.copy(e.mesh.position).add(new THREE.Vector3(-Math.cos(e.head)*((g.spec&&g.spec.L)||4.5)*0.5,0,Math.sin(e.head)*((g.spec&&g.spec.L)||4.5)*0.5));m.rotation.y=T6.yaw+T6.sw});
+   /* traffic visuals: 56 roll in corners, 54 kneeling buses, 57 emergency roll, 58 cyclists and motorbikes in the wind, 17 tanker slosh */
+   run(56,()=>{const wind=(typeof WX!=='undefined'&&WX.wind)||0;for(const a of g.agents){const m=a.mesh;if(!m||!m.visible||a.loose)continue;const dx=m.position.x-e.x,dz=m.position.z-e.z;if(dx*dx+dz*dz>200*200)continue;const sp=a.spec||{};
+     let roll=clamp((a._lat6||0)/9.81,0,0.6)*(sp.H>2.5?0.06:0.035)*Math.sign(Math.sin(a._h6||0)||1)*(sp.ems||a.ems?1.6:1);
+     if(sp.cityBus&&a.v<0.3){m.position.y-=0.08;P.undo.push([m,'y',-0.08])}
+     if(sp.L>12&&m.userData.trailer&&a.mesh.id%3===0){a._sl=(a._sl||0)*0.97+clamp(-(a.acc||0),0,8)*0.0006;roll+=Math.sin(now*2.2)*a._sl}
+     if(roll){m.rotateX(roll);P.undo.push([m,'x',roll])}}
+    if(window.ACT&&ACT.list&&wind>6)for(const o of ACT.list){if(!/cyclist|moto/.test(o.kind)||!o.mesh)continue;const w=Math.sin(now*1.3+(o.mesh.id%5))*wind*0.004;o.mesh.rotateX(w);P.undo.push([o.mesh,'x',w])}});
+   if(P.plot)drawPlot()},
+  postRender(){for(let i=P.undo.length-1;i>=0;i--){const [o,k,v]=P.undo[i];if(k==='x')o.rotateX(-v);else if(k==='y')o.position.y-=v}P.undo.length=0;if(P.cam.lengthSq()){camera.position.sub(P.cam);P.cam.set(0,0,0)}}});
 })();
 </script>
 <script>/* mods/99t-gfxplus.js */
