@@ -13728,7 +13728,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    scanT-=dt;if(scanT<=0){scanT=3;try{pruneFlags(e);scanFlags(g)}catch(x){}
     /* 22: how built-up is it here */
     try{const d=RAW.get(tileKey(toLat(e.z),toLon(e.x)));let b=0;if(d)for(const el of d.elements||[])if(el.tags&&el.tags.building)b++;D.urban=b;
-     if(window.GFX100C){const H=GFX100C.haze;if(b>1200&&!g.dark&&!(W().key==='rain')){if(!H)GFX100C.haze={kind:'smog',col:new THREE.Color(0x9a9488),k:0,b:0}}else if(H&&H.kind==='smog'){H.b=Math.max(0,H.b-0.1);if(H.b<=0)GFX100C.haze=null}}}catch(x){}}
+     if(window.GFX100C){const H=GFX100C.haze;if(b>60&&!g.dark&&!(W().key==='rain')){if(!H)GFX100C.haze={kind:'smog',col:new THREE.Color(0x9a9488),k:0,b:0}}else if(H&&H.kind==='smog'){H.b=Math.max(0,H.b-0.1);if(H.b<=0)GFX100C.haze=null}}}catch(x){}}
    /* 71 flag cloth, near flags only */
    flagT+=dt;const wind=(W().wind||4);for(const F of D.flags){const dx=F.grp.position.x-e.x,dz=F.grp.position.z-e.z;if(dx*dx+dz*dz>250*250)continue;const A=F.f.geometry.attributes.position,a=A.array,b=F.base;
     for(let i=0;i<A.count;i++){const u=b[i*3]/1.5;a[i*3+2]=Math.sin(u*5-flagT*(3+wind*0.3)+F.ph)*0.12*u*(0.5+Math.min(1,wind/8));a[i*3+1]=b[i*3+1]-u*u*0.15*(1-Math.min(1,wind/8))}A.needsUpdate=true;F.f.rotation.y=-(W().windDir||0.6)}},
