@@ -758,7 +758,7 @@ function pip(pt,poly){let ins=false;for(let i=0,j=poly.length-1;i<poly.length;j=
 
 // ============================================================ OSM TILE STREAMING
 const TS=0.006; // degrees per tile (~600 m)
-const RAW=new Map(),TILES=new Map(),PENDING=new Set();const SFB=new Map();let LOCAL_USED=0;
+const RAW=new Map(),TILES=new Map(),PENDING=new Set();{const _rs=RAW.set.bind(RAW);RAW.set=function(k,d){try{if(d&&d.elements)for(const el of d.elements)if(el.geometry&&el.geometry.some(p=>!p)){el.geometry=el.geometry.filter(p=>p);if(el.geometry.length<2&&el.type==='way')el.geometry=null}}catch(e){}return _rs(k,d)}} /* Overpass leaves null points in ways clipped by missing nodes: rawRoads crashed on them and tile loading stopped, so the city vanished around the car */const SFB=new Map();let LOCAL_USED=0;
 const NODEINFO=new Map();const APPR=new Map();const EMBK=[]; /* embankment footprints [ax,az,bx,bz,halfwidth]: grass skips them */const NODEH=new Map(),BRNH=new Map(); /* BRNH: node heights set by bridge spans only (neighbouring spans join at these) */ // node id -> deck/bore height for bridges & tunnels // osm node id -> {speed(mph), hw, name}
 const CONTROLS=new Map(); // osm node id -> {type,lat,lon,axisHead}
 const BUILTWAYS=new Set();
