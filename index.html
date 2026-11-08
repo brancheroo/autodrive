@@ -504,11 +504,15 @@ const ground=new THREE.Mesh(new THREE.PlaneGeometry(9000,9000),new THREE.MeshLam
 ground.rotation.x=-Math.PI/2;ground.position.y=-0.3;ground.receiveShadow=true;scene.add(ground);
 /* terrain-shaped ground: without satellite imagery the only ground was the flat plane above, so hills/valleys showed as a flat pale sheet and trees placed at real elevation floated. This 3 km grid follows groundY around the car and shares the ground material */
 const groundT=new THREE.Mesh(new THREE.PlaneGeometry(1,1,120,120).rotateX(-Math.PI/2),ground.material);groundT.receiveShadow=true;groundT.frustumCulled=false;groundT.visible=false;scene.add(groundT);const GT={x:1e12,z:1e12,t:0,min:0};
-function updGroundT(e){if(TERR.ref===null||!game||!game.route){groundT.visible=false;return false} /* not tied to the flat plane's visibility: that plane is hidden during trips, which left the terrain mesh off and scenery floating */const now=performance.now(),cx=Math.round(e.x/50)*50,cz=Math.round(e.z/50)*50;
- if(Math.hypot(cx-GT.x,cz-GT.z)<150&&now-GT.t<4000)return groundT.visible;GT.x=cx;GT.z=cz;GT.t=now;const S=2400,pa=groundT.geometry.attributes.position;let mn=1e9;
- for(let i=0;i<pa.count;i++){const u=(i%121)/120-0.5,v=Math.floor(i/121)/120-0.5,wx=cx+u*S,wz=cz+v*S,y=roadCut(wx,wz,Math.min(groundY(wx,wz),groundY(wx+10,wz),groundY(wx-10,wz),groundY(wx,wz+10),groundY(wx,wz-10))-0.9)-0.15; /* lowest ground within one grid cell, 0.9 m down: on curved ground the 20 m grid bulged above roads that are not on the route and grass poked through */ /* carved down along the route like the satellite ground: in cuttings the terrain stood above the road and grass showed inside the cabin */if(y<mn)mn=y;pa.setXYZ(i,wx,y,wz)}
- pa.needsUpdate=true;groundT.geometry.computeVertexNormals();groundT.geometry.computeBoundingSphere();GT.min=mn;groundT.visible=true;return true}
-
+function updGroundT(e){if(TERR.ref===null||!game||!game.route){groundT.visible=false;return false} /* not tied to the flat plane's visibility: that plane is hidden during trips, which left the terrain mesh off and scenery floating */
+ const pa=groundT.geometry.attributes.position,S=2400,N=121;
+ if(GT.job){const J=GT.job,end=Math.min(N*N,J.i+N*24); /* built over ~5 frames (≈4 ms each) into a side buffer, then swapped in: one 20 ms rebuild was a hitch every few seconds at speed */
+  for(let i=J.i;i<end;i++){const u=(i%N)/(N-1)-0.5,v=Math.floor(i/N)/(N-1)-0.5,wx=J.cx+u*S,wz=J.cz+v*S,y=roadCut(wx,wz,Math.min(groundY(wx,wz),groundY(wx+10,wz),groundY(wx-10,wz),groundY(wx,wz+10),groundY(wx,wz-10))-0.9)-0.15; /* lowest ground within one grid cell, 0.9 m down: on curved ground the 20 m grid bulged above roads that are not on the route and grass poked through; carved along the route so cuttings never show grass in the cabin */
+   if(y<J.mn)J.mn=y;J.buf[i*3]=wx;J.buf[i*3+1]=y;J.buf[i*3+2]=wz}J.i=end;
+  if(end>=N*N){pa.array.set(J.buf);pa.needsUpdate=true;groundT.geometry.computeVertexNormals();groundT.geometry.computeBoundingSphere();GT.min=J.mn;groundT.visible=true;GT.job=null}return groundT.visible}
+ const now=performance.now(),cx=Math.round(e.x/50)*50,cz=Math.round(e.z/50)*50;
+ if(Math.hypot(cx-GT.x,cz-GT.z)<150&&now-GT.t<4000)return groundT.visible;GT.x=cx;GT.z=cz;GT.t=now;GT.job={i:0,cx,cz,mn:1e9,buf:GT.buf||(GT.buf=new Float32Array(N*N*3))};
+ if(!groundT.visible){while(GT.job)updGroundT(e)}return groundT.visible}
 // horizon ring (terrain silhouette from real elevation)
 const horizon=new THREE.Group();scene.add(horizon);
 let horizonCenter=null,elev0=0;
