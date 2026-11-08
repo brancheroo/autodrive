@@ -506,7 +506,7 @@ ground.rotation.x=-Math.PI/2;ground.position.y=-0.3;ground.receiveShadow=true;sc
 const groundT=new THREE.Mesh(new THREE.PlaneGeometry(1,1,120,120).rotateX(-Math.PI/2),ground.material);groundT.receiveShadow=true;groundT.frustumCulled=false;groundT.visible=false;scene.add(groundT);const GT={x:1e12,z:1e12,t:0,min:0};
 function updGroundT(e){if(TERR.ref===null||!game||!game.route){groundT.visible=false;return false} /* not tied to the flat plane's visibility: that plane is hidden during trips, which left the terrain mesh off and scenery floating */const now=performance.now(),cx=Math.round(e.x/50)*50,cz=Math.round(e.z/50)*50;
  if(Math.hypot(cx-GT.x,cz-GT.z)<150&&now-GT.t<4000)return groundT.visible;GT.x=cx;GT.z=cz;GT.t=now;const S=2400,pa=groundT.geometry.attributes.position;let mn=1e9;
- for(let i=0;i<pa.count;i++){const u=(i%121)/120-0.5,v=Math.floor(i/121)/120-0.5,wx=cx+u*S,wz=cz+v*S,y=groundY(wx,wz)-0.6;if(y<mn)mn=y;pa.setXYZ(i,wx,y,wz)}
+ for(let i=0;i<pa.count;i++){const u=(i%121)/120-0.5,v=Math.floor(i/121)/120-0.5,wx=cx+u*S,wz=cz+v*S,y=roadCut(wx,wz,groundY(wx,wz)-0.6)-0.15; /* carved down along the route like the satellite ground: in cuttings the terrain stood above the road and grass showed inside the cabin */if(y<mn)mn=y;pa.setXYZ(i,wx,y,wz)}
  pa.needsUpdate=true;groundT.geometry.computeVertexNormals();groundT.geometry.computeBoundingSphere();GT.min=mn;groundT.visible=true;return true}
 
 // horizon ring (terrain silhouette from real elevation)
