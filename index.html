@@ -13585,7 +13585,8 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  /* 50/52 windscreen frost and mist (DOM layer, in-car view only) */
  const fc=document.createElement('canvas');fc.width=512;fc.height=256;fc.style.cssText='position:fixed;inset:0;width:100%;height:62%;z-index:20;pointer-events:none;opacity:0';document.body.appendChild(fc);
  (function(){const c=fc.getContext('2d');const g=c.createRadialGradient(256,170,40,256,128,330);g.addColorStop(0,'rgba(230,240,250,0.0)');g.addColorStop(0.45,'rgba(230,240,250,0.35)');g.addColorStop(1,'rgba(240,248,255,0.9)');c.fillStyle=g;c.fillRect(0,0,512,256);
-  c.strokeStyle='rgba(255,255,255,0.5)';c.lineWidth=1;for(let i=0;i<260;i++){let x=Math.random()*512,y=Math.random()<0.5?Math.random()*60:200+Math.random()*56;if(Math.random()<0.4)x=Math.random()<0.5?Math.random()*90:422+Math.random()*90;c.beginPath();c.moveTo(x,y);for(let k=0;k<5;k++){x+=(Math.random()-0.5)*26;y+=(Math.random()-0.5)*26;c.lineTo(x,y)}c.stroke()}})();
+  for(let i=0;i<9000;i++){const x=Math.random()*512,y=Math.random()*256,ex=Math.min(x,512-x)/256,ey=Math.min(y,256-y)/128,edge=1-Math.min(ex*1.6,ey*1.3,1);if(Math.random()>edge*edge)continue;c.fillStyle=`rgba(250,252,255,${0.15+Math.random()*0.35})`;c.fillRect(x,y,1+Math.random()*1.5,1+Math.random()*1.5)}
+  c.strokeStyle='rgba(255,255,255,0.16)';c.lineWidth=0.7;for(let i=0;i<70;i++){const sx=Math.random()<0.5?Math.random()*70:442+Math.random()*70,sy=Math.random()*256,a0=Math.random()*6.28;for(let b=0;b<6;b++){const a=a0+b*1.047;c.beginPath();c.moveTo(sx,sy);c.lineTo(sx+Math.cos(a)*7,sy+Math.sin(a)*7);c.stroke()}}})();
  const mc=document.createElement('div');mc.style.cssText='position:fixed;left:0;right:0;top:30%;height:30%;z-index:20;pointer-events:none;opacity:0;background:linear-gradient(to top,rgba(220,228,235,0.75),rgba(220,228,235,0))';document.body.appendChild(mc);
 
  /* 86 news helicopter caption */
