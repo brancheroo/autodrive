@@ -10121,7 +10121,7 @@ void main(){vec3 d=normalize(vd);float h=max(d.y,0.);vec3 c=mix(hor,top,pow(h,.4
  function mySeat(){return 'driver'}
  /* companions */
  const NAMES=['Maya','Jordan','Priya','Leo','Sam','Aiko','Diego','Grace','Omar','Zoe','Theo','Nia'];const KIDN=['Lily','Max','Ava','Noah','Ruby','Eli'];
- const PASS=[];let bubbleT=0,chatT=0,wtT=0,areT=0,lastLog=0,sick=0,act=null;
+ const PASS=[];window.PASS=PASS; /* read by 99s2-physics6 (passenger weight) */let bubbleT=0,chatT=0,wtT=0,areT=0,lastLog=0,sick=0,act=null;
  function bubble(who,txt){const el=UIX.banner('paxSay','left:50%;bottom:160px;transform:translateX(-50%);background:#fffffff0;color:#111;padding:7px 12px;border-radius:14px;font:600 13px system-ui;max-width:60vw;box-shadow:0 4px 16px #0006;transition:opacity .4s');el.textContent=`${who}: ${txt}`;el.style.opacity=1;clearTimeout(el._t);el._t=setTimeout(()=>el.style.opacity=0,4200)}
  function seatPos(spec,seat){const e=_ep(spec),[row,side]=SEATS[seat];return new THREE.Vector3(e.x-(row?0.95:0),e.y-0.02-(row?0.03:0),side*spec.W*0.2)}
  function spawnCompanions(){const G=game,spec=G.spec,m=G.ego.mesh,mine=mySeat();for(const p of PASS)m.remove(p.g);PASS.length=0;const free=['front','rearL','rearR'];
@@ -12370,6 +12370,72 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
     if(window.ACT&&ACT.list&&wind>6)for(const o of ACT.list){if(!/cyclist|moto/.test(o.kind)||!o.mesh)continue;const w=Math.sin(now*1.3+(o.mesh.id%5))*wind*0.004;o.mesh.rotateX(w);P.undo.push([o.mesh,'x',w])}});
    if(P.plot)drawPlot()},
   postRender(){for(let i=P.undo.length-1;i>=0;i--){const [o,k,v]=P.undo[i];if(k==='x')o.rotateX(-v);else if(k==='y')o.position.y-=v}P.undo.length=0;if(P.cam.lengthSq()){camera.position.sub(P.cam);P.cam.set(0,0,0)}}});
+})();
+</script>
+<script>/* mods/99s3-physics7.js */
+/* Physics, batch 7: the parts batch 6 left out.
+   - Guardrails (#50): OSM guard rails and jersey barriers now stop sliding cars. A car that reaches one is redirected
+     along it (most of the speed into the rail is absorbed, a little bounces back) instead of passing through.
+   - Breakaway poles (#51): street-lamp poles snap off at the base and fall away when a sliding car hits them; the car
+     loses about 30% of its speed instead of stopping dead.
+   - Crawler lane (#53): trucks on long climbs (over 4%) move to the right-hand lane and hold about 25 mph.
+   - Siren Doppler (#57): sirens rise in pitch as an emergency vehicle closes in and drop once it has passed.
+   - Caravan camera: with a caravan in tow (F10), the chase camera pulls back so it is no longer inside the caravan.
+   - Replay with forces (#60): F6 pauses and opens a scrub bar over the last 30 s. The car is put back where it was, and
+     arrows show the acceleration (yellow) and cornering (red) forces at that moment. F6 again resumes. */
+(function(){
+ const P={rails:new Map(),poles:[],fall:[],hist:[],scrub:false,arrows:null};window.PHYS7=P;
+ const G=()=>typeof game!=='undefined'?game:null;
+
+ /* poles: keep each lamp's pole and head as they are built */
+ const _al=window.addLamp;if(_al)window.addLamp=function(T,x,z){const n0=T.group.children.length;const r=_al.apply(this,arguments);try{const kids=T.group.children.slice(n0);const pole=kids.find(o=>o.geometry===LAMPGEO.pole),head=kids.find(o=>o.geometry===LAMPGEO.head);if(pole)P.poles.push({x,z,pole,head,T,down:false})}catch(e){}return r};
+
+ /* guard rails: segments per tile, read from the tile's OSM data the first time a sliding car is near it */
+ function railsAt(x,z){const key=Math.floor(toLat(z)/TS)+'_'+Math.floor(toLon(x)/TS);if(P.rails.has(key))return P.rails.get(key);const d=RAW.get(key);if(!d)return [];const segs=[];
+  for(const el of d.elements||[]){const t=el.tags||{};if(el.type!=='way'||!el.geometry||!/guard_rail|jersey_barrier|wall|retaining_wall/.test(t.barrier||''))continue;const q=el.geometry.map(p=>[toX(p.lon),toZ(p.lat)]);for(let i=1;i<q.length;i++)segs.push([q[i-1][0],q[i-1][1],q[i][0],q[i][1]])}
+  P.rails.set(key,segs);return segs}
+ const _reb=window.rebase;if(_reb)window.rebase=function(){P.rails.clear();P.poles.length=0;P.hist.length=0;return _reb.apply(this,arguments)}; /* world origin moved: cached coordinates are stale */
+
+ function looseBodies(g){const out=[];if(g.ego&&g.ego.loose)out.push(g.ego);for(const a of g.agents)if(a.loose)out.push(a);return out}
+
+ MODS.push({id:'physics7',
+  start(){P.hist.length=0;P.fall.length=0},
+  sim(dt){const g=G();if(!g||!g.route||!g.ego||dt<=0)return;const e=g.ego;
+   if(!g.paused){
+    /* guard rails and poles against sliding cars */
+    for(const c of looseBodies(g)){const L=c.loose;if(!L)continue;const sp=Math.hypot(L.vx,L.vz);if(sp<0.5)continue;
+     for(const [ax,az,bx,bz] of railsAt(L.x,L.z)){const dx=bx-ax,dz=bz-az,l2=dx*dx+dz*dz||1,t=clamp(((L.x-ax)*dx+(L.z-az)*dz)/l2,0,1),px=ax+dx*t,pz=az+dz*t,ox=L.x-px,oz=L.z-pz,d=Math.hypot(ox,oz);if(d>1.1||d<1e-3)continue;
+      const nx=ox/d,nz=oz/d,vn=L.vx*nx+L.vz*nz;if(vn>=0)continue;L.vx-=1.2*vn*nx;L.vz-=1.2*vn*nz;L.vx*=0.85;L.vz*=0.85;L.w*=0.5;L.x=px+nx*1.1;L.z=pz+nz*1.1;
+      if(c===e&&!/guardrail/i.test(g.status||''))g.status=`🛡 Guardrail redirected the car (${Math.round(-vn*2.237)} mph into it)`;break}
+     for(const p of P.poles){if(p.down)continue;const dx=L.x-p.x,dz=L.z-p.z;if(dx*dx+dz*dz>1.3*1.3)continue;p.down=true;L.vx*=0.7;L.vz*=0.7;
+      const dir=Math.atan2(L.vz,L.vx);P.fall.push({p,t:0,dir});if(c===e)g.status='💥 Snapped a lamp post';if(c.mesh&&c.mesh.userData)c.mesh.userData.dmg=Math.min(1,(c.mesh.userData.dmg||0)+0.08)}}
+    /* falling poles: tip over about the base in ~1 s */
+    for(let i=P.fall.length-1;i>=0;i--){const F=P.fall[i];F.t=Math.min(1,F.t+dt*1.2);const a=Math.PI/2*0.92*F.t*F.t,{pole,head,x,z}=F.p;if(!pole.parent){P.fall.splice(i,1);continue}
+     const ux=Math.cos(F.dir),uz=Math.sin(F.dir);const base=pole.userData.by??(pole.userData.by=pole.position.y-4);pole.position.set(x+ux*4*Math.sin(a),base+4*Math.cos(a),z+uz*4*Math.sin(a));pole.rotation.set(0,0,0);pole.rotateOnWorldAxis(new THREE.Vector3(-uz,0,ux),a);
+     if(head){head.position.set(x+ux*8*Math.sin(a),base+8*Math.cos(a),z+uz*8*Math.sin(a))}if(F.t>=1)P.fall.splice(i,1)}
+    /* crawler lane */
+    for(const a of g.agents){if(a.kind!=='route'||!a.spec||a.spec.L<8||a.loose)continue;let gr=0;try{gr=(routeY(a.s+20)-routeY(a.s-20))/40}catch(x){}if(gr>0.04){try{const lo=laneOffsetAt(routeLLnh(a.s)[2]);if(a.off!=null)a.off+=(lo-a.off)*Math.min(1,dt*0.3)}catch(x){}if(a.v>11.2)a.v=Math.max(11.2,a.v-1.5*dt);a.crawl=true}else a.crawl=false}
+    /* replay history: last 30 s of the ego pose and forces */
+    const R=window.REAL||{};P.ht=(P.ht||0)+dt;if(P.ht>=0.05){P.ht=0;const m=e.mesh;P.hist.push({x:m.position.x,y:m.position.y,z:m.position.z,h:m.rotation.y,v:e.v,ax:R.ax!=null?R.ax:(e.acc||0),ay:R.ay||0,s:e.s});if(P.hist.length>600)P.hist.shift()}}},
+  preRender(){const g=G();if(!g||!g.ego)return;
+   /* caravan: pull the chase camera back */
+   if(window.PHYS6&&PHYS6.tow&&g.cam==='out'){const fx=Math.cos(g.ego.head),fz=-Math.sin(g.ego.head);camera.position.x-=fx*6;camera.position.z-=fz*6;camera.position.y+=1.2;camera.lookAt(g.ego.mesh.position.x+fx*6,g.ego.mesh.position.y+1,g.ego.mesh.position.z+fz*6)}}});
+
+ /* siren Doppler */
+ const _su=window.sirenUpdate;if(_su)window.sirenUpdate=function(c,d,t){const r=_su.apply(this,arguments);try{const S=c.siren,g=G();if(S&&g&&g.ego){const pd=c._pd??d;const dtv=Math.max(1e-3,(t-(c._pt??t))||0.016);const vr=(pd-d)/dtv;c._pd=d;c._pt=t;const f=343/Math.max(200,343-clamp(vr,-60,60)),cents=1200*Math.log2(f);S.o.detune.setTargetAtTime(cents,audio.ctx.currentTime,0.05);S.o2.detune.setTargetAtTime(cents,audio.ctx.currentTime,0.05)}}catch(e){}return r};
+
+ /* replay scrub */
+ const bar=document.createElement('div');bar.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;background:#000c;color:#dfe;padding:8px 12px;border-radius:10px;font:12px system-ui;display:none;width:min(560px,90vw)';
+ bar.innerHTML='<div style="margin-bottom:4px">Replay · last 30 s · drag to scrub · F6 to resume</div><input id="p7scrub" type="range" min="0" max="599" value="599" style="width:100%"><div id="p7info" style="font:11px ui-monospace,monospace;margin-top:4px"></div>';document.body.appendChild(bar);
+ let saved=null;
+ function arrows(){if(P.arrows)return P.arrows;const mk=c=>new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),1,c,0.5,0.35);P.arrows={a:mk(0xffd040),c:mk(0xff5050)};scene.add(P.arrows.a,P.arrows.c);return P.arrows}
+ function show(i){const g=G(),H=P.hist;if(!H.length)return;i=clamp(i,0,H.length-1);const k=H[i],m=g.ego.mesh;m.position.set(k.x,k.y,k.z);m.rotation.y=k.h;m.updateMatrixWorld(true);
+  const A=arrows(),fx=Math.cos(k.h),fz=-Math.sin(k.h),o=new THREE.Vector3(k.x,k.y+2.2,k.z);A.a.position.copy(o);A.c.position.copy(o);A.a.setDirection(new THREE.Vector3(fx*Math.sign(k.ax||1),0,fz*Math.sign(k.ax||1)));A.a.setLength(Math.max(0.3,Math.abs(k.ax)*0.6),0.5,0.35);
+  A.c.setDirection(new THREE.Vector3(-fz*Math.sign(k.ay||1),0,fx*Math.sign(k.ay||1)));A.c.setLength(Math.max(0.3,Math.abs(k.ay)*0.6),0.5,0.35);A.a.visible=A.c.visible=true;
+  document.getElementById('p7info').textContent=`t −${((H.length-1-i)*0.05).toFixed(1)} s · ${Math.round(k.v*2.237)} mph · accel ${(k.ax/9.81).toFixed(2)} g · cornering ${(k.ay/9.81).toFixed(2)} g`}
+ addEventListener('keydown',ev=>{if(ev.key!=='F6')return;const g=G();if(!g||!g.route||!g.ego)return;
+  if(!P.scrub){P.scrub=true;const m=g.ego.mesh;saved={x:m.position.x,y:m.position.y,z:m.position.z,h:m.rotation.y,paused:g.paused,cam:g.cam};g.paused=true;g.cam='out';bar.style.display='block';const r=document.getElementById('p7scrub');r.max=Math.max(0,P.hist.length-1);r.value=r.max;r.oninput=()=>show(+r.value);show(+r.value)}
+  else{P.scrub=false;const m=g.ego.mesh;m.position.set(saved.x,saved.y,saved.z);m.rotation.y=saved.h;g.paused=saved.paused;g.cam=saved.cam;bar.style.display='none';if(P.arrows){P.arrows.a.visible=P.arrows.c.visible=false}}});
 })();
 </script>
 <script>/* mods/99t-gfxplus.js */
