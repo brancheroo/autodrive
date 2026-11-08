@@ -13494,7 +13494,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  /* 90 HUD */
  const hud=document.createElement('div');hud.style.cssText='position:fixed;left:50%;top:47%;transform:translateX(-50%);z-index:25;pointer-events:none;color:#7ff6e0;font:600 30px ui-monospace,monospace;text-shadow:0 0 6px #0a6;opacity:0.75;display:none;text-align:center';document.body.appendChild(hud);
  /* 88 PIP frame */
- const pipF=document.createElement('div');pipF.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);width:320px;height:110px;border:2px solid #222;border-radius:10px;z-index:24;pointer-events:none;display:none';document.body.appendChild(pipF);
+ const pipF=document.createElement('div');pipF.style.cssText='position:fixed;top:148px;left:50%;transform:translateX(-50%);width:320px;height:110px;border:2px solid #222;border-radius:10px;z-index:24;pointer-events:none;display:none';document.body.appendChild(pipF);
  const rearCam=new THREE.PerspectiveCamera(50,320/110,0.5,1500);
 
  addEventListener('keydown',ev=>{if(ev.target&&/INPUT|TEXTAREA|SELECT/.test(ev.target.tagName))return;const k=ev.key.toLowerCase();
@@ -13535,7 +13535,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   postRender(){const g=G();if(!g)return;const e=g.ego,m=e.mesh.position;
    /* 88 PIP rear view: small second render into a scissored corner */
    pipF.style.display=V.pip?'block':'none';
-   if(V.pip&&renderer.setScissor){try{const W=innerWidth,w=320,h=110,x=(W-w)/2,y=10;const fx=Math.cos(e.head),fz=-Math.sin(e.head);rearCam.position.set(m.x-fx*3.2,m.y+1.3,m.z-fz*3.2) /* just behind the car, so the cabin is not in view */;rearCam.lookAt(m.x-fx*30,m.y+1,m.z-fz*30);
+   if(V.pip&&renderer.setScissor){try{const W=innerWidth,w=320,h=110,x=(W-w)/2,y=150;const fx=Math.cos(e.head),fz=-Math.sin(e.head);rearCam.position.set(m.x-fx*3.2,m.y+1.3,m.z-fz*3.2) /* just behind the car, so the cabin is not in view */;rearCam.lookAt(m.x-fx*30,m.y+1,m.z-fz*30);
     const ac=renderer.autoClear;renderer.autoClear=false;renderer.setScissorTest(true);const vy=window.__GPU?y:innerHeight-y-h; /* WebGPU counts viewport y from the top */renderer.setScissor(x,vy,w,h);renderer.setViewport(x,vy,w,h);const vis=e.mesh.visible;e.mesh.visible=false;
     if(renderer.clearDepth)renderer.clearDepth();renderer.render(scene,rearCam);e.mesh.visible=vis;renderer.setScissorTest(false);renderer.setViewport(0,0,innerWidth,innerHeight);renderer.autoClear=ac}catch(x){V.pip=false;console.warn('pip',x)}}
    /* 100 screenshot */
