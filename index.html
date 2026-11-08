@@ -13870,9 +13870,11 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    the car. The body's pose is recorded before any of those hooks run and the camera is moved and turned by the same change
    after all of them. */
 (function(){
- const S={q0:new THREE.Quaternion(),p0:new THREE.Vector3(),ok:false},dq=new THREE.Quaternion(),inv=new THREE.Quaternion(),v=new THREE.Vector3();
+ const S={q0:new THREE.Quaternion(),p0:new THREE.Vector3(),ok:false},dq=new THREE.Quaternion(),inv=new THREE.Quaternion(),v=new THREE.Vector3(),rel=new THREE.Quaternion(),eu=new THREE.Euler();
  const on=()=>typeof game!=='undefined'&&game&&game.ego&&game.ego.mesh&&game.cam==='in'&&!(game.spec&&game.spec.rideshare);
- MODS.unshift({id:'cabincamA',preRender(){S.ok=false;if(!on())return;const m=game.ego.mesh;m.updateMatrixWorld(true);m.getWorldQuaternion(S.q0);m.getWorldPosition(S.p0);S.ok=true}});
+ MODS.unshift({id:'cabincamA',preRender(){S.ok=false;if(!on())return;const m=game.ego.mesh;m.updateMatrixWorld(true);m.getWorldQuaternion(S.q0);m.getWorldPosition(S.p0);S.ok=true;
+  /* the car's own roll (banked ramps, cornering lean set while driving) was never given to the camera, so on a 7° bank the cabin tilted across a level view: keep the camera's yaw and pitch, take its roll from the car */
+  rel.copy(S.q0).invert().multiply(camera.quaternion);eu.setFromQuaternion(rel,'YXZ');eu.z=0;rel.setFromEuler(eu);camera.quaternion.copy(S.q0).multiply(rel);camera.updateMatrixWorld(true)}});
  MODS.push({id:'cabincamB',preRender(){if(!S.ok||!on())return;const m=game.ego.mesh;m.updateMatrixWorld(true);const q1=new THREE.Quaternion(),p1=new THREE.Vector3();m.getWorldQuaternion(q1);m.getWorldPosition(p1);
   dq.copy(q1).multiply(inv.copy(S.q0).invert());if(1-Math.abs(dq.w)<1e-7&&p1.distanceToSquared(S.p0)<1e-8)return;
   v.copy(camera.position).sub(S.p0).applyQuaternion(dq).add(p1);camera.position.copy(v);camera.quaternion.premultiply(dq);camera.updateMatrixWorld(true)}});
