@@ -13684,8 +13684,8 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    /* 44 */
    const hot=(wx.temp??18)>28&&!g.dark&&!wet&&(wx.cloud??0)<0.4&&e.v>12;mirMat.opacity=hot?0.45:0;mirage.visible=hot;if(hot){const d=110+Math.sin(performance.now()/1700)*15;try{const [x,z,dx,dz]=routeXZ(e.s+d,e.off!=null?e.off:laneOffsetAt(routeLLnh(e.s)[2]));mirage.position.set(x,routeY(e.s+d)+0.05,z);mirage.rotation.y=Math.atan2(dx,dz)}catch(x){mirage.visible=false}}
    /* 20/21 fog and sun tint, undone after drawing */
-   _fogD.f=0;if(C.haze&&scene.fog&&C.haze.k>0){const H=C.haze,F=scene.fog;_fogD.f=1;_fogD.c=F.color.clone();if(F.isFogExp2){_fogD.d=F.density;F.density=F.density+H.k*(H.kind==='dust'?0.004:0.0025)}else{_fogD.n=F.near;_fogD.d=F.far;F.far=lerp(F.far,H.kind==='dust'?260:520,H.k);F.near=Math.min(F.near,F.far*0.2)}F.color.lerp(H.col,H.k*0.85);
-    if(typeof sun!=='undefined'){sunSave=sun.color.clone();sun.color.lerp(sunC.set(H.kind==='smoke'?0xff7a3a:0xd8a070),H.k*0.6)}}},
+   _fogD.f=0;if(C.haze&&scene.fog&&C.haze.k>0){const H=C.haze,F=scene.fog;_fogD.f=1;_fogD.c=F.color.clone();if(F.isFogExp2){_fogD.d=F.density;F.density=F.density+H.k*(H.kind==='dust'?0.004:0.0025)}else{_fogD.n=F.near;_fogD.d=F.far;F.far=lerp(F.far,H.kind==='dust'?260:H.kind==='smog'?1600:520,H.kind==='smog'?H.k*0.6:H.k); /* smog is a light distant haze: at full strength it blacked out city streets */F.near=Math.min(F.near,F.far*0.2)}F.color.lerp(H.col,H.k*(H.kind==='smog'?0.4:0.85));
+    if(typeof sun!=='undefined'&&H.kind!=='smog'){sunSave=sun.color.clone();sun.color.lerp(sunC.set(H.kind==='smoke'?0xff7a3a:0xd8a070),H.k*0.6)}}},
   postRender(){if(_fogD.f&&scene.fog){const F=scene.fog;F.color.copy(_fogD.c);if(F.isFogExp2)F.density=_fogD.d;else{F.near=_fogD.n;F.far=_fogD.d}_fogD.f=0}if(sunSave&&typeof sun!=='undefined'){sun.color.copy(sunSave);sunSave=null}}});
 })();
 </script>
