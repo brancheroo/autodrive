@@ -3023,7 +3023,7 @@ function place(a,off){if(a.loose)return; // sliding after a collision: the physi
  a.lastYawRate=d*k;
  {const fx=Math.cos(a.head),fz=-Math.sin(a.head);x=ra[0]+fx*wb;z=ra[1]+fz*wb} /* the rear axle rides the lane and the body hangs forward of it along its actual heading, at every speed: no more spinning about the centre */
  a.x=a.x===0&&a.z===0?x:lerp(a.x,x,0.5);a.z=a.z===0&&a.z===0?z:lerp(a.z,z,0.5);
- let y=routeY(a.s,off||0)+0.08;const isEgo=a===game.ego;if(isEgo||(a.rayT=(a.rayT||0)+1)%6===0)a.roadY=roadSurfaceY(a.x,a.z,y,15,a.y!=null?a.y-0.05:y);if(a.roadY!=null&&(Math.abs(a.roadY-y)<1.2||(a.y!=null&&Math.abs(a.roadY+0.05-a.y)<1.5)||(a.roadY>y&&a.roadY-y<12&&isEgo)))y=a.roadY+0.05; /* your car may climb onto a drawn deck up to 12 m above the route height (ramps whose drawn profile is higher than the route's) */else if(a.roadY!=null&&a.roadY+0.03>y&&a.roadY-y<1.2)y=a.roadY+0.03; /* sit on the drawn pavement whenever it is found (not on a road in a tunnel below or above) */
+ let y=routeY(a.s,off||0)+0.08;const isEgo=a===game.ego;if(isEgo||(a.rayT=(a.rayT||0)+1)%6===0)a.roadY=roadSurfaceY(a.x,a.z,y,15,a.y!=null?a.y-0.05:y);if(a.roadY!=null&&(Math.abs(a.roadY-y)<1.2||(a.y!=null&&Math.abs(a.roadY+0.05-a.y)<1.5)))y=a.roadY+0.05;else if(a.roadY!=null&&a.roadY+0.03>y&&a.roadY-y<1.2)y=a.roadY+0.03; /* sit on the drawn pavement whenever it is found (not on a road in a tunnel below or above) */
  if(a===game.ego&&a.spec.hyper&&window.HOVER&&HOVER.on)y=Math.max(y,a.roadY!=null?a.roadY:y)+HOVER.h; /* hover: float HOVER.h metres above the road surface */
  a.y=a.y===undefined?y:(y>a.y?y:lerp(a.y,y,0.5));
  const m=a.mesh;m.position.set(a.x,a.y,a.z);m.rotation.y=a.head;
