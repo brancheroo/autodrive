@@ -13667,7 +13667,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  MODS.push({id:'gfx100c',
   start(){ensure();const g=G();if(g)pickHaze(g);lastHourT=0},
   sim(dt){const g=G();if(!g||g.paused)return;lastHourT-=dt;if(lastHourT<=0){lastHourT=30;try{C.hour=liveHour()}catch(x){C.hour=new Date().getHours()}}
-   if(C.haze){const H=C.haze;H.t=(H.t||0)+dt;H.k=Math.min(1,H.k+dt/40)*(H.kind==='dust'?0.7+0.3*Math.sin(H.t*0.15):1)}},
+   if(C.haze){const H=C.haze;H.t=(H.t||0)+dt;H.b=Math.min(1,(H.b||0)+dt/40);H.k=H.b*(H.kind==='dust'?0.7+0.3*Math.sin(H.t*0.15):1) /* gusts vary around a slow build-up */}},
   preRender(){const g=G();if(!g){root.visible=false;return}root.visible=true;const e=g.ego,m=e.mesh,wx=W(),wet=!!(wx.wet||wx.key==='rain');
    let ry=m.position.y;try{ry=routeY(e.s)}catch(x){}
    /* 7 */
