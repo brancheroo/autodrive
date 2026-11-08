@@ -3671,7 +3671,7 @@ function updateCamera(dt){
   const alt=clamp(60*G.zoom,15,600),ey=e.mesh.position.y,yaw=e.head+G.yaw,tilt=clamp(G.pitch,-0.2,0.9)*0.9;camera.position.set(e.x-Math.cos(yaw)*alt*Math.sin(tilt),ey+alt,e.z+Math.sin(yaw)*alt*Math.sin(tilt));camera.up.set(Math.cos(yaw),0,-Math.sin(yaw));camera.lookAt(e.x,ey,e.z);camera.up.set(0,1,0);camera.fov=50;camera.updateProjectionMatrix();return}
  if(G.cam==='in'){
   const eye=eyePos(spec),ed=eyeDrop(spec,m);eye.x-=ed.x;eye.y-=ed.y;eye.applyMatrix4(m.matrixWorld);camera.position.copy(eye);
-  const yaw=e.head+G.yaw,pitch=-0.17+G.pitch;
+  const yaw=e.head+G.yaw,pitch=-0.07+G.pitch; /* was −0.17 (10° down): with the eye now under the header the windscreen sits centred */
   camera.lookAt(eye.x+Math.cos(yaw)*Math.cos(pitch),eye.y+Math.sin(pitch),eye.z-Math.sin(yaw)*Math.cos(pitch));
   camera.fov=clamp(G.fov/G.zoom,15,100);
   if(m.userData.cab)m.userData.cab.visible=false;m.userData.body.visible=false;m.userData.hood.visible=true;m.userData.interior.visible=true;
