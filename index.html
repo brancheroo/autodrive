@@ -5,7 +5,7 @@
    In WebGPU mode this turns the rest of the page into inert text, loads three r159 (the last classic build) plus its WebGPURenderer module (whose
    `import 'three'` is mapped onto that same global THREE through an import map), then rebuilds this page without the
    r149 script so the game builds a WebGPURenderer instead. Falls back to WebGL if the browser has no WebGPU. */
-(function(){if(window.__GPUBOOT)return;let want=false;try{want=/[?&]renderer=webgpu/.test(location.search)||localStorage.getItem('renderer')==='webgpu'}catch(e){} /* WebGL by default: WebGPU mode ran the heap past 1.4 GB and blacked out the main view (2026-11-04); opt in from the start screen */
+(function(){if(window.__GPUBOOT)return;let want=true;try{want=/[?&]renderer=webgpu/.test(location.search)||localStorage.getItem('renderer')!=='webgl'}catch(e){} /* WebGPU by default wherever the browser has it (2026-11-07); WebGL with ?renderer=webgl, a saved WebGL choice, or no WebGPU */
  if(/[?&]renderer=webgl/.test(location.search))want=false;if(!want||!navigator.gpu)return;window.__GPUBOOT=1;document.write('<plaintext id="gpuInert" style="display:none">'); /* the rest of this file becomes inert text; the page finishes parsing normally (window.stop() left Chrome never painting) */
  (async()=>{try{const ad=await navigator.gpu.requestAdapter();if(!ad)throw new Error('no WebGPU adapter');
   const html=await (await fetch(location.href,{cache:'no-store'})).text();
