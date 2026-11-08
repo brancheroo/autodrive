@@ -13435,7 +13435,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    90 windscreen head-up display (;) · 100 double-resolution screenshot (') */
 (function(){
  const G=()=>typeof game!=='undefined'&&game&&game.route&&game.ego?game:null;
- const V={orbit:false,drone:false,pip:false,hud:true,shot:false,oa:0};window.GFX100A=V;
+ const V={orbit:false,drone:false,pip:false,hud:false,shot:false,oa:0};window.GFX100A=V;
  const dark=g=>!!g.dark;
  const root=new THREE.Group();root.name='gfx100a';
  let added=false;const ensure=()=>{if(!added&&typeof scene!=='undefined'){scene.add(root);added=true}};
