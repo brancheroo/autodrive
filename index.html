@@ -3006,9 +3006,12 @@ function routeY(s,off=0){const R=game.route,[,,i]=routeLLnh(s),h0=NODEH.get(R.no
 const RGY=new Map();let RGYr=null;function routeGY(s){const R=game.route;if(RGYr!==R){RGY.clear();RGYr=R}const k=Math.round(s),c=RGY.get(k);if(c!==undefined)return c;let sum=0,n=0,ok=true;for(let d=-12;d<=12;d+=4){const p=routeXZ(clamp(k+d,0,R.total),0);if(elevLL(toLat(p[1]),toLon(p[0]))===null)ok=false;sum+=groundY(p[0],p[1]);n++}const v=sum/n;if(ok){RGY.set(k,v);if(RGY.size>20000)RGY.clear()}return v}
 function place(a,off){if(a.loose)return; // sliding after a collision: the physics owns the pose
 
- const [x,z,dx,dz,idx]=routeXZ(a.s,off!==undefined?off:laneOffsetAt(routeLLnh(a.s)[2]));
- const hw=a.v>40?Math.min(a.v*0.12,90):0,hb=routeXZ(a.s-2-hw,0),hf=routeXZ(a.s+3+hw,0); /* fast cars read heading over a wider window (~0.25 s of travel) so polyline vertices don't snap the yaw */let hh=Math.atan2(-(hf[1]-hb[1]),hf[0]-hb[0]);
- if(a.dir<0)hh+=Math.PI;
+ const lo=off!==undefined?off:laneOffsetAt(routeLLnh(a.s)[2]);let [x,z,dx,dz,idx]=routeXZ(a.s,lo);
+ /* four-wheel kinematics: both axles ride the lane line, the body points from the rear axle to the front axle and sits between them; the old pose pinned the body centre to the line and spun it about that point like a pole */
+ const wb=Math.min(4.5,((a.spec&&a.spec.L)||4.6)*0.6)/2,dd=a.dir<0?-1:1,ra=routeXZ(a.s-wb*dd,lo),fa=routeXZ(a.s+wb*dd,lo);
+ const hw=a.v>40?Math.min(a.v*0.12,90):0;let hh;if(hw>0){const hb=routeXZ(a.s-2-hw,0),hf=routeXZ(a.s+3+hw,0);hh=Math.atan2(-(hf[1]-hb[1]),hf[0]-hb[0])} /* fast cars read heading over a wider window (~0.25 s of travel) so polyline vertices don't snap the yaw */
+ else{hh=Math.atan2(-(fa[1]-ra[1]),fa[0]-ra[0]);if(a.dir<0)hh+=Math.PI;x=(ra[0]+fa[0])/2;z=(ra[1]+fa[1])/2}
+ if(a.dir<0&&hw>0)hh+=Math.PI;
  let d=hh-a.head;d=Math.atan2(Math.sin(d),Math.cos(d));
  const k=clamp(a.v*0.12+0.05,0.05,1);
  if(Math.abs(d)>1.2&&a.x===0)a.head=hh;else a.head+=d*k;
