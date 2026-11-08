@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>window.LOWMEM=/^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);/* Experimental WebGPU mode (start screen or ✨ FX → Renderer, or ?renderer=webgpu). The normal game uses three r149 + WebGL.
+<script>window.LOWMEM=/^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);/* WebGPU mode (three r175) is the default where the browser supports it; WebGL (three r149) is used with ?renderer=webgl, after choosing it in ✨ FX → Renderer, or when WebGPU is unavailable or fails to start.
    In WebGPU mode this turns the rest of the page into inert text, loads three r159 (the last classic build) plus its WebGPURenderer module (whose
    `import 'three'` is mapped onto that same global THREE through an import map), then rebuilds this page without the
    r149 script so the game builds a WebGPURenderer instead. Falls back to WebGL if the browser has no WebGPU. */
