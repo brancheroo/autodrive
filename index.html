@@ -12196,6 +12196,64 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
  R.gustK=sp=>clamp((sp.H||1.45)*(sp.L||4.5)/((((typeof ENERGY!=='undefined'&&ENERGY[sp.id])||{}).kg||1600)/1000)/4,0.4,3);
 })();
 </script>
+<script>/* mods/99s-physics5.js */
+/* Physics, batch 5: the pieces 99d / 99o / 99p / 99q / 99r did not cover yet.
+   - Launch control (#28): from a standstill with the throttle pinned, performance cars and EVs hold launch for ~2.5 s (LAUNCH).
+   - Traffic grip (#45): other cars can only brake as hard as the road allows (dry ~1 g, wet 0.6, snow 0.3, ice 0.12).
+   - Pile-ups (#43): when a crash happens ahead, cars close behind in the same lane react ~0.9 s late, so chain collisions can follow.
+   - Debris punctures (#44): driving over crash debris or a cone can puncture a tyre (uses 99p's blowout state).
+   - Rumble strips (#48): drifting onto the edge of a fast road buzzes the cabin.
+   - Expansion joints (#49): a thump every ~25 m on bridge decks.
+   - Motorcycle lean (#47): motorcycles lean into turns by atan(v·yaw rate ÷ g).
+   - Chassis flex (#20): long buses and trucks twist slightly as they move.
+   - Jackknife (#46): a semi braking hard on a slippery road swings its trailer out.
+   - Physics overlay (#50): F8 shows the friction circle, slip, tyre temperature, wear, loads and active effects. */
+(function(){
+ const P={dbg:false,launch:0,still:0,joint:0,lastS:null,crashN:0,shake:0,undo:[]};window.PHYS5=P;
+ const REALx=()=>(window.REAL&&REAL.x)||null,G=()=>typeof game!=='undefined'?game:null;
+ const muRoad=()=>{const W=typeof WX!=='undefined'?WX:{};if(W.ice)return 0.12;if(W.snowCover||(W.snow||0)>0.5)return 0.3;if(W.wet||W.key==='rain')return 0.6;return 1};
+ const launchCar=s=>!!s&&(s.ev||s.hyper||/sport|super|hyper|gt|coupe/.test(s.style||'')||(s.top||0)>=150||/electric|EV|motor/i.test(s.dash||''));
+ const isBike=a=>a.spec&&(a.spec.style==='harley'||a.spec.moped||a.spec.hbike||a.spec.ebike);
+
+ /* overlay */
+ const cv=document.createElement('canvas');cv.width=230;cv.height=210;cv.style.cssText='position:fixed;right:8px;bottom:120px;z-index:40;background:#000b;border-radius:8px;display:none;pointer-events:none';document.body.appendChild(cv);const cx=cv.getContext('2d');
+ addEventListener('keydown',ev=>{if(ev.key==='F8'){P.dbg=!P.dbg;cv.style.display=P.dbg?'block':'none'}});
+ function draw(){const g=G();if(!g||!g.ego)return;const R=window.REAL||{},X=REALx()||{},e=g.ego;cx.clearRect(0,0,230,210);
+  const ox=60,oy=70,rr=50;cx.strokeStyle='#5a6b7a';cx.lineWidth=1;for(const k of [0.5,1]){cx.beginPath();cx.arc(ox,oy,rr*k,0,7);cx.stroke()}cx.beginPath();cx.moveTo(ox-rr,oy);cx.lineTo(ox+rr,oy);cx.moveTo(ox,oy-rr);cx.lineTo(ox,oy+rr);cx.stroke();
+  const ax=(R.ax||0)/9.81,ay=(R.ay||0)/9.81,u=R.util||0;cx.fillStyle=u>0.95?'#ff5050':u>0.8?'#ffd040':'#50e080';cx.beginPath();cx.arc(ox+clamp(ay,-1.5,1.5)*rr,oy-clamp(ax,-1.5,1.5)*rr,5,0,7);cx.fill();
+  cx.fillStyle='#cfe';cx.font='11px ui-monospace,monospace';const L=[`grip used ${Math.round(u*100)}%`,`slip ${((R.alpha||0)*57.3).toFixed(1)}°`,`tyre ${Math.round(R.tT||0)}°C wear ${Math.round((R.wear||0)*100)}%`,`μ road ${muRoad()}`,`${R.spin?'WHEELSPIN ':''}${R.slide?'SLIDE ':''}${R.aqua?'AQUAPLANE ':''}${X.blown>=0?'FLAT ':''}${P.launch>0?'LAUNCH':''}`];
+  L.forEach((t,i)=>cx.fillText(t,8,140+i*13));cx.fillText(`${(Math.hypot(ax,ay)).toFixed(2)} g`,ox+rr+8,oy-30);
+  if(R.loads&&R.loads.length===4){const lb=['FL','FR','RL','RR'];R.loads.forEach((l,i)=>{const x=135+(i%2)*45,y=40+Math.floor(i/2)*45,s=clamp(l/(R.loads.reduce((a,b)=>a+b,0)/4||1),0.3,1.8);cx.fillStyle='#4a90d0';cx.fillRect(x,y,30*s/1.8,30*s/1.8);cx.fillStyle='#cfe';cx.fillText(lb[i],x,y-2)})}
+  cx.fillText('F8 physics',140,20)}
+
+ MODS.push({id:'physics5',
+  start(){P.launch=0;P.still=0;P.lastS=null;P.crashN=(typeof CRASH!=='undefined'&&CRASH.log)?CRASH.log.length:0},
+  sim(dt){const g=G();if(!g||!g.route||!g.ego||g.paused||dt<=0)return;const e=g.ego,X=REALx();
+   /* launch control */
+   if(e.v<0.5)P.still+=dt;else{if(P.still>0.8&&(e.acc||0)>3&&launchCar(g.spec))P.launch=2.5;P.still=0}
+   if(P.launch>0){P.launch-=dt;if(e.v<27&&!/crash|brake/i.test(g.status||''))g.status='🚀 Launch control'}
+   /* debris punctures */
+   if(window.ACT&&ACT.list&&X)for(const o of ACT.list){if(o._p5||o.s==null||!/wreck|cone/.test(o.kind))continue;if(Math.abs(o.s-e.s)<1.6&&Math.abs((o.lat||0)-(e.off||0))<0.9){o._p5=1;if(X.blown<0&&Math.random()<(o.kind==='wreck'?0.35:0.04)){X.blown=Math.floor(Math.random()*4);g.status='💥 Puncture from road debris'}}}
+   /* rumble strips: fast roads, a tyre over the outer edge line */
+   P.shake=0;if(g.limitMph>=50&&e.v>12&&typeof laneOffsetAt==='function'&&!e.loose){const lo=laneOffsetAt(routeLLnh(e.s)[2]),n=window.LANES?LANES.count(e.s):1,hw=((g.spec&&g.spec.W)||1.9)/2,off=e.off!=null?e.off:lo;
+    if(off+hw>lo+1.7||off-hw<lo-(n-1)*3.6-1.7){P.shake=0.006;if(!/rumble/i.test(g.status||''))g.status='〰️ Rumble strip'}}
+   /* expansion joints on bridges */
+   if(X&&X.bridge&&e.v>3){if(P.lastS==null)P.lastS=e.s;if(e.s-P.lastS>25){P.lastS=e.s;P.joint=0.08}}else P.lastS=null;if(P.joint>0)P.joint-=dt;
+   /* pile-ups: a new crash ahead makes close followers late to react */
+   if(typeof CRASH!=='undefined'&&CRASH.log&&CRASH.log.length>P.crashN){for(let i=P.crashN;i<CRASH.log.length;i++){const c=CRASH.log[i];const src=g.agents.find(a=>a.kind==='route'&&a.v<3&&Math.abs(a.s-e.s)<400);if(!src)continue;for(const a of g.agents)if(a!==src&&a.kind==='route'&&a.s<src.s&&src.s-a.s<50&&Math.abs((a.off||0)-(src.off||0))<1.8)a._late=0.9}P.crashN=CRASH.log.length}
+   /* traffic grip and late reactions */
+   const mu=muRoad();for(const a of g.agents){if(a.loose||a.kind==='way'&&!a.init)continue;if(a._pv!=null){if(a._late>0){a._late-=dt;if(a.v<a._pv)a.v=a._pv}else if(mu<1){const maxD=mu*9.81*0.95;if(a._pv-a.v>maxD*dt)a.v=a._pv-maxD*dt}}a._pv=a.v}},
+  preRender(){const g=G();P.undo.length=0;if(!g||!g.route||!g.ego)return;const now=performance.now()/1000,mu=muRoad();
+   for(const a of g.agents){const m=a.mesh;if(!m||!m.visible)continue;const dx=m.position.x-g.ego.x,dz=m.position.z-g.ego.z;if(dx*dx+dz*dz>250*250)continue;
+    if(isBike(a)){const h=a.head||0;let yr=0;if(a._h5!=null){let d=h-a._h5;d=Math.atan2(Math.sin(d),Math.cos(d));yr=d/Math.max(0.008,now-(a._t5||now))}a._h5=h;a._t5=now;a._lean=lerp(a._lean||0,clamp(-Math.atan(a.v*yr/9.81),-0.7,0.7),0.2);if(Math.abs(a._lean)>0.002){m.rotateX(a._lean);P.undo.push([m,'x',a._lean])}}
+    else if(a.spec&&a.spec.L>8&&a.v>1){const f=Math.sin(now*1.7+(a.mesh.id%7))*0.004*Math.min(1,a.v/20);m.rotateX(f);P.undo.push([m,'x',f])}
+    const tr=m.userData.trailer;if(tr&&tr.rotation){const want=(mu<0.7&&(a.acc||0)<-4)?clamp((-(a.acc||0)-4)*0.05*(1-mu),0,0.5)*((a.mesh.id%2)?1:-1):0;a._jk=lerp(a._jk||0,want,want?0.02:0.05);if(Math.abs(a._jk)>0.002){tr.rotation.y+=a._jk;P.undo.push([tr,'ty',a._jk])}}}
+   for(const [o,k] of P.undo)if(k==='x')o.updateMatrixWorld(true);
+   if(g.cam==='in'){const s=P.shake?(Math.random()-0.5)*P.shake*2:0,j=P.joint>0?-0.012*Math.sin((0.08-P.joint)/0.08*Math.PI):0;if(s||j){camera.position.y+=s+j;P.camDy=s+j}else P.camDy=0}
+   if(P.dbg)draw()},
+  postRender(){for(let i=P.undo.length-1;i>=0;i--){const [o,k,v]=P.undo[i];if(k==='x'){o.rotateX(-v);o.updateMatrixWorld(true)}else if(k==='ty')o.rotation.y-=v}P.undo.length=0;if(P.camDy){camera.position.y-=P.camDy;P.camDy=0}}});
+})();
+</script>
 <script>/* mods/99t-gfxplus.js */
 /* Graphics+ : a post-processing pipeline for the main view (FXAA, bloom, lens flare, sun rays, colour grading, vignette,
    film grain, chromatic aberration, sharpening, speed blur, heat haze, auto exposure), speed camera effects, a frame-time
