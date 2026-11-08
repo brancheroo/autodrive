@@ -811,6 +811,11 @@ async function fetchTileLocal(key){const [i,j]=key.split('_').map(Number),lat=(i
  let data=null;if(r.osm.has(key)){try{data=await (await fetch(r.path+'osm/'+key+'.json')).json();data.source='offline pack: '+r.name}catch(e){}}
  if(r.bldg.has(key)){try{const b=await (await fetch(r.path+'bldg/'+key+'.json')).json();if(!data)data=null;return{data,sfb:b,r}}catch(e){}}
  return data?{data,r}:null}
+/* OpenFreeMap tiles are a stand-in (its low-zoom data drops most buildings): keep asking Overpass in the background and swap the full tile in when it answers */
+async function upgradeTile(key,q){for(let a=0;a<4;a++){await sleep(a*4000);if(Date.now()<opBackoff)await sleep(opBackoff-Date.now());if(!RAW.has(key))return;
+ for(const u of [OVERPASS[(opIdx+a)%OVERPASS.length],OVERPASS[(opIdx+a+1)%OVERPASS.length]]){try{const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),25000);const r=await fetch(u,{method:'POST',body:'data='+encodeURIComponent(q),signal:ac.signal});clearTimeout(tm);if(r.status===429){opBackoff=Date.now()+8000;continue}if(!r.ok)continue;const j=await r.json();if(!j||!j.elements||!RAW.has(key))continue;
+  RAW.set(key,j);IDB.put('v5_'+key,j);UPGRADED=(typeof UPGRADED==='number'?UPGRADED:0)+1;if(TILES.has(key))unloadTile(key); /* manageTiles rebuilds it from the full data next frame */return}catch(e){}}}}
+let UPGRADED=0;
 async function fetchTile(key){
  if(RAW.has(key)||PENDING.has(key))return;PENDING.add(key);netBusy++;
  {const L=await fetchTileLocal(key);if(L&&L.data){if(L.sfb)L.data.sfb=L.sfb;RAW.set(key,L.data);roadsArrived(key);PENDING.delete(key);netBusy--;LOCAL_USED++;if(game&&game.route&&!TILES.size)buildTile(key);return} /* later tiles: built one per frame by manageTiles */if(L&&L.sfb)SFB.set(key,L.sfb)}
@@ -821,7 +826,7 @@ async function fetchTile(key){
   try{const ctl=[];const one=async u=>{if(Date.now()<opBackoff)throw new Error('backoff') /* rate-limited: let OpenFreeMap answer instead of sleeping */;const ac=new AbortController();ctl.push(ac);const tm=setTimeout(()=>ac.abort(),6000); /* was 14 s: a stalled mirror held a tile for ~15 s before the OpenFreeMap fallback, and it popped in around the car */try{const r=await fetch(u,{method:'POST',body:'data='+encodeURIComponent(q),signal:ac.signal});if(r.status===429)opBackoff=Date.now()+8000;if(!r.ok)throw new Error(r.status);return await r.json()}finally{clearTimeout(tm)}};
    // race two mirrors; keep whichever answers first
    let ofmWon=false;const ofmLate=(async()=>{await sleep(attempt?0:2500);const o=await fetchTileOFM(key);if(!o||!o.elements||!o.elements.length)throw new Error('ofm empty');ofmWon=true;return o})(); /* OpenFreeMap joins the race after 2.5 s: a slow Overpass mirror used to leave the tile empty for 7–15 s, so scenery popped in next to the car */
-   const j=await Promise.any([one(OVERPASS[opIdx%OVERPASS.length]),one(OVERPASS[(opIdx+1)%OVERPASS.length]),ofmLate]);ctl.forEach(c=>c.abort());if(!j||!j.elements)throw new Error('bad');RAW.set(key,j);roadsArrived(key);if(ofmWon)OFM_USED++;else IDB.put('v5_'+key,j);break}
+   const j=await Promise.any([one(OVERPASS[opIdx%OVERPASS.length]),one(OVERPASS[(opIdx+1)%OVERPASS.length]),ofmLate]);ctl.forEach(c=>c.abort());if(!j||!j.elements)throw new Error('bad');RAW.set(key,j);roadsArrived(key);if(ofmWon){OFM_USED++;upgradeTile(key,q)}else IDB.put('v5_'+key,j);break}
   catch(err){opIdx++;
    if(attempt>=0){try{const j=await fetchTileOFM(key);if(j.elements.length){RAW.set(key,j);roadsArrived(key);OFM_USED++;break}}catch(e2){}}
    await sleep(1000+attempt*1500)}}
