@@ -13618,6 +13618,72 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    else{cap.style.display='none';if(B.fov){camera.fov=B.fov;B.fov=0;camera.updateProjectionMatrix()}}}});
 })();
 </script>
+<script>/* mods/99zzg-gfx100c.js */
+/* Graphics 100, batch C (plain meshes, WebGL and WebGPU):
+   7 headlight glare streaks on wet roads at night · 19 morning fog lying in low ground
+   20 dust storms in the desert states on some trips · 21 wildfire smoke (orange haze, dim red sun) in the West in late summer
+   44 heat mirage on hot sunny roads: a shimmering sky-coloured patch far ahead that recedes as you drive
+   59 number plates on traffic cars, styled loosely by state colour */
+(function(){
+ const G=()=>typeof game!=='undefined'&&game&&game.route&&game.ego?game:null;
+ const C={haze:null,hour:12};window.GFX100C=C;
+ const root=new THREE.Group();root.name='gfx100c';let added=false;const ensure=()=>{if(!added&&typeof scene!=='undefined'){scene.add(root);added=true}};
+ const W=()=>typeof WX!=='undefined'?WX:{};
+ function ctex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+ const flat=(a,b)=>{const g=new THREE.PlaneGeometry(a,b);g.rotateX(-Math.PI/2);return g};
+
+ /* 7 glare: two long additive streaks ahead of the headlights */
+ const glTex=ctex(32,256,(c,w,h)=>{const g=c.createLinearGradient(0,h,0,0);g.addColorStop(0,'rgba(255,240,200,0.9)');g.addColorStop(0.5,'rgba(255,230,180,0.35)');g.addColorStop(1,'rgba(255,230,180,0)');c.fillStyle=g;c.fillRect(0,0,w,h);const s=c.createLinearGradient(0,0,w,0);c.globalCompositeOperation='destination-in';s.addColorStop(0,'rgba(0,0,0,0)');s.addColorStop(0.5,'rgba(0,0,0,1)');s.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=s;c.fillRect(0,0,w,h)});
+ const glMat=new THREE.MeshBasicMaterial({map:glTex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4,fog:false});
+ const glare=[0,1].map(()=>{const g=flat(0.9,22);g.translate(0,0,-11);const m=new THREE.Mesh(g,glMat);m.renderOrder=2;m.frustumCulled=false;root.add(m);return m});
+
+ /* 19 valley fog: soft stacked sheets at the bottom of the terrain around the car */
+ const fogTex=ctex(256,256,(c,w,h)=>{for(let i=0;i<70;i++){const x=Math.random()*w,y=Math.random()*h,r=30+Math.random()*60,g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'rgba(235,238,242,0.35)');g.addColorStop(1,'rgba(235,238,242,0)');c.fillStyle=g;c.fillRect(0,0,w,h)}});
+ fogTex.wrapS=fogTex.wrapT=THREE.RepeatWrapping;fogTex.repeat.set(6,6);
+ const vfMat=new THREE.MeshBasicMaterial({map:fogTex,transparent:true,depthWrite:false,opacity:0,side:THREE.DoubleSide});
+ const vfog=[0,1,2].map(i=>{const m=new THREE.Mesh(flat(1600,1600),vfMat);m.renderOrder=3;m.frustumCulled=false;root.add(m);return m});
+
+ /* 44 mirage */
+ const mirTex=ctex(128,64,(c,w,h)=>{const g=c.createRadialGradient(64,32,4,64,32,62);g.addColorStop(0,'rgba(255,255,255,0.9)');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.save();c.scale(1,0.5);c.beginPath();c.arc(64,64,62,0,7);c.fill();c.restore()});
+ const mirMat=new THREE.MeshBasicMaterial({map:mirTex,color:0xbcd4ec,transparent:true,depthWrite:false,opacity:0,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+ const mirage=new THREE.Mesh(flat(7,22),mirMat);mirage.renderOrder=2;mirage.frustumCulled=false;root.add(mirage);
+
+ /* 59 plates: one shared atlas, so the car baker can still merge them into the body */
+ const PL=16,STY=[['#f4f4f4','#1a3a8a'],['#fff4c8','#1a1a1a'],['#e8f0ff','#b01818'],['#f0f6e8','#205a20'],['#ffffff','#3a2a7a'],['#f8e8d0','#7a2a10'],['#fdfdfd','#111'],['#ffe36a','#111']];
+ const plTex=ctex(512,512,(c)=>{for(let i=0;i<PL;i++){const x=(i%4)*128,y=Math.floor(i/4)*128,[bg,fg]=STY[i%STY.length];c.fillStyle=bg;c.fillRect(x+2,y+40,124,50);c.strokeStyle=fg;c.lineWidth=3;c.strokeRect(x+4,y+42,120,46);c.fillStyle=fg;c.font='bold 27px ui-monospace,monospace';c.textAlign='center';c.textBaseline='middle';const L='ABCDEFGHJKLMNPRSTUVWXYZ',r=()=>L[(Math.random()*L.length)|0],d=()=>(Math.random()*10)|0;c.fillText(`${d()}${r()}${r()}${r()}${d()}${d()}${d()}`,x+64,y+67)}});
+ const plMat=new THREE.MeshLambertMaterial({map:plTex});
+ function plateGeo(i){const g=new THREE.PlaneGeometry(0.52,0.21);const u=(i%4)/4,v=1-Math.floor(i/4)/4,uv=g.attributes.uv;for(let k=0;k<uv.count;k++){uv.setXY(k,u+uv.getX(k)/4,v-0.25+(40/128+uv.getY(k)*50/128)/4)}g.rotateY(-Math.PI/2);return g}
+ const plateGeos=[...Array(PL)].map((_,i)=>plateGeo(i));
+ const _na=window.newAgent;if(_na)window.newAgent=function(spec){const a=_na.apply(this,arguments);try{if(a&&a.mesh&&spec&&!spec.hbike&&!spec.moped&&!spec.ebike&&spec.style!=='harley'&&!a.mesh.userData.plate){a.mesh.updateMatrixWorld(true);const bb=new THREE.Box3().setFromObject(a.mesh);const inv=new THREE.Matrix4().copy(a.mesh.matrixWorld).invert();bb.applyMatrix4(inv);
+   const p=new THREE.Mesh(plateGeos[(Math.random()*PL)|0],plMat);p.position.set(bb.min.x-0.012,Math.max(0.35,bb.min.y+0.42),0);p.scale.setScalar(spec.L>8?1.15:1);a.mesh.add(p);a.mesh.userData.plate=p}}catch(e){}return a};
+
+ /* 20/21 haze events, chosen once per trip */
+ const _fogC=new THREE.Color(),_fogD={c:null,d:0,n:0,f:0},sunC=new THREE.Color();let sunSave=null;
+ function pickHaze(g){C.haze=null;try{const e=g.ego,st=stateAt(toLat(e.z),toLon(e.x)),mo=new Date().getMonth(),wx=W();
+   if(/AZ|NV|NM|UT|CA|TX/.test(st)&&!(wx.wet||wx.key==='rain')&&Math.random()<0.15)C.haze={kind:'dust',col:new THREE.Color(0xb89068),k:0};
+   else if(/CA|OR|WA|ID|MT|CO/.test(st)&&mo>=6&&mo<=9&&Math.random()<0.2)C.haze={kind:'smoke',col:new THREE.Color(0x9a7a62),k:0}}catch(x){}}
+
+ let lastHourT=0;
+ MODS.push({id:'gfx100c',
+  start(){ensure();const g=G();if(g)pickHaze(g);lastHourT=0},
+  sim(dt){const g=G();if(!g||g.paused)return;lastHourT-=dt;if(lastHourT<=0){lastHourT=30;try{C.hour=liveHour()}catch(x){C.hour=new Date().getHours()}}
+   if(C.haze){const H=C.haze;H.t=(H.t||0)+dt;H.k=Math.min(1,H.k+dt/40)*(H.kind==='dust'?0.7+0.3*Math.sin(H.t*0.15):1)}},
+  preRender(){const g=G();if(!g){root.visible=false;return}root.visible=true;const e=g.ego,m=e.mesh,wx=W(),wet=!!(wx.wet||wx.key==='rain');
+   let ry=m.position.y;try{ry=routeY(e.s)}catch(x){}
+   /* 7 */
+   const gl=g.dark&&wet&&g.cam!=='trackside'?0.55:0;glMat.opacity=gl;const fx=Math.cos(e.head),fz=-Math.sin(e.head),hw=((g.spec&&g.spec.W)||1.9)/2-0.25;
+   glare.forEach((q,i)=>{q.visible=gl>0;if(!gl)return;const sd=i?hw:-hw;q.position.set(m.position.x+fx*2.2-fz*sd,ry+0.04,m.position.z+fz*2.2+fx*sd);q.rotation.y=e.head-Math.PI/2});
+   /* 19 */
+   const h=C.hour,morning=h>=5&&h<9,calm=!(wx.key==='rain'||wx.key==='snow');let vo=0;if(morning&&calm&&TERR&&TERR.ref!==null){let mn=1e9;for(let k=0;k<9;k++){const a=k*0.698,r=k?400:0;mn=Math.min(mn,groundY(e.x+Math.cos(a)*r,e.z+Math.sin(a)*r))}const deep=ry-mn;vo=deep<25?0.8:Math.max(0,0.8-(deep-25)/40);vfog.forEach((q,i)=>{q.position.set(Math.round(e.x/50)*50,mn+3+i*5,Math.round(e.z/50)*50);q.rotation.y=i*0.7})}
+   vfMat.opacity=vo*(1-Math.max(0,(h-7)/2));vfog.forEach(q=>q.visible=vfMat.opacity>0.02);
+   /* 44 */
+   const hot=(wx.temp??18)>28&&!g.dark&&!wet&&(wx.cloud??0)<0.4&&e.v>12;mirMat.opacity=hot?0.45:0;mirage.visible=hot;if(hot){const d=110+Math.sin(performance.now()/1700)*15;try{const [x,z,dx,dz]=routeXZ(e.s+d,e.off!=null?e.off:laneOffsetAt(routeLLnh(e.s)[2]));mirage.position.set(x,routeY(e.s+d)+0.05,z);mirage.rotation.y=Math.atan2(dx,dz)}catch(x){mirage.visible=false}}
+   /* 20/21 fog and sun tint, undone after drawing */
+   _fogD.f=0;if(C.haze&&scene.fog&&C.haze.k>0){const H=C.haze,F=scene.fog;_fogD.f=1;_fogD.c=F.color.clone();if(F.isFogExp2){_fogD.d=F.density;F.density=F.density+H.k*(H.kind==='dust'?0.004:0.0025)}else{_fogD.n=F.near;_fogD.d=F.far;F.far=lerp(F.far,H.kind==='dust'?260:520,H.k);F.near=Math.min(F.near,F.far*0.2)}F.color.lerp(H.col,H.k*0.85);
+    if(typeof sun!=='undefined'){sunSave=sun.color.clone();sun.color.lerp(sunC.set(H.kind==='smoke'?0xff7a3a:0xd8a070),H.k*0.6)}}},
+  postRender(){if(_fogD.f&&scene.fog){const F=scene.fog;F.color.copy(_fogD.c);if(F.isFogExp2)F.density=_fogD.d;else{F.near=_fogD.n;F.far=_fogD.d}_fogD.f=0}if(sunSave&&typeof sun!=='undefined'){sun.color.copy(sunSave);sunSave=null}}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
