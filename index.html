@@ -13536,7 +13536,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    /* 88 PIP rear view: small second render into a scissored corner */
    pipF.style.display=V.pip?'block':'none';
    if(V.pip&&renderer.setScissor){try{const W=innerWidth,w=320,h=110,x=(W-w)/2,y=150;const fx=Math.cos(e.head),fz=-Math.sin(e.head);rearCam.position.set(m.x-fx*3.2,m.y+1.3,m.z-fz*3.2) /* just behind the car, so the cabin is not in view */;rearCam.lookAt(m.x-fx*30,m.y+1,m.z-fz*30);
-    const ac=renderer.autoClear;renderer.autoClear=false;renderer.setScissorTest(true);const vy=window.__GPU?y:innerHeight-y-h; /* WebGPU counts viewport y from the top */renderer.setScissor(x,vy,w,h);renderer.setViewport(x,vy,w,h);const vis=e.mesh.visible;e.mesh.visible=false;
+    const ac=renderer.autoClear;renderer.autoClear=false;renderer.setScissorTest(true);const vy=innerHeight-y-h; /* viewport y counts from the bottom on both renderers */renderer.setScissor(x,vy,w,h);renderer.setViewport(x,vy,w,h);const vis=e.mesh.visible;e.mesh.visible=false;
     if(renderer.clearDepth)renderer.clearDepth();renderer.render(scene,rearCam);e.mesh.visible=vis;renderer.setScissorTest(false);renderer.setViewport(0,0,innerWidth,innerHeight);renderer.autoClear=ac}catch(x){V.pip=false;console.warn('pip',x)}}
    /* 100 screenshot */
    if(V.shot&&V.shotPR){V.shot=false;const pr=V.shotPR;V.shotPR=0;try{renderer.domElement.toBlob(b=>{if(b){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='autodrive-'+Date.now()+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}},'image/png')}catch(x){}renderer.setPixelRatio(pr)}}});
