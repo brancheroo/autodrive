@@ -3623,6 +3623,10 @@ function manageTraffic(){if(game.fast){for(const a of game.agents)scene.remove(a
 // ============================================================ CAMERA
 const camRay=new THREE.Raycaster();let _collT=0,_coll=[];
 function camColliders(){const now=performance.now();if(now-_collT<500)return _coll;_collT=now;_coll=[];const e=game.ego;for(const T of TILES.values())for(const o of T.group.children){if(!o.isMesh||!o.userData.merged)continue;const m=o.material;if(!(Object.values(FACMAT).includes(m)||Object.values(ROOFMAT).includes(m)||m===MAT.wall))continue;if(!o.geometry.boundingSphere)o.geometry.computeBoundingSphere();const bs=o.geometry.boundingSphere;if(Math.hypot(bs.center.x-e.x,bs.center.z-e.z)-bs.radius<60)_coll.push(o)}return _coll}
+/* driver's eye vs the roof header: on some bodies the eye sat level with the header 0.4 m ahead, leaving a thin slot of windshield. Once per car, rays from the eye are cast (car space) and the eye is lowered until the view is clear from 12° below to 6° above level ahead */
+const EYEDROP=new WeakMap();function eyeDrop(spec,m){let d=EYEDROP.get(m);if(d!==undefined)return d;d=0;try{const ms=[];m.traverse(o=>{if(o.isMesh&&o.visible&&!(o.material&&o.material.transparent&&o.material.opacity<0.6))ms.push(o)});m.updateMatrixWorld(true);const inv=m.matrixWorld,rc=new THREE.Raycaster(),e0=eyePos(spec);rc.far=1.6;
+ const blocked=dy=>{const o=new THREE.Vector3(e0.x,e0.y-dy,e0.z).applyMatrix4(inv);for(const deg of [6,3,0]){const r=deg*Math.PI/180,dl=new THREE.Vector3(Math.cos(r),Math.sin(r),0).transformDirection(inv);rc.set(o,dl);const h=rc.intersectObjects(ms,false);if(h.length&&h[0].distance<1.6)return true}return false};
+ if(blocked(0)){for(let dy=0.03;dy<=0.3;dy+=0.03){d=dy;if(!blocked(dy))break}}}catch(err){d=0}EYEDROP.set(m,d);return d}
 function updateCamera(dt){
  const G=game,e=G.ego,spec=G.spec,m=e.mesh;if(m.userData.interior)for(const o of m.userData.interior.children)if(o.userData.inOnly)o.visible=G.cam==='in';if(G.tow&&G.tow.phase!=='waiting'&&G.tow.phase!=='calling'&&G.cam==='in')G.cam='out';
  m.updateMatrixWorld();
@@ -3666,7 +3670,7 @@ function updateCamera(dt){
   if(m.userData.cab)m.userData.cab.visible=true;if(m.userData.body)m.userData.body.visible=true;if(m.userData.hood)m.userData.hood.visible=false;if(m.userData.interior)m.userData.interior.visible=true;
   const alt=clamp(60*G.zoom,15,600),ey=e.mesh.position.y,yaw=e.head+G.yaw,tilt=clamp(G.pitch,-0.2,0.9)*0.9;camera.position.set(e.x-Math.cos(yaw)*alt*Math.sin(tilt),ey+alt,e.z+Math.sin(yaw)*alt*Math.sin(tilt));camera.up.set(Math.cos(yaw),0,-Math.sin(yaw));camera.lookAt(e.x,ey,e.z);camera.up.set(0,1,0);camera.fov=50;camera.updateProjectionMatrix();return}
  if(G.cam==='in'){
-  const eye=eyePos(spec).applyMatrix4(m.matrixWorld);camera.position.copy(eye);
+  const eye=eyePos(spec);eye.y-=eyeDrop(spec,m);eye.applyMatrix4(m.matrixWorld);camera.position.copy(eye);
   const yaw=e.head+G.yaw,pitch=-0.17+G.pitch;
   camera.lookAt(eye.x+Math.cos(yaw)*Math.cos(pitch),eye.y+Math.sin(pitch),eye.z-Math.sin(yaw)*Math.cos(pitch));
   camera.fov=clamp(G.fov/G.zoom,15,100);
