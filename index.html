@@ -13428,7 +13428,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 </script>
 <script>/* mods/99zze-gfx100a.js */
 /* Graphics 100, batch A (plain meshes and DOM only, so it works on WebGL and WebGPU alike):
-   26 Milky Way band on dark nights · 28 meteors · 30 airliner contrails that spread out
+   26 Milky Way band on dark nights (WebGPU only: the WebGL sky shader already draws one) · 28 meteors · 30 airliner contrails that spread out
    31 skid marks that stay on the road · 32 oil stains down lane centres · 43 manhole covers and drain grates
    40 raised reflective lane markers that light up at night · 45 autumn leaves blowing across the road
    83 letterbox bars in replay · 84 photo orbit camera ([) · 85 drone camera (]) · 88 rear-view picture-in-picture (U)
@@ -13523,7 +13523,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    /* 40 markers light up in the dark */
    markMat.emissive.setHex(dark(g)?0x8a7a30:0x000000)},
   preRender(){const g=G();if(!g)return;const e=g.ego,m=e.mesh.position;
-   mw.position.copy(camera.position);mw.material.opacity=dark(g)&&!(window.WX&&(WX.cloud>0.6||WX.key==='rain'))?0.85:0;mw.visible=mw.material.opacity>0;
+   mw.position.copy(camera.position);mw.material.opacity=window.__GPU&&dark(g)&&!(window.WX&&(WX.cloud>0.6||WX.key==='rain'))?0.85:0;mw.visible=mw.material.opacity>0;
    /* 84 orbit, 85 drone */
    if(V.orbit){V.oa+=0.004;camera.position.set(m.x+Math.cos(V.oa)*9,m.y+2.2,m.z+Math.sin(V.oa)*9);camera.lookAt(m.x,m.y+0.8,m.z)}
    else if(V.drone){const fx=Math.cos(e.head),fz=-Math.sin(e.head);camera.position.set(m.x-fx*35,m.y+45,m.z-fz*35);camera.lookAt(m.x+fx*25,m.y,m.z+fz*25)}
@@ -13540,6 +13540,81 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
     if(renderer.clearDepth)renderer.clearDepth();renderer.render(scene,rearCam);e.mesh.visible=vis;renderer.setScissorTest(false);renderer.setViewport(0,0,innerWidth,innerHeight);renderer.autoClear=ac}catch(x){V.pip=false;console.warn('pip',x)}}
    /* 100 screenshot */
    if(V.shot&&V.shotPR){V.shot=false;const pr=V.shotPR;V.shotPR=0;try{renderer.domElement.toBlob(b=>{if(b){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='autodrive-'+Date.now()+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}},'image/png')}catch(x){}renderer.setPixelRatio(pr)}}});
+})();
+</script>
+<script>/* mods/99zzf-gfx100b.js */
+/* Graphics 100, batch B (plain meshes and DOM, WebGL and WebGPU):
+   25 22° ice halo round the sun in cold, hazy weather · 33 patched potholes and crack-sealant lines
+   36 puddles that collect in rain and dry out after · 38 black ice gloss in freezing wet weather · 39 snow ruts in the tyre lines
+   50 frost on the windscreen on cold starts that the defroster clears · 52 windscreen mist in cold rain that the demister clears
+   86 news-helicopter camera with a LIVE caption (\ key) · 98 shadows that drop resolution when frames get slow and come back after */
+(function(){
+ const G=()=>typeof game!=='undefined'&&game&&game.route&&game.ego?game:null;
+ const B={heli:false,ha:0,frost:0,mist:0,shadowCut:0};window.GFX100B=B;
+ const root=new THREE.Group();root.name='gfx100b';let added=false;const ensure=()=>{if(!added&&typeof scene!=='undefined'){scene.add(root);added=true}};
+ const W=()=>typeof WX!=='undefined'?WX:{};
+ function ctex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+
+ /* 25 halo */
+ const haloTex=ctex(256,256,(c,w,h)=>{const g=c.createRadialGradient(128,128,96,128,128,124);g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(0.45,'rgba(255,190,150,0.55)');g.addColorStop(0.6,'rgba(255,255,255,0.6)');g.addColorStop(0.8,'rgba(170,200,255,0.35)');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.fillRect(0,0,w,h)});
+ const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:haloTex,transparent:true,depthWrite:false,depthTest:false,fog:false,opacity:0}));halo.renderOrder=-4;halo.frustumCulled=false;root.add(halo);
+
+ /* road decals */
+ const N=300,M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(),P=new THREE.Vector3(),UP=new THREE.Vector3(0,1,0);
+ const flat=(a,b)=>{const g=new THREE.PlaneGeometry(a,b);g.rotateX(-Math.PI/2);return g};
+ const mkI=(geo,mat)=>{const m=new THREE.InstancedMesh(geo,mat,N);m.count=0;m.frustumCulled=false;m.renderOrder=1;root.add(m);return m};
+ const po={transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2};
+ const patchTex=ctex(128,128,(c,w,h)=>{c.fillStyle='rgba(24,24,26,0.85)';c.beginPath();for(let i=0;i<12;i++){const a=i/12*6.28,r=40+Math.random()*20;c.lineTo(64+Math.cos(a)*r,64+Math.sin(a)*r)}c.fill()});
+ const crackTex=ctex(256,32,(c,w,h)=>{c.strokeStyle='rgba(15,15,16,0.9)';c.lineWidth=5;c.beginPath();let y=16;c.moveTo(0,y);for(let x=0;x<=w;x+=16){y=Math.max(5,Math.min(27,y+(Math.random()-0.5)*14));c.lineTo(x,y)}c.stroke()});
+ const pudTex=ctex(128,128,(c,w,h)=>{const g=c.createRadialGradient(64,64,10,64,64,62);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.75,'rgba(255,255,255,0.8)');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.beginPath();c.ellipse(64,64,62,44,0,0,7);c.fill()});
+ const rutTex=ctex(64,8,(c,w,h)=>{c.fillStyle='rgba(120,124,130,0.7)';c.fillRect(0,0,w,h)});
+ const patch=mkI(flat(1.6,1.4),new THREE.MeshLambertMaterial({map:patchTex,...po})),crack=mkI(flat(4,0.35),new THREE.MeshLambertMaterial({map:crackTex,...po}));
+ const pudMat=new THREE.MeshStandardMaterial({color:0x14181e,roughness:0.04,metalness:0.85,alphaMap:pudTex,opacity:0,...po});const pud=mkI(flat(2.4,1.6),pudMat);
+ const iceMat=new THREE.MeshStandardMaterial({color:0x2a3038,roughness:0.02,metalness:0.7,alphaMap:pudTex,opacity:0,...po});const ice=mkI(flat(5,3.2),iceMat);
+ const rut=new THREE.InstancedMesh(flat(0.45,10.2),new THREE.MeshLambertMaterial({map:rutTex,opacity:0,...po}),N*2);rut.count=0;rut.frustumCulled=false;rut.renderOrder=1;root.add(rut);
+ const rnd=s=>{const x=Math.sin(s*91.7)*43758.5453;return x-Math.floor(x)};let lastS=-1e9,wetK=0;
+ function rebuild(g){const e=g.ego,s0=Math.floor(e.s/10)*10;let np=0,nc=0,nw=0,ni=0,nr=0;const wx=W(),snow=!!wx.snowCover;
+  for(let s=s0-200;s<s0+700;s+=10){if(s<0||s>g.route.total)continue;let lo=0,n=1;try{lo=laneOffsetAt(routeLLnh(s)[2]);n=window.LANES?LANES.count(s):1}catch(x){}let y=0;try{y=routeY(s)}catch(x){}y+=0.032;
+   for(let l=0;l<n;l++){const off=lo-l*3.6,r=rnd(s*5.1+l);const [x,z,dx,dz]=routeXZ(s+r*7,off+(r-0.5)*1.4),a=Math.atan2(dx,dz);
+    if(r<0.07&&np<N){Q.setFromAxisAngle(UP,a+r*20);M.compose(P.set(x,y,z),Q,S.set(0.6+r*6,1,0.6+r*5));patch.setMatrixAt(np++,M)}
+    else if(r>0.88&&nc<N){Q.setFromAxisAngle(UP,a+(r-0.94)*12);M.compose(P.set(x,y,z),Q,S.set(1,1,1));crack.setMatrixAt(nc++,M)}
+    if(rnd(s*2.3+l)<0.12&&nw<N){const [px,pz]=routeXZ(s,off+(rnd(s+l)<0.5?1.3:-1.3));Q.setFromAxisAngle(UP,a);M.compose(P.set(px,y+0.003,pz),Q,S.set(0.5+r,1,0.5+r*1.2));pud.setMatrixAt(nw++,M);ni<N&&(ice.setMatrixAt(ni++,M))}
+    if(snow&&nr<N*2-1){for(const sd of [-0.8,0.8]){const [rx,rz]=routeXZ(s+5,off+sd);Q.setFromAxisAngle(UP,a);M.compose(P.set(rx,y+0.004,rz),Q,S.set(1,1,1));rut.setMatrixAt(nr++,M)}}}}
+  patch.count=np;crack.count=nc;pud.count=nw;ice.count=ni;rut.count=nr;for(const m of [patch,crack,pud,ice,rut])m.instanceMatrix.needsUpdate=true}
+
+ /* 50/52 windscreen frost and mist (DOM layer, in-car view only) */
+ const fc=document.createElement('canvas');fc.width=512;fc.height=256;fc.style.cssText='position:fixed;inset:0;width:100%;height:62%;z-index:20;pointer-events:none;opacity:0';document.body.appendChild(fc);
+ (function(){const c=fc.getContext('2d');const g=c.createRadialGradient(256,170,40,256,128,330);g.addColorStop(0,'rgba(230,240,250,0.0)');g.addColorStop(0.45,'rgba(230,240,250,0.35)');g.addColorStop(1,'rgba(240,248,255,0.9)');c.fillStyle=g;c.fillRect(0,0,512,256);
+  c.strokeStyle='rgba(255,255,255,0.5)';c.lineWidth=1;for(let i=0;i<260;i++){let x=Math.random()*512,y=Math.random()<0.5?Math.random()*60:200+Math.random()*56;if(Math.random()<0.4)x=Math.random()<0.5?Math.random()*90:422+Math.random()*90;c.beginPath();c.moveTo(x,y);for(let k=0;k<5;k++){x+=(Math.random()-0.5)*26;y+=(Math.random()-0.5)*26;c.lineTo(x,y)}c.stroke()}})();
+ const mc=document.createElement('div');mc.style.cssText='position:fixed;left:0;right:0;top:30%;height:30%;z-index:20;pointer-events:none;opacity:0;background:linear-gradient(to top,rgba(220,228,235,0.75),rgba(220,228,235,0))';document.body.appendChild(mc);
+
+ /* 86 news helicopter caption */
+ const cap=document.createElement('div');cap.style.cssText='position:fixed;left:24px;bottom:120px;z-index:31;pointer-events:none;display:none;font:700 15px system-ui;color:#fff';cap.innerHTML='<span style="background:#d01818;padding:4px 8px">● LIVE</span><span style="background:#0d1a3a;padding:4px 10px" id="gfxbCap">SKY 7 · traffic</span>';document.body.appendChild(cap);
+ addEventListener('keydown',ev=>{if(ev.target&&/INPUT|TEXTAREA|SELECT/.test(ev.target.tagName))return;if(ev.key==='\\'&&!ev.ctrlKey&&!ev.metaKey){B.heli=!B.heli;if(window.GFX100A){GFX100A.orbit=GFX100A.drone=false}}});
+
+ /* 98 adaptive shadows */
+ let fms=[],fT=0,shadowBase=0,slowT=0,fastT=0;
+ function shadowAdapt(dt){if(typeof sun==='undefined'||!sun.shadow)return;if(!shadowBase)shadowBase=sun.shadow.mapSize.x;const ms=dt*1000;fms.push(ms);if(fms.length>60)fms.shift();const avg=fms.reduce((a,b)=>a+b,0)/fms.length;
+  if(avg>40){slowT+=dt;fastT=0}else if(avg<22){fastT+=dt;slowT=0}else{slowT=fastT=0}
+  const cur=sun.shadow.mapSize.x;let want=cur;if(slowT>4&&cur>1024){want=cur/2;slowT=0}else if(fastT>12&&cur<shadowBase){want=cur*2;fastT=0}
+  if(want!==cur){sun.shadow.mapSize.set(want,want);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}B.shadowCut=Math.round(Math.log2(shadowBase/want))}}
+
+ let lastNow=0;
+ MODS.push({id:'gfx100b',
+  start(){ensure();lastS=-1e9;const t=W().temp??18;B.frost=t<1?0.9:0;B.mist=0;wetK=W().wet||W().key==='rain'?1:0},
+  sim(dt){const g=G();if(!g||g.paused||dt<=0)return;ensure();const e=g.ego,wx=W(),t=wx.temp??18,wet=!!(wx.wet||wx.key==='rain');
+   if(Math.abs(e.s-lastS)>150){lastS=e.s;try{rebuild(g)}catch(x){}}
+   wetK=Math.max(0,Math.min(1,wetK+(wet?dt/60:-dt/400)));const icy=t<0&&wetK>0.2;pudMat.opacity=icy?0:wetK*0.8;iceMat.opacity=icy?0.55:0;rut.material.opacity=wx.snowCover?0.6:0;
+   pud.visible=pudMat.opacity>0.01;ice.visible=icy;rut.visible=!!wx.snowCover;
+   B.frost=Math.max(0,B.frost-dt/(t<-8?150:90));if(wet&&t<12&&B.mist<0.55&&Math.random()<dt/200)B.mist=0.55;B.mist=Math.max(0,B.mist-dt/45)},
+  frame(){const now=performance.now(),dt=lastNow?(now-lastNow)/1000:0;lastNow=now;if(dt>0&&dt<1)shadowAdapt(dt)},
+  preRender(){const g=G();const inCar=g&&g.cam==='in'&&!(window.GFX100A&&(GFX100A.orbit||GFX100A.drone))&&!B.heli;
+   fc.style.opacity=inCar?B.frost.toFixed(3):0;mc.style.opacity=inCar?B.mist.toFixed(3):0;if(!g){halo.visible=false;cap.style.display='none';return}
+   const wx=W(),t=wx.temp??18,cl=wx.cloud??0;
+   if(typeof sun!=='undefined'&&!g.dark&&t<2&&cl>0.15&&cl<0.75){const d=new THREE.Vector3().subVectors(sun.position,sun.target.position).normalize();if(d.y>0.05){halo.visible=true;halo.position.copy(camera.position).addScaledVector(d,2000);const sz=2*2000*Math.tan(22*Math.PI/180)*1.25;halo.scale.set(sz,sz,1);halo.material.opacity=0.5}else halo.visible=false}else halo.visible=false;
+   if(B.heli){const m=g.ego.mesh.position;B.ha+=0.0012;camera.position.set(m.x+Math.cos(B.ha)*140,m.y+90,m.z+Math.sin(B.ha)*140);camera.lookAt(m.x,m.y,m.z);if(camera.fov!==22){B.fov=B.fov||camera.fov;camera.fov=22;camera.updateProjectionMatrix()}
+    cap.style.display='block';const st=document.getElementById('gfxbCap');if(st)st.textContent=`SKY 7 · ${g.spec&&g.spec.name||'vehicle'} · ${Math.round(g.ego.v*2.237)} mph`}
+   else{cap.style.display='none';if(B.fov){camera.fov=B.fov;B.fov=0;camera.updateProjectionMatrix()}}}});
 })();
 </script>
 <script>/* mods/zz-lightguard.js */
