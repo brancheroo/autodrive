@@ -13294,6 +13294,21 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    if(m.parent||m.userData.noRecycle||total>=MAXT)continue;const k=m.userData.poolKey;let l=POOL.get(k);if(!l)POOL.set(k,l=[]);if(l.length<MAXK){l.push(m);total++;ST.kept++}}}});
 })();
 </script>
+<script>/* mods/zzzz-cabincam.js */
+/* Driver camera rides with the body. Several mods roll, pitch and shake the car body just before drawing (suspension, drift
+   slip, crests) and undo it afterwards, but the in-car camera was placed before that, so the body swung around a fixed
+   camera: at 10° of roll the cabin moved ~25 cm sideways and the camera ended up in the door, showing road and grass inside
+   the car. The body's pose is recorded before any of those hooks run and the camera is moved and turned by the same change
+   after all of them. */
+(function(){
+ const S={q0:new THREE.Quaternion(),p0:new THREE.Vector3(),ok:false},dq=new THREE.Quaternion(),inv=new THREE.Quaternion(),v=new THREE.Vector3();
+ const on=()=>typeof game!=='undefined'&&game&&game.ego&&game.ego.mesh&&game.cam==='in'&&!(game.spec&&game.spec.rideshare);
+ MODS.unshift({id:'cabincamA',preRender(){S.ok=false;if(!on())return;const m=game.ego.mesh;m.updateMatrixWorld(true);m.getWorldQuaternion(S.q0);m.getWorldPosition(S.p0);S.ok=true}});
+ MODS.push({id:'cabincamB',preRender(){if(!S.ok||!on())return;const m=game.ego.mesh;m.updateMatrixWorld(true);const q1=new THREE.Quaternion(),p1=new THREE.Vector3();m.getWorldQuaternion(q1);m.getWorldPosition(p1);
+  dq.copy(q1).multiply(inv.copy(S.q0).invert());if(1-Math.abs(dq.w)<1e-7&&p1.distanceToSquared(S.p0)<1e-8)return;
+  v.copy(camera.position).sub(S.p0).applyQuaternion(dq).add(p1);camera.position.copy(v);camera.quaternion.premultiply(dq);camera.updateMatrixWorld(true)}});
+})();
+</script>
 <!--/mods-->
 </body>
 </html>
