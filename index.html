@@ -1401,7 +1401,7 @@ function* buildTileGen(key){
    const isBridge=t.bridge&&t.bridge!=='no',isTunnel=t.tunnel&&t.tunnel!=='no'&&t.tunnel!=='building_passage',layer=+t.layer||(isBridge?1:isTunnel?-1:0);
    if((isBridge||isTunnel)&&DRIVABLE.has(hw)){
     const PR=PRE.get(el.id)||brProfile(el,pts,isBridge,isTunnel,layer,data);if(PR.pts!==pts){pts.length=0;pts.push(...PR.pts)}const kIdx=PR.kIdx;
-    if(el.nodes){el.nodes.forEach((nid,k)=>{NODEH.set(nid,pts[kIdx[k]][2]);if(isBridge)BRNH.set(nid,pts[kIdx[k]][2])});if(isBridge)for(const [k,pi] of [[0,0],[el.nodes.length-1,pts.length-1]]){const ex=pts[pi][2]-groundY(pts[pi][0],pts[pi][1]);if(ex>0.6)APPR.set(el.nodes[k],Math.max(ex,APPR.get(el.nodes[k])||0))} /* overpass end still high: the joining (untagged) approach way ramps down from it */if(isBridge)for(let k=1;k<el.nodes.length;k++){const hs=[];for(let q=kIdx[k-1];q<=kIdx[k];q++)hs.push(pts[q][2]);if(hs.length>2){BRPROF.set(el.nodes[k-1]+'_'+el.nodes[k],hs);BRPROF.set(el.nodes[k]+'_'+el.nodes[k-1],hs.slice().reverse())}}}}
+    if(el.nodes){el.nodes.forEach((nid,k)=>{NODEH.set(nid,pts[kIdx[k]][2]);if(isBridge)BRNH.set(nid,pts[kIdx[k]][2])});if(isBridge)for(const [k,pi] of [[0,0],[el.nodes.length-1,pts.length-1]]){const ex=pts[pi][2]-groundY(pts[pi][0],pts[pi][1]);if(ex>0.6)APPR.set(el.nodes[k],Math.max(ex,APPR.get(el.nodes[k])||0))} /* overpass end still high: the joining (untagged) approach way ramps down from it */if(isBridge)brSegAdd(pts);if(isBridge)for(let k=1;k<el.nodes.length;k++){const hs=[];for(let q=kIdx[k-1];q<=kIdx[k];q++)hs.push(pts[q][2]);if(hs.length>2){BRPROF.set(el.nodes[k-1]+'_'+el.nodes[k],hs);BRPROF.set(el.nodes[k]+'_'+el.nodes[k-1],hs.slice().reverse())}}}}
    if(isTunnel&&DRIVABLE.has(hw)){const len=[0];for(let i=1;i<pts.length;i++)len.push(len[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));const lanes=+t.lanes||0;
     T.ways.push({pts,len,total:len[len.length-1],oneway:owDir(t)!==0,owDir:owDir(t)||1,hw,lanes,w:lanes?lanes*3.6:(DEF_W[hw]||7),spd:(parseSpeed(t.maxspeed)||DEF_SPD[hw]||25)/MPH,nodes:el.nodes||[],hts:true,tunnel:true});continue}
    if(DRIVABLE.has(hw)){
@@ -3008,10 +3008,15 @@ function plan(a,dt,lead,isEgo){
  if(a.v<0.05&&target<0.3)a.v=0;
  return reason}
 const BRPROF=new Map(); /* bridge span height profiles between consecutive OSM nodes */
+/* bridge decks by position: tiles from the fallback map source carry no OSM node ids, so the by-node lookup (BRPROF) missed
+   and the car drove along the ground about 6 m under its own ramp deck. Each deck's 3D polyline goes into a 32 m grid; a
+   route point with no node match takes the height of a deck segment within 4 m that runs the same way (not a road crossing under it). */
+const BRSEG=new Map();function brSegAdd(pts){for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i];if(a.length<3||b.length<3)continue;const k=Math.floor((a[0]+b[0])/64)+'_'+Math.floor((a[1]+b[1])/64);let L=BRSEG.get(k);if(!L)BRSEG.set(k,L=[]);L.push([a[0],a[1],a[2],b[0],b[1],b[2]]);if(L.length>4000)L.splice(0,1000)}}
+function brDeckAt(x,z,dx,dz){let best=null,bd=4;const cx=Math.floor(x/32),cz=Math.floor(z/32);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const L=BRSEG.get((cx+i)+'_'+(cz+j));if(!L)continue;for(const S of L){const ex=S[3]-S[0],ez=S[4]-S[1],l2=ex*ex+ez*ez;if(l2<1e-4)continue;const l=Math.sqrt(l2);if(Math.abs((ex*dx+ez*dz)/l)<0.94)continue;const t=clamp(((x-S[0])*ex+(z-S[1])*ez)/l2,0,1),px=S[0]+ex*t,pz=S[1]+ez*t,d=Math.hypot(x-px,z-pz);if(d<bd){bd=d;best=S[2]+(S[5]-S[2])*t}}}return best}
 function routeY(s,off=0){const R=game.route,[,,i]=routeLLnh(s),h0=NODEH.get(R.nodes[i]),h1=NODEH.get(R.nodes[i+1]);
  {const P=BRPROF.get(R.nodes[i]+'_'+R.nodes[i+1]);if(P){const t=clamp((s-R.cum[i])/((R.cum[i+1]-R.cum[i])||1),0,1)*(P.length-1),j=Math.min(P.length-2,Math.floor(t));return lerp(P[j],P[j+1],t-j)}}
  if(h0!==undefined&&h1!==undefined){const t=clamp((s-R.cum[i])/((R.cum[i+1]-R.cum[i])||1),0,1);return lerp(h0,h1,t)}
- return routeGY(s)}
+ const gy=routeGY(s);if(BRSEG.size){try{const [x,z,dx,dz]=routeXZ(s,0),b=brDeckAt(x,z,dx,dz);if(b!=null&&b>gy+0.5)return b}catch(e){}}return gy}
 /* smoothed ground profile along the route (same idea as the drawn road: an average over ±12 m), cached per metre once the terrain under it is loaded */
 const RGY=new Map();let RGYr=null;function routeGY(s){const R=game.route;if(RGYr!==R){RGY.clear();RGYr=R}const k=Math.round(s),c=RGY.get(k);if(c!==undefined)return c;let sum=0,n=0,ok=true;for(let d=-12;d<=12;d+=4){const p=routeXZ(clamp(k+d,0,R.total),0);if(elevLL(toLat(p[1]),toLon(p[0]))===null)ok=false;sum+=groundY(p[0],p[1]);n++}const v=sum/n;if(ok){RGY.set(k,v);if(RGY.size>20000)RGY.clear()}return v}
 function place(a,off){if(a.loose)return; // sliding after a collision: the physics owns the pose
