@@ -13936,6 +13936,71 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    const vis=glass.visible;glass.visible=false;const prev=renderer.getRenderTarget();try{renderer.setRenderTarget(rt);renderer.render(scene,cam)}catch(e){}renderer.setRenderTarget(prev);glass.visible=vis}});
 })();
 </script>
+<script>/* mods/99zzn-gfx100i.js */
+/* Graphics 100, batch I (plain meshes, DOM and colour changes: WebGL and WebGPU):
+   17 twilight: the pink Belt of Venus over the dark blue Earth shadow, low in the sky opposite the sun around sunset and sunrise
+   42 STOP painted on the road before stop signs on your route
+   54 brake dust: your wheels darken slowly with braking over a trip
+   74 seasonal trees: broadleaf trees turn amber in autumn and dull in winter away from the tropics; fresh green in spring
+   81 raindrops on the camera lens in the outside views when it rains (sharp drops, no blur) */
+(function(){
+ const G=()=>typeof game!=='undefined'&&game&&game.route&&game.ego?game:null;
+ const I={belt:0,stops:0,dust:0,season:'',drops:0};window.GFX100I=I;
+ const root=new THREE.Group();root.name='gfx100i';let added=false;const ensure=()=>{if(!added&&typeof scene!=='undefined'){scene.add(root);added=true}};
+ const W=()=>typeof WX!=='undefined'?WX:{};
+ function ctex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+
+ /* 17 twilight belt: an open cylinder segment round the camera, facing away from the sun */
+ const beltTex=ctex(8,256,(c,w,h)=>{const g=c.createLinearGradient(0,h,0,0);g.addColorStop(0,'rgba(40,52,92,0.55)');g.addColorStop(0.28,'rgba(52,62,104,0.35)');g.addColorStop(0.36,'rgba(230,150,170,0.45)');g.addColorStop(0.6,'rgba(240,170,180,0.18)');g.addColorStop(1,'rgba(240,170,180,0)');c.fillStyle=g;c.fillRect(0,0,w,h)});
+ const beltMat=new THREE.MeshBasicMaterial({map:beltTex,transparent:true,depthWrite:false,fog:false,side:THREE.BackSide,opacity:0});
+ const BR=2800,belt=new THREE.Mesh(new THREE.CylinderGeometry(BR,BR,900,48,1,true,-1.2,2.4),beltMat);belt.frustumCulled=false;belt.renderOrder=-2;root.add(belt);
+
+ /* 42 STOP text */
+ const stopTex=ctex(256,512,(c,w,h)=>{c.fillStyle='#f2f2ea';c.font='bold 200px Arial Narrow,Arial,sans-serif';c.textAlign='center';c.textBaseline='middle';c.save();c.translate(w/2,h/2);c.scale(0.55,2.2);c.fillText('STOP',0,0);c.restore()});
+ const stopMat=new THREE.MeshLambertMaterial({map:stopTex,transparent:true,alphaTest:0.3,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+ const stopGeo=(()=>{const g=new THREE.PlaneGeometry(2.6,5.2);g.rotateX(-Math.PI/2);return g})();
+ const decals=new Map();let scanS=-1e9;
+ function scanStops(g){const e=g.ego;for(const [id,d] of decals)if(d.s<e.s-80){root.remove(d.m);decals.delete(id)}
+  for(const c of CONTROLS.values()){if(c.type!=='stop'||decals.has(c.id))continue;if(Math.hypot(c.x-e.x,c.z-e.z)>700)continue;
+   let best=1e9,bs=0;for(let s=e.s;s<Math.min(g.route.total,e.s+700);s+=3){const [x,z]=routeXZ(s,0);const d=Math.hypot(x-c.x,z-c.z);if(d<best){best=d;bs=s}}if(best>9)continue;
+   const s=bs-7,lo=laneOffsetAt(routeLLnh(s)[2]),[x,z,dx,dz]=routeXZ(s,lo);const m=new THREE.Mesh(stopGeo,stopMat);m.position.set(x,routeY(s,lo)+0.03,z);m.rotation.y=Math.atan2(dx,dz)+Math.PI;m.renderOrder=1;root.add(m);decals.set(c.id,{m,s:bs});I.stops++}}
+
+ /* 54 brake dust */
+ let dustMats=null,dustCar=null;const dustCol=new THREE.Color(0x3a332c);
+ function wheelMats(m){const out=[];for(const w of m.userData.wheels||[]){(w.spin||w).traverse(o=>{if(!o.isMesh)return;const ms=[].concat(o.material);ms.forEach((mt,i)=>{if(mt&&mt.color&&(mt.metalness||0)>0.4&&mt.color.getHSL({}).l>0.35){const c=mt.clone();c.userData.base=mt.color.clone();if(Array.isArray(o.material)){o.material=o.material.slice();o.material[i]=c}else o.material=c;out.push(c)}})})}return out}
+
+ /* 74 seasons */
+ let seasonDone='';const leafBase=new Map();
+ function applySeason(g){let lat=0;try{lat=toLat(g.ego.z)}catch(x){}const mo=new Date().getMonth(),north=lat>=0,a=Math.abs(lat);let k='';
+  if(a>=30){const m=north?mo:(mo+6)%12;k=m>=8&&m<=10?'autumn':m===11||m<=1?'winter':m>=2&&m<=4?'spring':''}
+  if(k===seasonDone)return;seasonDone=k;I.season=k||'none';const sp=TREESP.broad;if(!sp||!sp.mat||!sp.mat.color)return;if(!leafBase.has(sp.mat))leafBase.set(sp.mat,sp.mat.color.clone());
+  const b=leafBase.get(sp.mat);sp.mat.color.copy(b);if(k==='autumn')sp.mat.color.multiply(new THREE.Color(1.35,0.85,0.45));else if(k==='winter')sp.mat.color.multiply(new THREE.Color(0.8,0.72,0.6));else if(k==='spring')sp.mat.color.multiply(new THREE.Color(0.95,1.08,0.85))}
+
+ /* 81 lens drops: a canvas over the 3D view */
+ const cv=document.createElement('canvas');cv.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4';document.body.appendChild(cv);const cx=cv.getContext('2d');const drops=[];
+ function drawDrops(on,v,dt){if(cv.width!==innerWidth){cv.width=innerWidth;cv.height=innerHeight}cx.clearRect(0,0,cv.width,cv.height);if(!on&&!drops.length)return;
+  if(on&&Math.random()<dt*6&&drops.length<40)drops.push({x:Math.random()*cv.width,y:Math.random()*cv.height*0.9,r:3+Math.random()*7,life:4+Math.random()*6});
+  for(let i=drops.length-1;i>=0;i--){const d=drops[i];d.life-=dt*(on?1:3);d.y+=dt*(8+v*0.4)*(d.r/6);d.x+=(d.x-cv.width/2)*dt*v*0.002;if(d.life<=0||d.y>cv.height){drops.splice(i,1);continue}const al=Math.min(1,d.life);
+   const gr=cx.createRadialGradient(d.x-d.r*0.3,d.y-d.r*0.35,0,d.x,d.y,d.r);gr.addColorStop(0,`rgba(255,255,255,${0.55*al})`);gr.addColorStop(0.35,`rgba(200,215,230,${0.18*al})`);gr.addColorStop(0.85,`rgba(40,50,60,${0.22*al})`);gr.addColorStop(1,'rgba(40,50,60,0)');cx.fillStyle=gr;cx.beginPath();cx.ellipse(d.x,d.y,d.r*0.85,d.r,0,0,7);cx.fill()}I.drops=drops.length}
+
+ let lastT=0,stopT=0;
+ MODS.push({id:'gfx100i',
+  start(){ensure();for(const d of decals.values())root.remove(d.m);decals.clear();I.stops=0;I.dust=0;dustMats=null;dustCar=null;seasonDone='-'},
+  sim(dt){const g=G();if(!g||g.paused)return;ensure();const e=g.ego;
+   stopT-=dt;if(stopT<=0){stopT=1.5;try{scanStops(g)}catch(x){}try{applySeason(g)}catch(x){}}
+   if((e.acc||0)<-2)I.dust=Math.min(1,I.dust+(-(e.acc)-2)*e.v*dt/250000)},
+  preRender(){const g=G();if(!g){root.visible=false;cv.style.display='none';return}root.visible=true;cv.style.display='';
+   const now=performance.now(),dt=Math.min(0.1,(now-(lastT||now))/1000);lastT=now;
+   /* 17 */
+   let bk=0;if(typeof sun!=='undefined'){const sd=new THREE.Vector3().copy(sun.position).sub(sun.target.position).normalize();const el=Math.asin(Math.max(-1,Math.min(1,sd.y)))*57.3;
+    bk=el>4||el<-9?0:el>0?(4-el)/4:el>-5?1:(el+9)/4;if(bk>0){belt.position.set(camera.position.x,camera.position.y+150,camera.position.z);belt.rotation.y=Math.atan2(-sd.x,-sd.z)}}
+   beltMat.opacity=I.belt=bk*(1-Math.min(1,(W().cloud??0)*1.2));belt.visible=beltMat.opacity>0.02;
+   /* 54 */
+   const m=g.ego.mesh;if(dustCar!==m){dustCar=m;dustMats=null}if(!dustMats&&m.userData.wheels)try{dustMats=wheelMats(m)}catch(x){dustMats=[]}if(dustMats)for(const c of dustMats)c.color.copy(c.userData.base).lerp(dustCol,I.dust*0.6);
+   /* 81 */
+   const wx=W(),rain=(wx.rain||0)>0.1||wx.key==='rain';drawDrops(rain&&g.cam!=='in',g.ego.v||0,dt)}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
