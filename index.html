@@ -13918,6 +13918,24 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   postRender(){if(hemiSave!=null&&typeof hemi!=='undefined'){hemi.intensity=hemiSave;hemiSave=null}}});
 })();
 </script>
+<script>/* mods/99zzm-mirror.js */
+/* Working rear-view mirror in the cabin view: a small camera at the mirror looks back through the rear window and its picture
+   (flipped left-right, like a real mirror) is drawn onto the mirror glass. Rendered every other frame at low resolution, only
+   while you are in the driver's seat. The glass was a plain metallic plane with nothing to reflect and showed as a black bar. */
+(function(){
+ const W=384,H=96;let rt=null,cam=null,mat=null,glass=null,orig=null,n=0;
+ function setup(gl){if(!rt){rt=new THREE.RenderTarget?new THREE.RenderTarget(W,H):new THREE.WebGLRenderTarget(W,H);rt.texture.colorSpace=THREE.SRGBColorSpace;cam=new THREE.PerspectiveCamera(22,W/H,0.3,2500);
+   mat=new THREE.MeshBasicMaterial({map:rt.texture,toneMapped:false});rt.texture.wrapS=THREE.RepeatWrapping;rt.texture.repeat.x=-1;rt.texture.offset.x=1 /* mirror image */}
+  if(glass!==gl){if(glass&&orig)glass.material=orig;glass=gl;orig=gl.material;gl.material=mat}}
+ const P=new THREE.Vector3(),Q=new THREE.Quaternion(),B=new THREE.Vector3();
+ MODS.push({id:'mirrorcam',
+  preRender(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh)return;const gl=G.ego.mesh.userData.mirrorGlass;if(!gl)return;
+   if(G.cam!=='in'){if(glass&&orig&&glass.material===mat)glass.material=orig;return}setup(gl);if(glass.material!==mat)glass.material=mat;if((n++)%2)return;
+   const m=G.ego.mesh;m.updateMatrixWorld();gl.getWorldPosition(P);m.getWorldQuaternion(Q);
+   B.set(-1,0,0).applyQuaternion(Q); /* the car's forward is +x: look the other way */cam.position.copy(P).addScaledVector(B,0.1);cam.up.set(0,1,0);cam.lookAt(P.x+B.x*50,P.y+B.y*50-1.2,P.z+B.z*50);cam.updateMatrixWorld();
+   const vis=glass.visible;glass.visible=false;const prev=renderer.getRenderTarget();try{renderer.setRenderTarget(rt);renderer.render(scene,cam)}catch(e){}renderer.setRenderTarget(prev);glass.visible=vis}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
