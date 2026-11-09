@@ -13843,7 +13843,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 /* Graphics 100, batch H (plain meshes, WebGL and WebGPU):
    24 rainbows opposite the sun in light rain or just after it, only while the sun is below 42°
    29 lightning glowing inside distant clouds in heavy rain and hurricanes, with a faint flash on the scene
-   69 painted parking bays along the edges of car parks
+   69 painted parking bays along car-park aisles and the edges of car parks
    80 boats moored in marinas */
 (function(){
  const G=()=>typeof game!=='undefined'&&game&&game.route&&game.ego?game:null;
@@ -13875,7 +13875,12 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const inPoly=(x,z,P)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>z)!==(b[1]>z)&&x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0])c=!c}return c};
  const rnd=s=>{const r=Math.sin(s*12.9898)*43758.5453;return r-Math.floor(r)};
  function buildTile(k,d){const pos=[];const bs=[];
-  for(const el of d.elements||[]){const t=el.tags||{};if(!el.geometry||el.geometry.length<4)continue;const P=el.geometry.filter(p=>p&&p.lat!=null).map(p=>[toX(p.lon),toZ(p.lat)]);if(P.length<4)continue;
+  for(const el of d.elements||[]){const t=el.tags||{};
+   if(t.service==='parking_aisle'&&el.geometry&&el.geometry.length>=2&&pos.length<60000){const A=el.geometry.filter(p=>p&&p.lat!=null).map(p=>[toX(p.lon),toZ(p.lat)]); /* bays both sides of a car-park aisle: most car parks in the map data are aisles, not outlines */
+    for(let i=1;i<A.length;i++){const a=A[i-1],b=A[i],ex=b[0]-a[0],ez=b[1]-a[1],L=Math.hypot(ex,ez);if(L<6)continue;const ux=ex/L,uz=ez/L;
+     for(const sd of [1,-1]){const nx=-uz*sd,nz=ux*sd;for(let s=1.3;s<=L-1.3;s+=2.6){const x0=a[0]+ux*s+nx*3.2,z0=a[1]+uz*s+nz*3.2,x1=x0+nx*4.8,z1=z0+nz*4.8,w=0.06,y0=groundY(x0,z0)+0.06,y1=groundY(x1,z1)+0.06;
+      pos.push(x0-ux*w,y0,z0-uz*w, x1-ux*w,y1,z1-uz*w, x1+ux*w,y1,z1+uz*w, x0-ux*w,y0,z0-uz*w, x1+ux*w,y1,z1+uz*w, x0+ux*w,y0,z0+uz*w)}}}}
+   if(!el.geometry||el.geometry.length<4)continue;const P=el.geometry.filter(p=>p&&p.lat!=null).map(p=>[toX(p.lon),toZ(p.lat)]);if(P.length<4)continue;
    if(t.amenity==='parking'&&(!t.parking||t.parking==='surface')&&pos.length<60000){
     for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],ex=b[0]-a[0],ez=b[1]-a[1],L=Math.hypot(ex,ez);if(L<8)continue;const ux=ex/L,uz=ez/L;let nx=-uz,nz=ux;const mx=(a[0]+b[0])/2,mz=(a[1]+b[1])/2;if(!inPoly(mx+nx*1.5,mz+nz*1.5,P)){nx=-nx;nz=-nz}if(!inPoly(mx+nx*1.5,mz+nz*1.5,P))continue;
      for(let s=1.5;s<=L-1.5;s+=2.6){const x0=a[0]+ux*s+nx*0.6,z0=a[1]+uz*s+nz*0.6,x1=x0+nx*4.8,z1=z0+nz*4.8;if(!inPoly(x1,z1,P))continue;const w=0.06,y0=groundY(x0,z0)+0.06,y1=groundY(x1,z1)+0.06;
