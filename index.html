@@ -13499,7 +13499,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const oil=mkI(flat(1.1,2.6),decal(oilTex)),hole=mkI(flat(0.8,0.8),decal(holeTex)),grate=mkI(flat(0.9,0.45),decal(grateTex));
  const markMat=new THREE.MeshLambertMaterial({color:0xd8c060,emissive:0x000000});const mark=mkI(new THREE.BoxGeometry(0.1,0.025,0.1),markMat);
  const skidMat=new THREE.MeshBasicMaterial({color:0x101010,transparent:true,opacity:0.6,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
- const skid=new THREE.InstancedMesh(flat(0.24,1),skidMat,1200);skid.count=0;skid.frustumCulled=false;skid.renderOrder=1;root.add(skid);let skidI=0,skidN=0;const lastW=[];
+ const skid=new THREE.InstancedMesh(flat(0.24,1),skidMat,1200);skid.count=0;skid.frustumCulled=false;skid.renderOrder=1;root.add(skid);let skidI=0,skidN=0,skidO={lon:null,lat:null};const lastW=[];
  const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(),P=new THREE.Vector3(),UP=new THREE.Vector3(0,1,0);
  const rnd=s=>{const x=Math.sin(s*127.1)*43758.5453;return x-Math.floor(x)};
  let lastS=-1e9;
@@ -13534,10 +13534,11 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   start(){ensure();lastS=-1e9;skidN=skidI=0;skid.count=0;for(const t of trails)root.remove(t);trails.length=0;for(const L of LF)L.live=false},
   sim(dt){const g=G();if(!g||g.paused||dt<=0)return;ensure();const e=g.ego,R=window.REAL||{};
    if(Math.abs(e.s-lastS)>150){lastS=e.s;try{rebuild(g)}catch(x){}}
+   if(typeof ORIGIN!=='undefined'&&(ORIGIN.lon!==skidO.lon||ORIGIN.lat!==skidO.lat)){skidO={lon:ORIGIN.lon,lat:ORIGIN.lat};skidN=skidI=0;skid.count=0;lastW.length=0} /* the world was re-centred: old marks would sit in the wrong place */
    /* 31 skid marks from the ego's wheels while sliding, spinning or braking hard */
    const hard=R.slide||R.spin||((e.acc||0)<-7&&e.v>8);const ws=e.mesh.userData.wheels||[];
-   if(hard&&e.v>2){ws.forEach((w,i)=>{const o=w.piv||w;if(!o.getWorldPosition)return;o.getWorldPosition(P);const y=(()=>{try{return routeY(e.s)}catch(x){return P.y-0.3}})()+0.035;const L=lastW[i];
-     if(L){const dx=P.x-L.x,dz=P.z-L.z,d=Math.hypot(dx,dz);if(d>0.25){Q.setFromAxisAngle(UP,Math.atan2(dx,dz));M.compose(new THREE.Vector3((P.x+L.x)/2,y,(P.z+L.z)/2),Q,S.set(1,1,d));skid.setMatrixAt(skidI,M);skidI=(skidI+1)%1200;skidN=Math.min(1200,skidN+1);skid.count=skidN;skid.instanceMatrix.needsUpdate=true;lastW[i]={x:P.x,z:P.z}}}
+   if(hard&&e.v>2){ws.forEach((w,i)=>{const o=w.piv||w;if(!o.getWorldPosition)return;o.getWorldPosition(P);const y=e.mesh.position.y+0.035; /* the car's own ground height, not the route centre line: right on camber, bridges and off the lane */const L=lastW[i];
+     if(L){const dx=P.x-L.x,dz=P.z-L.z,d=Math.hypot(dx,dz);if(d>4){lastW[i]={x:P.x,z:P.z};return} /* a jump (teleport, replay, re-centre): start a new mark, never a streak across the map */if(d>0.25){Q.setFromAxisAngle(UP,Math.atan2(dx,dz));M.compose(new THREE.Vector3((P.x+L.x)/2,y,(P.z+L.z)/2),Q,S.set(1,1,d));skid.setMatrixAt(skidI,M);skidI=(skidI+1)%1200;skidN=Math.min(1200,skidN+1);skid.count=skidN;skid.instanceMatrix.needsUpdate=true;lastW[i]={x:P.x,z:P.z}}}
      else lastW[i]={x:P.x,z:P.z}})}else lastW.length=0;
    /* 45 leaves */
    if(autumn()&&!(g.limitMph>=55)){let n=0;for(const L of LF){if(!L.live&&Math.random()<0.02){const a=Math.random()*6.28,r=8+Math.random()*30;L.x=e.x+Math.cos(a)*r;L.z=e.z+Math.sin(a)*r;L.y=(()=>{try{return routeY(e.s)}catch(x){return e.mesh.position.y}})()+0.02;L.vx=1+Math.random()*2;L.vz=(Math.random()-0.5);L.live=true;L.c=leafCols[(Math.random()*4)|0]}
