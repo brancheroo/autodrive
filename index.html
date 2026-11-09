@@ -14035,11 +14035,11 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const tagMats=[...Array(8)].map((_,i)=>new THREE.MeshLambertMaterial({map:tagTex(i*13.1+2),transparent:true,alphaTest:0.2,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
  const tagGeo=new THREE.PlaneGeometry(2.6,1);const tagTiles=new Map();
  function tagTile(k,d){const out=[];let nb=0;for(const el of d.elements||[])if(el.tags&&el.tags.building)nb++;if(nb<40){tagTiles.set(k,out);return} /* built-up areas only */
-  const g=game;for(const el of d.elements||[]){if(out.length>=6)break;const t=el.tags||{};if(!t.building||!el.geometry||el.geometry.length<4)continue;if(/house|detached|church|cathedral|temple|hospital|school/.test(t.building))continue;
+  const g=game;for(const el of d.elements||[]){if(out.length>=3)break;const t=el.tags||{};if(!t.building||!el.geometry||el.geometry.length<4)continue;if(/house|detached|church|cathedral|temple|hospital|school/.test(t.building))continue;
    const P=el.geometry.filter(p=>p&&p.lat!=null).map(p=>[toX(p.lon),toZ(p.lat)]);let cx=0,cz=0;for(const p of P){cx+=p[0];cz+=p[1]}cx/=P.length;cz/=P.length;
    for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(L<5)continue;const s0=(el.id%1000)*0.37+i;if(rnd(s0)>0.06)continue;
     const mx=(a[0]+b[0])/2,mz=(a[1]+b[1])/2;let nx=(b[1]-a[1])/L,nz=-(b[0]-a[0])/L;if((mx-cx)*nx+(mz-cz)*nz<0){nx=-nx;nz=-nz} /* outward face */
-    const y=groundY(mx,mz);const m=new THREE.Mesh(tagGeo,tagMats[Math.floor(rnd(s0+1)*tagMats.length)]);const sc=0.8+rnd(s0+2)*0.8;m.scale.set(sc,sc,1);m.position.set(mx+nx*0.06,y+0.8+sc*0.5,mz+nz*0.06);m.rotation.y=Math.atan2(nx,nz);root.add(m);out.push(m);break}}
+    const y=groundY(mx,mz);const m=new THREE.Mesh(tagGeo,tagMats[Math.floor(rnd(s0+1)*tagMats.length)]);const sc=0.8+rnd(s0+2)*0.8;m.scale.set(sc,sc,1);m.position.set(mx+nx*0.06,y+0.25+sc*0.5,mz+nz*0.06);m.rotation.y=Math.atan2(nx,nz);root.add(m);out.push(m);break}}
   tagTiles.set(k,out);J.tags+=out.length}
  let scanT=0;
  MODS.push({id:'gfx100j',
