@@ -13795,6 +13795,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
       mesh gets a see-through copy whose vertex colours carry the grime (alpha by height), so it works on WebGL and
       WebGPU alike. A shader node on the paint was tried first and broke the WebGPU render. */
 (function(){
+ return; /* off: the grime did not show in testing (Hyundie at 80% looked clean); needs another approach */
  const D={dirt:0,meshes:0};window.GFX100G=D;
  const col=new THREE.Color(0x5a4a38);let over=[],car=null,lastK=-1,km=0;
  const mat=new THREE.MeshLambertMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}); /* opaque: WebGPU ignored per-vertex alpha and browned the whole car. Only the lower triangles are drawn and they blend from the car's own colour into grime */
