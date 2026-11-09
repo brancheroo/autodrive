@@ -13797,12 +13797,14 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 (function(){
  const D={dirt:0,meshes:0};window.GFX100G=D;
  const col=new THREE.Color(0x5a4a38);let over=[],car=null,lastK=-1,km=0;
- const mat=new THREE.MeshLambertMaterial({vertexColors:true,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
+ const mat=new THREE.MeshLambertMaterial({vertexColors:true,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}); /* opaque: WebGPU ignored per-vertex alpha and browned the whole car. Only the lower triangles are drawn and they blend from the car's own colour into grime */
+ const base=new THREE.Color(),tmp=new THREE.Color();
  function build(g){for(const o of over)if(o.parent)o.parent.remove(o);over=[];const m=g.ego.mesh,p=m.userData.paint;car=m;if(!p)return;m.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(m.matrixWorld).invert();
-  m.traverse(o=>{if(!o.isMesh||o.material!==p||!o.geometry.attributes.position)return;const geo=new THREE.BufferGeometry();geo.setAttribute('position',o.geometry.attributes.position);if(o.geometry.attributes.normal)geo.setAttribute('normal',o.geometry.attributes.normal);if(o.geometry.index)geo.setIndex(o.geometry.index);
+  m.traverse(o=>{if(!o.isMesh||o.material!==p||!o.geometry.attributes.position)return;const geo=new THREE.BufferGeometry();geo.setAttribute('position',o.geometry.attributes.position);if(o.geometry.attributes.normal)geo.setAttribute('normal',o.geometry.attributes.normal);
    const A=o.geometry.attributes.position,M=new THREE.Matrix4().multiplyMatrices(inv,o.matrixWorld),v=new THREE.Vector3(),hy=new Float32Array(A.count);for(let i=0;i<A.count;i++){v.fromBufferAttribute(A,i).applyMatrix4(M);hy[i]=v.y}
-   geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(A.count*4),4));const c=new THREE.Mesh(geo,mat);c.userData.hy=hy;c.userData.noDent=true;c.renderOrder=1;c.raycast=()=>{};o.add(c);over.push(c)});D.meshes=over.length;lastK=-1}
- function paint(k){for(const c of over){const C=c.geometry.attributes.color,hy=c.userData.hy;for(let i=0;i<hy.length;i++){const a=k*Math.min(1,Math.max(0,(0.62-hy[i])/0.42));C.setXYZW(i,col.r,col.g,col.b,a*0.85)}C.needsUpdate=true}lastK=k}
+   const I=o.geometry.index,n=I?I.count:A.count,keep=[];for(let t=0;t<n;t+=3){const a0=I?I.getX(t):t,a1=I?I.getX(t+1):t+1,a2=I?I.getX(t+2):t+2;if(Math.min(hy[a0],hy[a1],hy[a2])<0.62)keep.push(a0,a1,a2)}if(!keep.length)return;geo.setIndex(keep);
+   geo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(A.count*3),3));const c=new THREE.Mesh(geo,mat);c.userData.hy=hy;c.userData.noDent=true;c.renderOrder=1;c.raycast=()=>{};o.add(c);over.push(c)});D.meshes=over.length;lastK=-1}
+ function paint(k){const p=car&&car.userData.paint;base.copy(p&&p.color?p.color:col);for(const c of over){const C=c.geometry.attributes.color,hy=c.userData.hy;for(let i=0;i<hy.length;i++){const a=k*0.85*Math.min(1,Math.max(0,(0.62-hy[i])/0.42));tmp.copy(base).lerp(col,a);C.setXYZ(i,tmp.r,tmp.g,tmp.b)}C.needsUpdate=true}lastK=k}
  MODS.push({id:'gfx100g',
   start(){D.dirt=0;km=0;over=[];car=null},
   sim(dt){const g=typeof game!=='undefined'&&game;if(!g||!g.route||!g.ego||g.paused)return;const W=typeof WX!=='undefined'?WX:{};const wet=W.wet||W.key==='rain'||W.snowCover;
