@@ -5514,6 +5514,92 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  MODS.push({id:'warmup',start(){setTimeout(warm,0)}});
 })();
 </script>
+<script>/* mods/02g-raygrid.js */
+/* Fast ray tests against big meshes. three.js tests a ray against EVERY triangle of a mesh, and the streamed map is a
+   handful of very large merged meshes (a tile's roads ~10,000 triangles, its buildings far more). The game casts such rays
+   all the time: the road height under the player's car every frame (2.3 ms and ~1.5 MB of garbage per call) and under each
+   traffic car, the chase / helicopter camera's line of sight to buildings (~5 ms a frame), trackside camera sight lines,
+   roadside pole and prop placement.
+   Each big geometry now gets a flat grid over its own X-Z extent listing the triangles that touch each cell, built the
+   first time a ray actually enters its bounding box. A ray then walks only the cells it crosses and tests only their
+   triangles, with the same hit rule three.js uses (material side, near / far, world-space distance). Small meshes,
+   skinned / morphed / multi-material ones and anything unusual keep the stock test. The grid is dropped with its geometry
+   and rebuilt if the geometry's vertices or index change. localStorage rayGrid='0' turns it off; RAYGRID has counters. */
+(function(){
+ if(typeof THREE==='undefined'||!THREE.Mesh)return;
+ const RG=window.RAYGRID={on:(()=>{try{return localStorage.getItem('rayGrid')!=='0'}catch(e){return true}})(),built:0,buildMs:0,fast:0,stock:0,bytes:0};
+ const MIN_TRIS=300,CACHE=new WeakMap(),_stock=THREE.Mesh.prototype.raycast;RG.stockRaycast=_stock;
+ const INV=new THREE.Matrix4(),SPH=new THREE.Sphere(),V=new THREE.Vector3(),LO=new THREE.Vector3(),LD=new THREE.Vector3(),RAY=new THREE.Ray();let stamp=0;
+ function build(g,P,I,nt){const t0=performance.now(),nv=Math.min(g.attributes.position.count,(P.length/3)|0);
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity,z0=Infinity,z1=-Infinity;
+  for(let i=0;i<nv;i++){const x=P[i*3],y=P[i*3+1],z=P[i*3+2];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;if(z<z0)z0=z;if(z>z1)z1=z}
+  if(!(isFinite(x0)&&isFinite(x1)&&isFinite(y0)&&isFinite(y1)&&isFinite(z0)&&isFinite(z1)))return {bad:true};
+  const dx=Math.max(1e-4,x1-x0),dz=Math.max(1e-4,z1-z0);let cs=Math.max(Math.sqrt(dx*dz/Math.max(1,nt/4)),Math.max(dx,dz)/256,1e-3),nx,nz,start,total;
+  for(let pass=0;pass<8;pass++){nx=Math.max(1,Math.min(256,Math.ceil(dx/cs)));nz=Math.max(1,Math.min(256,Math.ceil(dz/cs)));start=new Uint32Array(nx*nz+1);total=0;
+   for(let t=0;t<nt;t++){const a=I?I[t*3]:t*3,b=I?I[t*3+1]:t*3+1,c=I?I[t*3+2]:t*3+2,ax=P[a*3],bx=P[b*3],cx=P[c*3],az=P[a*3+2],bz=P[b*3+2],cz=P[c*3+2];
+    let i0=((Math.min(ax,bx,cx)-x0)/cs)|0,i1=((Math.max(ax,bx,cx)-x0)/cs)|0,j0=((Math.min(az,bz,cz)-z0)/cs)|0,j1=((Math.max(az,bz,cz)-z0)/cs)|0;
+    if(!(i0>=0))i0=0;if(!(j0>=0))j0=0;if(i1>=nx)i1=nx-1;if(j1>=nz)j1=nz-1;
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){start[j*nx+i+1]++;total++}}
+   if(total<=nt*6+4096||(nx===1&&nz===1))break;cs*=2} /* a few huge triangles would land in thousands of cells: coarsen */
+  for(let k=0;k<nx*nz;k++)start[k+1]+=start[k];
+  const list=new Uint32Array(total),fill=new Uint32Array(nx*nz);
+  for(let t=0;t<nt;t++){const a=I?I[t*3]:t*3,b=I?I[t*3+1]:t*3+1,c=I?I[t*3+2]:t*3+2,ax=P[a*3],bx=P[b*3],cx=P[c*3],az=P[a*3+2],bz=P[b*3+2],cz=P[c*3+2];
+   let i0=((Math.min(ax,bx,cx)-x0)/cs)|0,i1=((Math.max(ax,bx,cx)-x0)/cs)|0,j0=((Math.min(az,bz,cz)-z0)/cs)|0,j1=((Math.max(az,bz,cz)-z0)/cs)|0;
+   if(!(i0>=0))i0=0;if(!(j0>=0))j0=0;if(i1>=nx)i1=nx-1;if(j1>=nz)j1=nz-1;
+   for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const k=j*nx+i;list[start[k]+fill[k]++]=t}}
+  const G={x0,x1,y0,y1,z0,z1,cs,nx,nz,start,list,seen:new Uint32Array(nt),P,I,nt,ver:g.attributes.position.version,iver:g.index?g.index.version:-1};
+  RG.built++;RG.buildMs+=performance.now()-t0;RG.bytes+=start.byteLength+list.byteLength+G.seen.byteLength;return G}
+ function fast(mesh,rc,hits){const g=mesh.geometry,m=mesh.material;
+  if(!g||!m||Array.isArray(m)||mesh.isSkinnedMesh||mesh.isBatchedMesh||mesh.morphTargetInfluences)return false;
+  const pa=g.attributes&&g.attributes.position;if(!pa||pa.isInterleavedBufferAttribute||pa.itemSize!==3)return false;
+  const P=pa.array;if(!(P instanceof Float32Array))return false;const ia=g.index,I=ia?ia.array:null,nt=((ia?ia.count:pa.count)/3)|0;
+  if(nt<MIN_TRIS)return false;if(g.groups&&g.groups.length>1)return false;const dr=g.drawRange;if(dr&&(dr.start!==0||dr.count<nt*3))return false;
+  if(g.morphAttributes&&g.morphAttributes.position&&g.morphAttributes.position.length)return false;
+  if(P.length<pa.count*3||(I&&I.length<nt*3))return true; /* vertex data already released (GPU-only mesh): nothing to hit, as before */
+  /* same early-out as three.js: the world-space bounding sphere */
+  if(g.boundingSphere===null)g.computeBoundingSphere();SPH.copy(g.boundingSphere).applyMatrix4(mesh.matrixWorld);const ray=rc.ray,near=rc.near||0,far=rc.far;
+  V.copy(ray.origin).addScaledVector(ray.direction,near);if(!SPH.containsPoint(V)){RAY.origin.copy(V);RAY.direction.copy(ray.direction);if(RAY.intersectSphere(SPH,LO)===null)return true;if(V.distanceToSquared(LO)>(far-near)*(far-near))return true}
+  /* the ray in the mesh's own space; tMax = how far along it 'far' reaches there */
+  INV.copy(mesh.matrixWorld).invert();LO.copy(ray.origin).applyMatrix4(INV);let tMax=Infinity;
+  if(far<Infinity){V.copy(ray.origin).addScaledVector(ray.direction,far).applyMatrix4(INV);tMax=V.distanceTo(LO)*1.0001+1e-4}
+  LD.copy(ray.direction).transformDirection(INV);const ox=LO.x,oy=LO.y,oz=LO.z,dx=LD.x,dy=LD.y,dz=LD.z;
+  let G=CACHE.get(g);
+  if(!G||G.P!==P||G.I!==I||G.ver!==pa.version||G.iver!==(ia?ia.version:-1)){
+   /* cheap reject on the bounding box before paying for a grid */
+   if(g.boundingBox===null)g.computeBoundingBox();const B=g.boundingBox;let a0=0,a1=tMax;
+   for(let ax=0;ax<3;ax++){const o=ax===0?ox:ax===1?oy:oz,d=ax===0?dx:ax===1?dy:dz,lo=(ax===0?B.min.x:ax===1?B.min.y:B.min.z)-1e-3,hi=(ax===0?B.max.x:ax===1?B.max.y:B.max.z)+1e-3;
+    if(Math.abs(d)<1e-12){if(o<lo||o>hi)return true}else{let ta=(lo-o)/d,tb=(hi-o)/d;if(ta>tb){const s=ta;ta=tb;tb=s}if(ta>a0)a0=ta;if(tb<a1)a1=tb;if(a0>a1)return true}}
+   G=build(g,P,I,nt);CACHE.set(g,G)}
+  if(G.bad)return false;
+  /* clip the ray to the grid's box */
+  let t0=0,t1=tMax;
+  {const e=1e-3;
+   if(Math.abs(dx)<1e-12){if(ox<G.x0-e||ox>G.x1+e)return true}else{let ta=(G.x0-e-ox)/dx,tb=(G.x1+e-ox)/dx;if(ta>tb){const s=ta;ta=tb;tb=s}if(ta>t0)t0=ta;if(tb<t1)t1=tb}
+   if(Math.abs(dy)<1e-12){if(oy<G.y0-e||oy>G.y1+e)return true}else{let ta=(G.y0-e-oy)/dy,tb=(G.y1+e-oy)/dy;if(ta>tb){const s=ta;ta=tb;tb=s}if(ta>t0)t0=ta;if(tb<t1)t1=tb}
+   if(Math.abs(dz)<1e-12){if(oz<G.z0-e||oz>G.z1+e)return true}else{let ta=(G.z0-e-oz)/dz,tb=(G.z1+e-oz)/dz;if(ta>tb){const s=ta;ta=tb;tb=s}if(ta>t0)t0=ta;if(tb<t1)t1=tb}
+   if(t0>t1)return true}
+  const cs=G.cs,nx=G.nx,nz=G.nz,start=G.start,list=G.list,seen=G.seen,side=m.side,id=++stamp;if(stamp>4e9){stamp=1;seen.fill(0)}
+  let i=((ox+dx*t0-G.x0)/cs)|0,j=((oz+dz*t0-G.z0)/cs)|0;if(i<0)i=0;else if(i>=nx)i=nx-1;if(j<0)j=0;else if(j>=nz)j=nz-1;
+  const si=dx>0?1:-1,sj=dz>0?1:-1,adx=Math.abs(dx),adz=Math.abs(dz);
+  let tx=adx<1e-12?Infinity:((G.x0+(i+(dx>0?1:0))*cs)-ox)/dx,tz=adz<1e-12?Infinity:((G.z0+(j+(dz>0?1:0))*cs)-oz)/dz;const ddx=adx<1e-12?Infinity:cs/adx,ddz=adz<1e-12?Infinity:cs/adz;
+  for(let guard=0;guard<1024;guard++){const k=j*nx+i;
+   for(let q=start[k],qe=start[k+1];q<qe;q++){const t=list[q];if(seen[t]===id)continue;seen[t]=id;
+    const a=I?I[t*3]:t*3,b=I?I[t*3+1]:t*3+1,c=I?I[t*3+2]:t*3+2,ax=P[a*3],ay=P[a*3+1],az=P[a*3+2];
+    const e1x=P[b*3]-ax,e1y=P[b*3+1]-ay,e1z=P[b*3+2]-az,e2x=P[c*3]-ax,e2y=P[c*3+1]-ay,e2z=P[c*3+2]-az;
+    const nx_=e1y*e2z-e1z*e2y,ny_=e1z*e2x-e1x*e2z,nz_=e1x*e2y-e1y*e2x;let DdN=dx*nx_+dy*ny_+dz*nz_,sg;
+    if(DdN>0){if(side===0)continue;sg=1}else if(DdN<0){if(side===1)continue;sg=-1;DdN=-DdN}else continue; /* FrontSide: only faces turned toward the ray; BackSide: only away */
+    const fx=ox-ax,fy=oy-ay,fz=oz-az;
+    const u=sg*(dx*(fy*e2z-fz*e2y)+dy*(fz*e2x-fx*e2z)+dz*(fx*e2y-fy*e2x));if(u<0)continue;
+    const v=sg*(dx*(e1y*fz-e1z*fy)+dy*(e1z*fx-e1x*fz)+dz*(e1x*fy-e1y*fx));if(v<0||u+v>DdN)continue;
+    const QdN=-sg*(fx*nx_+fy*ny_+fz*nz_);if(QdN<0)continue;const tt=QdN/DdN;
+    const pt=new THREE.Vector3(ox+dx*tt,oy+dy*tt,oz+dz*tt).applyMatrix4(mesh.matrixWorld),dist=ray.origin.distanceTo(pt);if(dist<near||dist>far)continue;
+    hits.push({distance:dist,point:pt,object:mesh,faceIndex:t,face:{a,b,c,normal:new THREE.Vector3(nx_,ny_,nz_).normalize(),materialIndex:0}})}
+   if(tx<tz){if(tx>t1)break;i+=si;tx+=ddx;if(i<0||i>=nx)break}else{if(tz>t1)break;j+=sj;tz+=ddz;if(j<0||j>=nz)break}}
+  return true}
+ THREE.Mesh.prototype.raycast=function(rc,hits){if(RG.on&&!this.isInstancedMesh){let ok=false;const n0=hits.length;try{ok=fast(this,rc,hits)}catch(e){ok=false;hits.length=n0;RG.err=String(e)}if(ok){RG.fast++;return}}RG.stock++;return _stock.call(this,rc,hits)};
+ MODS.push({id:'raygrid'});
+})();
+</script>
 <script>/* mods/03-quality.js */
 /* Graphics quality setting (Low / High / Ultra) on the start screen and HUD, plus a small FPS readout. */
 (function(){
@@ -5761,15 +5847,17 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  /* WebGPU three.js compiles a separate shader for every InstancedMesh (≈240 here, twice each with shadows: seconds of
     freezing). In WebGPU mode each part is instead PER plain meshes sharing the part's geometry and material, behind the
     same setMatrixAt / instanceMatrix / count calls, so they share compiled shaders with every other car. */
- function plainPool(geo,mat){const g=new THREE.Group(),ms=[];g.isPlainPool=true;let shadow=false,recv=false;
+ const HOLD=new THREE.Group();HOLD.matrixAutoUpdate=false;window.PARKHOLD=HOLD;
+ function plainPool(geo,mat){const g=new THREE.Group(),ms=[];g.isPlainPool=true;let shadow=false,recv=false,nvis=0;
+  g.matrixAutoUpdate=false; /* ~290 of these holders (2,300 slot meshes) used to sit in the scene for the whole drive, walked by every scene pass (matrix update, culling, shadow: three or four passes a frame) although most hold no car at any moment - about half of all objects in the scene. A holder is now attached (under one static group) only while at least one of its slots shows a car */
   for(let k=0;k<PER;k++){const m=new THREE.Mesh(geo,mat);m.matrixAutoUpdate=false;m.visible=false;g.add(m);ms.push(m)}
-  g.setMatrixAt=(k,M)=>{const m=ms[k];m.matrix.copy(M);m.matrixWorldNeedsUpdate=true;m.visible=M.determinant()!==0};
+  g.setMatrixAt=(k,M)=>{const m=ms[k],v=M.determinant()!==0;m.matrix.copy(M);m.matrixWorldNeedsUpdate=true;if(v!==m.visible){m.visible=v;nvis+=v?1:-1;if(nvis>0&&g.parent!==HOLD){if(!HOLD.parent)scene.add(HOLD);HOLD.add(g)}else if(nvis<=0&&g.parent===HOLD)HOLD.remove(g)}};
   g.instanceMatrix={needsUpdate:false};g.count=0;
   Object.defineProperty(g,'castShadow',{get:()=>shadow,set:v=>{shadow=v;for(const m of ms)m.castShadow=v}});
   Object.defineProperty(g,'receiveShadow',{get:()=>recv,set:v=>{recv=v;for(const m of ms)m.receiveShadow=v}});
   return g}
  function templates(){if(tpl)return tpl;tpl=[];for(let i=0;i<8;i++){const sp=TRAFFIC_SPECS[i%TRAFFIC_SPECS.length];const m=buildCar(sp,TCOLS[(i*5)%TCOLS.length]);if(window.PERF)PERF.bake(m);m.updateMatrixWorld(true);const parts=[];
-   m.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||Array.isArray(o.material))return;const im=window.__GPU?plainPool(o.geometry,o.material):new THREE.InstancedMesh(o.geometry,o.material,PER);im.castShadow=o.castShadow;im.receiveShadow=true;im.frustumCulled=false;for(let k=0;k<PER;k++)im.setMatrixAt(k,ZERO);im.instanceMatrix.needsUpdate=true;im.count=0; /* only slots in use are drawn */scene.add(im);parts.push({im,local:o.matrixWorld.clone()})});
+   m.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||Array.isArray(o.material))return;const im=window.__GPU?plainPool(o.geometry,o.material):new THREE.InstancedMesh(o.geometry,o.material,PER);im.castShadow=o.castShadow;im.receiveShadow=true;im.frustumCulled=false;for(let k=0;k<PER;k++)im.setMatrixAt(k,ZERO);im.instanceMatrix.needsUpdate=true;im.count=0; /* only slots in use are drawn */if(!im.isPlainPool)scene.add(im);parts.push({im,local:o.matrixWorld.clone()})});
    tpl.push({sp,parts,used:new Array(PER).fill(false)})}return tpl}
  function fit(T){const top=T.used.lastIndexOf(true)+1;for(const pt of T.parts)pt.im.count=top}
  function show(p){const T=tpl[p.t];fit(T);_q.setFromAxisAngle(UP,p.h);_v.set(p.q.x,p.q.y-0.025,p.q.z);_m.compose(_v,_q,_s);for(const pt of T.parts){pt.im.setMatrixAt(p.k,new THREE.Matrix4().multiplyMatrices(_m,pt.local));pt.im.instanceMatrix.needsUpdate=true}}
@@ -13795,27 +13883,32 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 /* Graphics 100, batch F:
    73 grass bends away from vehicles going past: clumps within ~3.5 m of your car or nearby traffic lean away from it,
       more at speed, and spring back once it has gone. Done by shearing the grass instances' matrices on the CPU each frame
-      (about 1,800 clumps), so it works the same on WebGL and WebGPU. Originals are restored before every change, and a
-      grass rebuild (new matrices from the game) is detected and never overwritten. */
+      (a few thousand clumps), so it works the same on WebGL and WebGPU. Only the three sheared matrix terms are ever written and
+      they are put back from the saved originals as a clump straightens; a grass rebuild (new matrices from the game) is
+      detected and never overwritten. */
 (function(){
  const F={bent:0};window.GFX100F=F;
- const orig=new Map();let ver=-1,mesh=null;const lean=new Map();
+ /* no per-frame garbage: the originals are one snapshot of the instance matrices taken when the game (re)builds the grass,
+    the lean of every clump lives in two flat arrays (this used to make one small object per clump, a Set and two array
+    copies every frame, about 0.3 MB of garbage per frame) */
+ let ver=-1,mesh=null,O=null,LX=null,LZ=null,BENT=null,nBent=0;const SRC=[];
  MODS.push({id:'gfx100f',
-  start(){orig.clear();lean.clear();ver=-1;mesh=null},
+  start(){ver=-1;mesh=null;nBent=0},
   frame(){const g=typeof game!=='undefined'&&game;if(!g||!g.route||!g.ego||typeof GRASS==='undefined')return;const im=GRASS.mesh;if(!im||!im.visible)return;
-   const A=im.instanceMatrix,a=A.array;
-   if(im!==mesh||A.version!==ver){orig.clear();lean.clear();mesh=im} /* rebuilt by the game: its new matrices are the originals */
-
-   let dirty=orig.size>0;if(im===mesh&&A.version===ver)for(const [i,o] of orig)a.set(o,i*16);
-   const src=[g.ego];for(const ag of g.agents)if(ag.mesh&&ag.v>3){const dx=ag.mesh.position.x-g.ego.x,dz=ag.mesh.position.z-g.ego.z;if(dx*dx+dz*dz<60*60)src.push(ag)}
-   const R=3.5,dt=0.016,touched=new Set();
-   for(let i=0;i<im.count;i++){const x=a[i*16+12],z=a[i*16+14];let lx=0,lz=0;
-    for(const c of src){const p=c.mesh?c.mesh.position:c;const dx=x-p.x,dz=z-p.z,d2=dx*dx+dz*dz;if(d2>R*R)continue;const d=Math.sqrt(d2)||0.01,k=(1-d/R)*Math.min(1,0.25+(c.v||0)/20)*0.9;lx+=dx/d*k;lz+=dz/d*k}
-    const L=lean.get(i)||{x:0,z:0};L.x+=(lx-L.x)*(lx||lz?0.35:0.06);L.z+=(lz-L.z)*(lx||lz?0.35:0.06);
-    if(Math.abs(L.x)+Math.abs(L.z)<0.004){lean.delete(i);continue}lean.set(i,L);
-    if(!orig.has(i))orig.set(i,a.slice(i*16,i*16+16));const o=orig.get(i),sy=Math.hypot(o[4],o[5],o[6]);a[i*16+4]=o[4]+L.x*sy;a[i*16+6]=o[6]+L.z*sy;a[i*16+5]=o[5]*(1-0.3*Math.min(1,Math.hypot(L.x,L.z)));touched.add(i)}
-   for(const i of [...orig.keys()])if(!touched.has(i)){orig.delete(i)} /* restored above, nothing new to apply */
-   F.bent=touched.size;if(dirty||touched.size)A.needsUpdate=true;ver=A.version}});
+   const A=im.instanceMatrix,a=A.array,n=im.count,n16=n*16;
+   if(im!==mesh||A.version!==ver||!O||O.length<n16||BENT.length<n){ /* rebuilt by the game: its new matrices are the originals */
+    if(!O||O.length<n16||BENT.length<n){const cap=Math.min(a.length/16|0,Math.ceil(n*1.25)+64);O=new Float32Array(cap*16);LX=new Float32Array(cap);LZ=new Float32Array(cap);BENT=new Uint8Array(cap)}else{LX.fill(0);LZ.fill(0);BENT.fill(0)}
+    for(let k=0;k<n16;k++)O[k]=a[k];mesh=im;nBent=0}
+   const dirty=nBent>0;SRC.length=0;SRC.push(g.ego);
+   for(const ag of g.agents)if(ag.mesh&&ag.v>3){const dx=ag.mesh.position.x-g.ego.x,dz=ag.mesh.position.z-g.ego.z;if(dx*dx+dz*dz<60*60)SRC.push(ag)}
+   const R=3.5,R2=R*R,ns=SRC.length;let touched=0;
+   for(let i=0;i<n;i++){const b=i*16,x=O[b+12],z=O[b+14];let lx=0,lz=0;
+    for(let s=0;s<ns;s++){const c=SRC[s],p=c.mesh?c.mesh.position:c,dx=x-p.x,dz=z-p.z,d2=dx*dx+dz*dz;if(d2>R2)continue;const d=Math.sqrt(d2)||0.01,k=(1-d/R)*Math.min(1,0.25+(c.v||0)/20)*0.9;lx+=dx/d*k;lz+=dz/d*k}
+    let Lx=LX[i],Lz=LZ[i];if(lx===0&&lz===0&&Lx===0&&Lz===0)continue; /* untouched and upright: the common case */
+    const r=lx||lz?0.35:0.06;Lx+=(lx-Lx)*r;Lz+=(lz-Lz)*r;
+    if(Math.abs(Lx)+Math.abs(Lz)<0.004){LX[i]=0;LZ[i]=0;if(BENT[i]){a[b+4]=O[b+4];a[b+5]=O[b+5];a[b+6]=O[b+6];BENT[i]=0}continue}
+    LX[i]=Lx;LZ[i]=Lz;const o4=O[b+4],o5=O[b+5],o6=O[b+6],sy=Math.hypot(o4,o5,o6);a[b+4]=o4+Lx*sy;a[b+6]=o6+Lz*sy;a[b+5]=o5*(1-0.3*Math.min(1,Math.hypot(Lx,Lz)));BENT[i]=1;touched++}
+   SRC.length=0;nBent=touched;F.bent=touched;if(dirty||touched)A.needsUpdate=true;ver=A.version}});
 })();
 </script>
 <script>/* mods/99zzk-gfx100g.js */
@@ -13921,8 +14014,8 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 </script>
 <script>/* mods/99zzm-mirror.js */
 /* Working rear-view mirror in the cabin view: a small camera at the mirror looks back through the rear window and its picture
-   (flipped left-right, like a real mirror) is drawn onto the mirror glass. Rendered every third frame at low resolution, only
-   while you are in the driver's seat. The glass was a plain metallic plane with nothing to reflect and showed as a black bar. */
+   (flipped left-right, like a real mirror) is drawn onto the mirror glass. Rendered every third frame at low resolution (never on a
+   frame that also redraws the shadow map), only while you are in the driver's seat. The glass was a plain metallic plane with nothing to reflect and showed as a black bar. */
 (function(){
  const W=256,H=64;let rt=null,cam=null,mat=null,glass=null,orig=null,n=0;
  function setup(gl){if(!rt){rt=new THREE.RenderTarget?new THREE.RenderTarget(W,H):new THREE.WebGLRenderTarget(W,H);rt.texture.colorSpace=THREE.SRGBColorSpace;cam=new THREE.PerspectiveCamera(22,W/H,0.3,2500);
@@ -13931,7 +14024,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const P=new THREE.Vector3(),Q=new THREE.Quaternion(),B=new THREE.Vector3();
  MODS.push({id:'mirrorcam',
   preRender(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh)return;const gl=G.ego.mesh.userData.mirrorGlass;if(!gl)return;
-   if(G.cam!=='in'){if(glass&&orig&&glass.material===mat)glass.material=orig;return}setup(gl);if(glass.material!==mat)glass.material=mat;if((n++)%3)return;
+   if(G.cam!=='in'){if(glass&&orig&&glass.material===mat)glass.material=orig;return}setup(gl);if(glass.material!==mat)glass.material=mat;if(++n<3)return;{const S=window.SHC;if(S&&S.every>1&&S.f%S.every===0&&n<5)return} /* WebGPU redraws the sun's shadow map on every SHC.every-th frame: the mirror waits one frame so the two extra passes never land in the same frame */n=0;
    const m=G.ego.mesh;m.updateMatrixWorld();gl.getWorldPosition(P);m.getWorldQuaternion(Q);
    B.set(-1,0,0).applyQuaternion(Q); /* the car's forward is +x: look the other way */cam.position.copy(P).addScaledVector(B,0.1);cam.up.set(0,1,0);cam.lookAt(P.x+B.x*50,P.y+B.y*50-1.2,P.z+B.z*50);cam.updateMatrixWorld();
    const vis=glass.visible;glass.visible=false;const prev=renderer.getRenderTarget();try{renderer.setRenderTarget(rt);renderer.render(scene,cam)}catch(e){}renderer.setRenderTarget(prev);glass.visible=vis}});
