@@ -13839,6 +13839,75 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    if(car!==g.ego.mesh||lost||(!over.length&&(g._dirtTry=(g._dirtTry||0)+1)%120===0)){try{build(g)}catch(e){}}const k=Math.round(D.dirt*40)/40;if(k!==lastK&&over.length)paint(k);const show=k>0.01;for(const c of over)c.visible=show}});
 })();
 </script>
+<script>/* mods/99zzl-gfx100h.js */
+/* Graphics 100, batch H (plain meshes, WebGL and WebGPU):
+   24 rainbows opposite the sun in light rain or just after it, only while the sun is below 42°
+   29 lightning glowing inside distant clouds in heavy rain and hurricanes, with a faint flash on the scene
+   69 painted parking bays along the edges of car parks
+   80 boats moored in marinas */
+(function(){
+ const G=()=>typeof game!=='undefined'&&game&&game.route&&game.ego?game:null;
+ const H={rainbow:0,flash:0,lots:0,boats:0};window.GFX100H=H;
+ const root=new THREE.Group();root.name='gfx100h';let added=false;const ensure=()=>{if(!added&&typeof scene!=='undefined'){scene.add(root);added=true}};
+ const W=()=>typeof WX!=='undefined'?WX:{};
+ function ctex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+
+ /* 24 rainbow: a ring at 42° round the anti-solar point, drawn far away so buildings and hills hide its foot */
+ const rbTex=ctex(512,512,(c,w,h)=>{const cx=w/2,R=w/2*0.93,cols=['#8a2be2','#3050ff','#20b0ff','#30d040','#f0e030','#ff9020','#ff3020'];
+  for(let i=0;i<cols.length;i++){c.beginPath();c.arc(cx,cx,R-(cols.length-1-i)*5,0,7);c.strokeStyle=cols[i];c.globalAlpha=0.55;c.lineWidth=6;c.stroke()}});
+ const rbMat=new THREE.MeshBasicMaterial({map:rbTex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0,fog:false,side:THREE.DoubleSide});
+ const RD=1800,rainbow=new THREE.Mesh(new THREE.PlaneGeometry(1,1),rbMat);rainbow.scale.setScalar(2*RD*Math.tan(42*Math.PI/180)/0.93);rainbow.renderOrder=-1;rainbow.frustumCulled=false;root.add(rainbow);
+ let lastRain=-1e9;
+
+ /* 29 lightning glow */
+ const lgTex=ctex(128,128,(c,w,h)=>{const g=c.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(235,235,255,1)');g.addColorStop(0.35,'rgba(200,205,255,0.5)');g.addColorStop(1,'rgba(180,190,255,0)');c.fillStyle=g;c.fillRect(0,0,w,h)});
+ const lgMat=new THREE.SpriteMaterial({map:lgTex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0,fog:false});
+ const bolt=new THREE.Sprite(lgMat);bolt.scale.set(1400,900,1);bolt.frustumCulled=false;root.add(bolt);
+ let nextFlash=5,flashT=-1,hemiSave=null;
+
+ /* 69 parking bays and 80 boats, built per map tile */
+ const lineMat=new THREE.MeshBasicMaterial({color:0xe8e8e0,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+ const hullGeo=(()=>{const g=new THREE.BoxGeometry(2.4,1,7,1,1,2);const p=g.attributes.position;for(let i=0;i<p.count;i++){const z=p.getZ(i),y=p.getY(i);if(z>3)p.setX(i,p.getX(i)*0.15);if(y<0)p.setX(i,p.getX(i)*0.7)}g.computeVertexNormals();return g})();
+ const cabGeo=new THREE.BoxGeometry(1.8,1,2.6);
+ const hullMat=new THREE.MeshLambertMaterial({color:0xf2f2f0}),cabMat=new THREE.MeshLambertMaterial({color:0x2a4a6a});
+ const BN=240,hulls=new THREE.InstancedMesh(hullGeo,hullMat,BN),cabs=new THREE.InstancedMesh(cabGeo,cabMat,BN);hulls.count=cabs.count=0;hulls.frustumCulled=cabs.frustumCulled=false;root.add(hulls,cabs);
+ const tiles=new Map(),boats=[];
+ const inPoly=(x,z,P)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>z)!==(b[1]>z)&&x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0])c=!c}return c};
+ const rnd=s=>{const r=Math.sin(s*12.9898)*43758.5453;return r-Math.floor(r)};
+ function buildTile(k,d){const pos=[];const bs=[];
+  for(const el of d.elements||[]){const t=el.tags||{};if(!el.geometry||el.geometry.length<4)continue;const P=el.geometry.filter(p=>p&&p.lat!=null).map(p=>[toX(p.lon),toZ(p.lat)]);if(P.length<4)continue;
+   if(t.amenity==='parking'&&(!t.parking||t.parking==='surface')&&pos.length<60000){
+    for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],ex=b[0]-a[0],ez=b[1]-a[1],L=Math.hypot(ex,ez);if(L<8)continue;const ux=ex/L,uz=ez/L;let nx=-uz,nz=ux;const mx=(a[0]+b[0])/2,mz=(a[1]+b[1])/2;if(!inPoly(mx+nx*1.5,mz+nz*1.5,P)){nx=-nx;nz=-nz}if(!inPoly(mx+nx*1.5,mz+nz*1.5,P))continue;
+     for(let s=1.5;s<=L-1.5;s+=2.6){const x0=a[0]+ux*s+nx*0.6,z0=a[1]+uz*s+nz*0.6,x1=x0+nx*4.8,z1=z0+nz*4.8;if(!inPoly(x1,z1,P))continue;const w=0.06,y0=groundY(x0,z0)+0.06,y1=groundY(x1,z1)+0.06;
+      pos.push(x0-ux*w,y0,z0-uz*w, x1-ux*w,y1,z1-uz*w, x1+ux*w,y1,z1+uz*w, x0-ux*w,y0,z0-uz*w, x1+ux*w,y1,z1+uz*w, x0+ux*w,y0,z0+uz*w)}}}
+   if(t.leisure==='marina'){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const p of P){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);z0=Math.min(z0,p[1]);z1=Math.max(z1,p[1])}
+    const area=(x1-x0)*(z1-z0),n=Math.min(30,Math.floor(area/900));for(let j=0,tries=0;j<n&&tries<n*6;tries++){const s=(el.id%9973)+tries,x=x0+rnd(s)*(x1-x0),z=z0+rnd(s+0.5)*(z1-z0);if(!inPoly(x,z,P))continue;bs.push([x,z,rnd(s+0.7)*6.28,0.7+rnd(s+0.3)*0.8]);j++}}}
+  let mesh=null;if(pos.length){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));mesh=new THREE.Mesh(g,lineMat);mesh.frustumCulled=true;g.computeBoundingSphere();root.add(mesh);H.lots+=pos.length/18}
+  tiles.set(k,{mesh,bs})}
+ const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(),P3=new THREE.Vector3(),UP=new THREE.Vector3(0,1,0);
+ function layoutBoats(){let n=0;for(const T of tiles.values())for(const [x,z,r,sc] of T.bs){if(n>=BN)break;const y=Math.max(0,groundY(x,z));Q.setFromAxisAngle(UP,r);
+  M.compose(P3.set(x,y+0.3*sc,z),Q,S.set(sc,sc,sc));hulls.setMatrixAt(n,M);M.compose(P3.set(x-Math.sin(r)*0.6*sc,y+1.2*sc,z-Math.cos(r)*0.6*sc),Q,S);cabs.setMatrixAt(n,M);n++}
+  hulls.count=cabs.count=n;hulls.instanceMatrix.needsUpdate=cabs.instanceMatrix.needsUpdate=true;H.boats=n}
+ let scanT=0;
+ MODS.push({id:'gfx100h',
+  start(){ensure();for(const T of tiles.values())if(T.mesh){root.remove(T.mesh);T.mesh.geometry.dispose()}tiles.clear();H.lots=0;layoutBoats()},
+  sim(dt){const g=G();if(!g||g.paused)return;ensure();const wx=W();if((wx.rain||0)>0.05||wx.key==='rain')lastRain=performance.now();
+   scanT-=dt;if(scanT<=0){scanT=2;let ch=false;try{for(const [k,d] of RAW){if(!TILES.has(k)||tiles.has(k)||!d)continue;buildTile(k,d);ch=true}for(const [k,T] of tiles)if(!TILES.has(k)){if(T.mesh){root.remove(T.mesh);T.mesh.geometry.dispose()}tiles.delete(k);ch=true}}catch(x){}if(ch)layoutBoats()}
+   /* 29 timing */
+   const storm=(wx.rain||0)>0.6||wx.key==='hurricane';if(storm){nextFlash-=dt;if(nextFlash<=0){nextFlash=6+Math.random()*18;flashT=0;const a=Math.random()*6.28,e=g.ego;bolt.position.set(e.x+Math.cos(a)*2600,(e.mesh?e.mesh.position.y:0)+520+Math.random()*200,e.z+Math.sin(a)*2600)}}
+   if(flashT>=0){flashT+=dt;if(flashT>0.9)flashT=-1}},
+  preRender(){const g=G();if(!g){root.visible=false;return}root.visible=true;const wx=W();
+   /* 24 */
+   let k=0;if(typeof sun!=='undefined'&&!g.dark){const sd=P3.copy(sun.position).sub(sun.target.position).normalize();const since=(performance.now()-lastRain)/1000,rainNow=(wx.rain||0)>0.05||wx.key==='rain';
+    const wetSky=(rainNow&&(wx.rain||0)<0.5)||(!rainNow&&since<150);if(wetSky&&sd.y>0.03&&sd.y<0.67&&(wx.cloud??0.5)<0.9){k=Math.min(1,(0.67-sd.y)/0.2)*Math.min(1,(sd.y-0.03)/0.05)*(rainNow?0.8:Math.max(0,1-since/150));
+     rainbow.position.copy(camera.position).addScaledVector(sd,-RD);rainbow.lookAt(camera.position)}}
+   rbMat.opacity=H.rainbow=k*0.7;rainbow.visible=k>0.01;
+   /* 29 */
+   let f=0;if(flashT>=0){const t=flashT;f=(t<0.08?1:t<0.16?0.2:t<0.26?0.9:Math.max(0,1-(t-0.26)/0.6))}H.flash=f;lgMat.opacity=f*0.9;bolt.visible=f>0.01;
+   if(f>0.01&&typeof hemi!=='undefined'){hemiSave=hemi.intensity;hemi.intensity+=f*0.35}},
+  postRender(){if(hemiSave!=null&&typeof hemi!=='undefined'){hemi.intensity=hemiSave;hemiSave=null}}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
