@@ -14051,6 +14051,44 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   postRender(){for(const f of flick)if(f.op!=null&&f.pool&&f.pool.material){f.pool.material.opacity=f.op;f.op=null}}});
 })();
 </script>
+<script>/* mods/99zzp-gfx100k.js */
+/* Graphics 100, batch K:
+   79 surf and foam along the shore of the sea, bays and big lakes: a white foam band on the water's edge that surges up the
+      shore and draws back with each wave. Built per map tile from the water outlines; small ponds get none, and the straight
+      edges where the map tiles cut a water outline are skipped so foam never draws a line across open water. */
+(function(){
+ const G=()=>typeof game!=='undefined'&&game&&game.route&&game.ego?game:null;
+ const K={foam:0};window.GFX100K=K;
+ const root=new THREE.Group();root.name='gfx100k';let added=false;const ensure=()=>{if(!added&&typeof scene!=='undefined'){scene.add(root);added=true}};
+ const tex=(()=>{const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');
+  for(let i=0;i<260;i++){const px=Math.random()*256,py=Math.pow(Math.random(),1.6)*64,r=2+Math.random()*7;x.fillStyle=`rgba(255,255,255,${0.25+Math.random()*0.5})`;x.beginPath();x.ellipse(px,py,r*1.8,r*0.6,0,0,7);x.fill()}
+  const g=x.createLinearGradient(0,0,0,64);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(0.15,'rgba(0,0,0,1)');g.addColorStop(1,'rgba(0,0,0,0)');x.globalCompositeOperation='destination-in';x.fillStyle=g;x.fillRect(0,0,256,64);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.ClampToEdgeWrapping;return t})();
+ const mat=new THREE.MeshLambertMaterial({map:tex,transparent:true,depthWrite:false,opacity:0.85,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+ const inPoly=(x,z,P)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>z)!==(b[1]>z)&&x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0])c=!c}return c};
+ const tiles=new Map(),BAND=7;
+ function build(k,d){const pos=[],uv=[];
+  for(const el of d.elements||[]){const t=el.tags||{};if(t.natural!=='water'||!el.geometry||el.geometry.length<4)continue;if(/pond|basin|reservoir|pool|fountain|wastewater/.test(t.water||''))continue;
+   const P=el.geometry.filter(p=>p&&p.lat!=null).map(p=>[toX(p.lon),toZ(p.lat)]);let A=0;for(let i=0,j=P.length-1;i<P.length;j=i++)A+=(P[j][0]-P[i][0])*(P[j][1]+P[i][1]);if(Math.abs(A)/2<20000)continue; /* sea, bays and big lakes only */
+   let u=0;for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],ex=b[0]-a[0],ez=b[1]-a[1],L=Math.hypot(ex,ez);if(L<1)continue;
+    if(L>15&&(Math.abs(ex)<0.4||Math.abs(ez)<0.4))continue; /* a dead-straight north-south or east-west run: where the map tile cut the outline */
+    let nx=-ez/L,nz=ex/L;const mx=(a[0]+b[0])/2,mz=(a[1]+b[1])/2;if(!inPoly(mx+nx*2,mz+nz*2,P)){nx=-nx;nz=-nz}if(!inPoly(mx+nx*2,mz+nz*2,P))continue;
+    const n=Math.max(1,Math.ceil(L/6));for(let q=0;q<n;q++){const t0=q/n,t1=(q+1)/n,p0=[a[0]+ex*t0,a[1]+ez*t0],p1=[a[0]+ex*t1,a[1]+ez*t1];
+     const y0=groundY(p0[0],p0[1])-0.09,y1=groundY(p1[0],p1[1])-0.09,w0=[p0[0]+nx*BAND,p0[1]+nz*BAND],w1=[p1[0]+nx*BAND,p1[1]+nz*BAND],y2=groundY(w0[0],w0[1])-0.09,y3=groundY(w1[0],w1[1])-0.09;
+     const ua=(u+L*t0)/14,ub=(u+L*t1)/14;pos.push(p0[0],y0,p0[1], w0[0],y2,w0[1], w1[0],y3,w1[1], p0[0],y0,p0[1], w1[0],y3,w1[1], p1[0],y1,p1[1]);uv.push(ua,0, ua,1, ub,1, ua,0, ub,1, ub,0)}
+    u+=L}}
+  let m=null;if(pos.length){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.computeVertexNormals();g.computeBoundingSphere();m=new THREE.Mesh(g,mat);m.renderOrder=2;root.add(m);K.foam+=pos.length/18}
+  tiles.set(k,m)}
+ let scanT=0;
+ MODS.push({id:'gfx100k',
+  start(){ensure();for(const m of tiles.values())if(m){root.remove(m);m.geometry.dispose()}tiles.clear();K.foam=0},
+  sim(dt){const g=G();if(!g||g.paused)return;ensure();scanT-=dt;if(scanT>0)return;scanT=2;
+   try{for(const [k,d] of RAW){if(!TILES.has(k)||tiles.has(k)||!d)continue;build(k,d)}for(const [k,m] of tiles)if(!TILES.has(k)){if(m){root.remove(m);m.geometry.dispose()}tiles.delete(k)}}catch(x){}},
+  preRender(){const t=performance.now()/1000,w=(typeof WX!=='undefined'&&WX.wind)||4,sp=0.35+Math.min(1,w/12)*0.4;
+   const ph=(t*sp)%1,surge=Math.sin(ph*Math.PI*2);tex.offset.y=-0.18*surge-0.05;tex.offset.x=t*0.01; /* the foam runs up the shore and draws back with each wave */
+   mat.opacity=(0.55+0.3*Math.max(0,surge))*(typeof game!=='undefined'&&game&&game.dark?0.35:1)}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
