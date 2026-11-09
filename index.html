@@ -13761,6 +13761,33 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  MODS.push({id:'gfx100e',frame(){if(typeof GRASS!=='undefined'&&GRASS.uni&&GRASS.uni.wind)wind.value=Math.min(3,Math.max(0.3,GRASS.uni.wind.value))}});
 })();
 </script>
+<script>/* mods/99zzj-gfx100f.js */
+/* Graphics 100, batch F:
+   73 grass bends away from vehicles going past: clumps within ~3.5 m of your car or nearby traffic lean away from it,
+      more at speed, and spring back once it has gone. Done by shearing the grass instances' matrices on the CPU each frame
+      (about 1,800 clumps), so it works the same on WebGL and WebGPU. Originals are restored before every change, and a
+      grass rebuild (new matrices from the game) is detected and never overwritten. */
+(function(){
+ const F={bent:0};window.GFX100F=F;
+ const orig=new Map();let ver=-1,mesh=null;const lean=new Map();
+ MODS.push({id:'gfx100f',
+  start(){orig.clear();lean.clear();ver=-1;mesh=null},
+  frame(){const g=typeof game!=='undefined'&&game;if(!g||!g.route||!g.ego||typeof GRASS==='undefined')return;const im=GRASS.mesh;if(!im||!im.visible)return;
+   const A=im.instanceMatrix,a=A.array;
+   if(im!==mesh||A.version!==ver){orig.clear();lean.clear();mesh=im} /* rebuilt by the game: its new matrices are the originals */
+
+   let dirty=orig.size>0;if(im===mesh&&A.version===ver)for(const [i,o] of orig)a.set(o,i*16);
+   const src=[g.ego];for(const ag of g.agents)if(ag.mesh&&ag.v>3){const dx=ag.mesh.position.x-g.ego.x,dz=ag.mesh.position.z-g.ego.z;if(dx*dx+dz*dz<60*60)src.push(ag)}
+   const R=3.5,dt=0.016,touched=new Set();
+   for(let i=0;i<im.count;i++){const x=a[i*16+12],z=a[i*16+14];let lx=0,lz=0;
+    for(const c of src){const p=c.mesh?c.mesh.position:c;const dx=x-p.x,dz=z-p.z,d2=dx*dx+dz*dz;if(d2>R*R)continue;const d=Math.sqrt(d2)||0.01,k=(1-d/R)*Math.min(1,0.25+(c.v||0)/20)*0.9;lx+=dx/d*k;lz+=dz/d*k}
+    const L=lean.get(i)||{x:0,z:0};L.x+=(lx-L.x)*(lx||lz?0.35:0.06);L.z+=(lz-L.z)*(lx||lz?0.35:0.06);
+    if(Math.abs(L.x)+Math.abs(L.z)<0.004){lean.delete(i);continue}lean.set(i,L);
+    if(!orig.has(i))orig.set(i,a.slice(i*16,i*16+16));const o=orig.get(i),sy=Math.hypot(o[4],o[5],o[6]);a[i*16+4]=o[4]+L.x*sy;a[i*16+6]=o[6]+L.z*sy;a[i*16+5]=o[5]*(1-0.3*Math.min(1,Math.hypot(L.x,L.z)));touched.add(i)}
+   for(const i of [...orig.keys()])if(!touched.has(i)){orig.delete(i)} /* restored above, nothing new to apply */
+   F.bent=touched.size;if(dirty||touched.size)A.needsUpdate=true;ver=A.version}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
