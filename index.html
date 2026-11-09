@@ -740,7 +740,7 @@ function wall(buf,pts,off,h,th,col,sink=0.4,base=0){pts=densify(pts,5);const A=o
 // road surface materials from OSM surface=*
 const SURF={};
 function surfKey(t){const s=(t.surface||'').toLowerCase();if(!s)return t.highway==='track'?'dirt':'asphalt';if(/concrete/.test(s))return 'concrete';if(/gravel|pebble|compacted|fine_gravel|rock/.test(s))return 'gravel';if(/dirt|ground|earth|mud|sand|grass|unpaved|soil/.test(s))return 'dirt';if(/sett|cobble/.test(s))return 'sett';if(/paving_stones|brick/.test(s))return 'brick';return 'asphalt'}
-function surfMat(k){if(k==='asphalt')return MAT.road;if(SURF[k])return SURF[k];const d={concrete:['concrete_pavement',0xcfcfca],gravel:['gravel_floor',0xb3aa9a],dirt:['dirt',0xa38b6f],sett:['cobblestone_floor_08',0xb9b1a8],brick:['red_brick_03',0xc4a591]}[k];
+function surfMat(k){if(k==='asphalt')return MAT.road;if(SURF[k])return SURF[k];const d={concrete:['concrete_pavement',0xa4abb3] /* cool grey tint: the texture is beige and concrete motorways read as tan sand */,gravel:['gravel_floor',0xb3aa9a],dirt:['dirt',0xa38b6f],sett:['cobblestone_floor_08',0xb9b1a8],brick:['red_brick_03',0xc4a591]}[k];
  const m=new THREE.MeshStandardMaterial({color:d[1],map:phTex(d[0],'diff',1,true),normalMap:phTex(d[0],'nor_gl',1),roughness:0.95,metalness:0});m.polygonOffset=true;m.polygonOffsetFactor=-1;ENVMATS.push(m);return SURF[k]=m}
 MAT.wall=new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:0.85});
 MAT.pier=new THREE.MeshStandardMaterial({color:0xa9a69e,...PH.concrete,roughness:0.9});
