@@ -11539,7 +11539,10 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   {const L=new THREE.PointLight(0x9fc4ff,0,1.6,2);L.position.set(eye.x+0.45,eye.y-0.22,0);I.add(L);g.userData.screenGlow=L}
   {const F=new THREE.PointLight(0xffd9a0,0,1.2,2);F.position.set(eye.x+0.35,eye.y-0.85,0);I.add(F);g.userData.footGlow=F} /* footwell ambient light */
  }catch(e){console.warn('cabin-detail',e)}return r};
- MODS.push({id:'cabinDetail',frame(){const G=typeof game!=='undefined'?game:null,L=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.screenGlow;if(L)L.intensity=G.dark&&G.cam==='in'?0.6:0;const F=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.footGlow;if(F)F.intensity=G.dark&&G.cam==='in'?0.35:0;const ST=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.stalk;if(ST){const tgt=G.sig===1?-0.18:G.sig===-1?0.18:0;ST.rotation.x+=(tgt-ST.rotation.x)*0.3}}}); /* glow only at night, only in the cabin view */
+ /* the car's own window glass, seen from the driver's seat: outside it is 90% opaque blue-grey, which turned everything seen through
+   the windows nearly black. The ego gets its own copy, clear-ish in the cabin view */
+ function ownGlass(G){const m=G.ego.mesh;if(m.userData._og!==undefined)return m.userData._og;let found=null;m.traverse(o=>{if(found||!o.isMesh||!Array.isArray(o.material))return;o.material.forEach((mt,i)=>{if(!found&&mt&&mt.transparent&&mt.opacity>=0.6&&mt.isMeshStandardMaterial&&o.geometry.attributes.position.count>500){const c=mt.clone();o.material=o.material.slice();o.material[i]=c;found={c,op:mt.opacity}}})});return m.userData._og=found}
+ MODS.push({id:'cabinDetail',frame(){{const G0=typeof game!=='undefined'?game:null;if(G0&&G0.ego&&G0.ego.mesh){const g=ownGlass(G0);if(g)g.c.opacity=G0.cam==='in'?0.18:g.op}}const G=typeof game!=='undefined'?game:null,L=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.screenGlow;if(L)L.intensity=G.dark&&G.cam==='in'?0.6:0;const F=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.footGlow;if(F)F.intensity=G.dark&&G.cam==='in'?0.35:0;const ST=G&&G.ego&&G.ego.mesh&&G.ego.mesh.userData.stalk;if(ST){const tgt=G.sig===1?-0.18:G.sig===-1?0.18:0;ST.rotation.x+=(tgt-ST.rotation.x)*0.3}}}); /* glow only at night, only in the cabin view */
 })();
 </script>
 <script>/* mods/99f-yield.js */
