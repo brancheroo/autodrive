@@ -3045,7 +3045,7 @@ function place(a,off){if(a.loose)return; // sliding after a collision: the physi
  /* four-wheel kinematics: both axles ride the lane line, the body points from the rear axle to the front axle and sits between them; the old pose pinned the body centre to the line and spun it about that point like a pole */
  const wb=Math.min(4.5,((a.spec&&a.spec.L)||4.6)*0.6)/2,dd=a.dir<0?-1:1,ra=routeXZ(a.s-wb*dd,lo),fa=routeXZ(a.s+wb*dd,lo);
  const hw=a.v>40?Math.min(a.v*0.12,90):0;let hh;if(hw>0){const hb=routeXZ(a.s-2-hw,0),hf=routeXZ(a.s+3+hw,0);hh=Math.atan2(-(hf[1]-hb[1]),hf[0]-hb[0])} /* fast cars read heading over a wider window (~0.25 s of travel) so polyline vertices don't snap the yaw */
- else{hh=Math.atan2(-(fa[1]-ra[1]),fa[0]-ra[0]); /* fa−ra already points the way the car travels, oncoming cars included */x=(ra[0]+fa[0])/2;z=(ra[1]+fa[1])/2}
+ else{const la=routeXZ(a.s+(wb+Math.max(6,Math.min(14,a.v*0.6)))*dd,lo);hh=Math.atan2(-(la[1]-ra[1]),la[0]-ra[0]); /* aim at a point 6-14 m ahead: the turn starts before a sharp polyline corner and sweeps round it (about a 6 m radius) instead of swinging 90 degrees in 3 m */ /* fa−ra already points the way the car travels, oncoming cars included */x=(ra[0]+fa[0])/2;z=(ra[1]+fa[1])/2}
  if(a.dir<0&&hw>0)hh+=Math.PI;
  let d=hh-a.head;d=Math.atan2(Math.sin(d),Math.cos(d));
  const k=clamp(a.v*0.12+0.05,0.05,1);
