@@ -13939,7 +13939,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 <script>/* mods/99zzn-gfx100i.js */
 /* Graphics 100, batch I (plain meshes, DOM and colour changes: WebGL and WebGPU):
    17 twilight: the pink Belt of Venus over the dark blue Earth shadow, low in the sky opposite the sun around sunset and sunrise
-   42 STOP painted on the road before stop signs on your route
+   (42 STOP road text: already in the game, so left off here)
    54 brake dust: your wheels darken slowly with braking over a trip
    74 seasonal trees: broadleaf trees turn amber in autumn and dull in winter away from the tropics; fresh green in spring
    81 raindrops on the camera lens in the outside views when it rains (sharp drops, no blur) */
@@ -13960,7 +13960,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const stopMat=new THREE.MeshLambertMaterial({map:stopTex,transparent:true,alphaTest:0.3,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
  const stopGeo=(()=>{const g=new THREE.PlaneGeometry(2.6,5.2);g.rotateX(-Math.PI/2);return g})();
  const decals=new Map();let scanS=-1e9;
- function scanStops(g){const e=g.ego;for(const [id,d] of decals)if(d.s<e.s-80){root.remove(d.m);decals.delete(id)}
+ function scanStops(g){return; /* off: the game already paints STOP before stop lines; this doubled it */const e=g.ego;for(const [id,d] of decals)if(d.s<e.s-80){root.remove(d.m);decals.delete(id)}
   for(const c of CONTROLS.values()){if(c.type!=='stop'||decals.has(c.id))continue;if(Math.hypot(c.x-e.x,c.z-e.z)>700)continue;
    let best=1e9,bs=0;for(let s=e.s;s<Math.min(g.route.total,e.s+700);s+=3){const [x,z]=routeXZ(s,0);const d=Math.hypot(x-c.x,z-c.z);if(d<best){best=d;bs=s}}if(best>9)continue;
    const s=bs-7,lo=laneOffsetAt(routeLLnh(s)[2]),[x,z,dx,dz]=routeXZ(s,lo);const m=new THREE.Mesh(stopGeo,stopMat);const ry=routeY(s,lo);let sy=null;try{sy=roadSurfaceY(x,z,ry)}catch(q){}m.position.set(x,(sy!=null&&Math.abs(sy-ry)<1.5?sy:ry+0.08)+0.025,z); /* on the drawn pavement: at the route height it sat under the asphalt */m.rotation.y=Math.atan2(dx,dz)+Math.PI;m.renderOrder=1;root.add(m);decals.set(c.id,{m,s:bs});I.stops++}}
