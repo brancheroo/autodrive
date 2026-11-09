@@ -13866,7 +13866,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  let nextFlash=5,flashT=-1,hemiSave=null;
 
  /* 69 parking bays and 80 boats, built per map tile */
- const lineMat=new THREE.MeshBasicMaterial({color:0xe8e8e0,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+ const tarMat=new THREE.MeshLambertMaterial({color:0x3c3c3e,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});const lineMat=new THREE.MeshBasicMaterial({color:0xe8e8e0,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
  const hullGeo=(()=>{const g=new THREE.BoxGeometry(2.4,1,7,1,1,2);const p=g.attributes.position;for(let i=0;i<p.count;i++){const z=p.getZ(i),y=p.getY(i);if(z>3)p.setX(i,p.getX(i)*0.15);if(y<0)p.setX(i,p.getX(i)*0.7)}g.computeVertexNormals();return g})();
  const cabGeo=new THREE.BoxGeometry(1.8,1,2.6);
  const hullMat=new THREE.MeshLambertMaterial({color:0xf2f2f0}),cabMat=new THREE.MeshLambertMaterial({color:0x2a4a6a});
@@ -13874,11 +13874,11 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const tiles=new Map(),boats=[];
  const inPoly=(x,z,P)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>z)!==(b[1]>z)&&x<(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+a[0])c=!c}return c};
  const rnd=s=>{const r=Math.sin(s*12.9898)*43758.5453;return r-Math.floor(r)};
- function buildTile(k,d){const pos=[];const bs=[];
+ function buildTile(k,d){const pos=[],tar=[];const bs=[];
   for(const el of d.elements||[]){const t=el.tags||{};
    if(t.service==='parking_aisle'&&el.geometry&&el.geometry.length>=2&&pos.length<60000){const A=el.geometry.filter(p=>p&&p.lat!=null).map(p=>[toX(p.lon),toZ(p.lat)]); /* bays both sides of a car-park aisle: most car parks in the map data are aisles, not outlines */
     for(let i=1;i<A.length;i++){const a=A[i-1],b=A[i],ex=b[0]-a[0],ez=b[1]-a[1],L=Math.hypot(ex,ez);if(L<6)continue;const ux=ex/L,uz=ez/L;
-     for(const sd of [1,-1]){const nx=-uz*sd,nz=ux*sd;for(let s=1.3;s<=L-1.3;s+=2.6){const x0=a[0]+ux*s+nx*3.2,z0=a[1]+uz*s+nz*3.2,x1=x0+nx*4.8,z1=z0+nz*4.8,w=0.06,y0=groundY(x0,z0)+0.06,y1=groundY(x1,z1)+0.06;
+     for(const sd of [1,-1]){const nx=-uz*sd,nz=ux*sd;{const q=(o,e)=>[a[0]+ux*e+nx*o,groundY(a[0]+ux*e+nx*o,a[1]+uz*e+nz*o)+0.04,a[1]+uz*e+nz*o],p0=q(2.6,0),p1=q(8.2,0),p2=q(8.2,L),p3=q(2.6,L);tar.push(...p0,...p1,...p2,...p0,...p2,...p3)} /* tarmac under the row, so bays never sit on grass */for(let s=1.3;s<=L-1.3;s+=2.6){const x0=a[0]+ux*s+nx*3.2,z0=a[1]+uz*s+nz*3.2,x1=x0+nx*4.8,z1=z0+nz*4.8,w=0.06,y0=groundY(x0,z0)+0.06,y1=groundY(x1,z1)+0.06;
       pos.push(x0-ux*w,y0,z0-uz*w, x1-ux*w,y1,z1-uz*w, x1+ux*w,y1,z1+uz*w, x0-ux*w,y0,z0-uz*w, x1+ux*w,y1,z1+uz*w, x0+ux*w,y0,z0+uz*w)}}}}
    if(!el.geometry||el.geometry.length<4)continue;const P=el.geometry.filter(p=>p&&p.lat!=null).map(p=>[toX(p.lon),toZ(p.lat)]);if(P.length<4)continue;
    if(t.amenity==='parking'&&(!t.parking||t.parking==='surface')&&pos.length<60000){
@@ -13887,17 +13887,18 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
       pos.push(x0-ux*w,y0,z0-uz*w, x1-ux*w,y1,z1-uz*w, x1+ux*w,y1,z1+uz*w, x0-ux*w,y0,z0-uz*w, x1+ux*w,y1,z1+uz*w, x0+ux*w,y0,z0+uz*w)}}}
    if(t.leisure==='marina'){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const p of P){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);z0=Math.min(z0,p[1]);z1=Math.max(z1,p[1])}
     const area=(x1-x0)*(z1-z0),n=Math.min(30,Math.floor(area/900));for(let j=0,tries=0;j<n&&tries<n*6;tries++){const s=(el.id%9973)+tries,x=x0+rnd(s)*(x1-x0),z=z0+rnd(s+0.5)*(z1-z0);if(!inPoly(x,z,P))continue;bs.push([x,z,rnd(s+0.7)*6.28,0.7+rnd(s+0.3)*0.8]);j++}}}
+  let tmesh=null;if(tar.length){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(tar,3));g.computeVertexNormals();tmesh=new THREE.Mesh(g,tarMat);tmesh.receiveShadow=true;root.add(tmesh)}
   let mesh=null;if(pos.length){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));mesh=new THREE.Mesh(g,lineMat);mesh.frustumCulled=true;g.computeBoundingSphere();root.add(mesh);H.lots+=pos.length/18}
-  tiles.set(k,{mesh,bs})}
+  tiles.set(k,{mesh,tmesh,bs})}
  const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),S=new THREE.Vector3(),P3=new THREE.Vector3(),UP=new THREE.Vector3(0,1,0);
  function layoutBoats(){let n=0;for(const T of tiles.values())for(const [x,z,r,sc] of T.bs){if(n>=BN)break;const y=Math.max(0,groundY(x,z));Q.setFromAxisAngle(UP,r);
   M.compose(P3.set(x,y+0.3*sc,z),Q,S.set(sc,sc,sc));hulls.setMatrixAt(n,M);M.compose(P3.set(x-Math.sin(r)*0.6*sc,y+1.2*sc,z-Math.cos(r)*0.6*sc),Q,S);cabs.setMatrixAt(n,M);n++}
   hulls.count=cabs.count=n;hulls.instanceMatrix.needsUpdate=cabs.instanceMatrix.needsUpdate=true;H.boats=n}
  let scanT=0;
  MODS.push({id:'gfx100h',
-  start(){ensure();for(const T of tiles.values())if(T.mesh){root.remove(T.mesh);T.mesh.geometry.dispose()}tiles.clear();H.lots=0;layoutBoats()},
+  start(){ensure();for(const T of tiles.values())for(const m of [T.mesh,T.tmesh])if(m){root.remove(m);m.geometry.dispose()}tiles.clear();H.lots=0;layoutBoats()},
   sim(dt){const g=G();if(!g||g.paused)return;ensure();const wx=W();if((wx.rain||0)>0.05||wx.key==='rain')lastRain=performance.now();
-   scanT-=dt;if(scanT<=0){scanT=2;let ch=false;try{for(const [k,d] of RAW){if(!TILES.has(k)||tiles.has(k)||!d)continue;buildTile(k,d);ch=true}for(const [k,T] of tiles)if(!TILES.has(k)){if(T.mesh){root.remove(T.mesh);T.mesh.geometry.dispose()}tiles.delete(k);ch=true}}catch(x){}if(ch)layoutBoats()}
+   scanT-=dt;if(scanT<=0){scanT=2;let ch=false;try{for(const [k,d] of RAW){if(!TILES.has(k)||tiles.has(k)||!d)continue;buildTile(k,d);ch=true}for(const [k,T] of tiles)if(!TILES.has(k)){for(const m of [T.mesh,T.tmesh])if(m){root.remove(m);m.geometry.dispose()}tiles.delete(k);ch=true}}catch(x){}if(ch)layoutBoats()}
    /* 29 timing */
    const storm=(wx.rain||0)>0.6||wx.key==='hurricane';if(storm){nextFlash-=dt;if(nextFlash<=0){nextFlash=6+Math.random()*18;flashT=0;const a=Math.random()*6.28,e=g.ego;bolt.position.set(e.x+Math.cos(a)*2600,(e.mesh?e.mesh.position.y:0)+520+Math.random()*200,e.z+Math.sin(a)*2600)}}
    if(flashT>=0){flashT+=dt;if(flashT>0.9)flashT=-1}},
