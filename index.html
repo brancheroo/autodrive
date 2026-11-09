@@ -2430,9 +2430,9 @@ function tx2lon(x,z){return x/2**z*360-180}
 function ty2lat(y,z){const n=Math.PI-2*Math.PI*y/2**z;return 180/Math.PI*Math.atan(Math.sinh(n))}
 /* ROAD CUTTINGS: the drawn road follows the route's own (smoother) elevation; where the terrain model sits higher, cut the ground down under
    the road (12 cm below it) and blend back to natural ground on a ~30° embankment so no ground ever pokes through the carriageway */
-function roadCut(x,z,y){const ch=routeRoads();let best=null;for(const c of ch){if(!c.bb||x<c.bb[0]-25||x>c.bb[1]+25||z<c.bb[2]-25||z>c.bb[3]+25)continue;const P=c.pts;
+function roadCut(x,z,y){const ch=routeRoads();let best=null;for(const c of ch){if(!c.bb||x<c.bb[0]-65||x>c.bb[1]+65||z<c.bb[2]-65||z>c.bb[3]+65)continue;const P=c.pts;
   for(let k=0;k<P.length-1;k++){const a=P[k],b=P[k+1],dx=b[0]-a[0],dz=b[1]-a[1],L2=dx*dx+dz*dz||1,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/L2,0,1),d=Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t);if(!best||d<best.d)best={d,s:a[2]+(b[2]-a[2])*t,hw:c.w/2}}}
- if(!best||best.d>best.hw+22)return y;const ry=routeY(best.s,0)-0.12,cut=best.d<=best.hw+3?ry:ry+(best.d-best.hw-3)*0.58;return Math.min(y,cut)}
+ if(!best||best.d>best.hw+62)return y;const ry=routeY(best.s,0)-0.12,flat=best.hw+3+29,cut=best.d<=flat?ry:ry+(best.d-flat)*0.58;return Math.min(y,cut)} /* the terrain sheet has a vertex only every 20 m: the flat part must reach one grid diagonal (~29 m) past the road edge, or the sheet, stretched between two embankment vertices either side of a narrower road, rose up to 2 m above the carriageway (and through the cabin floor) */
 function satTile(z,x,y,yLevel){const k=z+'/'+x+'/'+y;if(SAT.tiles.has(k))return k;
  const w=tx2lon(x,z),e=tx2lon(x+1,z),n=ty2lat(y,z),s=ty2lat(y+1,z);
  if(TERR.ref===null||!terrReadyLL(n,w)||!terrReadyLL(s,e)||!terrReadyLL(n,e)||!terrReadyLL(s,w))return null;
@@ -5566,8 +5566,8 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
   let G=CACHE.get(g);
   if(!G||G.P!==P||G.I!==I||G.ver!==pa.version||G.iver!==(ia?ia.version:-1)){
    /* cheap reject on the bounding box before paying for a grid */
-   if(g.boundingBox===null)g.computeBoundingBox();const B=g.boundingBox;let a0=0,a1=tMax;
-   for(let ax=0;ax<3;ax++){const o=ax===0?ox:ax===1?oy:oz,d=ax===0?dx:ax===1?dy:dz,lo=(ax===0?B.min.x:ax===1?B.min.y:B.min.z)-1e-3,hi=(ax===0?B.max.x:ax===1?B.max.y:B.max.z)+1e-3;
+   const B=g.boundingBox;let a0=0,a1=tMax; /* only a box the game already keeps: one computed here would go stale on meshes whose vertices are rewritten (the terrain sheet) */
+   if(B)for(let ax=0;ax<3;ax++){const o=ax===0?ox:ax===1?oy:oz,d=ax===0?dx:ax===1?dy:dz,lo=(ax===0?B.min.x:ax===1?B.min.y:B.min.z)-1e-3,hi=(ax===0?B.max.x:ax===1?B.max.y:B.max.z)+1e-3;
     if(Math.abs(d)<1e-12){if(o<lo||o>hi)return true}else{let ta=(lo-o)/d,tb=(hi-o)/d;if(ta>tb){const s=ta;ta=tb;tb=s}if(ta>a0)a0=ta;if(tb<a1)a1=tb;if(a0>a1)return true}}
    G=build(g,P,I,nt);CACHE.set(g,G)}
   if(G.bad)return false;
