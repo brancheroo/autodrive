@@ -2274,7 +2274,7 @@ function buildInterior(g,spec){
   box(0.12,0.012,0.08,new THREE.MeshStandardMaterial({color:0x111111,roughness:0.3}),eye.x+0.35,eye.y-0.515,mid+eye.z-0.06); // phone pad
   for(const s of [1,-1]){box(spec.L*0.55,0.46,0.05,dashMat,eye.x-0.1,dTop-0.3,s*W*0.42).userData.inOnly=1;box(spec.L*0.5,0.02,0.02,new THREE.MeshBasicMaterial({color:AMB}),eye.x-0.05,dTop-0.08,s*W*0.415).userData.inOnly=1 /* door cards: inside the rounder shoulders */}
   // rear-view mirror
-  if(!/cybercab|zoox/.test(spec.id)&&!spec.roadster){const mm=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.07,0.03),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.4}));rel(mm,0.55,-0.16,mid) /* width across the car once rel() turns it to face the eye: it was 24 cm deep toward the driver and showed as a black slab overhead */;const glassM=new THREE.Mesh(new THREE.PlaneGeometry(0.22,0.06),new THREE.MeshStandardMaterial({color:0x8fa0b0,metalness:1,roughness:0.05}));rel(glassM,0.532,-0.16,mid)}
+  if(!/cybercab|zoox/.test(spec.id)&&!spec.roadster){const mm=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.07,0.03),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.4}));rel(mm,0.55,-0.16,mid) /* width across the car once rel() turns it to face the eye: it was 24 cm deep toward the driver and showed as a black slab overhead */;const glassM=new THREE.Mesh(new THREE.PlaneGeometry(0.22,0.06),new THREE.MeshStandardMaterial({color:0x8fa0b0,metalness:1,roughness:0.05}));rel(glassM,0.532,-0.16,mid);g.userData.mirrorGlass=glassM}
  }
  const pil=new THREE.MeshStandardMaterial({color:0x2c2c2e,roughness:0.9});
  if(spec.style!=='pod'&&!spec.roadster)for(const s of [1,-1]){const p=box(0.045,0.8,0.06,pil,fFront+0.14,dTop+0.38,s*W*0.45);p.rotation.z=0.7;p.userData.inOnly=1}
