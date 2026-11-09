@@ -13963,7 +13963,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  function scanStops(g){const e=g.ego;for(const [id,d] of decals)if(d.s<e.s-80){root.remove(d.m);decals.delete(id)}
   for(const c of CONTROLS.values()){if(c.type!=='stop'||decals.has(c.id))continue;if(Math.hypot(c.x-e.x,c.z-e.z)>700)continue;
    let best=1e9,bs=0;for(let s=e.s;s<Math.min(g.route.total,e.s+700);s+=3){const [x,z]=routeXZ(s,0);const d=Math.hypot(x-c.x,z-c.z);if(d<best){best=d;bs=s}}if(best>9)continue;
-   const s=bs-7,lo=laneOffsetAt(routeLLnh(s)[2]),[x,z,dx,dz]=routeXZ(s,lo);const m=new THREE.Mesh(stopGeo,stopMat);m.position.set(x,routeY(s,lo)+0.03,z);m.rotation.y=Math.atan2(dx,dz)+Math.PI;m.renderOrder=1;root.add(m);decals.set(c.id,{m,s:bs});I.stops++}}
+   const s=bs-7,lo=laneOffsetAt(routeLLnh(s)[2]),[x,z,dx,dz]=routeXZ(s,lo);const m=new THREE.Mesh(stopGeo,stopMat);const ry=routeY(s,lo);let sy=null;try{sy=roadSurfaceY(x,z,ry)}catch(q){}m.position.set(x,(sy!=null&&Math.abs(sy-ry)<1.5?sy:ry+0.08)+0.025,z); /* on the drawn pavement: at the route height it sat under the asphalt */m.rotation.y=Math.atan2(dx,dz)+Math.PI;m.renderOrder=1;root.add(m);decals.set(c.id,{m,s:bs});I.stops++}}
 
  /* 54 brake dust */
  let dustMats=null,dustCar=null;const dustCol=new THREE.Color(0x3a332c);
@@ -13979,9 +13979,9 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  /* 81 lens drops: a canvas over the 3D view */
  const cv=document.createElement('canvas');cv.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4';document.body.appendChild(cv);const cx=cv.getContext('2d');const drops=[];
  function drawDrops(on,v,dt){if(cv.width!==innerWidth){cv.width=innerWidth;cv.height=innerHeight}cx.clearRect(0,0,cv.width,cv.height);if(!on&&!drops.length)return;
-  if(on&&Math.random()<dt*6&&drops.length<40)drops.push({x:Math.random()*cv.width,y:Math.random()*cv.height*0.9,r:3+Math.random()*7,life:4+Math.random()*6});
+  if(on&&Math.random()<dt*6&&drops.length<40)drops.push({x:Math.random()*cv.width,y:Math.random()*cv.height*0.9,r:6+Math.random()*12,life:4+Math.random()*6});
   for(let i=drops.length-1;i>=0;i--){const d=drops[i];d.life-=dt*(on?1:3);d.y+=dt*(8+v*0.4)*(d.r/6);d.x+=(d.x-cv.width/2)*dt*v*0.002;if(d.life<=0||d.y>cv.height){drops.splice(i,1);continue}const al=Math.min(1,d.life);
-   const gr=cx.createRadialGradient(d.x-d.r*0.3,d.y-d.r*0.35,0,d.x,d.y,d.r);gr.addColorStop(0,`rgba(255,255,255,${0.55*al})`);gr.addColorStop(0.35,`rgba(200,215,230,${0.18*al})`);gr.addColorStop(0.85,`rgba(40,50,60,${0.22*al})`);gr.addColorStop(1,'rgba(40,50,60,0)');cx.fillStyle=gr;cx.beginPath();cx.ellipse(d.x,d.y,d.r*0.85,d.r,0,0,7);cx.fill()}I.drops=drops.length}
+   const gr=cx.createRadialGradient(d.x-d.r*0.3,d.y-d.r*0.35,0,d.x,d.y,d.r);gr.addColorStop(0,`rgba(255,255,255,${0.8*al})`);gr.addColorStop(0.35,`rgba(200,215,230,${0.3*al})`);gr.addColorStop(0.85,`rgba(30,40,50,${0.4*al})`);gr.addColorStop(1,'rgba(40,50,60,0)');cx.fillStyle=gr;cx.beginPath();cx.ellipse(d.x,d.y,d.r*0.85,d.r,0,0,7);cx.fill()}I.drops=drops.length}
 
  let lastT=0,stopT=0;
  MODS.push({id:'gfx100i',
