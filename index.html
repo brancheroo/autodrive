@@ -3574,8 +3574,9 @@ function step(){
  for(const a of G.agents)setLights(a.mesh,{head:G.dark,brake:(a.acc||0)<-0.5||a.v<0.2,dark:G.dark});
  if(!G.headSpot){G.headSpot=new THREE.SpotLight(0xfff4dd,0,90,0.45,0.5,1.2);G.headSpot.target=new THREE.Object3D();scene.add(G.headSpot,G.headSpot.target)}
  const fX=Math.cos(e.head),fZ=-Math.sin(e.head);G.headSpot.intensity=G.dark?(spec.gargantua?9:3.2):0;G.headSpot.distance=spec.gargantua?220:90;G.headSpot.angle=spec.gargantua?0.6:0.45;G.headSpot.position.set(e.x+fX*spec.L/2,(spec.gargantua?2.3:0.7)+e.mesh.position.y,e.z+fZ*spec.L/2);G.headSpot.target.position.set(e.x+fX*(spec.gargantua?48:30),0,e.z+fZ*(spec.gargantua?48:30));
+ const sigNow=((G._sigF=(G._sigF||0)+1)&3)===0; /* signal lamp colours every 4th frame: they change a few times a minute, but recolouring ~500 heads and re-uploading every tile's colour buffer each frame cost ~0.5 ms */
  for(const T of TILES.values()){for(const l of T.lamps)l.material=G.dark?MAT.lampOn:MAT.lampOff;if(T.adFaces)for(const m of T.adFaces)m.emissiveIntensity=G.dark?0.55:0;
-  if(T.sigInst){for(const s of T.signals)for(const h of s.heads){const st=signalState(s.id,h.axis,G.simTime);h.idx.forEach((ix,i)=>T.sigInst.setColorAt(ix,_sigC.set('RYG'[i]===st?[0xff2a1a,0xffb300,0x22ff66][i]:0x222222)))}T.sigInst.instanceColor.needsUpdate=true}}
+  if(T.sigInst&&(sigNow||!T._sigInit)){T._sigInit=1;for(const s of T.signals)for(const h of s.heads){const st=signalState(s.id,h.axis,G.simTime);h.idx.forEach((ix,i)=>T.sigInst.setColorAt(ix,_sigC.set('RYG'[i]===st?[0xff2a1a,0xffb300,0x22ff66][i]:0x222222)))}T.sigInst.instanceColor.needsUpdate=true}}
  // streaming tiles, spawning
  tileT-=rdt;if(tileT<=0){tileT=e.v>40?0.25:0.5;manageTerrain();manageTiles();manageSat();manageFF();mkDiscover();if((G._rcc=(G._rcc||0)+1)%4===0)roadClearCheck()}
  spawnT-=rdt;if(spawnT<=0){spawnT=0.4;manageTraffic()}
