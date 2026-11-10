@@ -13147,7 +13147,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
     so every streamed tile rebuilt the same materials). Everything is logged on window.GPUBUILD. */
  const BB={ms:0,fr:0,seen:-1,skipped:0,subst:0,nb:0,rs:{},fl:[],kb:[]};window.GPUBUILD=BB;(function tick(){BB.fr++;requestAnimationFrame(tick)})();
  const done=new WeakSet() /* render objects drawn once without needing a build */,LASTOK=new WeakMap() /* object -> Map(view -> last material drawn with no build) */,RK=new WeakMap() /* key parts per render object, for the rebuild log */;
- const RD=renderer._renderObjectDirect;
+ const RD=renderer._renderObjectDirect,ROKEY=[null,null,null,null];
  if(RD)renderer._renderObjectDirect=function(object,material,sc,cam,lightsNode,group,clip,passId){
   if(BB.seen!==BB.fr){if(BB.ms>100&&BB.fl.length<200)BB.fl.push(BB.cur);BB.cur={t:Math.round(performance.now()),ms:0,b:[],sk:0,sub:0};BB.seen=BB.fr;BB.ms=0}
   const cx=this._currentRenderContext;let cm=null;try{cm=this._objects.getChainMap(passId)}catch(e){}
@@ -13190,8 +13190,8 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    N.getForRender=function(ro){const t0=performance.now();try{return G.apply(this,arguments)}finally{const d=performance.now()-t0;if(d>0.3){BB.ms+=d;BB.nb++;
     const rec=[Math.round(t0),+d.toFixed(1),ro.material&&ro.material.type,ro.context&&ro.context.id,BB.drawn?'drawnInView':'firstInView',Math.round(BB.ms)];if(BB.drawn){let diff='newRO';const k0=RK.get(ro);if(k0){try{diff=[k0.m!==ro.getMaterialCacheKey()?'MAT':'',k0.g!==ro.getGeometryCacheKey()?'GEO':'',k0.s!==this.getCacheKey(ro.scene,ro.lightsNode)?'SCENE':'',k0.rs!==ro.object.receiveShadow?'RS':'',k0.ik!==ro.initialCacheKey?'IK':''].join('')||'same'}catch(e){diff='err'}}rec.push(diff,ro.object&&ro.object.type,ro.object&&ro.object.parent&&(ro.object.parent.name||ro.object.parent.type),BB.lastMat===ro.material?'sameMat':'otherMat',ro.camera===camera?'mainCam':(ro.camera&&(ro.camera.name||ro.camera.type)),(ro.material&&ro.material.name)||'',ro.object&&(ro.object.name||(ro.object.userData.merged?'merged':''))||'',ro.object&&ro.object.parent&&ro.object.parent.parent&&ro.object.parent.parent.name||'')}if(BB.cur&&BB.cur.b.length<80)BB.cur.b.push(rec);if(BB.kb.length<2000)BB.kb.push(rec)}}}} /* time every real build */
   BB.drawn=!!(per&&per.get(cx));BB.asyncOK=!BB.drawn;BB.lastMat=per&&per.get(cx);
-  const nb=BB.nb,r=RD.apply(this,arguments);
-  if(cm&&BB.nb===nb){const ro=cm.get([object,material,cx,lightsNode]);if(ro){done.add(ro);if(!RK.has(ro)){try{RK.set(ro,{m:ro.getMaterialCacheKey(),g:ro.getGeometryCacheKey(),s:this._nodes.getCacheKey(sc,lightsNode),rs:object.receiveShadow,ik:ro.initialCacheKey})}catch(e){}}if(!per){per=new Map();LASTOK.set(object,per)}per.set(cx,material)}}
+  const nb=BB.nb,r=RD.call(this,object,material,sc,cam,lightsNode,group,clip,passId); /* explicit arguments and one reused key array: this wrapper runs for every draw (~1,000 a frame) and `arguments` plus a fresh 4-item array each time were ~250 kB of garbage per frame */
+  if(cm&&BB.nb===nb){ROKEY[0]=object;ROKEY[1]=material;ROKEY[2]=cx;ROKEY[3]=lightsNode;const ro=cm.get(ROKEY);ROKEY[0]=ROKEY[1]=ROKEY[2]=ROKEY[3]=null;if(ro){if(!done.has(ro))done.add(ro);if(!RK.has(ro)){try{RK.set(ro,{m:ro.getMaterialCacheKey(),g:ro.getGeometryCacheKey(),s:this._nodes.getCacheKey(sc,lightsNode),rs:object.receiveShadow,ik:ro.initialCacheKey})}catch(e){}}if(!per){per=new Map();LASTOK.set(object,per)}if(per.get(cx)!==material)per.set(cx,material)}}
   return r};
  if(RD&&renderer._handleObjectFunction===RD)renderer._handleObjectFunction=renderer._renderObjectDirect; /* three.js keeps its own reference to the draw function */
  /* destroyed-texture freeze: game code disposes textures that objects on screen still use (02b's car merge frees the
@@ -13209,7 +13209,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
     (despawned traffic, unloaded tiles) were never freed – the pole material alone held 802 for 15 live users, and the
     heap floor rose ~4 MB/s. Every 2 s, render objects not drawn for 10 s whose object is out of every scene are
     disposed (some objects are detached between frames and re-added just to draw, so 'detached' alone is not enough) (that removes the listener, bindings, node data and cache entry; re-adding the object just recreates one). */
- if((()=>{try{return localStorage.getItem('roSweep')!=='0'}catch(e){return true}})()){const LIVE=new Set();let hooked=null;const hook=()=>{const O=renderer._objects;if(!O||!O.createRenderObject||hooked===O)return;hooked=O;const CRO=O.createRenderObject,GET=O.get;O.get=function(){const r=GET.apply(this,arguments);if(r)r.__t=performance.now();return r};BB.roFreed=BB.roFreed||0;
+ if((()=>{try{return localStorage.getItem('roSweep')!=='0'}catch(e){return true}})()){const LIVE=new Set();let hooked=null;const hook=()=>{const O=renderer._objects;if(!O||!O.createRenderObject||hooked===O)return;hooked=O;const CRO=O.createRenderObject,GET=O.get;O.get=function(a,b,c,d,e,f,g,h){const r=GET.call(this,a,b,c,d,e,f,g,h);if(r)r.__t=performance.now();return r}; /* no `arguments` object: called once per draw */BB.roFreed=BB.roFreed||0;
   O.createRenderObject=function(){const r=CRO.apply(this,arguments);LIVE.add(r);const d=r.onDispose;r.onDispose=function(){LIVE.delete(r);return d.apply(this,arguments)};return r}};hook();
   const attached=o=>{for(let p=o;p;p=p.parent)if(p.isScene)return true;return false};
   setInterval(()=>{hook();const now=performance.now();for(const r of LIVE){if(now-(r.__t||0)<10000)continue;const o=r.object;if(!o||!attached(o)){try{r.dispose()}catch(e){LIVE.delete(r)}BB.roFreed++}}BB.roLive=LIVE.size},2000)}
