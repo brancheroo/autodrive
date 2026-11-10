@@ -3033,7 +3033,18 @@ const BRLATE=new Map();function brLateCheck(key,d){if(!d||!d.elements||typeof un
   if(hit){BRLATE.set(nk,now);unloadTile(nk)}}}
 function brDup(el){const g=el.geometry.filter(p=>p);if(g.length<2)return false;let n=0,hit=0;for(let i=0;i<g.length;i++){const x=toX(g[i].lon),z=toZ(g[i].lat),j=Math.min(g.length-1,i+1),k=Math.max(0,j-1),dx=toX(g[j].lon)-toX(g[k].lon),dz=toZ(g[j].lat)-toZ(g[k].lat),l=Math.hypot(dx,dz)||1;n++;const cx=Math.floor(x/32),cz=Math.floor(z/32);let ok=false;for(let a=-1;a<=1&&!ok;a++)for(let b=-1;b<=1&&!ok;b++){const L=BRSEG.get((cx+a)+'_'+(cz+b));if(!L)continue;for(const S of L.values()){if(S[6]!==1)continue;const ex=S[3]-S[0],ez=S[4]-S[1],l2=ex*ex+ez*ez;if(l2<1e-4)continue;if(Math.abs((ex*dx+ez*dz)/Math.sqrt(l2)/l)<0.9)continue;const t=clamp(((x-S[0])*ex+(z-S[1])*ez)/l2,0,1);if(Math.hypot(x-S[0]-ex*t,z-S[1]-ez*t)<3.5){ok=true;break}}}if(ok)hit++}return hit>=Math.max(2,n*0.7)}
 function brDeckAt(x,z,dx,dz){let best=null,bd=4;const cx=Math.floor(x/32),cz=Math.floor(z/32);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const L=BRSEG.get((cx+i)+'_'+(cz+j));if(!L)continue;for(const S of L.values()){const ex=S[3]-S[0],ez=S[4]-S[1],l2=ex*ex+ez*ez;if(l2<1e-4)continue;const l=Math.sqrt(l2);if(Math.abs((ex*dx+ez*dz)/l)<0.94)continue;const t=clamp(((x-S[0])*ex+(z-S[1])*ez)/l2,0,1),px=S[0]+ex*t,pz=S[1]+ez*t,d=Math.hypot(x-px,z-pz);if(d<bd){bd=d;best=S[2]+(S[5]-S[2])*t}}}return best}
-function routeY(s,off=0){const R=game.route,[,,i]=routeLLnh(s),h0=NODEH.get(R.nodes[i]),h1=NODEH.get(R.nodes[i+1]);
+/* Tunnel / ramp heights along the route, smoothed. Route nodes through a tunnel can alternate between two map ways that
+   carry different height profiles (Santa Monica's McClure Tunnel: every other node 1-3 m lower), so the road profile was
+   a sawtooth: the car bobbed and the 20 m terrain grid, which cannot follow it, came up through the cabin floor. Each
+   such node now takes the average of the stored heights within 25 m along the route; bridge decks (drawn from their own
+   profile) and the first / last node of a run keep their exact height. */
+let NHV=0;{const _s=NODEH.set.bind(NODEH),_d=NODEH.delete.bind(NODEH),_c=NODEH.clear.bind(NODEH);NODEH.set=(k,v)=>{NHV++;return _s(k,v)};NODEH.delete=k=>{NHV++;return _d(k)};NODEH.clear=()=>{NHV++;return _c()}}
+const RNH={R:null,v:-1,m:new Map()};
+function routeNH(i){const R=game.route;if(RNH.R!==R||RNH.v!==NHV){RNH.R=R;RNH.v=NHV;RNH.m.clear()}let h=RNH.m.get(i);if(h!==undefined)return h===null?undefined:h;
+ const N=R.nodes,c=R.cum,ok=j=>j>=0&&j<N.length&&NODEH.has(N[j])&&!BRNH.has(N[j]),h0=NODEH.get(N[i]);
+ if(h0===undefined){RNH.m.set(i,null);return undefined}if(!ok(i)||!ok(i-1)||!ok(i+1)){RNH.m.set(i,h0);return h0}
+ let sum=h0,w=1;for(let j=i-1;ok(j)&&c[i]-c[j]<=25;j--){sum+=NODEH.get(N[j]);w++}for(let j=i+1;ok(j)&&c[j]-c[i]<=25;j++){sum+=NODEH.get(N[j]);w++}h=sum/w;RNH.m.set(i,h);return h}
+function routeY(s,off=0){const R=game.route,[,,i]=routeLLnh(s),h0=routeNH(i),h1=routeNH(i+1);
  {const P=BRPROF.get(R.nodes[i]+'_'+R.nodes[i+1]);if(P){const t=clamp((s-R.cum[i])/((R.cum[i+1]-R.cum[i])||1),0,1)*(P.length-1),j=Math.min(P.length-2,Math.floor(t));return lerp(P[j],P[j+1],t-j)}}
  if(h0!==undefined&&h1!==undefined){const t=clamp((s-R.cum[i])/((R.cum[i+1]-R.cum[i])||1),0,1);return lerp(h0,h1,t)}
  const gy=routeGY(s);if(BRSEG.size){try{const [x,z,dx,dz]=routeXZ(s,0),b=brDeckAt(x,z,dx,dz);if(b!=null&&b>gy+0.5)return b}catch(e){}}return gy}
