@@ -5278,7 +5278,7 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
       Wheels, drivers, passengers, light bars, trailers and anything else a car animates stay separate.
       ~110 draw calls per car → ~10–15.
    2. Perception camera: rendered off-screen into a render target at reduced resolution and at a lower rate
-      (every frame, like the main view), reusing the main shadow map instead of re-rendering
+      (every 2nd frame; localStorage cvEvery), reusing the main shadow map instead of re-rendering
       it, then blitted into its panel every frame (1 draw call).
    3. Shadow map: rendered once per frame by the main view; the perception pass reuses it instead of re-rendering. */
 (function(){
@@ -5312,8 +5312,9 @@ function updateProtest(dt,rdt){const G=game,P=G.protest;if(!P)return;const t=per
     gl_FragColor=vec4(c,1.);}`}); /* perception blit: tone-map + sRGB here (the render target is linear), or night-vision / ironbow thermal for the Predictacar's vision modes */bscene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),bmat));
  /* cvRect: the perception panels are measured every frame, and reading a size forces a layout. Cache the rectangle for 250 ms per element (a resize shows within a quarter second). */
 const _cvRc={el:null,t:0,r:null};window.cvRect=function(el){const now=performance.now();if(_cvRc.el!==el||!_cvRc.r||now-_cvRc.t>0){ /* re-read every frame: the status lines above the camera change height (satellite mode) and a stale rect left the image offset */_cvRc.el=el;_cvRc.t=now;_cvRc.r=el.getBoundingClientRect()}return _cvRc.r};
+const CVEVERY=(()=>{try{return Math.max(1,Math.min(6,+localStorage.getItem('cvEvery')||2))}catch(e){return 2}})();
 window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const wrap=document.getElementById('cvWrap');if(wrap&&(getComputedStyle(wrap).visibility==='hidden'||wrap.style.display==='none'))return; /* hidden (photo mode etc.) */const r=cvRect(area);if(r.width<10||r.height<10)return;
-  const t=tier(),every=1 /* every frame, matching the main view (was every 2nd/4th/6th frame by tier) */,scale=t==='ultra'?0.85:1,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
+  const t=tier(),every=CVEVERY /* the scene behind the panel is redrawn every 2nd frame (the picture is still pasted, and its overlay drawn, every frame): a full scene pass for a ~220 px panel cost ~3 ms and ~0.3 MB of garbage per frame. localStorage cvEvery='1' restores every frame */,scale=t==='ultra'?0.85:1,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
   if(!rt||rt.width!==W||rt.height!==H){if(rt)rt.dispose();rt=new THREE.WebGLRenderTarget(W,H,{samples:0});bmat.uniforms.map.value=rt.texture;fr=0}
   const realRender=renderer.render;fr++;if(t!=='ultra'&&cvCam.far>300){cvCam.far=300;cvCam.updateProjectionMatrix()} /* perception view: nothing past 300 m (cuts draw calls) */
   if(fr%every===1||every===1){const au=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;const prev=renderer.getRenderTarget();
