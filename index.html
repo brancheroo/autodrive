@@ -5327,7 +5327,7 @@ const CVEVERY=(()=>{try{return Math.max(1,Math.min(6,+localStorage.getItem('cvEv
 window.renderPerception=function(){const G=game;if(!G||!G.route)return;const area=document.getElementById('cvCam');if(!area)return;const wrap=document.getElementById('cvWrap');if(wrap&&(getComputedStyle(wrap).visibility==='hidden'||wrap.style.display==='none'))return; /* hidden (photo mode etc.) */const r=cvRect(area);if(r.width<10||r.height<10)return;
   const t=tier(),every=CVEVERY /* the scene behind the panel is redrawn every 2nd frame (the picture is still pasted, and its overlay drawn, every frame): a full scene pass for a ~220 px panel cost ~3 ms and ~0.3 MB of garbage per frame. localStorage cvEvery='1' restores every frame */,scale=t==='ultra'?0.85:1,dpr=renderer.getPixelRatio(),W=Math.max(64,Math.round(r.width*dpr*scale)),H=Math.max(36,Math.round(r.height*dpr*scale));
   if(!rt||rt.width!==W||rt.height!==H){if(rt)rt.dispose();rt=new THREE.WebGLRenderTarget(W,H,{samples:0});bmat.uniforms.map.value=rt.texture;fr=0}
-  const realRender=renderer.render;fr++;if(t!=='ultra'&&cvCam.far>300){cvCam.far=300;cvCam.updateProjectionMatrix()} /* perception view: nothing past 300 m (cuts draw calls) */
+  const realRender=renderer.render;fr++;{const cf=t==='ultra'?1200:300;if(cvCam.far>cf){cvCam.far=cf;cvCam.updateProjectionMatrix()}} /* perception view: nothing past 300 m (cuts draw calls); Ultra sees 1200 m (it was unlimited: ~100 more draws per pass for things a pixel wide in a ~220 px panel) */
   if(fr%every===1||every===1){const au=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;const prev=renderer.getRenderTarget();
    renderer.render=function(sc,cam){if(cam===cvCam){renderer.setRenderTarget(rt);renderer.setScissorTest(false);renderer.setViewport(0,0,W/dpr,H/dpr); /* setViewport multiplies by the pixel ratio: at low quality (0.75×) W,H filled only 3/4 of the target */const rr=(a,b)=>realRender.call(renderer,a,b);if(window.THERMAL)THERMAL.render(rr,sc,cam);else rr(sc,cam);renderer.setRenderTarget(prev)}else realRender.call(renderer,sc,cam)};
    try{_rp()}finally{renderer.render=realRender;renderer.shadowMap.autoUpdate=au}}
@@ -5402,7 +5402,7 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
    change): everything the car's or any part's userData references (wheels, wipers, doors, driver, the rider's hidden head...), the steering wheel and touch
    screens, and any part seen moving or changing visibility while watched for the first few seconds of driving.
    localStorage egoBake='0' turns it off. */
-(function(){const on=(()=>{try{return localStorage.getItem('egoBake')!=='0'}catch(e){return true}})();if(!on||window.__GPU)return; /* WebGL only: under WebGPU the merge forces a pipeline rebuild (a visible stall) and saves nothing there */
+(function(){const on=(()=>{try{return localStorage.getItem('egoBake')!=='0'}catch(e){return true}})();if(!on)return; /* WebGPU too (it was WebGL only): three.js makes ~1.5 kB of garbage per draw call there, and the unmerged car was ~220 draws a frame (main view + shadow pass) against ~100 merged - about a tenth of all per-frame garbage. Cost: one ~0.2 s hitch when the merge happens, 6 s into the drive */
  let cur=null,watch=null,t0=0;const ST=window.EGOBAKE={state:'idle',kept:0};const M=new THREE.Matrix4();
  function snap(root){const m=new Map();root.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(root.matrixWorld).invert();root.traverse(o=>{if(o!==root)m.set(o,{e:M.multiplyMatrices(inv,o.matrixWorld).elements.slice(),v:o.visible})});return m}
  function moved(root,base,set){const inv=new THREE.Matrix4().copy(root.matrixWorld).invert();for(const [o,b] of base){if(set.has(o))continue;if(o.visible!==b.v){set.add(o);continue}const e=M.multiplyMatrices(inv,o.matrixWorld).elements;for(let i=0;i<16;i++)if(Math.abs(e[i]-b.e[i])>1e-4){set.add(o);break}}}
@@ -14038,7 +14038,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    frame that also redraws the shadow map), only while you are in the driver's seat. The glass was a plain metallic plane with nothing to reflect and showed as a black bar. */
 (function(){
  const W=256,H=64;let rt=null,cam=null,mat=null,glass=null,orig=null,n=0;
- function setup(gl){if(!rt){rt=new THREE.RenderTarget?new THREE.RenderTarget(W,H):new THREE.WebGLRenderTarget(W,H);rt.texture.colorSpace=THREE.SRGBColorSpace;cam=new THREE.PerspectiveCamera(22,W/H,0.3,2500);
+ function setup(gl){if(!rt){rt=new THREE.RenderTarget?new THREE.RenderTarget(W,H):new THREE.WebGLRenderTarget(W,H);rt.texture.colorSpace=THREE.SRGBColorSpace;cam=new THREE.PerspectiveCamera(22,W/H,0.3,500); /* 500 m (was 2500): the glass is 64 px tall, anything farther back is a pixel or two, and the long view drew ~150 more objects per mirror pass */
    mat=new THREE.MeshBasicMaterial({map:rt.texture,toneMapped:false});rt.texture.wrapS=THREE.RepeatWrapping;rt.texture.repeat.x=-1;rt.texture.offset.x=1 /* mirror image */}
   if(glass!==gl){if(glass&&orig)glass.material=orig;glass=gl;orig=gl.material;gl.material=mat}}
  const P=new THREE.Vector3(),Q=new THREE.Quaternion(),B=new THREE.Vector3();
