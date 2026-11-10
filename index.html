@@ -11130,7 +11130,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
 <script>/* mods/88c-cabs.js */
 /* Liveries for the London black cab (spec.cabStyle 'london') and the Japanese taxi ('jpn') and the New York NV200 ('nyc'). They share the cabbie, back-seat
    rider, partition and meter from 88-taxi.js; this adds the outside: London - amber TAXI for-hire sign on the front of the
-   roof, chrome grille ring and badge, door seams with rear-hinged back doors; Japan - an andon roof lamp, a gold side
+   roof, door seams with rear-hinged back doors; Japan - an andon roof lamp, a gold side
    stripe, kanji door decal and the sliding rear door's track. Both set userData.taxiSign so the sign lights like the others. */
 (function(){
  const tex=(w,h,draw)=>{const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t};
@@ -11140,9 +11140,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
   for(const x of handles){const m=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.03,0.025),chr);m.position.set(x,belt-0.08,sd*(W/2+0.01));g.add(m)}}}
  function london(g,spec){const{L,W,H,wr}=spec,ud=g.userData;
   seams(g,spec,[L*0.31,L*0.05,-L*0.33],[L*0.07,-L*0.07]); /* front door, then rear-hinged back door (handle at its front edge) */
-  /* round chrome grille ring with the black badge, at the nose */
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.025,10,40),chr);ring.rotation.y=Math.PI/2;ring.position.set(L/2+0.005,wr+0.28,0);g.add(ring);
-  const grl=new THREE.Mesh(new THREE.CircleGeometry(0.19,40),blk);grl.rotation.y=Math.PI/2;grl.position.set(L/2+0.0,wr+0.28,0);g.add(grl);
+  /* (the nose now carries the tall slatted chrome grille from the car's own face style, MODEL grille 'levc', like the real TX; the round ring that used to sit here covered it) */
   /* amber TAXI sign at the front of the roof */
   const t=once('ldn',256,80,(x,w,h)=>{x.fillStyle='#ffb000';x.fillRect(0,0,w,h);x.fillStyle='#111';x.font='900 58px Arial Black, Arial';x.textAlign='center';x.fillText('TAXI',w/2,62)});
   const litM=new THREE.MeshStandardMaterial({map:t,emissive:0xffffff,emissiveMap:t,emissiveIntensity:0.6,roughness:0.4});
