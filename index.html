@@ -13296,14 +13296,6 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   if(n-lt>2000){lt=n;ls=[];scene.traverse(o=>{if(o.isLight&&o.castShadow&&o.shadow)ls.push(o)})}
   const go=++S.f%S.every===0;for(const l of ls){l.shadow.autoUpdate=false;if(go)l.shadow.needsUpdate=true}}});
 })();
-/* WebGPU instancing shader leak. three r175's InstanceNode puts the matrices of an InstancedMesh with count<=1000 in a
-   uniform buffer whose name carries the node id (NodeBuffer_<id>), so every new InstancedMesh (each streamed tile, bake,
-   crowd) compiled its own vertex shader and pipeline, and the session pipeline cache above kept them all: heap climbed
-   ~5 MB/s and Chrome/Safari crashed within a minute or two. Take the instanced-attribute path for every count instead;
-   its shader text is the same for all meshes, so programs and pipelines are shared. */
-(function(){const IN=window.__GPU&&__GPU.InstanceNode;if(!IN||IN.prototype.__oneShader||localStorage.getItem('xOS'))return;const S=IN.prototype.setup;
- IN.prototype.__oneShader=true;IN.prototype.setup=function(b){const c=this.count;if(c<=1000)this.count=1001;try{return S.call(this,b)}finally{this.count=c}};
-})();
 </script>
 <script>/* mods/99zza-wheeltubs.js */
 /* Wheel-arch tubs for the car you drive. The tyres sit partly inboard of the cabin's side walls, and from inside the body
@@ -14223,7 +14215,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    on the GPU (WebGPU never frees a buffer until dispose): at speed ~1 car/s left ~5 buffers behind and Chrome/Safari
    ran out of memory. Every 2 s, cars gone from the agent list and detached from the scene for 2 s+ have their
    geometry disposed and their own (non-cached) textures freed; anything still drawn elsewhere or flagged shared is kept. */
-(function(){if(typeof MODS==='undefined'||localStorage.getItem('xAF'))return;
+(function(){if(typeof MODS==='undefined')return;
  const known=new Set(),parked=new Map();let t=0;const AF={freedGeo:0,freedTex:0,cars:0};window.AGENTFREE=AF;
  function sharedTex(tx){return !!(tx.userData&&tx.userData.shared)}
  MODS.push({id:'agentfree',frame(){const now=performance.now();if(now-t<2000||typeof game==='undefined'||!game.agents)return;t=now;
