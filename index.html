@@ -14218,6 +14218,24 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    mat.opacity=(0.55+0.3*Math.max(0,surge))*(typeof game!=='undefined'&&game&&game.dark?0.35:1)}});
 })();
 </script>
+<script>/* mods/99zzz-agentfree.js */
+/* Free despawned traffic. Cars that leave game.agents were only scene.remove()d, so each one's baked geometry stayed
+   on the GPU (WebGPU never frees a buffer until dispose): at speed ~1 car/s left ~5 buffers behind and Chrome/Safari
+   ran out of memory. Every 2 s, cars gone from the agent list and detached from the scene for 2 s+ have their
+   geometry disposed and their own (non-cached) textures freed; anything still drawn elsewhere or flagged shared is kept. */
+(function(){if(typeof MODS==='undefined')return;
+ const known=new Set(),parked=new Map();let t=0;const AF={freedGeo:0,freedTex:0,cars:0};window.AGENTFREE=AF;
+ function sharedTex(tx){return !!(tx.userData&&tx.userData.shared)}
+ MODS.push({id:'agentfree',frame(){const now=performance.now();if(now-t<2000||typeof game==='undefined'||!game.agents)return;t=now;
+  const live=new Set();for(const a of game.agents)if(a&&a.mesh){live.add(a.mesh);known.add(a.mesh)}
+  for(const m of known)if(!live.has(m)){known.delete(m);parked.set(m,now)}
+  if(!parked.size)return;
+  const used=new Set(),usedT=new Set();scene.traverse(o=>{if(o.geometry)used.add(o.geometry);for(const mm of [].concat(o.material||[]))if(mm)for(const k in mm){const v=mm[k];if(v&&v.isTexture)usedT.add(v)}});
+  for(const [m,t0] of parked){if(live.has(m)){parked.delete(m);continue}let p=m;while(p.parent)p=p.parent;if(p===scene){parked.delete(m);known.add(m);continue}if(now-t0<2000)continue;parked.delete(m);AF.cars++;
+   m.traverse(o=>{const g=o.geometry;if(g&&!used.has(g)&&!(g.userData&&g.userData.shared)){g.dispose();AF.freedGeo++}
+    for(const mm of [].concat(o.material||[]))if(mm)for(const k in mm){const v=mm[k];if(v&&v.isTexture&&v.isCanvasTexture&&!usedT.has(v)&&!sharedTex(v)){v.dispose();AF.freedTex++}}})}}});
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
