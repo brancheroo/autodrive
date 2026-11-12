@@ -13301,7 +13301,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    crowd) compiled its own vertex shader and pipeline, and the session pipeline cache above kept them all: heap climbed
    ~5 MB/s and Chrome/Safari crashed within a minute or two. Take the instanced-attribute path for every count instead;
    its shader text is the same for all meshes, so programs and pipelines are shared. */
-(function(){const IN=window.__GPU&&__GPU.InstanceNode;if(!IN||IN.prototype.__oneShader||localStorage.getItem('noOneShader'))return;const S=IN.prototype.setup;
+(function(){const IN=window.__GPU&&__GPU.InstanceNode;if(!IN||IN.prototype.__oneShader||localStorage.getItem('noNew'))return;const S=IN.prototype.setup;
  IN.prototype.__oneShader=true;IN.prototype.setup=function(b){const c=this.count;if(c<=1000)this.count=1001;try{return S.call(this,b)}finally{this.count=c}};
 })();
 </script>
@@ -14223,7 +14223,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    on the GPU (WebGPU never frees a buffer until dispose): at speed ~1 car/s left ~5 buffers behind and Chrome/Safari
    ran out of memory. Every 2 s, cars gone from the agent list and detached from the scene for 2 s+ have their
    geometry disposed and their own (non-cached) textures freed; anything still drawn elsewhere or flagged shared is kept. */
-(function(){if(typeof MODS==='undefined')return;
+(function(){if(typeof MODS==='undefined'||localStorage.getItem('noNew'))return;
  const known=new Set(),parked=new Map();let t=0;const AF={freedGeo:0,freedTex:0,cars:0};window.AGENTFREE=AF;
  function sharedTex(tx){return !!(tx.userData&&tx.userData.shared)}
  MODS.push({id:'agentfree',frame(){const now=performance.now();if(now-t<2000||typeof game==='undefined'||!game.agents)return;t=now;
@@ -14240,7 +14240,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 /* Crash black box. Every 2 s the last 90 samples (3 min) of heap, GPU geometry/texture/pipeline counts, frame time,
    agents and trip time go to localStorage 'bbox', plus JS errors and WebGPU device loss. A crashed tab keeps it:
    on the next load the previous session moves to 'bboxPrev' and window.BBOXPREV, and BBOX.report() summarises it. */
-(function(){if(typeof MODS==='undefined')return;
+(function(){if(typeof MODS==='undefined'||localStorage.getItem('noNew'))return;
  let prev=null;try{prev=JSON.parse(localStorage.getItem('bbox')||'null');if(prev)localStorage.setItem('bboxPrev',JSON.stringify(prev))}catch(e){}
  window.BBOXPREV=prev;const B={ua:navigator.userAgent.slice(0,120),t0:Date.now(),s:[],ev:[],end:null};let last=0,fr=0,worst=0,lf=performance.now();
  const ev=(k,m)=>{B.ev.push([Math.round((Date.now()-B.t0)/1000),k,String(m).slice(0,200)]);if(B.ev.length>40)B.ev.shift();save()};
