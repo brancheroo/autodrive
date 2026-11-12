@@ -14236,6 +14236,25 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
     for(const mm of [].concat(o.material||[]))if(mm)for(const k in mm){const v=mm[k];if(v&&v.isTexture&&v.isCanvasTexture&&!usedT.has(v)&&!sharedTex(v)){v.dispose();AF.freedTex++}}})}}});
 })();
 </script>
+<script>/* mods/99zzzz-blackbox.js */
+/* Crash black box. Every 2 s the last 90 samples (3 min) of heap, GPU geometry/texture/pipeline counts, frame time,
+   agents and trip time go to localStorage 'bbox', plus JS errors and WebGPU device loss. A crashed tab keeps it:
+   on the next load the previous session moves to 'bboxPrev' and window.BBOXPREV, and BBOX.report() summarises it. */
+(function(){if(typeof MODS==='undefined')return;
+ let prev=null;try{prev=JSON.parse(localStorage.getItem('bbox')||'null');if(prev)localStorage.setItem('bboxPrev',JSON.stringify(prev))}catch(e){}
+ window.BBOXPREV=prev;const B={ua:navigator.userAgent.slice(0,120),t0:Date.now(),s:[],ev:[],end:null};let last=0,fr=0,worst=0,lf=performance.now();
+ const ev=(k,m)=>{B.ev.push([Math.round((Date.now()-B.t0)/1000),k,String(m).slice(0,200)]);if(B.ev.length>40)B.ev.shift();save()};
+ const save=()=>{try{localStorage.setItem('bbox',JSON.stringify(B))}catch(e){}};
+ addEventListener('error',e=>ev('err',e.message+' @'+e.lineno));addEventListener('unhandledrejection',e=>ev('rej',e.reason&&(e.reason.message||e.reason)));
+ addEventListener('pagehide',()=>{B.end='closed';save()});
+ try{const d=renderer.backend&&renderer.backend.device;if(d){d.lost.then(i=>ev('DEVICE_LOST',i.reason+' '+i.message));d.addEventListener('uncapturederror',e=>ev('gpuerr',e.error&&e.error.message))}}catch(e){}
+ MODS.push({id:'blackbox',frame(){const n=performance.now(),dt=n-lf;lf=n;fr++;if(dt>worst)worst=dt;if(n-last<2000)return;last=n;
+  let R={};try{const r=renderer,P=r._pipelines;R={g:r.info.memory.geometries,x:r.info.memory.textures,p:P&&P.caches?P.caches.size:null,v:P&&P.programs?P.programs.vertex.size:null}}catch(e){}
+  B.s.push([Math.round((Date.now()-B.t0)/1000),performance.memory?Math.round(performance.memory.usedJSHeapSize/1e6):null,R.g,R.x,R.p,R.v,fr,Math.round(worst),typeof game!=='undefined'&&game.agents?game.agents.length:null,typeof game!=='undefined'&&game.ego?Math.round(game.ego.v||0):null]);
+  fr=0;worst=0;if(B.s.length>90)B.s.shift();save()}});
+ window.BBOX={B,report(p=BBOXPREV){if(!p)return 'no previous session';return {ua:p.ua,ranSec:p.s.length?p.s[p.s.length-1][0]:0,end:p.end||'CRASHED (no clean close)',cols:'t,heapMB,geo,tex,pipes,vprog,frames/2s,worstFrameMs,agents,speed',first:p.s[0],last10:p.s.slice(-10),events:p.ev}}};
+})();
+</script>
 <script>/* mods/zz-lightguard.js */
 /* Light guard (loads last, so it wraps every car builder). three.js recompiles every material whenever the number of
    lights in the scene changes, which here meant 100+ shader programs at once - multi-second freezes each time a
