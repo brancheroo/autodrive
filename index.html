@@ -13301,7 +13301,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    crowd) compiled its own vertex shader and pipeline, and the session pipeline cache above kept them all: heap climbed
    ~5 MB/s and Chrome/Safari crashed within a minute or two. Take the instanced-attribute path for every count instead;
    its shader text is the same for all meshes, so programs and pipelines are shared. */
-(function(){const IN=window.__GPU&&__GPU.InstanceNode;if(!IN||IN.prototype.__oneShader||localStorage.getItem('noNew'))return;const S=IN.prototype.setup;
+(function(){const IN=window.__GPU&&__GPU.InstanceNode;if(!IN||IN.prototype.__oneShader)return;const S=IN.prototype.setup;
  IN.prototype.__oneShader=true;IN.prototype.setup=function(b){const c=this.count;if(c<=1000)this.count=1001;try{return S.call(this,b)}finally{this.count=c}};
 })();
 </script>
@@ -14223,7 +14223,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    on the GPU (WebGPU never frees a buffer until dispose): at speed ~1 car/s left ~5 buffers behind and Chrome/Safari
    ran out of memory. Every 2 s, cars gone from the agent list and detached from the scene for 2 s+ have their
    geometry disposed and their own (non-cached) textures freed; anything still drawn elsewhere or flagged shared is kept. */
-(function(){if(typeof MODS==='undefined'||localStorage.getItem('noNew')||localStorage.getItem('noAF'))return;
+(function(){if(typeof MODS==='undefined')return;
  const known=new Set(),parked=new Map();let t=0;const AF={freedGeo:0,freedTex:0,cars:0};window.AGENTFREE=AF;
  function sharedTex(tx){return !!(tx.userData&&tx.userData.shared)}
  MODS.push({id:'agentfree',frame(){const now=performance.now();if(now-t<2000||typeof game==='undefined'||!game.agents)return;t=now;
@@ -14234,25 +14234,6 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
   for(const [m,t0] of parked){if(live.has(m)){parked.delete(m);continue}let p=m;while(p.parent)p=p.parent;if(p===scene){parked.delete(m);known.add(m);continue}if(now-t0<2000)continue;parked.delete(m);AF.cars++;
    m.traverse(o=>{const g=o.geometry;if(g&&!used.has(g)&&!(g.userData&&g.userData.shared)){g.dispose();AF.freedGeo++}
     for(const mm of [].concat(o.material||[]))if(mm)for(const k in mm){const v=mm[k];if(v&&v.isTexture&&v.isCanvasTexture&&!usedT.has(v)&&!sharedTex(v)){v.dispose();AF.freedTex++}}})}}});
-})();
-</script>
-<script>/* mods/99zzzz-blackbox.js */
-/* Crash black box. Every 2 s the last 90 samples (3 min) of heap, GPU geometry/texture/pipeline counts, frame time,
-   agents and trip time go to localStorage 'bbox', plus JS errors and WebGPU device loss. A crashed tab keeps it:
-   on the next load the previous session moves to 'bboxPrev' and window.BBOXPREV, and BBOX.report() summarises it. */
-(function(){if(typeof MODS==='undefined'||localStorage.getItem('noNew')||localStorage.getItem('noBB'))return;
- let prev=null;try{prev=JSON.parse(localStorage.getItem('bbox')||'null');if(prev)localStorage.setItem('bboxPrev',JSON.stringify(prev))}catch(e){}
- window.BBOXPREV=prev;const B={ua:navigator.userAgent.slice(0,120),t0:Date.now(),s:[],ev:[],end:null};let last=0,fr=0,worst=0,lf=performance.now();
- const ev=(k,m)=>{B.ev.push([Math.round((Date.now()-B.t0)/1000),k,String(m).slice(0,200)]);if(B.ev.length>40)B.ev.shift();save()};
- const save=()=>{try{localStorage.setItem('bbox',JSON.stringify(B))}catch(e){}};
- addEventListener('error',e=>ev('err',e.message+' @'+e.lineno));addEventListener('unhandledrejection',e=>ev('rej',e.reason&&(e.reason.message||e.reason)));
- addEventListener('pagehide',()=>{B.end='closed';save()});
- try{const d=renderer.backend&&renderer.backend.device;if(d){d.lost.then(i=>ev('DEVICE_LOST',i.reason+' '+i.message));d.addEventListener('uncapturederror',e=>ev('gpuerr',e.error&&e.error.message))}}catch(e){}
- MODS.push({id:'blackbox',frame(){const n=performance.now(),dt=n-lf;lf=n;fr++;if(dt>worst)worst=dt;if(n-last<2000)return;last=n;
-  let R={};try{const r=renderer,P=r._pipelines;R={g:r.info.memory.geometries,x:r.info.memory.textures,p:P&&P.caches?P.caches.size:null,v:P&&P.programs?P.programs.vertex.size:null}}catch(e){}
-  B.s.push([Math.round((Date.now()-B.t0)/1000),performance.memory?Math.round(performance.memory.usedJSHeapSize/1e6):null,R.g,R.x,R.p,R.v,fr,Math.round(worst),typeof game!=='undefined'&&game.agents?game.agents.length:null,typeof game!=='undefined'&&game.ego?Math.round(game.ego.v||0):null]);
-  fr=0;worst=0;if(B.s.length>90)B.s.shift();save()}});
- window.BBOX={B,report(p=BBOXPREV){if(!p)return 'no previous session';return {ua:p.ua,ranSec:p.s.length?p.s[p.s.length-1][0]:0,end:p.end||'CRASHED (no clean close)',cols:'t,heapMB,geo,tex,pipes,vprog,frames/2s,worstFrameMs,agents,speed',first:p.s[0],last10:p.s.slice(-10),events:p.ev}}};
 })();
 </script>
 <script>/* mods/zz-lightguard.js */
