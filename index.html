@@ -12564,7 +12564,7 @@ MODS.push({id:'rideshare',start(){panel(on())},frame(){if(on())panel(true)}});
       if(c===e&&!/guardrail/i.test(g.status||''))g.status=`🛡 Guardrail redirected the car (${Math.round(-vn*2.237)} mph into it)`;break}
      for(const p of P.poles){if(p.down)continue;const dx=L.x-p.x,dz=L.z-p.z;if(dx*dx+dz*dz>1.3*1.3)continue;p.down=true;L.vx*=0.7;L.vz*=0.7;
       const dir=Math.atan2(L.vz,L.vx);snap(p);P.fall.push({p,t:0,dir});if(c===e)g.status='💥 Snapped a lamp post';if(c.mesh&&c.mesh.userData)c.mesh.userData.dmg=Math.min(1,(c.mesh.userData.dmg||0)+0.08)}}
-    if(P.poles.length>600){const live=new Set(TILES.values());P.poles=P.poles.filter(p=>live.has(p.T))} /* drop poles of unloaded tiles */
+    P.pruneT=(P.pruneT||0)+dt;if(P.pruneT>1){P.pruneT=0;const live=new Set(TILES.values());if(P.poles.some(p=>!live.has(p.T)))P.poles=P.poles.filter(p=>live.has(p.T));for(const k of P.rails.keys())if(!RAW.has(k))P.rails.delete(k)} /* every second drop poles of unloaded tiles (each one kept its whole tile alive) and rails of dropped map data */
     /* falling poles: tip over about the base in ~1 s */
     for(let i=P.fall.length-1;i>=0;i--){const F=P.fall[i];F.t=Math.min(1,F.t+dt*1.2);const a=Math.PI/2*0.92*F.t*F.t,{pole,head,x,z}=F.p;if(!pole.parent){P.fall.splice(i,1);continue}
      const ux=Math.cos(F.dir),uz=Math.sin(F.dir);const base=pole.userData.by;pole.position.set(x+ux*4*Math.sin(a),base+4*Math.cos(a),z+uz*4*Math.sin(a));pole.rotation.set(0,0,0);pole.rotateOnWorldAxis(new THREE.Vector3(-uz,0,ux),a);
