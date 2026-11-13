@@ -628,7 +628,7 @@ function stopSignTex(){const c=document.createElement('canvas');c.width=c.height
 function limitTex(mph){const c=document.createElement('canvas');c.width=96;c.height=128;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,96,128);x.strokeStyle='#000';x.lineWidth=5;x.strokeRect(6,6,84,116);x.fillStyle='#000';x.textAlign='center';x.font='bold 17px Arial';x.fillText('SPEED',48,34);x.fillText('LIMIT',48,54);x.font='bold 50px Arial';x.fillText(mph,48,106);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t}
 const STOPMAT=new THREE.MeshLambertMaterial({map:stopSignTex(),transparent:true});
 const limitMats={};function limitMat(m){return limitMats[m]||(limitMats[m]=new THREE.MeshLambertMaterial({map:limitTex(m)}))}
-const NAMETEX=new Map();function nameTex(txt){txt=String(txt).slice(0,18);let t=NAMETEX.get(txt);if(t){NAMETEX.delete(txt);NAMETEX.set(txt,t);return t}t=nameTex0(txt);NAMETEX.set(txt,t);if(NAMETEX.size>800){const [k,o]=NAMETEX.entries().next().value;NAMETEX.delete(k);o.dispose();if(o.userData.mat)o.userData.mat.dispose()}return t} /* shared per street name, at most 800 kept (≈53 MB; 250 was below one area's worth of names and thrashed) (an evicted one still on screen simply re-uploads) */
+const NAMETEX=new Map();function nameTex(txt){txt=String(txt).slice(0,18);let t=NAMETEX.get(txt);if(t){NAMETEX.delete(txt);NAMETEX.set(txt,t);return t}t=nameTex0(txt);NAMETEX.set(txt,t);if(NAMETEX.size>250){ /* was 800: each street-name plate is a 256x48 canvas plus its GPU texture, ~0.1 MB; 250 covers every tile in view several times over */const [k,o]=NAMETEX.entries().next().value;NAMETEX.delete(k);o.dispose();if(o.userData.mat)o.userData.mat.dispose()}return t} /* shared per street name, at most 800 kept (≈53 MB; 250 was below one area's worth of names and thrashed) (an evicted one still on screen simply re-uploads) */
 function nameTex0(txt){const c=document.createElement('canvas');c.width=256;c.height=48;const x=c.getContext('2d');x.fillStyle='#0b6b3a';x.fillRect(0,0,256,48);x.strokeStyle='#fff';x.lineWidth=3;x.strokeRect(3,3,250,42);x.fillStyle='#fff';x.font='bold 26px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(txt.slice(0,18),128,26);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t}
 
 // ============================================================ GEOMETRY BUILDER
@@ -1329,7 +1329,7 @@ function roadSweep(grp,RQ){if(!RQ)return 0;const skip=SWEEP_SKIP(),v=new THREE.V
 function roadClearCheck(){const G=game;if(!G||!G.route||!G.ego)return 0;const bad=new Set();const s0=Math.max(0,G.ego.s-300),s1=Math.min(G.route.total,G.ego.s+1500);
  for(let s=s0;s<=s1;s+=3){const lo=laneOffsetAt(routeLLnh(s)[2]);for(const o of [0,-2,2,-4,4,lo-1.2,lo,lo+1.2]){const p=routeXZ(s,o),b=bAt(p[0],p[1]);if(b)for(const [k,list] of BOWN)if(list.includes(b))bad.add(k)}}
  for(const k of bad){RAWROADS.delete(k);retireTile(k);buildTile(k)} /* old copy stays on screen until the rebuild is in */if(bad.size)console.warn('road-clear check rebuilt tiles',[...bad]);return bad.size}
-function bDrop(key){for(const b of BOWN.get(key)||[])for(const k of b.cells){const a=BGRID.get(k);if(a){const i=a.indexOf(b);if(i>=0)a.splice(i,1)}}BOWN.delete(key)}
+function bDrop(key){for(const b of BOWN.get(key)||[])for(const k of b.cells){const a=BGRID.get(k);if(a){const i=a.indexOf(b);if(i>=0)a.splice(i,1);if(!a.length)BGRID.delete(k)}}BOWN.delete(key)} /* emptied cells are removed: they were kept for good (56,000 empty cells after 14 km) */
 function bAt(x,z){const a=BGRID.get(Math.floor(x/BCELL)+','+Math.floor(z/BCELL));if(!a)return null;for(const b of a)if(x>b.x0&&x<b.x1&&z>b.z0&&z<b.z1&&pip([x,z],b.r))return b;return null}
 function bNormal(b,x,z){let bd=1e9,n=[1,0],d0=0;const r=b.r;for(let i=0;i<r.length;i++){const p=r[i],q=r[(i+1)%r.length],ex=q[0]-p[0],ez=q[1]-p[1],L2=ex*ex+ez*ez||1,t=clamp(((x-p[0])*ex+(z-p[1])*ez)/L2,0,1),cx=p[0]+ex*t,cz=p[1]+ez*t,d=Math.hypot(x-cx,z-cz);if(d<bd){bd=d;const l=Math.sqrt(L2);n=[ez/l,-ex/l];if((x-cx)*n[0]+(z-cz)*n[1]>0)n=[-n[0],-n[1]];d0=d}}return{n,d:d0}} // n points out of the wall
 /* ---- time-sliced tile building: buildTileGen yields whenever the per-frame budget runs out; one build at a time.
@@ -14365,6 +14365,34 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  MODS.push({id:'cabincamB',preRender(){if(!S.ok||!on())return;const m=game.ego.mesh;m.updateMatrixWorld(true);const q1=new THREE.Quaternion(),p1=new THREE.Vector3();m.getWorldQuaternion(q1);m.getWorldPosition(p1);
   dq.copy(q1).multiply(inv.copy(S.q0).invert());if(1-Math.abs(dq.w)<1e-7&&p1.distanceToSquared(S.p0)<1e-8)return;
   v.copy(camera.position).sub(S.p0).applyQuaternion(dq).add(p1);camera.position.copy(v);camera.quaternion.premultiply(dq);camera.updateMatrixWorld(true)}});
+})();
+</script>
+<script>/* mods/zzzzz-heapguard.js */
+/* Heap guard. At speed the game makes garbage faster than the browser collects it: in one test drive the heap ran from
+   ~1.1 GB to 2.3 GB in ten seconds and the tab crashed and reloaded, twice. The live data is only a few hundred MB; the
+   rest is garbage from drawing (three.js makes ~1.5 kB per draw call under WebGPU) and from building map tiles. So when
+   the heap is high the game makes less of it. Read once a second (Chrome / Edge only, where the heap size is readable):
+     over LEAN (800 MB)   - the mirror and the perception panel redraw their scene on 1 pass in 4 (their last picture
+                            stays up) and the tile builder's time slice is capped at 5 ms;
+     over DEEP (1400 MB)  - those two passes stop, the tile builder gets 3 ms;
+     over STOP (2000 MB)  - the ride is paused once with a message instead of the tab crashing; Space resumes it.
+   Lean / deep switch off again below 650 MB. HEAPGUARD has counters; localStorage heapGuard='0' turns it off. */
+(function(){
+ if(typeof MODS==='undefined'||!performance.memory)return;
+ const on=(()=>{try{return localStorage.getItem('heapGuard')!=='0'}catch(e){return true}})();
+ const HG=window.HEAPGUARD={on,level:0,mb:0,peak:0,leanSecs:0,deepSecs:0,stops:0,skipped:0,LEAN:800,DEEP:1400,STOP:2000,OFF:650};if(!on)return;
+ let stopped=false;
+ setInterval(()=>{const mb=performance.memory.usedJSHeapSize/1048576;HG.mb=Math.round(mb);if(mb>HG.peak)HG.peak=HG.mb;
+  if(mb>HG.DEEP)HG.level=2;else if(mb>HG.LEAN)HG.level=Math.max(HG.level===2&&mb>HG.DEEP-200?2:1,1);else if(mb<HG.OFF)HG.level=0;else if(HG.level===2)HG.level=1;
+  if(HG.level===1)HG.leanSecs++;else if(HG.level===2)HG.deepSecs++;
+  const G=typeof game!=='undefined'?game:null;
+  if(mb>HG.STOP&&G&&G.route&&!G.paused&&!stopped){stopped=true;HG.stops++;G.paused=true;G.status='⚠️ Memory nearly full – paused to avoid a crash. Press Space to carry on.';if(window.BLACKBOX)try{BLACKBOX.log('heap-stop',{mb:HG.mb})}catch(e){}}
+  if(mb<HG.DEEP)stopped=false},1000);
+ /* thin out the two extra scene passes */
+ let n=0;const _render=renderer.render;
+ renderer.render=function(sc,cam){if(HG.level&&sc===scene&&cam!==camera&&cam.isPerspectiveCamera&&this.getRenderTarget()){if(HG.level===2||(n++)%4){HG.skipped++;return}}return _render.apply(this,arguments)};
+ const _bt=window.btStep;if(typeof _bt==='function')window.btStep=function(ms){return _bt.call(this,HG.level===2?Math.min(ms,3):HG.level===1?Math.min(ms,5):ms)};
+ MODS.push({id:'heapguard'});
 })();
 </script>
 <!--/mods-->
