@@ -5399,6 +5399,19 @@ window.renderPerception=function(){const G=game;if(!G||!G.route)return;const are
  MODS.push({id:'bladecull',frame(){if(++t%15||typeof TILES==='undefined'||!camera)return;camera.getWorldPosition(W);const cx=W.x,cz=W.z;
   for(const T of TILES.values())if(T.group)for(const o of T.group.children)if(o.userData.blade){const dx=o.position.x-cx,dz=o.position.z-cz;const d=dx*dx+dz*dz;if(o.visible?d>R2:d<R3)o.visible=!o.visible} /* 280/320 m hysteresis: hides only when a few pixels, no flicker at the edge */}});
 })();
+/* Small roadside objects by distance. Besides its big merged meshes a tile holds dozens of small separate ones (shop and
+   stop signs, posters, plates: each has its own texture, so they cannot be merged) and every one is a draw call in every
+   pass that sees it: ~55 in the main view alone with 12 tiles loaded, the same again in the perception panel. Anything
+   whose own size is under 3 m is a few pixels past ~260 m: it is hidden there and shown again inside 230 m. Only objects
+   this module hid are shown again. SMALLCULL.hidden counts them; localStorage smallCull='0' turns it off. */
+(function(){const on=(()=>{try{return localStorage.getItem('smallCull')!=='0'}catch(e){return true}})();const ST=window.SMALLCULL={on,hidden:0};if(!on)return;
+ let t=0;const FAR2=260*260,NEAR2=230*230,W=new THREE.Vector3();
+ MODS.push({id:'smallcull',frame(){if(++t%12||typeof TILES==='undefined'||typeof camera==='undefined')return;camera.getWorldPosition(W);const cx=W.x,cz=W.z;let hid=0;
+  for(const T of TILES.values()){if(!T.group)continue;for(const o of T.group.children){const u=o.userData;if(u.smNo||u.blade||u.merged)continue;
+    if(u.smC===undefined){ /* classify once */if(!(o.isMesh||o.isSprite)||o.isInstancedMesh||!o.geometry){u.smNo=1;continue}const g=o.geometry;if(!g.boundingSphere)g.computeBoundingSphere();const bs=g.boundingSphere,sc=Math.max(o.scale.x,o.scale.y,o.scale.z);if(!bs||bs.radius*sc>3||bs.center.length()*sc>3){u.smNo=1;continue}u.smC=1}
+    const dx=o.position.x-cx,dz=o.position.z-cz,d=dx*dx+dz*dz;if(u.smHid){if(d<NEAR2){o.visible=true;u.smHid=0}else hid++}else if(d>FAR2&&o.visible){o.visible=false;u.smHid=1;hid++}}}
+  ST.hidden=hid}});
+})();
 /* WebGL shadow cadence: the sun's shadow map was redrawn every frame (~450 draws). Every other frame is visually the
    same at driving speeds and halves that cost. WebGPU has its own cadence (99zz). localStorage shadowEvery='1' restores. */
 (function(){let f=0;const every=(()=>{try{return Math.max(1,+localStorage.getItem('shadowEvery')||2)}catch(e){return 2}})();
@@ -14042,7 +14055,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 </script>
 <script>/* mods/99zzm-mirror.js */
 /* Working rear-view mirror in the cabin view: a small camera at the mirror looks back through the rear window and its picture
-   (flipped left-right, like a real mirror) is drawn onto the mirror glass. Rendered every third frame at low resolution (never on a
+   (flipped left-right, like a real mirror) is drawn onto the mirror glass. Rendered every fourth frame at low resolution (never on a
    frame that also redraws the shadow map), only while you are in the driver's seat. The glass was a plain metallic plane with nothing to reflect and showed as a black bar. */
 (function(){
  const W=256,H=64;let rt=null,cam=null,mat=null,glass=null,orig=null,n=0;
@@ -14052,7 +14065,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
  const P=new THREE.Vector3(),Q=new THREE.Quaternion(),B=new THREE.Vector3();
  MODS.push({id:'mirrorcam',
   preRender(){const G=typeof game!=='undefined'?game:null;if(!G||!G.ego||!G.ego.mesh)return;const gl=G.ego.mesh.userData.mirrorGlass;if(!gl)return;
-   if(G.cam!=='in'){if(glass&&orig&&glass.material===mat)glass.material=orig;return}setup(gl);if(glass.material!==mat)glass.material=mat;if(++n<3)return;{const S=window.SHC;if(S&&S.every>1&&S.f%S.every===0&&n<5)return} /* WebGPU redraws the sun's shadow map on every SHC.every-th frame: the mirror waits one frame so the two extra passes never land in the same frame */n=0;
+   if(G.cam!=='in'){if(glass&&orig&&glass.material===mat)glass.material=orig;return}setup(gl);if(glass.material!==mat)glass.material=mat;if(++n<4)return;{const S=window.SHC;if(S&&S.every>1&&S.f%S.every===0&&n<6)return} /* WebGPU redraws the sun's shadow map on every SHC.every-th frame: the mirror waits one frame so the two extra passes never land in the same frame */n=0;
    const m=G.ego.mesh;m.updateMatrixWorld();gl.getWorldPosition(P);m.getWorldQuaternion(Q);
    B.set(-1,0,0).applyQuaternion(Q); /* the car's forward is +x: look the other way */cam.position.copy(P).addScaledVector(B,0.1);cam.up.set(0,1,0);cam.lookAt(P.x+B.x*50,P.y+B.y*50-1.2,P.z+B.z*50);cam.updateMatrixWorld();
    const vis=glass.visible;glass.visible=false;const prev=renderer.getRenderTarget();try{renderer.setRenderTarget(rt);renderer.render(scene,cam)}catch(e){}renderer.setRenderTarget(prev);glass.visible=vis}});
