@@ -14219,7 +14219,7 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
 (function(){if(typeof MODS==='undefined')return;
  const known=new Set(),parked=new Map();let t=0;const AF={freedGeo:0,freedTex:0,cars:0};window.AGENTFREE=AF;
  function sharedTex(tx){return !!(tx.userData&&tx.userData.shared)}
- MODS.push({id:'agentfree',frame(){const now=performance.now();if(now-t<2000||typeof game==='undefined'||!game.agents)return;t=now;
+ MODS.push({id:'agentfree',frame(){const now=performance.now();if(now-t<2000||typeof game==='undefined'||!game||!game.agents)return; /* game is null until a ride starts: this threw every 2 s on the start screen */t=now;
   const live=new Set();for(const a of game.agents)if(a&&a.mesh){live.add(a.mesh);known.add(a.mesh)}
   for(const m of known)if(!live.has(m)){known.delete(m);parked.set(m,now)}
   if(!parked.size)return;
