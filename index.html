@@ -14372,15 +14372,15 @@ float PCSSsun(sampler2D sm,vec4 sc){float z=sc.z;float bs=0.,bn=0.;
    ~1.1 GB to 2.3 GB in ten seconds and the tab crashed and reloaded, twice. The live data is only a few hundred MB; the
    rest is garbage from drawing (three.js makes ~1.5 kB per draw call under WebGPU) and from building map tiles. So when
    the heap is high the game makes less of it. Read once a second (Chrome / Edge only, where the heap size is readable):
-     over LEAN (800 MB)   - the mirror and the perception panel redraw their scene on 1 pass in 4 (their last picture
+     over LEAN (1100 MB)  - the mirror and the perception panel redraw their scene on 1 pass in 4 (their last picture
                             stays up) and the tile builder's time slice is capped at 5 ms;
-     over DEEP (1400 MB)  - those two passes stop, the tile builder gets 3 ms;
+     over DEEP (1500 MB)  - those two passes stop, the tile builder gets 3 ms;
      over STOP (2000 MB)  - the ride is paused once with a message instead of the tab crashing; Space resumes it.
-   Lean / deep switch off again below 650 MB. HEAPGUARD has counters; localStorage heapGuard='0' turns it off. */
+   Lean / deep switch off again below 950 MB (after a collection the heap sits around 800-900 MB on a long drive, so the guard only works in the upper half of each climb). HEAPGUARD has counters; localStorage heapGuard='0' turns it off. */
 (function(){
  if(typeof MODS==='undefined'||!performance.memory)return;
  const on=(()=>{try{return localStorage.getItem('heapGuard')!=='0'}catch(e){return true}})();
- const HG=window.HEAPGUARD={on,level:0,mb:0,peak:0,leanSecs:0,deepSecs:0,stops:0,skipped:0,LEAN:800,DEEP:1400,STOP:2000,OFF:650};if(!on)return;
+ const HG=window.HEAPGUARD={on,level:0,mb:0,peak:0,leanSecs:0,deepSecs:0,stops:0,skipped:0,LEAN:1100,DEEP:1500,STOP:2000,OFF:950};if(!on)return;
  let stopped=false;
  setInterval(()=>{const mb=performance.memory.usedJSHeapSize/1048576;HG.mb=Math.round(mb);if(mb>HG.peak)HG.peak=HG.mb;
   if(mb>HG.DEEP)HG.level=2;else if(mb>HG.LEAN)HG.level=Math.max(HG.level===2&&mb>HG.DEEP-200?2:1,1);else if(mb<HG.OFF)HG.level=0;else if(HG.level===2)HG.level=1;
